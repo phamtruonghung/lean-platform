@@ -12,15 +12,20 @@
  * the shared `OUTSIDE_GRANTED_ORG_UNITS` wording.
  *
  * Two rules, deliberately different, the same asymmetry ADR-0009 gives
- * the Asset register, with each read's own permission code (ADR-0061):
+ * the Asset register:
  *
- *   - Reads are Site-wide and gated by the code of the Screen that asks:
- *     `GET /sites/:siteId/stores`, `GET /stores/:storeId`,
- *     `GET /stores/:storeId/stock` and `GET /stores/:storeId/movements` behind
- *     `MTN_STORES_DISPLAY`, the parts catalogue and its unit picker behind
- *     `MTN_PARTS_DISPLAY`. No Grant filter: Org Unit
+ *   - Reads are Site-wide. `GET /sites/:siteId/stores`,
+ *     `GET /stores/:storeId` (and its `/stock` and `/movements`), the parts
+ *     catalogue and the unit picker's list sit behind `authenticate` +
+ *     `requireActive` and nothing else. Org Unit
  *     scope decides where an Account may act, not what it may know about, and
  *     "what is on the shelf" is a thing a supervisor plans around.
+ *
+ *     They deliberately do NOT ask `MTN_PARTS_DISPLAY` / `MTN_STORES_DISPLAY`,
+ *     which name the Screens rather than the data: the unit-of-measure
+ *     catalogue is read by Quality as well as Maintenance, and gating these
+ *     shared reads refused Accounts that could read them before the retrofit
+ *     — the card's finding (t_3271c590), not a policy chosen in passing.
  *   - Writes are branch-scoped. Creating a store and recording a movement
  *     each require a write Grant reaching the relevant Org Unit.
  *
@@ -122,15 +127,15 @@ async function requireStoreWriteScope(req, res, next) {
   }
 }
 
-// The two permission codes this file's reads ask (ADR-0061), one per Screen:
-// `MTN_PARTS_DISPLAY` for the parts catalogue and the unit picker its form
-// draws from, `MTN_STORES_DISPLAY` for the shelves and their stock. Both are
-// seeded on supervisor/engineer/manager/administrator — exactly the roles
-// `ModuleRoles.maintenance` offers Parts and Stores to — so neither refuses a
-// role that could read these surfaces before them.
-//
-// The writes below do NOT take a code yet, deliberately, and for two different
-// reasons that both belong to the retrofit card (t_3271c590):
+// The two permission codes this file's writes will eventually ask (ADR-0061),
+// and the reason neither is wired to a read here yet. Both belong to the
+// retrofit card (t_3271c590):
+//   - `MTN_PARTS_DISPLAY` / `MTN_STORES_DISPLAY` gate the Screens of those
+//     names, but neither surface is private to its Screen: the unit-of-measure
+//     catalogue is shared reference data (Quality reads this same address) and
+//     nothing that read the parts catalogue or a store before this card held
+//     only an Account. Gating the reads narrowed Accounts that use them today,
+//     so the reads stay open and the narrowing is the card's finding.
 //   - POST /parts is administrator-only today. `MTN_PARTS_CHANGE` is seeded on
 //     engineer/manager/administrator, so adding it would *widen* the write to
 //     two roles that are refused it today — a behaviour change, not a
@@ -139,18 +144,16 @@ async function requireStoreWriteScope(req, res, next) {
 //     supervisor holding a write Grant, while `MTN_STORES_CHANGE` is seeded on
 //     engineer/manager/administrator only; adding it would *narrow* a role that
 //     uses these routes.
-const mayReadParts = people.requirePermission('MTN_PARTS_DISPLAY');
-const mayReadStores = people.requirePermission('MTN_STORES_DISPLAY');
 
 // ---------------------------------------------------------------------------
 // Parts — the shared catalogue.
 // ---------------------------------------------------------------------------
 
-// The unit picker's own list — active `units_of_measure` rows. A value with a
-// known set is chosen, never typed
+// The unit picker's own list — active `units_of_measure` rows, readable by any
+// approved Account. A value with a known set is chosen, never typed
 // (ADR-0023), and this is the one catalogue that selection draws from, so
 // nothing on the client has to hardcode a unit.
-router.get('/units-of-measure', people.authenticate, people.requireActive, mayReadParts, async (req, res, next) => {
+router.get('/units-of-measure', people.authenticate, people.requireActive, async (req, res, next) => {
   try {
     res.json({ unitsOfMeasure: await inventory.listUnitsOfMeasure() });
   } catch (error) {
@@ -158,12 +161,11 @@ router.get('/units-of-measure', people.authenticate, people.requireActive, mayRe
   }
 });
 
-// The catalogue, gated by the Parts Screen's own code. Active parts only by
-// default;
+// Any approved Account reads the catalogue. Active parts only by default;
 // `?includeInactive=true` is the deliberate way to widen, the same exact
 // -string comparison job-plan-routes.js uses so garbage never silently
 // widens the list.
-router.get('/parts', people.authenticate, people.requireActive, mayReadParts, async (req, res, next) => {
+router.get('/parts', people.authenticate, people.requireActive, async (req, res, next) => {
   try {
     const includeInactive = req.query.includeInactive === 'true';
     res.json({ parts: await inventory.listParts({ includeInactive }) });
@@ -193,7 +195,6 @@ router.get(
   people.authenticate,
   people.requireActive,
   requireKnownSite,
-  mayReadStores,
   async (req, res, next) => {
     try {
       const includeInactive = req.query.includeInactive === 'true';
@@ -240,7 +241,6 @@ router.get(
   people.authenticate,
   people.requireActive,
   requireKnownStore,
-  mayReadStores,
   async (req, res, next) => {
     try {
       res.json({ store: req.store });
@@ -255,7 +255,6 @@ router.get(
   people.authenticate,
   people.requireActive,
   requireKnownStore,
-  mayReadStores,
   async (req, res, next) => {
     try {
       res.json({ store: req.store, stock: await inventory.listStockForStore(req.store.id) });
@@ -270,7 +269,6 @@ router.get(
   people.authenticate,
   people.requireActive,
   requireKnownStore,
-  mayReadStores,
   async (req, res, next) => {
     try {
       res.json(await inventory.listMovementsForStore(req.store.id));

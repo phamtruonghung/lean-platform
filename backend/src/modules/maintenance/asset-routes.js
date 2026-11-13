@@ -4,25 +4,29 @@
  *
  * This is the one file in the Module that talks to People, and it does so
  * only through `modules/people`'s entry point (ADR-0006): `authenticate`,
- * `requireActive`, `requirePermission`, `findSite`, `findOrgUnit`, `canAct` and
+ * `requireActive`, `findSite`, `findOrgUnit`, `canAct` and
  * the shared `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything else about an
  * Asset is assets.js's own business.
  *
  * Two scope rules, and they are deliberately different (#55):
  *
- *   - Reads are Site-wide, and the only role question asked of them is the
- *     code that names the Screen. GET /sites/:siteId/assets sits behind
- *     `authenticate` + `requireActive`, a known-Site check and
- *     `MTN_ASSETS_DISPLAY` (ADR-0061) — no Grant filter, no per-row canAct.
- *     The seed carries that code on exactly the four roles the sidebar offers
- *     the Assets Screen to (supervisor, engineer, manager, administrator), so
- *     the retrofit refuses nobody who could read the register before it.
- *     ADR-0009 already settled the reasoning for the Employee directory: Org
- *     Unit scope decides where an Account may act, not who it may know about,
- *     and a supervisor who cannot see the line beside theirs cannot plan
- *     around it. Note this is
+ *   - Reads are Site-wide. GET /sites/:siteId/assets sits behind
+ *     `authenticate` + `requireActive` and nothing else — no role check, no
+ *     Grant filter, no per-row canAct. ADR-0009 already settled the
+ *     reasoning for the Employee directory: Org Unit scope decides where an
+ *     Account may act, not who it may know about, and a supervisor who
+ *     cannot see the line beside theirs cannot plan around it. Note this is
  *     NOT how People's own GET /sites/:siteId/org-units behaves, which is
  *     requireSiteScope'd — the difference is the point, not an oversight.
+ *
+ *     It deliberately does NOT ask `MTN_ASSETS_DISPLAY`, even though that code
+ *     names the Assets Screen: this endpoint is shared reference data, read by
+ *     the Maintenance Request form (an operator must name an Asset to raise
+ *     one), the Safety incident form and the Quality non-conformance form, all
+ *     of them offered to every approved Account. A read gate here narrows
+ *     those Screens, not just the Assets Screen — ADR-0061's own "several
+ *     Screens read one endpoint". Recorded as a finding on the retrofit card
+ *     (t_3271c590) rather than decided in passing.
  *   - Writes are branch-scoped. POST /assets requires a write Grant reaching
  *     the Org Unit the Asset is placed at. It does NOT take a permission code
  *     yet: `MTN_ASSETS_CHANGE` is seeded on engineer/manager/administrator
@@ -128,22 +132,11 @@ async function requireAssetWriteScope(req, res, next) {
   }
 }
 
-// "May this Account use the Assets Screen at all?" — the role half of the
-// model (ADR-0061), asked with the catalogue's own code rather than with a
-// role comparison. It sits *after* requireKnownSite rather than before it and
-// rather than instead of it: an unknown Site is a 404 asked of the row, the
-// code is a 403 asked of the caller, and this file has answered those in that
-// order since #61 (AGENTS.md §6). The seeded roles make this a widening of no
-// one's reach — `MTN_ASSETS_DISPLAY` is carried by exactly the four roles
-// `ModuleRoles.maintenance` offers the Screen to.
-const mayReadAssets = people.requirePermission('MTN_ASSETS_DISPLAY');
-
 router.get(
   '/sites/:siteId/assets',
   people.authenticate,
   people.requireActive,
   requireKnownSite,
-  mayReadAssets,
   async (req, res, next) => {
     try {
       // Only the exact string 'true' counts (issue #61). Anything else —

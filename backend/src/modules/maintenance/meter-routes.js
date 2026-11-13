@@ -16,9 +16,10 @@
  *
  *   - Reads are Site-wide and gated by `MTN_METERS_DISPLAY`, with no Grant
  *     filter (ADR-0009: scope decides where an Account may act, not what it may
- *     know about). GET /units-of-measure is a shared
- *     reference catalogue and asks the same code, which every role that can
- *     reach the Meters Screen holds (ADR-0005).
+ *     know about). GET /units-of-measure is an exception on purpose: it is a
+ *     shared reference catalogue (ADR-0005) read by Quality and by every form
+ *     that picks a unit, so it asks no code at all — one Screen's code cannot
+ *     answer for the other Screens reading the same address.
  *   - Writes are branch-scoped **and** gated by `MTN_METERS_CHANGE` — a Grant
  *     says where, a code says what. A meter is placed on an Asset, so creating
  *     one needs a WRITE Grant reaching the Org Unit that Asset sits at;
@@ -97,13 +98,20 @@ async function requireMeterWriteScope(req, res, next) {
 // that can reach the Screen today is refused by either. A Grant still decides
 // *where* every write may happen; the code decides whether the Account may
 // record meter data at all.
+//
+// The read code is deliberately not on `GET /units-of-measure`: that is a
+// shared catalogue Quality also reads, so the question "may you use the Meters
+// Screen" would answer for a Screen that is not asking (t_3271c590's finding).
 const mayReadMeters = people.requirePermission('MTN_METERS_DISPLAY');
 const mayRecordMeters = people.requirePermission('MTN_METERS_CHANGE');
 
 // The unit-of-measure catalogue the meter form chooses from (ADR-0023).
-// A shared reference table, not an Org-Unit-scoped record, so it asks only the
-// Meters Screen's own code and no Grant.
-router.get('/units-of-measure', people.authenticate, people.requireActive, mayReadMeters, async (req, res, next) => {
+// Readable by any approved Account — it is a shared reference table, not an
+// Org-Unit-scoped record, and Quality reads this same address on purpose. It
+// deliberately does not ask `MTN_METERS_DISPLAY`: that code names the Meters
+// Screen, and gating the shared catalogue refused Accounts that could read it
+// before the retrofit (the card's finding, t_3271c590).
+router.get('/units-of-measure', people.authenticate, people.requireActive, async (req, res, next) => {
   try {
     res.json({ unitsOfMeasure: await meters.listUnitsOfMeasure() });
   } catch (error) {
