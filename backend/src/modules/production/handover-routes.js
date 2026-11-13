@@ -4,24 +4,34 @@
  *
  * This is the one file in the Module that talks to People, and only through
  * `modules/people`'s entry point (ADR-0006): `authenticate`, `requireActive`,
- * `canAct` and the shared `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything
- * about the handover itself is handovers.js's business.
+ * `requirePermission`, `canAct` and the shared `OUTSIDE_GRANTED_ORG_UNITS`
+ * wording. Everything about the handover itself is handovers.js's business.
  *
- * Who may act: any Account whose edit Grant reaches the Section may open,
- * write the lines and header of, or submit a draft, and acknowledge or amend a
- * sealed one (ADR-0054 — Team Leader is a Job role, not an account role, so
- * scope is the gate; the one extra rule, that the author does not acknowledge
- * their own, is the service's), and reading a handover, its versions, a
- * Section's day or its Assets needs a Grant of either level reaching it.
- * `write: true` is spelled out on every write because it
- * defaults to FALSE, and a write that forgot it would be authorised by any read
- * Grant with no error anywhere to notice.
+ * Who may act: the code answers *which door* and the Grant answers *which
+ * Sections* (ADR-0061, slice 7). The four reads ask `PRD_HANDOVER_DISPLAY`,
+ * the eleven writes — opening, the header, the machine lines, the change
+ * points, the actions, submit and amendments — ask `PRD_HANDOVER_WRITE`, and
+ * acknowledging asks `PRD_HANDOVER_ACKNOWLEDGE`. All three codes are seeded on
+ * every role, so this retrofit changes nothing for anyone today; what it buys
+ * is that acknowledging is now its own line in the Roles Screen rather than a
+ * side effect of an edit Grant (see the acknowledge route's own comment).
+ * Behind the code, the standing is unchanged: an edit Grant reaching the
+ * Section for every write (ADR-0054 — Team Leader is a Job role, not an account
+ * role, so scope is the gate; the one extra rule, that the author does not
+ * acknowledge their own, is the service's), and a Grant of either level
+ * reaching it for a read. `write: true` is spelled out on every write because
+ * it defaults to FALSE, and a write that forgot it would be authorised by any
+ * read Grant with no error anywhere to notice.
  *
- * Existence before scope, the order AGENTS.md §6 fixes: the Org Unit and the
- * shift instance must be found (404) before `canAct` is asked, because
- * `canAct` answers true for an administrator before it looks at the id. What
- * the two records say about each other — a Section, a shift instance of that
- * Section, no live handover yet — is asked last, by the service.
+ * The code is asked first, as middleware — a caller without it is refused with
+ * `PERMISSION_REQUIRED` before any row is looked up, the same order every
+ * other retrofitted Module uses.
+ *
+ * Then existence before scope, the order AGENTS.md §6 fixes: past the code, the
+ * Org Unit and the shift instance must be found (404) before `canAct` is asked,
+ * because `canAct` answers true for an administrator before it looks at the id.
+ * What the two records say about each other — a Section, a shift instance of
+ * that Section, no live handover yet — is asked last, by the service.
  */
 
 const express = require('express');
@@ -30,6 +40,13 @@ const handovers = require('./handovers');
 const { httpError, notFound, parseId, handleError } = require('./errors');
 
 const router = express.Router();
+
+// The Module's three codes (ADR-0061's destinations, already in the catalogue
+// and all seeded on every role). Acknowledge has its own because it is its own
+// act — see the comment on the route below.
+const mayDisplayHandovers = people.requirePermission('PRD_HANDOVER_DISPLAY');
+const mayWriteHandovers = people.requirePermission('PRD_HANDOVER_WRITE');
+const mayAcknowledgeHandovers = people.requirePermission('PRD_HANDOVER_ACKNOWLEDGE');
 
 const OUTSIDE_GRANTED_ORG_UNITS_CODE = 'OUTSIDE_GRANTED_ORG_UNITS';
 
@@ -63,6 +80,7 @@ router.post(
   '/handovers',
   people.authenticate,
   people.requireActive,
+  mayWriteHandovers,
   async (req, res, next) => {
     try {
       const body = req.body ?? {};
@@ -94,6 +112,7 @@ router.get(
   '/handovers/:id',
   people.authenticate,
   people.requireActive,
+  mayDisplayHandovers,
   async (req, res, next) => {
     try {
       const found = await handovers.findHandover(req.params.id);
@@ -119,6 +138,7 @@ router.post(
   '/handovers/:id/submit',
   people.authenticate,
   people.requireActive,
+  mayWriteHandovers,
   async (req, res, next) => {
     try {
       const found = await handovers.findHandover(req.params.id);
@@ -188,6 +208,7 @@ router.put(
   '/handovers/:id/machine-lines/:assetId',
   people.authenticate,
   people.requireActive,
+  mayWriteHandovers,
   async (req, res, next) => {
     try {
       const found = await handovers.findHandover(req.params.id);
@@ -211,6 +232,7 @@ router.delete(
   '/handovers/:id/machine-lines/:assetId',
   people.authenticate,
   people.requireActive,
+  mayWriteHandovers,
   async (req, res, next) => {
     try {
       const found = await handovers.findHandover(req.params.id);
@@ -271,6 +293,7 @@ router.patch(
   '/handovers/:id',
   people.authenticate,
   people.requireActive,
+  mayWriteHandovers,
   async (req, res, next) => {
     try {
       const found = await handovers.findHandover(req.params.id);
@@ -307,6 +330,7 @@ router.post(
   '/handovers/:id/change-points',
   people.authenticate,
   people.requireActive,
+  mayWriteHandovers,
   async (req, res, next) => {
     try {
       const found = await handovers.findHandover(req.params.id);
@@ -328,6 +352,7 @@ router.delete(
   '/handovers/:id/change-points/:changePointId',
   people.authenticate,
   people.requireActive,
+  mayWriteHandovers,
   async (req, res, next) => {
     try {
       const found = await handovers.findHandover(req.params.id);
@@ -370,6 +395,7 @@ router.post(
   '/handovers/:id/actions',
   people.authenticate,
   people.requireActive,
+  mayWriteHandovers,
   async (req, res, next) => {
     try {
       const found = await handovers.findHandover(req.params.id);
@@ -391,6 +417,7 @@ router.delete(
   '/handovers/:id/actions/:linkId',
   people.authenticate,
   people.requireActive,
+  mayWriteHandovers,
   async (req, res, next) => {
     try {
       const found = await handovers.findHandover(req.params.id);
@@ -436,14 +463,27 @@ function parseAcknowledgement(body) {
 }
 
 // The incoming Team Leader acknowledges a submitted handover (issue #338).
-// Existence, then scope with `write: true` — acknowledging is acting at the
-// Section — then the service's refusals: a draft, an already-acknowledged or
-// a superseded version (409), the author acknowledging their own (409), a
-// result outside its set (400), a change point of another handover (404).
+// The code comes first, then existence, then scope with `write: true` —
+// acknowledging is acting at the Section — then the service's refusals: a
+// draft, an already-acknowledged or a superseded version (409), the author
+// acknowledging their own (409), a result outside its set (400), a change
+// point of another handover (404).
+//
+// **Why acknowledging has its own code (ADR-0061, slice 7).** It is a distinct
+// act, done by a different person from the one who wrote the handover, and an
+// administrator should be able to restrict it — to supervisors, say — without
+// also changing who may write the handover. A Grant cannot express that: it
+// answers only "may this Account write here at all". The code was seeded on
+// `ROLE_ADMIN` alone, so `1803700000000_seed-handover-acknowledge.js` puts it
+// on the five roles that can already acknowledge before this gate went in;
+// without that row this line would have taken acknowledging away from the
+// incoming shift. The scope check below still decides *which* Sections, and the
+// author-does-not-acknowledge-their-own rule (ADR-0054) stays in the service.
 router.post(
   '/handovers/:id/acknowledge',
   people.authenticate,
   people.requireActive,
+  mayAcknowledgeHandovers,
   async (req, res, next) => {
     try {
       const found = await handovers.findHandover(req.params.id);
@@ -473,6 +513,7 @@ router.post(
   '/handovers/:id/amendments',
   people.authenticate,
   people.requireActive,
+  mayWriteHandovers,
   async (req, res, next) => {
     try {
       const found = await handovers.findHandover(req.params.id);
@@ -500,6 +541,7 @@ router.get(
   '/handovers/:id/versions',
   people.authenticate,
   people.requireActive,
+  mayDisplayHandovers,
   async (req, res, next) => {
     try {
       const found = await handovers.findHandover(req.params.id);
@@ -520,6 +562,7 @@ router.get(
   '/sections/:orgUnitId/assets',
   people.authenticate,
   people.requireActive,
+  mayDisplayHandovers,
   async (req, res, next) => {
     try {
       const section = await handovers.findOrgUnit(req.params.orgUnitId);
@@ -541,6 +584,7 @@ router.get(
   '/sections/:orgUnitId/handovers',
   people.authenticate,
   people.requireActive,
+  mayDisplayHandovers,
   async (req, res, next) => {
     try {
       let date = null;

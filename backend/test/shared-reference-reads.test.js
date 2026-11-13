@@ -77,10 +77,6 @@ const UNCODED_GETS = [
 
   // Module-owned reads whose code is still outstanding — named here so the
   // register above is not read as approval of them (ADR-0061 §7, second list).
-  'GET /api/production/handovers/:id',
-  'GET /api/production/handovers/:id/versions',
-  'GET /api/production/sections/:orgUnitId/assets',
-  'GET /api/production/sections/:orgUnitId/handovers',
   'GET /api/people/accounts',
   'GET /api/people/accounts/pending',
 
