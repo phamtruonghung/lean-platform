@@ -22,9 +22,10 @@
  *   - No error plumbing. errors.js is this Module's own copy (see its header).
  *
  * What this Module requires from outside itself is People's entry point and
- * nothing else: the routes ask `authenticate`, `requireActive`, `canAct` and
- * `findSite`, and site-context.js reads the Site's root Org Unit by ordinary
- * SQL. The catalogue itself is read and written only through the second Pool.
+ * nothing else: the routes ask `authenticate`, `requireActive`, `canAct`,
+ * `requirePermission` (ADR-0061's role half, issue #513) and `findSite`, and
+ * site-context.js reads the Site's root Org Unit by ordinary SQL. The catalogue
+ * itself is read and written only through the second Pool.
  */
 
 const express = require('express');
