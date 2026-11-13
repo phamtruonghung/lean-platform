@@ -24,15 +24,19 @@
  * elsewhere: an Account that may write one issue and not another must not be
  * able to move the second one through this door.
  *
- * **The ADR-0061 retrofit (issue #503).** Reading a Site's show asks
- * `QLT_SLIDESHOW_DISPLAY`, which is seeded on ROLE_STANDARD — the default group
- * every approved Account carries — so it refuses nobody who could read the show
- * before it. Both writes are recorded as findings rather than retrofitted:
- * choosing an issue and ordering the wall would ask `QLT_SLIDESHOW_CHOOSE`, which
- * the seed gives to ROLE_ADMIN alone, where today any write Grant reaching an
- * issue's Org Unit may put it on the wall — that would narrow every Team Leader
- * who curates the show to the administrator. Their write-scope question is
- * untouched.
+ * **The ADR-0061 retrofit (issues #503 and #535).** The read asks
+ * `QLT_SLIDESHOW_DISPLAY`, and both writes ask `QLT_SLIDESHOW_CHOOSE`, which is
+ * the code that names the act: choosing an issue and ordering the wall. The code
+ * runs in front of the write-scope question each route already asked, which is
+ * untouched — the code answers which door, the Grant answers whose issue and
+ * which Org Unit.
+ *
+ * `QLT_SLIDESHOW_DISPLAY` is seeded on ROLE_STANDARD, so the read refuses nobody
+ * who could read the show before it. `QLT_SLIDESHOW_CHOOSE` was seeded on
+ * ROLE_ADMIN alone, where today any write Grant reaching an issue's Org Unit may
+ * put it on the wall — so `1803900000000_quality-write-codes.js` widens it onto
+ * every role, and the Team Leader who curates the show keeps doing so. What the
+ * widening buys is the door being visible and removable in the Roles Screen.
  */
 
 const express = require('express');
@@ -45,9 +49,13 @@ const { httpError, notFound, handleError } = require('./errors');
 
 const router = express.Router();
 
-// The code this file's one retrofitted read asks (ADR-0061, issue #503), seeded
-// on ROLE_STANDARD so it refuses nobody who could read the show before it.
+// The two codes this file asks (ADR-0061, issues #503 and #535).
+// `QLT_SLIDESHOW_DISPLAY` is seeded on ROLE_STANDARD so the read refuses nobody
+// who could read the show before it; `QLT_SLIDESHOW_CHOOSE` is widened onto every
+// role by `1803900000000_quality-write-codes.js`, because today's reach is the
+// write Grant on the issue, not the role.
 const mayReadSlideShow = people.requirePermission('QLT_SLIDESHOW_DISPLAY');
+const mayChooseSlideShow = people.requirePermission('QLT_SLIDESHOW_CHOOSE');
 
 const FINDERS = {
   nonconformance: (id) => nonconformances.findNonconformance(id),
@@ -123,6 +131,7 @@ router.put(
   '/slide-show/:kind/:id',
   people.authenticate,
   people.requireActive,
+  mayChooseSlideShow,
   requireWritableIssue,
   async (req, res, next) => {
     try {
@@ -144,6 +153,7 @@ router.put(
   people.authenticate,
   people.requireActive,
   requireKnownSite,
+  mayChooseSlideShow,
   requireSiteVisible,
   async (req, res, next) => {
     try {

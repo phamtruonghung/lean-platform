@@ -4,18 +4,19 @@
  * session, the same seam nonconformances.test.js and customer-complaints.test.js
  * use.
  *
- * Why this file exists. The codes this retrofit asks are seeded on ROLE_STANDARD,
- * the default group every approved Account carries, so "the existing suite still
- * passes" cannot on its own show that the retrofit refused nobody: a gate that
- * only admitted supervisors would leave that suite green. And the sixteen routes
- * left on their Grant check (the findings in the handoff) must still admit an
- * operator who holds a write Grant on its line — that is the "behaviour changes
- * for nobody" half a role-narrowing would break.
+ * Why this file exists. The codes this retrofit asks are seeded on every role, so
+ * "the existing suite still passes" cannot on its own show that the retrofit
+ * refused nobody: a gate that only admitted supervisors would leave that suite
+ * green. And the thirteen Quality write routes (the findings in the slice-1
+ * handoff, gated by issue #535) must still admit an operator who holds a write
+ * Grant on its line — that is the "behaviour changes for nobody" half a
+ * role-narrowing would break.
  *
  * Both questions are asked here as the Account that would notice first: an
  * operator, holding the default group and nothing else. The last two tests go
  * the other way and prove the gates are wired at all, by removing one code from
- * ROLE_STANDARD and watching exactly one address start refusing.
+ * every role and watching exactly one address start refusing. Per-code coverage
+ * of the write gates themselves is quality-write-permission-roles.test.js.
  *
  * Needs a database with every migration applied, including
  * 1803400000000_permissions-and-roles.js. Set DATABASE_URL first.
@@ -399,14 +400,15 @@ test('an operator records a complaint and records a Non-conformance from it', as
 });
 
 // ---------------------------------------------------------------------------
-// The findings: the routes left on their Grant check must still admit this
-// operator, or the retrofit narrowed by accident.
+// The former findings: the routes that stood on their Grant check until issue
+// #535 gated them must still admit this operator, or the retrofit narrowed by
+// accident.
 // ---------------------------------------------------------------------------
 
-test('the finding routes still admit an operator: an NCR, its disposition, and a complaint response', async () => {
-  // Recording a supplier NCR is a finding (QLT_SUPPLIER_NCRS_RECORD is
-  // administrator-only), so the write Grant is the whole gate — and the operator
-  // must still get through it.
+test('the former finding routes still admit an operator: an NCR, its disposition, and a complaint response', async () => {
+  // Recording a supplier NCR now asks QLT_SUPPLIER_NCRS_RECORD, which
+  // 1803900000000 widens onto every role: the write Grant is still the
+  // "where", and the operator must still get through both gates.
   const recorded = await post(`/api/quality/sites/${siteId}/supplier-ncrs`, operator.token, {
     orgUnitId: String(lineId),
     supplierId: String(supplier.id),
@@ -420,8 +422,9 @@ test('the finding routes still admit an operator: an NCR, its disposition, and a
   const supplierNcr = recorded.body.supplierNcr;
   insertedSupplierNcrIds.push(supplierNcr.id);
 
-  // A Disposition is a finding too (QLT_NONCONFORMANCES_DISPOSE is
-  // engineer-and-above), so the write Grant decides, exactly as before.
+  // A Disposition is the recorded work, so it asks QLT_NONCONFORMANCES_RECORD
+  // (a code the default group has always carried) in front of the write Grant,
+  // which still decides.
   const nonconformanceId = insertedNonconformanceIds[0];
   const disposition = await post(
     `/api/quality/nonconformances/${nonconformanceId}/dispositions`,
@@ -430,8 +433,8 @@ test('the finding routes still admit an operator: an NCR, its disposition, and a
   );
   assert.strictEqual(disposition.status, 201, JSON.stringify(disposition.body));
 
-  // Responding to a complaint names no code in the catalogue, so it is the
-  // Grant's: closing one must still work for this operator.
+  // Responding to a complaint asks QLT_COMPLAINTS_RECORD — the complaint's own
+  // lifecycle — and must still work for this operator.
   const complaintId = insertedComplaintIds[0];
   const responded = await post(`/api/quality/complaints/${complaintId}/respond`, operator.token, {
     responseNote: 'Replacement parts shipped and the line re-checked.'

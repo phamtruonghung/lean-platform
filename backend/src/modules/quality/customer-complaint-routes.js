@@ -38,21 +38,21 @@
  * `canAct`. On the routes that act on one complaint the record is resolved
  * before the Grant question for the same reason.
  *
- * **The ADR-0061 retrofit (issue #503).** Four routes ask
- * `people.requirePermission` beside the Grant question they already asked: the
- * register and one complaint's read (`QLT_COMPLAINTS_DISPLAY`), recording a
- * complaint (`QLT_COMPLAINTS_RECORD`), and recording a Non-conformance from one
- * (`QLT_NONCONFORMANCES_RECORD` — the act that route performs is recording a
- * Non-conformance, so that is the code that names it). All three are seeded on
- * ROLE_STANDARD, so none refuses an Account that could reach its route before
- * it, and the Grant half of every route is untouched.
+ * **The ADR-0061 retrofit (issues #503 and #535).** Every route asks
+ * `people.requirePermission` beside the Grant question it already asked: the
+ * register and one complaint's read (`QLT_COMPLAINTS_DISPLAY`), and every write
+ * on a complaint — recording one, closing one with its response, linking a
+ * Non-conformance to it, and recording a Non-conformance from it
+ * (`QLT_COMPLAINTS_RECORD`, or `QLT_NONCONFORMANCES_RECORD` where the act is
+ * recording a Non-conformance, whatever door it came through).
  *
- * Closing a complaint with its response and linking an existing Non-conformance
- * are left on their Grant check and recorded as findings: no code in the
- * catalogue names responding to a complaint or linking one to a Non-conformance
- * (`QLT_COMPLAINTS_RECORD` names recording one, which is the POST above).
- * Adding a code that names something else would change what the route means
- * rather than record what it does.
+ * Responding and linking are the complaint's own lifecycle, which is what
+ * `QLT_COMPLAINTS_RECORD` names — the code covers the record from being taken in
+ * to being closed, the way `MTN_WORK_ORDERS_CHANGE` covers raising, assigning,
+ * completing and cancelling one Work order. Both codes are seeded on every role,
+ * so the retrofit refuses nobody who could reach these routes before it — a
+ * complaint is taken in and answered by whoever holds the write Grant, whatever
+ * its role — and the Grant half of every route is untouched.
  *
  * A query value that names a closed set is checked, not forwarded (ADR-0023's
  * rule read the other way round): `?status=opne` is a mistake the caller can
@@ -67,9 +67,10 @@ const { httpError, notFound, parseId, handleError } = require('./errors');
 
 const router = express.Router();
 
-// The three codes this retrofit asks (ADR-0061, issue #503). All are seeded on
-// ROLE_STANDARD — the default group every approved Account carries — which is
-// what makes them a retrofit rather than a narrowing.
+// The three codes this Module asks (ADR-0061, issues #503 and #535). All are
+// seeded on every role — `ROLE_STANDARD`, the default group every approved
+// Account carries, carries them, and the seeded roles above it carry the same —
+// which is what makes them a retrofit rather than a narrowing.
 const mayReadComplaints = people.requirePermission('QLT_COMPLAINTS_DISPLAY');
 const mayRecordComplaint = people.requirePermission('QLT_COMPLAINTS_RECORD');
 const mayRecordNonconformance = people.requirePermission('QLT_NONCONFORMANCES_RECORD');
@@ -255,6 +256,7 @@ router.post(
   '/complaints/:id/respond',
   people.authenticate,
   people.requireActive,
+  mayRecordComplaint,
   requireComplaintWriteScope,
   async (req, res, next) => {
     try {
@@ -303,6 +305,7 @@ router.post(
   '/complaints/:id/link',
   people.authenticate,
   people.requireActive,
+  mayRecordComplaint,
   requireComplaintWriteScope,
   async (req, res, next) => {
     try {

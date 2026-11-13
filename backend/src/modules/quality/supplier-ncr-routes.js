@@ -43,20 +43,21 @@
  * fix, and answering it with an empty list would hide the typo behind what looks
  * like a quiet fortnight.
  *
- * **The ADR-0061 retrofit (issue #503).** Three of these seven routes ask
- * `people.requirePermission` beside the Grant question they already asked: the
- * register and one NCR's read (`QLT_SUPPLIER_NCRS_DISPLAY`, seeded on
- * ROLE_STANDARD so it refuses nobody who could read the register before), and
- * recording a Non-conformance from an NCR (`QLT_NONCONFORMANCES_RECORD` — the act
- * is recording a Non-conformance, and that is the code that names it).
+ * **The ADR-0061 retrofit (issues #503 and #535).** Every route asks
+ * `people.requirePermission` beside the Grant question it already asked: the
+ * register and one NCR's read (`QLT_SUPPLIER_NCRS_DISPLAY`), and every write on
+ * an NCR — recording one, recording its disposition, closing it, linking a
+ * Non-conformance to it (`QLT_SUPPLIER_NCRS_RECORD`), and recording a
+ * Non-conformance from it (`QLT_NONCONFORMANCES_RECORD` — the act is recording a
+ * Non-conformance, and that is the code that names it).
  *
- * The other four are recorded as findings rather than retrofitted. Recording an
- * NCR would ask `QLT_SUPPLIER_NCRS_RECORD`, which the seed gives to ROLE_ADMIN
- * alone, where today any edit Grant reaching the Org Unit may record one — that
- * would narrow every recorder in the plant to the administrator. Recording the
- * disposition, closing and linking an existing Non-conformance would ask the same
- * code, and no code in the catalogue names a disposition, a close or a link at
- * all. The Grant question these four ask is untouched.
+ * A disposition, a close and a link are the NCR's own lifecycle, which is what
+ * `QLT_SUPPLIER_NCRS_RECORD` names: the code covers the report from being taken
+ * in to being closed, the way `MTN_WORK_ORDERS_CHANGE` covers raising, assigning,
+ * completing and cancelling one Work order. That code was seeded on ROLE_ADMIN
+ * alone, where today any edit Grant reaching the Org Unit may record an NCR and
+ * work it — so `1803900000000_quality-write-codes.js` widens it onto every role,
+ * and the retrofit narrows nobody. The Grant half of every route is untouched.
  */
 
 const express = require('express');
@@ -67,11 +68,15 @@ const { httpError, notFound, parseId, handleError } = require('./errors');
 
 const router = express.Router();
 
-// The two codes this retrofit asks (ADR-0061, issue #503). `QLT_SUPPLIER_NCRS_DISPLAY`
-// is seeded on ROLE_STANDARD, so the register's gate refuses nobody who could
-// reach it before; `QLT_NONCONFORMANCES_RECORD` is the code that names recording
-// a Non-conformance, which is what the one retrofitted write below performs.
+// The three codes this Module's routes ask (ADR-0061, issues #503 and #535).
+// `QLT_SUPPLIER_NCRS_DISPLAY` is seeded on ROLE_STANDARD, so the register's gate
+// refuses nobody who could reach it before; `QLT_SUPPLIER_NCRS_RECORD` is
+// widened onto every role by `1803900000000_quality-write-codes.js` because
+// today's reach is the edit Grant, not the role; and
+// `QLT_NONCONFORMANCES_RECORD` is the code that names recording a
+// Non-conformance, which is what the one Non-conformance write below performs.
 const mayReadSupplierNcrs = people.requirePermission('QLT_SUPPLIER_NCRS_DISPLAY');
+const mayRecordSupplierNcr = people.requirePermission('QLT_SUPPLIER_NCRS_RECORD');
 const mayRecordNonconformance = people.requirePermission('QLT_NONCONFORMANCES_RECORD');
 
 // Mirrors customer-complaint-routes.js's own requireKnownSite exactly: an
@@ -213,6 +218,7 @@ router.post(
   people.authenticate,
   people.requireActive,
   requireKnownSite,
+  mayRecordSupplierNcr,
   async (req, res, next) => {
     try {
       const body = req.body ?? {};
@@ -265,6 +271,7 @@ router.post(
   '/supplier-ncrs/:id/disposition',
   people.authenticate,
   people.requireActive,
+  mayRecordSupplierNcr,
   requireSupplierNcrWriteScope,
   async (req, res, next) => {
     try {
@@ -286,6 +293,7 @@ router.post(
   '/supplier-ncrs/:id/close',
   people.authenticate,
   people.requireActive,
+  mayRecordSupplierNcr,
   requireSupplierNcrWriteScope,
   async (req, res, next) => {
     try {
@@ -332,6 +340,7 @@ router.post(
   '/supplier-ncrs/:id/link',
   people.authenticate,
   people.requireActive,
+  mayRecordSupplierNcr,
   requireSupplierNcrWriteScope,
   async (req, res, next) => {
     try {
