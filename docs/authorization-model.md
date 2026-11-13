@@ -219,8 +219,9 @@ ask their managing codes, and the two self-service acts ask the pair added
 above — so an operator who holds an edit Grant on a People Screen no longer
 performs the managing writes unless an administrator adds the code to its role
 (the seed migration and that release's PR body state this narrowing). ADR-0061's
-slice 8 closed the last three doors that still compared the role string outside
-Production, and left this shape:
+slice 8 closed the last three doors §7 still listed as outstanding — every
+remaining role comparison outside Production is a write, listed below — and
+left this shape:
 
 - **`POST /parts` asks `MTN_PARTS_CHANGE`** (ADR-0061 slice 8). That gate
   *widened* the write: the code is carried by engineer and manager as well as

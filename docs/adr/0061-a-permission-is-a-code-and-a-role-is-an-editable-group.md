@@ -204,10 +204,11 @@ slice put the Module's ten writes behind `PRD_HANDOVER_WRITE` and its one
 acknowledgement behind `PRD_HANDOVER_ACKNOWLEDGE`.
 
 The last two addresses that stood here as outstanding work have settled the same
-way, and this slice is what closes the retrofit: `GET /api/people/accounts` and
-`/accounts/pending` now ask `ADM_ACCOUNTS_DISPLAY` in place of the legacy
-`requireAdmin` role comparison. The code is seeded on `ROLE_ADMIN` alone —
-exactly the set `requireAdmin` admitted — so no caller's answer changed and no
+way, and this slice is what closes this section's outstanding-reads register:
+`GET /api/people/accounts` and `/accounts/pending` now ask
+`ADM_ACCOUNTS_DISPLAY` in place of the legacy `requireAdmin` role comparison.
+The code is seeded on `ROLE_ADMIN` alone — exactly the set `requireAdmin`
+admitted — so no caller's answer changed and no
 Screen lost a door; what changed is that the Accounts register can now be taken
 off a role in the Roles Screen. The same slice put `POST
 /api/maintenance/parts` behind `MTN_PARTS_CHANGE`, and that one **widens**: the
