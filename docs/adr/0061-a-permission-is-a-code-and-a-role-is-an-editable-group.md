@@ -191,6 +191,18 @@ to every Account in effect, reached by a code nobody can lose by accident. That
 is the same answer this rule gives, arrived at from the other end, and it is
 left as the code says rather than moved into this table.
 
+The four Production reads that stood here as outstanding work have settled the
+other way, and are named so the table above is not read as having absorbed them:
+`GET /api/production/handovers/:id`, `/handovers/:id/versions`,
+`/sections/:orgUnitId/assets` and `/sections/:orgUnitId/handovers` now ask
+`PRD_HANDOVER_DISPLAY`. They are one Screen's own reads — the Section's Shift
+handover and the Assets it lists — not reference data several Screens read, so
+this section's rule gives them a code rather than a place in the table. The code
+is seeded on every role, so nothing changes for a caller today; what changed is
+that an administrator can now take the Production handover off a role. The same
+slice put the Module's eleven writes behind `PRD_HANDOVER_WRITE` and its one
+acknowledgement behind `PRD_HANDOVER_ACKNOWLEDGE`.
+
 #### Reads that carry no code and are not settled by this section
 
 Named here so the table above is never read as approval of them. Neither group
@@ -198,7 +210,6 @@ is shared reference data; both are retrofit work with a card of their own.
 
 | Route | What is outstanding |
 | --- | --- |
-| `GET /api/production/handovers/:id`, `/handovers/:id/versions`, `/sections/:orgUnitId/assets`, `/sections/:orgUnitId/handovers` | Production's retrofit has not run: these reads ask `canAct` on the Section and no code, while the seed already carries `PRD_HANDOVER_DISPLAY`. |
 | `GET /api/people/accounts`, `/accounts/pending` | These ask the legacy `requireAdmin` rather than `ADM_ACCOUNTS_DISPLAY`. The answer is the same today — the code is seeded on administrators only — so this is a rename waiting for its slice, not a shared read. |
 
 #### Reads no code could name

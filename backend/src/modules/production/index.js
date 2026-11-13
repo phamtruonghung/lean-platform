@@ -24,8 +24,9 @@
  *   - No error plumbing. errors.js is this Module's own copy (see its header).
  *
  * What this Module requires from outside itself is People's entry point and
- * nothing else: handover-routes.js asks `authenticate`, `requireActive` and
- * `canAct`, and reads the Section and the shift instance by ordinary SQL.
+ * nothing else: handover-routes.js asks `authenticate`, `requireActive`,
+ * `requirePermission` and `canAct`, and reads the Section and the shift
+ * instance by ordinary SQL.
  */
 
 const express = require('express');
