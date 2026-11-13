@@ -12,7 +12,7 @@
  *
  *   - Creating a Site, and creating a *root* Org Unit (one named with no
  *     parentId — the entry point of a whole new branch of a Site's tree),
- *     are administrator-only: `requireOrgUnitCreateScope` below is what
+ *     are `PPL_ORG_UNITS_CHANGE`: `requireOrgUnitCreateScope` below is what
  *     tells those two cases apart from "an Org Unit under an existing
  *     parent", which only needs write scope on that parent.
  *   - Reading or writing a specific Org Unit needs read or write scope on
@@ -64,6 +64,16 @@ const { parseId, handleError, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 
 const router = express.Router();
 
+// The Org Unit tree's own code (ADR-0061, phase 2d): "add or change a Site or
+// an Org Unit, or import a tree" — every write below, and exactly the words of
+// its own catalogue description. Seeded on ROLE_ADMIN alone, which is the set
+// the administrator role comparison it replaces admitted, so creating a Site,
+// correcting one, creating or correcting an Org Unit and importing a tree take
+// the callers they took before (PATCH /org-units/:id below is the one write
+// whose reach this narrows — it asks write scope alone today; the PR body and
+// `docs/authorization-model.md` state that delta).
+const mayChangeOrgUnits = authorization.requirePermission('PPL_ORG_UNITS_CHANGE');
+
 // Creating an Org Unit is one route with two different authorization rules,
 // which is why this is its own middleware rather than a call to
 // authorization.requireOrgUnitScope (built for a route that already names
@@ -71,12 +81,13 @@ const router = express.Router();
 //
 //   - No parentId in the body: this creates a *root* Org Unit — the start
 //     of a new branch of the Site's tree, and therefore of a new grant an
-//     administrator would have to hand out afterwards anyway. Administrator
-//     only.
+//     administrator would have to hand out afterwards anyway. The route's own
+//     `PPL_ORG_UNITS_CHANGE` (ADR-0061, phase 2d) is the whole gate there, so
+//     this branch has nothing left to ask.
 //   - A parentId is given: the new unit is created underneath an existing
-//     one, so this is exactly "write scope on that Org Unit (or an
-//     ancestor of it)" — the same rule PATCH /org-units/:id follows,
-//     applied to a body field instead of a route param.
+//     one, so this adds the second question — write scope on that Org Unit (or
+//     an ancestor of it), the same rule PATCH /org-units/:id follows, applied
+//     to a body field instead of a route param.
 //
 // Existence-before-scope (issue #8's 403-vs-404 rule) holds here too: a
 // parentId naming nothing at all is a 404, resolved before scope is asked
@@ -87,7 +98,7 @@ async function requireOrgUnitCreateScope(req, res, next) {
   try {
     const parentId = req.body?.parentId;
     if (parentId === undefined || parentId === null) {
-      return authorization.requireAdmin(req, res, next);
+      return next();
     }
 
     const orgUnitId = parseId(parentId);
@@ -122,7 +133,7 @@ router.get('/timezones', authenticate, requireActive, async (req, res, next) => 
   }
 });
 
-router.post('/sites', authenticate, requireActive, authorization.requireAdmin, async (req, res, next) => {
+router.post('/sites', authenticate, requireActive, mayChangeOrgUnits, async (req, res, next) => {
   try {
     const site = await plant.createSite(req.body ?? {}, req.account.id);
     res.status(201).json({ site });
@@ -170,9 +181,10 @@ router.get('/sites/:siteId', authenticate, requireActive, authorization.requireS
   res.json({ site: req.site });
 });
 
-// Correcting a Site (issue #137, ADR-0025) — administrator only, matching
-// POST /sites above, and existence-before-scope via requireSiteAdmin: a 404
-// for an unknown or malformed id, then a 403 for a non-administrator. The body
+// Correcting a Site (issue #137, ADR-0025) — `PPL_ORG_UNITS_CHANGE` since the
+// ADR-0061 retrofit (phase 2d), matching POST /sites above, and
+// existence-before-code via requireSitePermission: a 404 for an unknown or
+// malformed id, then a 403 naming the code for a caller without it. The body
 // replaces code, name, timezone and country_code with the same validation
 // create applies; the timezone half is governed by ADR-0025's
 // shift-calendar rule, enforced in plant.updateSite.
@@ -180,7 +192,7 @@ router.patch(
   '/sites/:siteId',
   authenticate,
   requireActive,
-  authorization.requireSiteAdmin(),
+  authorization.requireSitePermission('PPL_ORG_UNITS_CHANGE'),
   async (req, res, next) => {
     try {
       const site = await plant.updateSite(req.site.id, req.body ?? {}, req.account.id);
@@ -315,7 +327,7 @@ router.get(
   }
 );
 
-router.post('/sites/:siteId/org-units', authenticate, requireActive, requireOrgUnitCreateScope, async (req, res, next) => {
+router.post('/sites/:siteId/org-units', authenticate, requireActive, mayChangeOrgUnits, requireOrgUnitCreateScope, async (req, res, next) => {
   try {
     const siteId = parseId(req.params.siteId);
     const orgUnit = await plant.createOrgUnit(siteId, req.body ?? {}, req.account.id);
@@ -352,6 +364,7 @@ router.post(
   '/sites/:siteId/org-units/import',
   authenticate,
   requireActive,
+  mayChangeOrgUnits,
   authorization.requireSiteScope(),
   async (req, res, next) => {
     try {
@@ -400,12 +413,15 @@ router.get(
   }
 );
 
-// Deactivation, not deletion — the only field this route ever changes.
-// Write scope on the named Org Unit (or an ancestor of it).
+// Deactivation, not deletion — the only field this route ever changes. The
+// route's `PPL_ORG_UNITS_CHANGE` (ADR-0061, phase 2d) answers whether the caller
+// maintains the tree at all; write scope on the named Org Unit (or an ancestor
+// of it) still answers which part of it.
 router.patch(
   '/org-units/:id',
   authenticate,
   requireActive,
+  mayChangeOrgUnits,
   authorization.requireOrgUnitScope({ write: true }),
   async (req, res, next) => {
     try {

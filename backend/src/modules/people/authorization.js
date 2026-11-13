@@ -70,7 +70,7 @@
  * list and the reasoning behind each entry, including why `canAct` crosses
  * this boundary as a plain function rather than a ready-made middleware. The
  * other seven names here — isAdmin, grantedEntryPointIds, orgUnitScopeFor,
- * requireAdmin, requireOrgUnitScope, requireSiteScope, requireSiteAdmin,
+ * requireAdmin, requireOrgUnitScope, requireSiteScope, requireSitePermission,
  * ROLES — stay internal: none of them has a caller outside People today
  * (again, see index.js's header for why, one bullet each). `npm run lint`'s
  * boundary check is the arbiter of what actually crosses, not this comment.
@@ -494,26 +494,33 @@ function requireSiteScope({ paramName = 'siteId' } = {}) {
   };
 }
 
-// "Must be an administrator, and the named Site must exist" — the Site
-// correction route (issue #137). Correcting a Site is administrator-only, the
-// same rule `POST /sites` carries, because a Site is not owned by an Org Unit
-// and there is no Grant to scope it by. It is a separate middleware from
-// `requireAdmin` only to keep issue #8's existence-before-scope ordering: the
-// id is resolved first, so an unknown or malformed id is a 404 (never a 403
-// that would let a caller tell "no such Site" from "not allowed"), and the
-// role is checked—with `requireAdmin`'s own wording—only once the Site is
-// known to exist. The resolved row is stashed on `req.site`, as
-// `requireSiteScope` does.
-function requireSiteAdmin({ paramName = 'siteId' } = {}) {
+// "Must hold {permission}, and the named Site must exist" — the Site
+// correction route (issue #137). It is a separate middleware from
+// `requirePermission` only to keep issue #8's existence-before-scope ordering:
+// the id is resolved first, so an unknown or malformed id is a 404 (never a
+// 403 that would let a caller tell "no such Site" from "not allowed"), and the
+// code is asked only once the Site is known to exist. The resolved row is
+// stashed on `req.site`, as `requireSiteScope` does.
+//
+// Phase 2d of the ADR-0061 retrofit replaced `requireSiteAdmin` with this: the
+// role comparison is now the code the route carries (`PPL_ORG_UNITS_CHANGE`),
+// and the ordering the role version established is kept verbatim. Seeded on
+// ROLE_ADMIN alone, so the same callers pass; the refusal body is now
+// `PERMISSION_REQUIRED` naming the code, and an administrator can take the
+// door off a role, which is the point of the model.
+function requireSitePermission(permission, { paramName = 'siteId' } = {}) {
+  const required = requirePermission(permission);
   return async (req, res, next) => {
     try {
       const siteId = parseId(req.params[paramName]);
       const site = await plant.getSite(siteId); // throws the 404.
-      if (!isAdmin(req.account)) {
-        return res.status(403).json({ message: 'This action requires the administrator role.' });
-      }
-      req.site = site;
-      return next();
+      // `required` answers 403 itself when the code is missing, so `next` is
+      // only ever reached by a caller that holds it — the same synchronous
+      // shape requireSiteScope uses to stash its row.
+      await required(req, res, () => {
+        req.site = site;
+        next();
+      });
     } catch (error) {
       return handleError(error, res, next);
     }
@@ -534,5 +541,5 @@ module.exports = {
   requireAdmin,
   requireOrgUnitScope,
   requireSiteScope,
-  requireSiteAdmin
+  requireSitePermission
 };

@@ -27,10 +27,13 @@
  * exercised. An Account whose role earns none of them is refused those routes
  * even holding a Grant on the Site's root Org Unit, which is what the last test
  * here measures (`role: 'operator'`, the shape these two fixtures used to be).
- * The two catalogue writes are deliberately NOT gated — the seeded
- * `INS_KPI_CATALOGUE_CHANGE` is administrator-only where the Screen admits four
- * roles — so they keep the Grant check alone and an operator still reaches
- * them; that is the finding on the card, and the same test pins it.
+ * The two catalogue writes ask `INS_KPI_CATALOGUE_CHANGE` since phase 2d (issue
+ * #539), and `1804100000000_kpi-catalogue-write-roles.js` seeds that code onto
+ * supervisor, engineer and manager beside the administrator — the roles the
+ * Screen is offered to — so `writer`, a supervisor, still reaches both writes,
+ * which the tests above measure. An operator-role Account holding a root Grant
+ * is refused them by the code, and the last test here pins that beside the four
+ * read/record refusals.
  */
 
 const test = require('node:test');
@@ -469,17 +472,15 @@ test('an observed number too large for the column is a 400 and writes nothing', 
   assert.strictEqual(rows.length, 0);
 });
 
-// The retrofit's one measured delta, and the finding beside it (issue #513).
-// An operator-role Account holding a write Grant on the Site's root Org Unit —
-// the shape `writer` and `reader` used to be — gets past `canAct` exactly as it
-// did before; what it no longer holds is the role half, because the KPI Screens
-// are offered to supervisor/engineer/manager/administrator and the four
-// read/record routes ask those Screens' codes. The two catalogue writes ask no
-// code (their seeded code is administrator-only where the Screen admits four
-// roles), so this same Account still reaches them and is refused only by a 400
-// on its own missing fields — measured with a body that never validates, so the
-// append-only catalogue gains no row.
-test('an operator-role Account with a root Grant is refused the KPI reads and the review record, and still reaches the two catalogue writes', async () => {
+// The retrofit's one measured delta (issue #513), now closed by phase 2d. An
+// operator-role Account holding a write Grant on the Site's root Org Unit — the
+// shape `writer` and `reader` used to be — gets past `canAct` exactly as it did
+// before; what it does not hold is the role half. The KPI Screens are offered to
+// supervisor/engineer/manager/administrator, so the four read/record routes ask
+// those Screens' codes, and since phase 2d the two catalogue writes ask
+// `INS_KPI_CATALOGUE_CHANGE` too — refused here by the code, before the
+// catalogue's own validation is ever reached.
+test('an operator-role Account with a root Grant is refused the KPI reads, the review record and the two catalogue writes', async () => {
   const operator = await insertAccount({
     role: 'operator',
     displayName: 'Kim Operator',
@@ -490,7 +491,9 @@ test('an operator-role Account with a root Grant is refused the KPI reads and th
     ['GET', `/catalogue?site_id=${site.id}`, undefined, 'INS_KPI_CATALOGUE_DISPLAY'],
     ['GET', `/targets?site_id=${site.id}&kpi_id=1`, undefined, 'INS_KPI_CATALOGUE_DISPLAY'],
     ['GET', `/review?site_id=${site.id}`, undefined, 'INS_KPI_REVIEW_DISPLAY'],
-    ['POST', '/review', { site_id: site.id, date: REVIEW_DATE, entries: [{ kpi_id: 1, status: 'met' }] }, 'INS_KPI_REVIEW_RECORD']
+    ['POST', '/review', { site_id: site.id, date: REVIEW_DATE, entries: [{ kpi_id: 1, status: 'met' }] }, 'INS_KPI_REVIEW_RECORD'],
+    ['POST', '/catalogue', { site_id: site.id }, 'INS_KPI_CATALOGUE_CHANGE'],
+    ['POST', '/targets', { site_id: site.id }, 'INS_KPI_CATALOGUE_CHANGE']
   ];
   for (const [method, urlPath, body, code] of refusals) {
     const answered = method === 'GET'
@@ -500,16 +503,5 @@ test('an operator-role Account with a root Grant is refused the KPI reads and th
     assert.strictEqual(answered.body.code, 'PERMISSION_REQUIRED', `${method} ${urlPath}`);
     assert.strictEqual(answered.body.permission, code, `${method} ${urlPath}`);
   }
-
-  // The same Account, the same Grants, the two writes that ask no code: the
-  // request reaches the catalogue's own validation and is refused by it (400),
-  // not by a permission (403).
-  const addKpi = await post(operator.token, '/catalogue', { site_id: site.id });
-  assert.strictEqual(addKpi.status, 400, JSON.stringify(addKpi.body));
-  assert.strictEqual(addKpi.body.code, undefined);
-
-  const addTarget = await post(operator.token, '/targets', { site_id: site.id });
-  assert.strictEqual(addTarget.status, 400, JSON.stringify(addTarget.body));
-  assert.strictEqual(addTarget.body.code, undefined);
 });
 

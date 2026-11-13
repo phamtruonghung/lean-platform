@@ -19,16 +19,19 @@
  * may ask. A tier board or a catalogue read is a Grant question, and a role
  * code is not a Grant.
  *
- * The two writes are deliberately **not** retrofitted, and that is a finding
- * rather than an omission: `INS_KPI_CATALOGUE_CHANGE` is seeded on ROLE_ADMIN
- * alone, while the catalogue Screen is offered to those same four roles and
- * enables its "Add KPI" affordance for any Account holding a write Grant
- * anywhere (`canWrite`, router.dart passes `/me`'s `orgUnitScope.canWriteSomewhere`).
- * Gating them would refuse a supervisor, engineer or manager who can add a KPI
- * or append a Target today — a user-visible narrowing — so under rule 3 of the
- * retrofit card they keep the Grant check alone and the delta is reported to
- * the owner. See the card's comment thread (t_3ee05301) for the one-word
- * decision it is waiting on.
+ * The two writes are gated by `INS_KPI_CATALOGUE_CHANGE` since the ADR-0061
+ * retrofit's phase 2d, and the migration that ships with that slice is what
+ * makes it narrowing-free: the seed declared the code on ROLE_ADMIN alone while
+ * the catalogue Screen is offered to supervisor, engineer, manager and
+ * administrator and enables its "Add KPI" affordance for any Account holding a
+ * write Grant anywhere (`canWrite`, router.dart passes `/me`'s
+ * `orgUnitScope.canWriteSomewhere`). `1804100000000_kpi-catalogue-write-roles.js`
+ * seeds the code onto those three roles, so every role the Screen offers the
+ * writes to keeps them; an operator-role Account with a write Grant loses them,
+ * which is the declared narrowing the retrofit's other migrations also accept
+ * (a code is a visible authority, and an administrator can add it to a role in
+ * the Roles Screen). `canAct` still runs inside the handler and still decides
+ * *where* the caller may ask.
  *
  * Order, the one AGENTS.md section 6 fixes: existence, then scope, then the
  * catalogue. The Site is resolved (404) and the request's own ids and shapes
@@ -55,9 +58,15 @@ const { httpError, notFound, parseId, handleError } = require('./errors');
 const router = express.Router();
 
 // The catalogue Screen's own code (ADR-0061, issue #513). Seeded on exactly the
-// four roles `ModuleRoles.kpi` offers that Screen to; see this file's header for
-// why the two writes beside it do not ask `INS_KPI_CATALOGUE_CHANGE`.
+// four roles `ModuleRoles.kpi` offers that Screen to.
 const mayReadCatalogue = people.requirePermission('INS_KPI_CATALOGUE_DISPLAY');
+
+// The writes' code (ADR-0061, phase 2d): "add a KPI or change its Targets",
+// exactly the two routes below. Seeded on ROLE_ADMIN alone by 1803400000000 and
+// widened onto supervisor, engineer and manager by
+// `1804100000000_kpi-catalogue-write-roles.js` — the three roles the Screen is
+// offered to — so gating the writes takes them from no role the Screen admits.
+const mayChangeCatalogue = people.requirePermission('INS_KPI_CATALOGUE_CHANGE');
 
 // The catalogue as it reads on one day: every KPI, its three grains' Targets and
 // that day's judgement. `date` defaults to the Site's own today.
@@ -87,13 +96,13 @@ router.get(
 );
 
 // Adding a KPI. The body's values are checked by the catalogue (a KPI's own
-// fields); a duplicate name is its 409. No role code — the seeded
-// `INS_KPI_CATALOGUE_CHANGE` is administrator-only and would narrow the Screen's
-// four roles (this file's header, finding on issue #513).
+// fields); a duplicate name is its 409. `INS_KPI_CATALOGUE_CHANGE` answers
+// which door; `requireScope({ write: true })` still answers which Site.
 router.post(
   '/catalogue',
   people.authenticate,
   people.requireActive,
+  mayChangeCatalogue,
   requireCatalogueConfigured,
   async (req, res, next) => {
     try {
@@ -143,12 +152,13 @@ router.get(
 );
 
 // Appending a Target (a change or a correction). `target: null` is "no target
-// from that date on", so the field must be present but may be null. No role
-// code, for the same reason as the POST above.
+// from that date on", so the field must be present but may be null. The same
+// code, for the same reason, as the POST above.
 router.post(
   '/targets',
   people.authenticate,
   people.requireActive,
+  mayChangeCatalogue,
   requireCatalogueConfigured,
   async (req, res, next) => {
     try {

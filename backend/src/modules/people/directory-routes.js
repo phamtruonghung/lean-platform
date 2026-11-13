@@ -74,12 +74,19 @@
  * code every approved Account holds is the truthful reading of a route
  * criterion 7 says every Member may call.
  *
- * POST /employees/:id/assignments keeps its edit-Grant standing. No People code
- * names "say where in the plant a person works", and the two nearest —
- * `PPL_DIRECTORY_CHANGE` and `PPL_ORG_UNITS_CHANGE` — are administrator-only,
- * while a supervisor holding a write Grant on the destination Org Unit can
- * assign today (ADR-0010). Adding either would narrow that, so it is a finding
- * on the retrofit card, not a change made here.
+ * POST /employees/:id/assignments (ADR-0061, phase 2d) now asks
+ * `PPL_DIRECTORY_CHANGE` and keeps the edit-Grant scope after it. **This
+ * narrows today**, and the card said so: the route used to be scope-only, so
+ * any Account holding a write Grant on the destination Org Unit could move an
+ * Employee, whatever its role; `PPL_DIRECTORY_CHANGE` is seeded on ROLE_ADMIN
+ * alone, so a supervisor with such a Grant now needs an administrator to add
+ * the code to a role it holds. The alternative the card offered — seeding the
+ * code up to today's reachers — would not preserve the reach either, and would
+ * widen more than it fixed: the same code names creating an Employee,
+ * correcting one and marking one departed, every one of them administrator-only
+ * today, so putting it on supervisor-and-above to keep the assignment would
+ * hand four payroll writes to every supervisor in the plant. The delta is in
+ * the PR body and in `docs/authorization-model.md`, not a silent one.
  */
 
 const express = require('express');
@@ -319,6 +326,7 @@ router.post(
   '/employees/:id/assignments',
   authenticate,
   requireActive,
+  mayMaintainEmployees,
   requireAssignmentOrgUnitScope,
   async (req, res, next) => {
     try {

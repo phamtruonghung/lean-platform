@@ -167,7 +167,11 @@ test('a non-administrator is refused (403) once the Site is known to exist', asy
     operator.token
   );
   assert.strictEqual(response.status, 403);
-  assert.strictEqual((await response.json()).message, 'This action requires the administrator role.');
+  const body = await response.json();
+  // Since phase 2d the refusal names the code the route asks rather than the
+  // administrator role (ADR-0061: a code, not a role comparison).
+  assert.strictEqual(body.code, 'PERMISSION_REQUIRED');
+  assert.strictEqual(body.permission, 'PPL_ORG_UNITS_CHANGE');
 });
 
 test('an unknown Site id is a 404', async () => {

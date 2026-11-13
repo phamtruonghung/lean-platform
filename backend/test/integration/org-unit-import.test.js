@@ -27,6 +27,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const { tokenFor } = require('../helpers/session');
+const { temporaryCode } = require('../helpers/permissions');
 
 let server;
 let base;
@@ -445,7 +446,11 @@ test('a row that parents itself is a 422', async (t) => {
 // applied.
 // ---------------------------------------------------------------------------
 
-test('a non-admin with write scope on one Org Unit can import under it (201)', async () => {
+test('a non-admin with write scope on one Org Unit can import under it (201)', async (t) => {
+  // The import asks `PPL_ORG_UNITS_CHANGE` since phase 2d; the claim here is
+  // that write scope still decides under it, so the operator role borrows the
+  // code for this test.
+  t.after(await temporaryCode(pool, 'ROLE_OPERATOR', 'PPL_ORG_UNITS_CHANGE'));
   const code = uniqueCode('UNDER');
   const response = await importRequest(
     scopeSite,
@@ -457,7 +462,8 @@ test('a non-admin with write scope on one Org Unit can import under it (201)', a
   insertedOrgUnitIds.push(orgUnits[0].id);
 });
 
-test('an import containing a row under an out-of-scope Org Unit is refused (403), and nothing is created', async () => {
+test('an import containing a row under an out-of-scope Org Unit is refused (403), and nothing is created', async (t) => {
+  t.after(await temporaryCode(pool, 'ROLE_OPERATOR', 'PPL_ORG_UNITS_CHANGE'));
   const inScopeCode = uniqueCode('INSCOPE');
   const outOfScopeCode = uniqueCode('OUTSCOPE');
 
