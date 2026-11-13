@@ -461,6 +461,20 @@ test('the board is readable by an approved Account holding no Grant anywhere', a
   assert.strictEqual(response.status, 200);
 });
 
+// ADR-0061 (issue #513): the read now asks `INS_TIER_BOARD_DISPLAY` too, and
+// that code sits in the default group every Account holds — so an
+// operator-role Account reads the board exactly as before. What the gate buys
+// is a door an administrator can close by editing the default group; it is not
+// a narrowing, and this assertion is the measurement of that claim.
+test('an operator-role Account reads the board: the default group carries the code', async () => {
+  const site = await insertSite();
+  await insertOrgUnit(site.id, { name: 'Operator Area' });
+  const operator = await insertAccount({ role: 'operator' });
+
+  const { response } = await getBoard(operator.token, site.id, '?periodType=day&date=2026-03-10');
+  assert.strictEqual(response.status, 200);
+});
+
 test('a request with no bearer token is refused', async () => {
   const site = await insertSite();
   const response = await fetch(`${base}/api/maintenance/sites/${site.id}/board`);

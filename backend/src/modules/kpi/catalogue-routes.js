@@ -9,13 +9,36 @@
  * POST because it defaults to FALSE, and a write that forgot it would be
  * authorised by any read Grant with no error anywhere to notice.
  *
+ * **The ADR-0061 retrofit (issue #513).** Both reads now also ask
+ * `INS_KPI_CATALOGUE_DISPLAY` — the code `destinations.dart` names the KPI
+ * catalogue Destination with, and the seed (migration 1803400000000) carries it
+ * on exactly the four roles `ModuleRoles.kpi` offers that Screen to:
+ * supervisor, engineer, manager and administrator. So no role the sidebar
+ * admits there is refused, and the code does not replace the question above:
+ * `canAct` still runs inside the handler and still decides *where* the Account
+ * may ask. A tier board or a catalogue read is a Grant question, and a role
+ * code is not a Grant.
+ *
+ * The two writes are deliberately **not** retrofitted, and that is a finding
+ * rather than an omission: `INS_KPI_CATALOGUE_CHANGE` is seeded on ROLE_ADMIN
+ * alone, while the catalogue Screen is offered to those same four roles and
+ * enables its "Add KPI" affordance for any Account holding a write Grant
+ * anywhere (`canWrite`, router.dart passes `/me`'s `orgUnitScope.canWriteSomewhere`).
+ * Gating them would refuse a supervisor, engineer or manager who can add a KPI
+ * or append a Target today — a user-visible narrowing — so under rule 3 of the
+ * retrofit card they keep the Grant check alone and the delta is reported to
+ * the owner. See the card's comment thread (t_3ee05301) for the one-word
+ * decision it is waiting on.
+ *
  * Order, the one AGENTS.md section 6 fixes: existence, then scope, then the
  * catalogue. The Site is resolved (404) and the request's own ids and shapes
  * checked (400) before `canAct` is asked, because `canAct` answers true for an
  * administrator before it looks at the Org Unit; db `mtu` is touched last.
  * Before all of that, when the catalogue is not configured, every route answers
- * 503 (site-context.js's requireCatalogueConfigured) — after authentication, so
- * an unauthenticated caller still gets its 401.
+ * 503 (site-context.js's requireCatalogueConfigured) — after the caller has
+ * been authenticated and authorised, so an unauthenticated caller still gets
+ * its 401 and a caller without the code its 403, and neither learns anything
+ * about the catalogue's configuration.
  *
  * Query parameters and bodies are snake_case, exactly as the client card is
  * written against them, unlike the older routes' camelCase.
@@ -31,12 +54,18 @@ const { httpError, notFound, parseId, handleError } = require('./errors');
 
 const router = express.Router();
 
+// The catalogue Screen's own code (ADR-0061, issue #513). Seeded on exactly the
+// four roles `ModuleRoles.kpi` offers that Screen to; see this file's header for
+// why the two writes beside it do not ask `INS_KPI_CATALOGUE_CHANGE`.
+const mayReadCatalogue = people.requirePermission('INS_KPI_CATALOGUE_DISPLAY');
+
 // The catalogue as it reads on one day: every KPI, its three grains' Targets and
 // that day's judgement. `date` defaults to the Site's own today.
 router.get(
   '/catalogue',
   people.authenticate,
   people.requireActive,
+  mayReadCatalogue,
   requireCatalogueConfigured,
   async (req, res, next) => {
     try {
@@ -58,7 +87,9 @@ router.get(
 );
 
 // Adding a KPI. The body's values are checked by the catalogue (a KPI's own
-// fields); a duplicate name is its 409.
+// fields); a duplicate name is its 409. No role code — the seeded
+// `INS_KPI_CATALOGUE_CHANGE` is administrator-only and would narrow the Screen's
+// four roles (this file's header, finding on issue #513).
 router.post(
   '/catalogue',
   people.authenticate,
@@ -86,11 +117,13 @@ router.post(
   }
 );
 
-// One KPI's Targets: in force today per grain, and the whole history.
+// One KPI's Targets: in force today per grain, and the whole history. Reached
+// from a catalogue row, so it asks the catalogue Screen's code too.
 router.get(
   '/targets',
   people.authenticate,
   people.requireActive,
+  mayReadCatalogue,
   requireCatalogueConfigured,
   async (req, res, next) => {
     try {
@@ -110,7 +143,8 @@ router.get(
 );
 
 // Appending a Target (a change or a correction). `target: null` is "no target
-// from that date on", so the field must be present but may be null.
+// from that date on", so the field must be present but may be null. No role
+// code, for the same reason as the POST above.
 router.post(
   '/targets',
   people.authenticate,

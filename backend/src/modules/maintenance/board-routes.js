@@ -32,6 +32,18 @@
  * existence-before-scope shape work-order-routes.js follows on its own
  * Site-wide read. None of that changed when the registry moved: the request
  * and the response are exactly what they were.
+ *
+ * **The ADR-0061 retrofit (issue #513).** The read now asks
+ * `INS_TIER_BOARD_DISPLAY`, the code `destinations.dart` names the tier board
+ * Destination with. That code is in the default group — `ROLE_STANDARD`, which
+ * every Account holds (roles.js's effectivePermissions unions `is_default` with
+ * the Account's legacy role and whatever an administrator assigned) — so no
+ * Account is refused by it today; and the Destination beside it carries no
+ * `roles` set either, so the sidebar and the route finally name the same door.
+ * What the code buys is that the door is now revocable: an administrator who
+ * takes it out of the default group closes the board for everybody without a
+ * release. The Grant question is unchanged — this route asks none, on purpose,
+ * which is why `?orgUnitId=` narrows the rollup rather than filtering it.
  */
 
 const express = require('express');
@@ -74,11 +86,16 @@ const PERIOD_TYPES = ['shift', 'day', 'week', 'month'];
 function createBoardRouter(kpiRegistry) {
   const router = express.Router();
 
+  // The tier board Screen's own code (ADR-0061, issue #513). Held through the
+  // default group by every Account; see this file's header.
+  const mayReadTierBoard = people.requirePermission('INS_TIER_BOARD_DISPLAY');
+
   router.get(
     '/sites/:siteId/board',
     people.authenticate,
     people.requireActive,
     requireKnownSite,
+    mayReadTierBoard,
     async (req, res, next) => {
       try {
         const periodType = req.query.periodType;

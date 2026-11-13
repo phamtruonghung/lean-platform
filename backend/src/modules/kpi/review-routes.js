@@ -3,6 +3,17 @@
  * `/api/kpi`, beside catalogue-routes.js, whose header argues the scope rule,
  * the order (existence, then scope, then the catalogue) and the 503 for an
  * unconfigured catalogue; all three apply here unchanged.
+ *
+ * **The ADR-0061 retrofit (issue #513).** The read asks
+ * `INS_KPI_REVIEW_DISPLAY` and the save asks `INS_KPI_REVIEW_RECORD` — the two
+ * codes `destinations.dart` names the KPI review Destination with. The seed
+ * (migration 1803400000000) carries both on exactly the four roles
+ * `ModuleRoles.kpi` offers that Screen to — supervisor, engineer, manager and
+ * administrator — so no role the sidebar admits there is refused, and the Grant
+ * question the handler still asks (`canAct`, `write: true` on the POST) still
+ * decides where the Account may record. Both are places the reviewing role puts
+ * its name to the plant's own numbers, which is why recording has a code of its
+ * own rather than reusing the catalogue's.
  */
 
 const express = require('express');
@@ -15,6 +26,11 @@ const { httpError, parseId, handleError } = require('./errors');
 
 const router = express.Router();
 
+// The KPI review Screen's two codes (ADR-0061, issue #513): reading the day's
+// judgement, and recording it.
+const mayReadReview = people.requirePermission('INS_KPI_REVIEW_DISPLAY');
+const mayRecordReview = people.requirePermission('INS_KPI_REVIEW_RECORD');
+
 // One row per KPI for a day, with its judgement (status null where there is
 // none yet) and the Daily Target that day had. With no `date` it answers the
 // Site's last working day, and `site_today` carries the Site's own today.
@@ -22,6 +38,7 @@ router.get(
   '/review',
   people.authenticate,
   people.requireActive,
+  mayReadReview,
   requireCatalogueConfigured,
   async (req, res, next) => {
     try {
@@ -69,6 +86,7 @@ router.post(
   '/review',
   people.authenticate,
   people.requireActive,
+  mayRecordReview,
   requireCatalogueConfigured,
   async (req, res, next) => {
     try {
