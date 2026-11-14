@@ -126,4 +126,4 @@ changed: nothing in this ADR. The grouping stays, and so does the prohibition th
 ADR's "What this costs" section names — a heading gains no address and never
 becomes a landing page. Discoverability is answered by the TWI guide's index in
 `docs/user-guide/README.md` §2, not by a new navigation surface or by collapsing a
-group behind a click. 
+group behind a click.
