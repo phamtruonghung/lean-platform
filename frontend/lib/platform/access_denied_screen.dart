@@ -19,6 +19,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_page_header.dart';
 import 'router.dart';
@@ -33,9 +34,10 @@ class AccessDeniedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Platform')),
+      appBar: AppBar(title: Text(l10n.shellBrand)),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),
@@ -65,10 +67,9 @@ class AccessDeniedScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: Spacing.md),
-                    const AppPageHeader(
-                      title: 'Not available to you',
-                      description: 'This part of the Platform is for administrators. Ask one '
-                          'if you need what is here.',
+                    AppPageHeader(
+                      title: l10n.accessDeniedNotAvailableToYou,
+                      description: l10n.accessDeniedThisPartOfThePlatformIsFor,
                     ),
                     const SizedBox(height: Spacing.lg),
                     Align(
@@ -77,7 +78,7 @@ class AccessDeniedScreen extends StatelessWidget {
                         key: homeKey,
                         onPressed: () => context.go(Routes.home),
                         icon: const Icon(Icons.home_outlined),
-                        label: const Text('Back to Home'),
+                        label: Text(l10n.commonBackToHome),
                       ),
                     ),
                   ],

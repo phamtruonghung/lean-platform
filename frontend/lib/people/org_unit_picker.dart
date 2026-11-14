@@ -9,6 +9,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import 'org_unit.dart';
 import 'org_unit_picker_bloc.dart';
@@ -42,6 +43,7 @@ class OrgUnitPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final state = context.watch<OrgUnitPickerBloc>().state;
 
@@ -49,11 +51,10 @@ class OrgUnitPicker extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('Org Unit Grants', style: theme.textTheme.titleSmall),
+        Text(l10n.orgUnitPickerOrgUnitGrants, style: theme.textTheme.titleSmall),
         const SizedBox(height: Spacing.xs),
         Text(
-          'Everything on the right is what this Account will hold. Nothing is '
-          'added to what it has now — this is the whole set.',
+          l10n.orgUnitPickerEverythingOnTheRightIsWhatThis,
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: Spacing.xs),
@@ -61,10 +62,7 @@ class OrgUnitPicker extends StatelessWidget {
         // per Grant: it explains what the checkbox below means once, instead
         // of repeating it on every row of the Granted pane.
         Text(
-          'Quality authority and Safety authority are each separate from the '
-          'level and from each other — a view-only Grant may carry either, '
-          'and an edit Grant need not — and each reaches everything beneath '
-          'the Org Unit it is given on.',
+          l10n.orgUnitPickerQualityAuthorityAndSafetyAuthorityAreEach,
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: Spacing.sm),
@@ -96,11 +94,12 @@ class _SitePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return DropdownButtonFormField<String>(
       key: OrgUnitPicker.siteKey,
       initialValue: state.siteId,
       isDense: true,
-      decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+      decoration: InputDecoration(labelText: l10n.commonSite, border: OutlineInputBorder()),
       items: [
         for (final site in state.sites)
           DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -156,6 +155,7 @@ class _TreePane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     final bloc = context.read<OrgUnitPickerBloc>();
@@ -178,9 +178,9 @@ class _TreePane extends StatelessWidget {
         onRetry: enabled ? () => bloc.add(OrgUnitPickerSiteSelected(state.siteId!)) : null,
       );
     } else if (state.sites.isEmpty) {
-      body = const _PaneMessage(message: 'There are no Sites to browse yet.');
+      body = _PaneMessage(message: l10n.commonThereAreNoSitesToBrowseYet);
     } else if (state.rows.isEmpty) {
-      body = const _PaneMessage(message: 'Nothing to browse in this Site.');
+      body = _PaneMessage(message: l10n.commonNothingToBrowseInThisSite);
     } else {
       final rows = state.rows;
       body = ListView.builder(
@@ -190,7 +190,10 @@ class _TreePane extends StatelessWidget {
       );
     }
 
-    return _Pane(title: state.site?.name ?? 'Browse', child: DefaultTextStyle.merge(style: theme.textTheme.bodyMedium!, child: body));
+    return _Pane(
+      title: state.site?.name ?? l10n.orgUnitPickerBrowse,
+      child: DefaultTextStyle.merge(style: theme.textTheme.bodyMedium!, child: body),
+    );
   }
 }
 
@@ -203,6 +206,7 @@ class _TreeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final bloc = context.read<OrgUnitPickerBloc>();
     final granted = state.isGranted(row.node.id);
@@ -227,7 +231,7 @@ class _TreeRow extends StatelessWidget {
                         key: OrgUnitPicker.expandKey(row.node.id),
                         padding: EdgeInsets.zero,
                         iconSize: 18,
-                        tooltip: row.isExpanded ? 'Collapse' : 'Expand',
+                        tooltip: row.isExpanded ? l10n.commonCollapse : l10n.commonExpand,
                         // Every row offers this: the API does not say whether
                         // an Org Unit has children until it is asked, so the
                         // alternative would be guessing.
@@ -274,10 +278,10 @@ class _TreeRow extends StatelessWidget {
                           // flipping lives on the Granted row where the whole
                           // set is being assembled.
                           [
-                            'Granted',
+                            l10n.orgUnitPickerGranted,
                             level!.label,
-                            if (state.qualityOf(row.node.id)) 'Quality',
-                            if (state.safetyOf(row.node.id)) 'Safety',
+                            if (state.qualityOf(row.node.id)) l10n.groupQuality,
+                            if (state.safetyOf(row.node.id)) l10n.groupSafety,
                           ].join(' · '),
                           style: theme.textTheme.labelMedium
                               ?.copyWith(color: theme.colorScheme.primary),
@@ -287,7 +291,7 @@ class _TreeRow extends StatelessWidget {
                       PopupMenuButton<GrantLevel>(
                         key: OrgUnitPicker.addKey(row.node.id),
                         enabled: enabled,
-                        tooltip: 'Grant this Org Unit',
+                        tooltip: l10n.orgUnitPickerGrantThisOrgUnit,
                         icon: const Icon(Icons.add_circle_outline, size: 18),
                         // The level is part of the act of adding, not a
                         // default applied afterwards: this menu has no "just
@@ -321,7 +325,7 @@ class _TreeRow extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(left: 32, bottom: Spacing.xs),
               child: Text(
-                'Nothing beneath this',
+                l10n.orgUnitPickerNothingBeneathThis,
                 style: theme.textTheme.labelMedium
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
@@ -340,16 +344,16 @@ class _GrantedPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final bloc = context.read<OrgUnitPickerBloc>();
 
     return _Pane(
-      title: 'Granted (${state.granted.length})',
+      title: l10n.orgUnitPickerGranted2(state.granted.length),
       child: state.granted.isEmpty
-          ? const _PaneMessage(
+          ? _PaneMessage(
               key: OrgUnitPicker.emptyGrantedKey,
-              message: 'No Org Units granted. This Account will be able to sign '
-                  'in but not act anywhere.',
+              message: l10n.orgUnitPickerNoOrgUnitsGrantedThisAccountWill,
             )
           : ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
@@ -393,7 +397,7 @@ class _GrantedPane extends StatelessWidget {
                               visualDensity: VisualDensity.compact,
                               controlAffinity: ListTileControlAffinity.leading,
                               title: Text(
-                                'Quality authority',
+                                l10n.orgUnitPickerQualityAuthority,
                                 style: theme.textTheme.labelMedium,
                               ),
                               onChanged: enabled
@@ -417,7 +421,7 @@ class _GrantedPane extends StatelessWidget {
                               visualDensity: VisualDensity.compact,
                               controlAffinity: ListTileControlAffinity.leading,
                               title: Text(
-                                'Safety authority',
+                                l10n.orgUnitPickerSafetyAuthority,
                                 style: theme.textTheme.labelMedium,
                               ),
                               onChanged: enabled
@@ -435,7 +439,7 @@ class _GrantedPane extends StatelessWidget {
                       IconButton(
                         key: OrgUnitPicker.removeKey(entry.orgUnit.id),
                         iconSize: 18,
-                        tooltip: 'Remove this Grant',
+                        tooltip: l10n.orgUnitPickerRemoveThisGrant,
                         onPressed: enabled
                             ? () => bloc.add(OrgUnitPickerGrantRemoved(entry.orgUnit.id))
                             : null,
@@ -462,6 +466,7 @@ class _PaneMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.all(Spacing.md),
@@ -475,7 +480,7 @@ class _PaneMessage extends StatelessWidget {
           ),
           if (onRetry != null) ...[
             const SizedBox(height: Spacing.xs),
-            TextButton(onPressed: onRetry, child: const Text('Try again')),
+            TextButton(onPressed: onRetry, child: Text(l10n.commonTryAgain)),
           ],
         ],
       ),

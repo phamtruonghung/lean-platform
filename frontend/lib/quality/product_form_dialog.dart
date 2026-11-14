@@ -28,6 +28,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../maintenance/maintenance.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
@@ -204,22 +205,23 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocListener<ProductsBloc, ProductsState>(
       listener: _onProductsChanged,
       child: AppDialog(
-        title: _isCorrection ? 'Correct Product' : 'Add Product',
+        title: _isCorrection ? l10n.productFormCorrectProduct : l10n.commonAddProduct,
         size: AppDialogSize.decision,
         actions: [
           AppDialogAction(
             id: 'product-form-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'product-form-submit',
-            label: _awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add Product'),
+            label: _awaiting ? l10n.commonSaving : (_isCorrection ? l10n.commonSave : l10n.commonAddProduct),
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -233,8 +235,8 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
               // A code is the one field a correction cannot rewrite.
               enabled: !_isCorrection && !_awaiting,
               autofocus: !_isCorrection,
-              label: 'Code',
-              helperText: _isCorrection ? 'A Product\'s code cannot be corrected' : null,
+              label: l10n.commonCode,
+              helperText: _isCorrection ? l10n.productFormAProductSCodeCannotBeCorrected : null,
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: Spacing.md),
@@ -243,7 +245,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
               controller: _name,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.commonName, border: OutlineInputBorder()),
             ),
             const SizedBox(height: Spacing.md),
             if (_isCorrection)
@@ -252,9 +254,9 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                 initialValue: widget.product!.uomName,
                 enabled: false,
                 decoration: InputDecoration(
-                  labelText: 'Unit of measure',
+                  labelText: l10n.commonUnitOfMeasure,
                   border: const OutlineInputBorder(),
-                  helperText: 'A Product\'s unit of measure cannot be corrected',
+                  helperText: l10n.productFormAProductSUnitOfMeasureCannot,
                 ),
               )
             else if (_loadingUnits)
@@ -265,7 +267,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
             else if (_unitsFailure != null)
               PlatformFailureState(
                 key: ProductFormDialog.unitsFailedKey,
-                title: 'The units of measure could not be read',
+                title: l10n.productFormTheUnitsOfMeasureCouldNotBe,
                 message: _unitsFailure!,
                 retryKey: ProductFormDialog.unitsRetryKey,
                 onRetry: _loadUnits,
@@ -275,8 +277,8 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                 key: ProductFormDialog.uomKey,
                 initialValue: _uomCode,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Unit of measure',
+                decoration: InputDecoration(
+                  labelText: l10n.commonUnitOfMeasure,
                   border: OutlineInputBorder(),
                 ),
                 items: [
@@ -293,7 +295,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
               SwitchListTile(
                 key: ProductFormDialog.activeKey,
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Active'),
+                title: Text(l10n.commonActive),
                 value: _isActive,
                 onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
               ),

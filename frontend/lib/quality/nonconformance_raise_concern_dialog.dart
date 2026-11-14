@@ -26,6 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../actions/actions.dart';
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'nonconformance.dart';
@@ -110,24 +111,25 @@ class _NonconformanceRaiseConcernDialogState extends State<NonconformanceRaiseCo
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final record = widget.nonconformance;
 
     return BlocListener<NonconformanceDetailBloc, NonconformanceDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Raise a Concern',
+        title: l10n.nonconformanceRaiseConcern,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: 'nonconformance-raise-concern-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'nonconformance-raise-concern-submit',
-            label: 'Raise it',
+            label: l10n.actionFormRaiseIt,
             onPressed: _complete ? _submit : null,
           ),
         ],
@@ -136,8 +138,7 @@ class _NonconformanceRaiseConcernDialogState extends State<NonconformanceRaiseCo
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '${record.issueNo} is recorded at ${record.orgUnitName}, and the Concern is raised '
-              'there — a problem is solved where it happened.',
+              l10n.nonconformanceRaiseConcernIsRecordedAtAndTheConcernIs(record.issueNo, record.orgUnitName),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: Spacing.md),
@@ -147,10 +148,9 @@ class _NonconformanceRaiseConcernDialogState extends State<NonconformanceRaiseCo
               enabled: !_awaiting,
               maxLines: 1,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'What is the problem to solve?',
-                helperText: 'The Concern is read in the action log, so say the problem, not the '
-                    'product.',
+              decoration: InputDecoration(
+                labelText: l10n.nonconformanceRaiseConcernWhatIsTheProblemToSolve,
+                helperText: l10n.nonconformanceRaiseConcernTheConcernIsReadInTheAction,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -161,9 +161,9 @@ class _NonconformanceRaiseConcernDialogState extends State<NonconformanceRaiseCo
               enabled: !_awaiting,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Anything known yet',
-                helperText: 'Optional. The Non-conformance itself is already linked as evidence.',
+              decoration: InputDecoration(
+                labelText: l10n.commonAnythingKnownYet,
+                helperText: l10n.nonconformanceRaiseConcernOptionalTheNonConformanceItselfIsAlready,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -172,9 +172,9 @@ class _NonconformanceRaiseConcernDialogState extends State<NonconformanceRaiseCo
               key: NonconformanceRaiseConcernDialog.priorityKey,
               initialValue: _priority,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Priority',
-                helperText: '1 is worst.',
+              decoration: InputDecoration(
+                labelText: l10n.commonPriority,
+                helperText: l10n.common1IsWorst,
                 border: OutlineInputBorder(),
               ),
               items: [

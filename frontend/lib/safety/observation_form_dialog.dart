@@ -27,6 +27,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../theme.dart';
@@ -147,23 +148,24 @@ class _SafetyObservationFormDialogState extends State<SafetyObservationFormDialo
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     return BlocListener<SafetyObservationsBloc, SafetyObservationsState>(
       listener: _onRegisterChanged,
       child: AppDialog(
-        title: 'Record a Safety observation',
+        title: l10n.safetyObservationRecordTitle,
         size: AppDialogSize.wide,
         actions: [
           AppDialogAction(
             id: SafetyObservationFormDialog._dismissId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: SafetyObservationFormDialog._submitId,
-            label: 'Record it',
+            label: l10n.nonconformanceFormRecord,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -181,9 +183,9 @@ class _SafetyObservationFormDialogState extends State<SafetyObservationFormDialo
                     key: SafetyObservationFormDialog.typeKey,
                     initialValue: _observationType,
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Type',
-                      helperText: 'A safe act, an unsafe act, or an unsafe condition.',
+                    decoration: InputDecoration(
+                      labelText: l10n.metersType,
+                      helperText: l10n.observationFormASafeActAnUnsafeActOr,
                       border: OutlineInputBorder(),
                     ),
                     items: ObservationType.dropdownItems(),
@@ -198,8 +200,8 @@ class _SafetyObservationFormDialogState extends State<SafetyObservationFormDialo
                     key: SafetyObservationFormDialog.categoryKey,
                     initialValue: _category,
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Category',
+                    decoration: InputDecoration(
+                      labelText: l10n.commonCategory,
                       border: OutlineInputBorder(),
                     ),
                     items: ObservationCategory.dropdownItems(),
@@ -214,9 +216,9 @@ class _SafetyObservationFormDialogState extends State<SafetyObservationFormDialo
               key: SafetyObservationFormDialog.severityPotentialKey,
               initialValue: _severityPotential,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Severity potential',
-                helperText: 'The worst credible outcome, not what actually happened.',
+              decoration: InputDecoration(
+                labelText: l10n.safetySeverityPotential,
+                helperText: l10n.observationFormTheWorstCredibleOutcomeNotWhatActually,
                 border: OutlineInputBorder(),
               ),
               items: SeverityPotential.dropdownItems(),
@@ -232,9 +234,9 @@ class _SafetyObservationFormDialogState extends State<SafetyObservationFormDialo
               minLines: 2,
               maxLines: 4,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                helperText: 'What was seen.',
+              decoration: InputDecoration(
+                labelText: l10n.commonDescription,
+                helperText: l10n.observationFormWhatWasSeen,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -245,9 +247,9 @@ class _SafetyObservationFormDialogState extends State<SafetyObservationFormDialo
               enabled: !_awaiting,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Action taken (optional)',
-                helperText: 'What was done on the spot.',
+              decoration: InputDecoration(
+                labelText: l10n.safetyActionTaken,
+                helperText: l10n.observationFormWhatWasDoneOnTheSpot,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -255,9 +257,9 @@ class _SafetyObservationFormDialogState extends State<SafetyObservationFormDialo
             SwitchListTile(
               key: SafetyObservationFormDialog.stopWorkKey,
               contentPadding: EdgeInsets.zero,
-              title: const Text('Stop-work authority was exercised'),
-              subtitle: const Text(
-                'Rare, and the single strongest signal that the safety culture is real.',
+              title: Text(l10n.safetyStopWorkExercised),
+              subtitle: Text(
+                l10n.observationFormRareAndTheSingleStrongestSignalThat,
               ),
               value: _isStopWork,
               onChanged: _awaiting ? null : (value) => setState(() => _isStopWork = value),
@@ -266,9 +268,8 @@ class _SafetyObservationFormDialogState extends State<SafetyObservationFormDialo
             AppDateTimeField(
               key: SafetyObservationFormDialog.observedAtKey,
               name: 'safety-observation-observed-at',
-              label: 'Observed at (optional)',
-              helperText: 'When it was seen, if not now. This is what decides the '
-                  'production day and shift it is filed against.',
+              label: l10n.observationFormObservedAtOptional,
+              helperText: l10n.observationFormWhenItWasSeenIfNotNow,
               value: _observedAt,
               optional: true,
               enabled: !_awaiting,
@@ -279,9 +280,8 @@ class _SafetyObservationFormDialogState extends State<SafetyObservationFormDialo
               selectedId: _orgUnit?.id,
               enabled: !_awaiting,
               showSitePicker: false,
-              title: 'Where it was seen',
-              description: 'Choose the Org Unit the observation was made at. This is what '
-                  'decides who may act on it.',
+              title: l10n.observationFormWhereItWasSeen,
+              description: l10n.observationFormChooseTheOrgUnitTheObservationWas,
               onSelected: (node) => setState(() => _orgUnit = node),
             ),
             if (_orgUnit != null)
@@ -289,7 +289,7 @@ class _SafetyObservationFormDialogState extends State<SafetyObservationFormDialo
                 key: SafetyObservationFormDialog.chosenOrgUnitKey,
                 padding: const EdgeInsets.only(top: Spacing.sm),
                 child: Text(
-                  'This Safety observation will be recorded at ${_orgUnit!.name}.',
+                  l10n.observationFormThisSafetyObservationWillBeRecordedAt(_orgUnit!.name),
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),

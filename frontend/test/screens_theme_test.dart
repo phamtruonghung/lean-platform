@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:lean_platform/l10n/app_localizations.dart';
+
 import 'package:lean_platform/auth/awaiting_approval_screen.dart';
 import 'package:lean_platform/auth/sign_in_screen.dart';
 import 'package:lean_platform/theme.dart';
@@ -10,6 +12,8 @@ void main() {
       (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: buildAppTheme(),
         home: SignInScreen(darkPalette: false, onToggleDarkPalette: () {}),
       ),
@@ -29,6 +33,8 @@ void main() {
       (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: buildAppTheme(),
         home: const AwaitingApprovalScreen(email: 'a@b.c'),
       ),
@@ -91,6 +97,8 @@ void main() {
         (buildAppTheme(Brightness.dark), AppPalette.dark),
       ]) {
         await tester.pumpWidget(MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           theme: theme,
           home: Builder(builder: (context) {
             inner = context;

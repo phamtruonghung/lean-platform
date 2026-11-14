@@ -27,6 +27,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
@@ -106,6 +107,7 @@ class _EmployeeLinkPickerState extends State<EmployeeLinkPicker> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final muted = theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant);
 
@@ -113,7 +115,7 @@ class _EmployeeLinkPickerState extends State<EmployeeLinkPicker> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('Employee', style: theme.textTheme.labelLarge),
+        Text(l10n.titleEmployee, style: theme.textTheme.labelLarge),
         const SizedBox(height: Spacing.xs),
         if (_selected != null)
           Row(
@@ -121,23 +123,23 @@ class _EmployeeLinkPickerState extends State<EmployeeLinkPicker> {
               Expanded(
                 child: Text(
                   widget.suggestion != null && widget.suggestion!.id == _selected!.id
-                      ? 'Suggested match: ${_selected!.label}'
-                      : 'Linked to: ${_selected!.label}',
+                      ? l10n.employeeLinkPickerSuggestedMatch(_selected!.label)
+                      : l10n.employeeLinkPickerLinkedTo(_selected!.label),
                 ),
               ),
               TextButton(
                 key: EmployeeLinkPicker.clearKey,
                 onPressed: widget.enabled ? () => _select(null) : null,
-                child: const Text('Remove'),
+                child: Text(l10n.commonRemove),
               ),
             ],
           )
         else
-          Text('No Employee will be linked.', style: muted),
+          Text(l10n.employeeLinkPickerNoEmployeeWillBeLinked, style: muted),
         const SizedBox(height: Spacing.sm),
         AppSearchField<Employee>(
           name: EmployeeLinkPicker._searchFieldName,
-          label: 'Search the Directory',
+          label: l10n.commonSearchTheDirectory,
           enabled: widget.enabled,
           // Never fed a confirmed Employee back in: the choice already made
           // is shown above, in the "Linked to"/"Suggested match" line, not
@@ -164,7 +166,7 @@ class _EmployeeLinkPickerState extends State<EmployeeLinkPicker> {
               children: [
                 Text('${employee.employeeNo} · ${employee.displayName}'),
                 Text(
-                  '${employee.jobRoleName ?? 'No job role'}'
+                  '${employee.jobRoleName ?? AppLocalizations.of(context).employeeAssignmentNoJobRole}'
                   '${employee.orgUnitName == null ? '' : ' · ${employee.orgUnitName}'}',
                   style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),

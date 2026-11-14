@@ -21,6 +21,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -89,6 +90,7 @@ class _SafetyIncidentCloseDialogState extends State<SafetyIncidentCloseDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final incident = widget.incident;
 
@@ -98,13 +100,13 @@ class _SafetyIncidentCloseDialogState extends State<SafetyIncidentCloseDialog> {
       // description and the single action closes it.
       return AppDialog(
         key: SafetyIncidentCloseDialog.refusedKey,
-        title: 'Close this Safety incident',
+        title: l10n.incidentCloseCloseThisSafetyIncident,
         size: AppDialogSize.decision,
-        description: 'Closing a Safety incident needs Safety authority at its Org Unit.',
+        description: l10n.incidentCloseClosingASafetyIncidentNeedsSafetyAuthority,
         actions: [
           AppDialogAction(
             id: SafetyIncidentCloseDialog._closeId,
-            label: 'Close',
+            label: l10n.downtimeClose,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -114,13 +116,13 @@ class _SafetyIncidentCloseDialogState extends State<SafetyIncidentCloseDialog> {
     if (incident.isClosed) {
       return AppDialog(
         key: SafetyIncidentCloseDialog.refusedKey,
-        title: 'Close this Safety incident',
+        title: l10n.incidentCloseCloseThisSafetyIncident,
         size: AppDialogSize.decision,
-        description: 'This Safety incident is already closed.',
+        description: l10n.incidentCloseThisSafetyIncidentIsAlreadyClosed,
         actions: [
           AppDialogAction(
             id: SafetyIncidentCloseDialog._closeId,
-            label: 'Close',
+            label: l10n.downtimeClose,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -132,20 +134,19 @@ class _SafetyIncidentCloseDialogState extends State<SafetyIncidentCloseDialog> {
       listener: _onDetailChanged,
       // A form (520): the note is the judgement this act records (§11).
       child: AppDialog(
-        title: 'Close this Safety incident',
+        title: l10n.incidentCloseCloseThisSafetyIncident,
         size: AppDialogSize.form,
-        description: '${incident.incidentNo} will be closed. A Concern raised from it, if any, '
-            'keeps working the cause on its own.',
+        description: l10n.incidentCloseWillBeClosedAConcernRaisedFrom(incident.incidentNo),
         actions: [
           AppDialogAction(
             id: SafetyIncidentCloseDialog._dismissId,
-            label: 'Leave it open',
+            label: l10n.incidentCloseLeaveItOpen,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: SafetyIncidentCloseDialog._submitId,
-            label: 'Close it',
+            label: l10n.commonCloseIt,
             onPressed: _complete ? _submit : null,
           ),
         ],
@@ -160,9 +161,9 @@ class _SafetyIncidentCloseDialogState extends State<SafetyIncidentCloseDialog> {
               minLines: 2,
               maxLines: 3,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Note',
-                helperText: 'Why this incident is being closed.',
+              decoration: InputDecoration(
+                labelText: l10n.commonNote,
+                helperText: l10n.incidentCloseWhyThisIncidentIsBeingClosed,
                 border: OutlineInputBorder(),
               ),
             ),

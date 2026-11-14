@@ -27,6 +27,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -74,6 +75,7 @@ class CapasScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<CapasBloc>().state;
 
     return _RefreshOnMount(
@@ -87,7 +89,7 @@ class CapasScreen extends StatelessWidget {
                 CapasLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
                 CapasUnavailable(message: final message) => PlatformFailureState(
                     key: failedKey,
-                    title: 'The CAPA list could not be read',
+                    title: l10n.capasTheCapaListCouldNotBeRead,
                     message: message,
                     retryKey: retryKey,
                     onRetry: () => context.read<CapasBloc>().add(const CapasStarted()),
@@ -145,6 +147,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final loaded = state is CapasLoaded ? state as CapasLoaded : null;
 
     return Center(
@@ -153,10 +156,9 @@ class _Header extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
-            title: 'CAPAs',
+            title: l10n.navCapas,
             description:
-                'The investigations opened on a Concern, and the effectiveness check each one is '
-                'waiting on.',
+                l10n.capasTheInvestigationsOpenedOnAConcernAnd,
             below: loaded == null ? null : _Filters(loaded: loaded),
           ),
         ),
@@ -179,6 +181,7 @@ class _Filters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     return AppFilterRow(
@@ -187,7 +190,7 @@ class _Filters extends StatelessWidget {
           key: CapasScreen.orgUnitFilterKey,
           onPressed: () => CapaOrgUnitFilterDialog.open(context),
           icon: const Icon(Icons.account_tree_outlined),
-          label: Text(loaded.orgUnitFilterName ?? 'All Org Units'),
+          label: Text(loaded.orgUnitFilterName ?? l10n.commonAllOrgUnits),
         ),
         SizedBox(
           width: AppLayout.atTextScale(context, 200),
@@ -196,9 +199,9 @@ class _Filters extends StatelessWidget {
             initialValue: loaded.statusFilter,
             isDense: true,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: l10n.commonStatus, border: OutlineInputBorder()),
             items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('Any status')),
+              DropdownMenuItem<String?>(value: null, child: Text(l10n.nonconformancesAnyStatus)),
               for (final status in capaStatuses.keys)
                 DropdownMenuItem<String?>(
                   value: status,
@@ -221,7 +224,7 @@ class _Filters extends StatelessWidget {
                   context.read<CapasBloc>().add(CapasOverdueToggled(overdue)),
             ),
             const SizedBox(width: Spacing.sm),
-            Text('Overdue checks', style: theme.textTheme.bodyMedium),
+            Text(l10n.capasOverdueChecks, style: theme.textTheme.bodyMedium),
           ],
         ),
         if (loaded.isFiltered)
@@ -229,7 +232,7 @@ class _Filters extends StatelessWidget {
             key: CapasScreen.clearFiltersKey,
             onPressed: () => context.read<CapasBloc>().add(const CapasFiltersCleared()),
             icon: const Icon(Icons.filter_alt_off_outlined),
-            label: Text('Clear filters', style: theme.textTheme.bodyMedium),
+            label: Text(l10n.workOrdersClearFilters, style: theme.textTheme.bodyMedium),
           ),
       ],
     );
@@ -241,13 +244,14 @@ class _Truncated extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return Padding(
       key: CapasScreen.truncatedKey,
       padding: const EdgeInsets.all(Spacing.lg),
       child: Center(
         child: Text(
-          'There are more investigations than this list shows. Narrow it by Org Unit or status.',
+          l10n.capasThereAreMoreInvestigationsThanThisList,
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
       ),
@@ -266,21 +270,21 @@ class _Empty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (isFiltered) {
       return PlatformEmptyState.noneMatched(
         key: CapasScreen.emptyMatchedKey,
-        title: 'Nothing matches these filters',
-        message: 'No investigation matches the Org Unit, status or overdue check you asked for.',
-        actionLabel: 'Clear the filters',
+        title: l10n.nonconformancesNoMatchTitle,
+        message: l10n.capasNoInvestigationMatchesTheOrgUnitStatus,
+        actionLabel: l10n.nonconformancesClearTheFilters,
         actionKey: CapasScreen.emptyClearFiltersKey,
         onAction: () => context.read<CapasBloc>().add(const CapasFiltersCleared()),
       );
     }
-    return const PlatformEmptyState.noneExist(
+    return PlatformEmptyState.noneExist(
       key: CapasScreen.emptyKey,
-      title: 'No investigations yet',
-      message: 'A CAPA is opened from a Concern, when somebody decides that the problem needs a '
-          'root cause and a fix that holds.',
+      title: l10n.capasNoInvestigationsYet,
+      message: l10n.capasACapaIsOpenedFromAConcern,
       icon: Icons.fact_check_outlined,
     );
   }
@@ -345,16 +349,17 @@ class _Register extends StatelessWidget {
 /// states a measured `width` — it also carries the overdue chip, so it is
 /// measured across the two widest labels a reader can see at once.
 List<AppTableColumn> _columns(BuildContext context) => [
-      const AppTableColumn('Investigation', flex: 5),
-      const AppTableColumn('Org Unit', flex: 2),
-      const AppTableColumn('Effectiveness check', flex: 5),
-      AppTableColumn('Status', width: _statusColumnWidth(context)),
+      AppTableColumn(AppLocalizations.of(context).capasInvestigation, flex: 5),
+      AppTableColumn(AppLocalizations.of(context).commonOrgUnit, flex: 2),
+      AppTableColumn(AppLocalizations.of(context).capasEffectivenessCheck, flex: 5),
+      AppTableColumn(AppLocalizations.of(context).commonStatus, width: _statusColumnWidth(context)),
     ];
 
 /// The widest pair of labels the Status column can hold at once — a status plus
 /// the `Overdue check` chip — in the chip's own style at the reader's text size,
 /// plus both chips' padding and the slot's gutter.
 double _statusColumnWidth(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
   final painter = TextPainter(
     textDirection: Directionality.of(context),
     textScaler: MediaQuery.textScalerOf(context),
@@ -365,7 +370,7 @@ double _statusColumnWidth(BuildContext context) {
     painter.layout();
     if (painter.width > widest) widest = painter.width;
   }
-  painter.text = TextSpan(text: 'Overdue check', style: Theme.of(context).textTheme.labelLarge);
+  painter.text = TextSpan(text: l10n.capasOverdueCheck, style: Theme.of(context).textTheme.labelLarge);
   painter.layout();
   return widest + painter.width + Spacing.xxl + Spacing.md + Spacing.sm;
 }
@@ -381,6 +386,7 @@ class _CapaTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final dense = AppTypography.dense(context);
     final floor = AppTypography.floor(context)?.copyWith(color: palette.textMuted);
@@ -396,8 +402,7 @@ class _CapaTableRow extends StatelessWidget {
     final Widget check;
     if (verifiedAt != null) {
       check = Text(
-        '${capaEffectivenessOutcomeLabel(capa.effectivenessOutcome!)}, '
-        'recorded by ${capa.effectivenessVerifiedBy?.name ?? 'somebody'}.',
+        l10n.capasRecordedBy(capaEffectivenessOutcomeLabel(capa.effectivenessOutcome!), capa.effectivenessVerifiedBy?.name ?? 'somebody'),
         key: CapasScreen.rowVerifiedKey(capa.id),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
@@ -406,8 +411,8 @@ class _CapaTableRow extends StatelessWidget {
     } else if (capa.effectivenessCheckDueAt != null) {
       check = Text(
         capa.effectivenessCheckOverdue
-            ? 'The effectiveness check was due on ${capa.effectivenessCheckDueAt}.'
-            : 'The effectiveness check is due on ${capa.effectivenessCheckDueAt}.',
+            ? l10n.capasTheEffectivenessCheckWasDueOn((capa.effectivenessCheckDueAt ?? ''))
+            : l10n.capasTheEffectivenessCheckIsDueOn((capa.effectivenessCheckDueAt ?? '')),
         key: CapasScreen.rowDueKey(capa.id),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
@@ -417,8 +422,7 @@ class _CapaTableRow extends StatelessWidget {
       );
     } else {
       check = Text(
-        'The effectiveness check falls due ${capa.effectivenessCheckDelayDays} days '
-        'after the Concern closes.',
+        l10n.capasTheEffectivenessCheckFallsDueDaysAfter(capa.effectivenessCheckDelayDays),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         style: floor,
@@ -443,7 +447,7 @@ class _CapaTableRow extends StatelessWidget {
               ),
               const SizedBox(height: Spacing.xxs),
               Text(
-                [capa.methodLabel, '${capa.team.length} on the team'].join(' · '),
+                [capa.methodLabel, l10n.capasOnTheTeam(capa.team.length)].join(' · '),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: floor,
@@ -464,7 +468,7 @@ class _CapaTableRow extends StatelessWidget {
                 if (capa.effectivenessCheckOverdue)
                   StatusChip(
                     key: CapasScreen.rowOverdueKey(capa.id),
-                    label: 'Overdue check',
+                    label: l10n.capasOverdueCheck,
                     tone: StatusTone.warning,
                   ),
                 StatusChip(label: capa.statusLabel, tone: capa.statusTone),
@@ -492,6 +496,7 @@ class _CapaRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final verifiedAt = capa.effectivenessVerifiedAt;
 
@@ -524,7 +529,7 @@ class _CapaRow extends StatelessWidget {
                       if (capa.effectivenessCheckOverdue)
                         StatusChip(
                           key: CapasScreen.rowOverdueKey(capa.id),
-                          label: 'Overdue check',
+                          label: l10n.capasOverdueCheck,
                           tone: StatusTone.warning,
                         ),
                       StatusChip(label: capa.statusLabel, tone: capa.statusTone),
@@ -539,7 +544,7 @@ class _CapaRow extends StatelessWidget {
                 [
                   capa.methodLabel,
                   capa.orgUnitName,
-                  '${capa.team.length} on the team',
+                  l10n.capasOnTheTeam(capa.team.length),
                 ].join(' · '),
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
@@ -550,8 +555,8 @@ class _CapaRow extends StatelessWidget {
                   padding: const EdgeInsets.only(top: Spacing.xs),
                   child: Text(
                     capa.effectivenessCheckOverdue
-                        ? 'The effectiveness check was due on ${capa.effectivenessCheckDueAt}.'
-                        : 'The effectiveness check is due on ${capa.effectivenessCheckDueAt}.',
+                        ? l10n.capasTheEffectivenessCheckWasDueOn((capa.effectivenessCheckDueAt ?? ''))
+                        : l10n.capasTheEffectivenessCheckIsDueOn((capa.effectivenessCheckDueAt ?? '')),
                     style: theme.textTheme.bodySmall,
                   ),
                 ),
@@ -560,8 +565,7 @@ class _CapaRow extends StatelessWidget {
                   key: CapasScreen.rowVerifiedKey(capa.id),
                   padding: const EdgeInsets.only(top: Spacing.xs),
                   child: Text(
-                    '${capaEffectivenessOutcomeLabel(capa.effectivenessOutcome!)}, '
-                    'recorded by ${capa.effectivenessVerifiedBy?.name ?? 'somebody'}.',
+                    l10n.capasRecordedBy(capaEffectivenessOutcomeLabel(capa.effectivenessOutcome!), capa.effectivenessVerifiedBy?.name ?? 'somebody'),
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
@@ -570,8 +574,7 @@ class _CapaRow extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: Spacing.xs),
                   child: Text(
-                    'The effectiveness check falls due ${capa.effectivenessCheckDelayDays} days '
-                    'after the Concern closes.',
+                    l10n.capasTheEffectivenessCheckFallsDueDaysAfter(capa.effectivenessCheckDelayDays),
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),

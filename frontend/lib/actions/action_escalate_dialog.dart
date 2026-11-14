@@ -15,6 +15,7 @@ import 'package:flutter/material.dart' hide Action;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'action.dart';
@@ -49,6 +50,7 @@ class _ActionEscalateDialogHostState extends State<ActionEscalateDialogHost> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<ActionDetailBloc>().state;
 
     return switch (state) {
@@ -58,18 +60,21 @@ class _ActionEscalateDialogHostState extends State<ActionEscalateDialogHost> {
         ),
       ActionDetailUnavailable(message: final message) => _EscalateRefusal(
           key: ActionEscalateDialogHost.endedKey,
-          title: 'That Action could not be read',
+          title: l10n.commonThatActionCouldNotBeRead,
           message: message,
-          dismissLabel: 'Back',
+          dismissLabel: l10n.commonBack,
         ),
       ActionDetailLoaded(action: final action) => switch (action.status) {
           'done' || 'cancelled' => _EscalateRefusal(
               key: ActionEscalateDialogHost.endedKey,
-              title: 'That Action has ended',
+              title: l10n.commonThatActionHasEnded,
+              // `action.status` is the wire token (`done`, `cancelled`), never a
+              // word a person reads — comparing it to a localised label would
+              // only be true in English.
               message: action.status == 'done'
-                  ? 'It is closed. Whoever needed to know about it was told before it was.'
-                  : 'It was called off, so there is nothing to hand up.',
-              dismissLabel: 'Back to the Action',
+                  ? l10n.actionEscalateItIsClosedWhoeverNeededToKnow
+                  : l10n.actionEscalateItWasCalledOffSoThereIs,
+              dismissLabel: l10n.routerBackToAction,
             ),
           _ when state.isLoadingEscalationTargets => const AlertDialog(
               key: ActionEscalateDialogHost.loadingKey,
@@ -80,16 +85,15 @@ class _ActionEscalateDialogHostState extends State<ActionEscalateDialogHost> {
           _ when state.escalationFailure != null && state.escalationTargets.isEmpty =>
             _EscalateRefusal(
               key: ActionEscalateDialogHost.endedKey,
-              title: 'Nowhere to hand it up to',
+              title: l10n.actionEscalateNowhereToHandItUpTo,
               message: state.escalationFailure!,
-              dismissLabel: 'Back',
+              dismissLabel: l10n.commonBack,
             ),
           _ when state.escalationTargets.isEmpty => _EscalateRefusal(
               key: ActionEscalateDialogHost.nowhereKey,
-              title: 'There is nobody above this',
-              message: '${action.actionNo} sits at ${action.orgUnitName}, which is already the top of '
-                  'this Site. Nothing above it can be told.',
-              dismissLabel: 'Back to the Action',
+              title: l10n.actionEscalateThereIsNobodyAboveThis,
+              message: l10n.actionEscalateSitsAtWhichIsAlreadyTheTop(action.actionNo, action.orgUnitName),
+              dismissLabel: l10n.routerBackToAction,
             ),
           _ => ActionEscalateDialog(action: action, targets: state.escalationTargets),
         },
@@ -178,6 +182,7 @@ class _ActionEscalateDialogState extends State<ActionEscalateDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     // Nearest first, as the server ordered them: the Org Unit that already
     // holds the work is the one the caller usually means.
@@ -186,20 +191,20 @@ class _ActionEscalateDialogState extends State<ActionEscalateDialog> {
     return BlocListener<ActionDetailBloc, ActionDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Hand ${widget.action.actionNo} up',
+        title: l10n.actionEscalateHandUp(widget.action.actionNo),
         // A list to choose one Org Unit from, and the sentence that says what
         // raising it does (issue #398's four widths).
         size: AppDialogSize.picker,
         actions: [
           AppDialogAction(
             id: 'not-now',
-            label: 'Not now',
+            label: l10n.employeeDepartureNotNow,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => context.pop(),
           ),
           AppDialogAction(
             id: 'hand-it-up',
-            label: 'Hand it up',
+            label: l10n.actionEscalateHandItUp,
             onPressed: _awaiting || _targetId == null ? null : _submit,
           ),
         ],
@@ -210,9 +215,7 @@ class _ActionEscalateDialogState extends State<ActionEscalateDialog> {
                 Text(widget.action.title, style: theme.textTheme.titleSmall),
                 const SizedBox(height: Spacing.sm),
                 Text(
-                  'Raising this tells the Org Unit you choose. It stays where it is and keeps its '
-                  'owner and its cycle — this asks somebody above to know about it, not to take it '
-                  'over.',
+                  l10n.actionEscalateRaisingThisTellsTheOrgUnitYou,
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
@@ -231,7 +234,7 @@ class _ActionEscalateDialogState extends State<ActionEscalateDialog> {
                           title: Text(target.name),
                           subtitle: Text(
                             target.id == recommended.id
-                                ? '${target.code} · nearest above it'
+                                ? l10n.actionEscalateNearestAboveIt(target.code)
                                 : target.code,
                           ),
                         ),

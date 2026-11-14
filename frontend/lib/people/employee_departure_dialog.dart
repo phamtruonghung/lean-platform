@@ -9,6 +9,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_dialog.dart';
@@ -121,14 +122,15 @@ class _EmployeeDepartureDialogState extends State<EmployeeDepartureDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final linkedAccount = _linkedAccount;
     return BlocListener<EmployeeDetailBloc, EmployeeDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
         title: linkedAccount == null
-            ? 'Record that ${widget.employee.displayName} has left'
-            : 'Account still linked',
+            ? l10n.employeeDepartureRecordThatHasLeft(widget.employee.displayName)
+            : l10n.employeeDepartureAccountStillLinked,
         size: AppDialogSize.picker,
         // `child` last, as `sort_child_properties_last` requires.
         actions: linkedAccount == null ? _departureActions() : _linkedAccountActions(),
@@ -146,8 +148,7 @@ class _EmployeeDepartureDialogState extends State<EmployeeDepartureDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'The record stays — nothing is deleted, and this can be undone by '
-                'reinstating the record at any time.',
+                AppLocalizations.of(context).employeeDepartureTheRecordStaysNothingIsDeletedAnd,
                 style: theme.textTheme.bodyMedium
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
@@ -155,8 +156,8 @@ class _EmployeeDepartureDialogState extends State<EmployeeDepartureDialog> {
               AppDateField(
                 key: EmployeeDepartureDialog.terminatedOnKey,
                 name: 'departure-terminated-on',
-                label: 'Effective date (optional)',
-                helperText: 'Left blank, today is recorded.',
+                label: AppLocalizations.of(context).employeeDepartureEffectiveDateOptional,
+                helperText: AppLocalizations.of(context).commonLeftBlankTodayIsRecorded,
                 value: _terminatedOn,
                 onChanged: (value) => setState(() => _terminatedOn = value),
                 optional: true,
@@ -178,13 +179,15 @@ class _EmployeeDepartureDialogState extends State<EmployeeDepartureDialog> {
   List<AppDialogAction> _departureActions() => [
         AppDialogAction(
           id: 'employee-departure-cancel',
-          label: 'Cancel',
+          label: AppLocalizations.of(context).commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
         ),
         AppDialogAction(
           id: 'employee-departure-submit',
-          label: _awaiting ? 'Recording…' : 'Record departure',
+          label: _awaiting
+              ? AppLocalizations.of(context).employeeDepartureRecording
+              : AppLocalizations.of(context).commonRecordDeparture,
           onPressed: _awaiting ? null : _submit,
         ),
       ];
@@ -197,10 +200,8 @@ class _EmployeeDepartureDialogState extends State<EmployeeDepartureDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '${widget.employee.displayName} has left, and their Account '
-                '(${linkedAccount.email}) can still sign in. The departure is '
-                'already recorded either way — deactivating the Account is a '
-                'separate, optional step.',
+                AppLocalizations.of(context).employeeDepartureHasLeftAndTheirAccountCanStill(
+                    widget.employee.displayName, linkedAccount.email),
                 style: theme.textTheme.bodyMedium
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
@@ -220,13 +221,15 @@ class _EmployeeDepartureDialogState extends State<EmployeeDepartureDialog> {
   List<AppDialogAction> _linkedAccountActions() => [
         AppDialogAction(
           id: 'employee-departure-skip',
-          label: 'Not now',
+          label: AppLocalizations.of(context).employeeDepartureNotNow,
           kind: AppDialogActionKind.dismiss,
           onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
         ),
         AppDialogAction(
           id: 'employee-departure-deactivate',
-          label: _awaiting ? 'Deactivating…' : 'Deactivate Account',
+          label: _awaiting
+              ? AppLocalizations.of(context).employeeDepartureDeactivating
+              : AppLocalizations.of(context).employeeDepartureDeactivateAccount,
           onPressed: _awaiting ? null : _deactivateLinkedAccount,
         ),
       ];

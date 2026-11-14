@@ -48,6 +48,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
@@ -90,6 +91,7 @@ class CostRatesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<CostRatesBloc>().state;
 
     return Scaffold(
@@ -97,7 +99,7 @@ class CostRatesScreen extends StatelessWidget {
         CostRatesLoading() => const SkeletonList(maxWidth: CostRatesScreen.maxWidth),
         CostRatesUnavailable(message: final message) => PlatformFailureState(
             key: CostRatesScreen.failedKey,
-            title: 'The cost rate catalogue could not be read',
+            title: l10n.costRatesTheCostRateCatalogueCouldNotBe,
             message: message,
             retryKey: CostRatesScreen.retryKey,
             onRetry: () => context.read<CostRatesBloc>().add(const CostRatesStarted()),
@@ -123,6 +125,7 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: CostRatesScreen.maxWidth,
@@ -130,19 +133,16 @@ class _Loaded extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
             AppPageHeader(
-              title: 'Cost rates',
+              title: l10n.navCostRates,
               description:
-                  'What an hour costs — one catalogue shared by every Site, and what the '
-                  'Cost numbers on the tier board are worked out from. A rate is never '
-                  'overwritten: it is closed, and a new one opened, so a cost reported '
-                  'for an earlier month stays what it was.',
+                  l10n.costRatesWhatAnHourCostsOneCatalogueShared,
               actions: [
                 if (isAdmin)
                   FilledButton.icon(
                     key: CostRatesScreen.addKey,
                     onPressed: state.isMutating ? null : () => _add(context),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add cost rate'),
+                    label: Text(l10n.costRatesAddCostRate),
                   ),
               ],
             ),
@@ -150,10 +150,10 @@ class _Loaded extends StatelessWidget {
             if (state.costRates.isEmpty)
               PlatformEmptyState.noneExist(
                 key: CostRatesScreen.emptyKey,
-                title: 'No cost rates yet',
-                message: 'Until a rate is set, every Cost number resolves to nothing.',
+                title: l10n.costRatesNoCostRatesYet,
+                message: l10n.costRatesUntilARateIsSetEveryCost,
                 icon: Icons.payments_outlined,
-                actionLabel: isAdmin ? 'Add cost rate' : null,
+                actionLabel: isAdmin ? l10n.costRatesAddCostRate : null,
                 actionKey: CostRatesScreen.emptyAddKey,
                 onAction: isAdmin ? () => _add(context) : null,
               )
@@ -169,15 +169,15 @@ class _Loaded extends StatelessWidget {
 /// The one column spec: [AppTableHeader] and every [AppTableRow] are built from
 /// it, so a label and its cells start at the same x.
 List<AppTableColumn> _columns(BuildContext context, List<CostRate> rows) => [
-      const AppTableColumn('Rate', flex: 4),
+      AppTableColumn(AppLocalizations.of(context).costRatesRate, flex: 4),
       AppTableColumn(
         _amountColumnLabel(rows),
         width: _amountColumnWidth(context, rows),
         align: AppColumnAlign.end,
       ),
-      const AppTableColumn('Scope', flex: 5),
-      const AppTableColumn('Period', flex: 5),
-      AppTableColumn('Actions', width: _actionsColumnWidth(context), align: AppColumnAlign.end),
+      AppTableColumn(AppLocalizations.of(context).commonScope, flex: 5),
+      AppTableColumn(AppLocalizations.of(context).commonPeriod, flex: 5),
+      AppTableColumn(AppLocalizations.of(context).commonActions, width: _actionsColumnWidth(context), align: AppColumnAlign.end),
     ];
 
 /// Whether the column can name one unit for every row: true only when every
@@ -224,9 +224,10 @@ double _amountColumnWidth(BuildContext context, List<CostRate> rows) {
 /// [Spacing.xl] a side — `OutlinedButton`'s default, and what the quality
 /// registers measure for the same reason (#390).
 double _actionsColumnWidth(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
   final label = Theme.of(context).textTheme.labelLarge;
-  final correct = _measure(context, 'Correct', label) + 2 * Spacing.xl;
-  final revise = _measure(context, 'Revise', label) + 2 * Spacing.xl;
+  final correct = _measure(context, l10n.commonCorrect, label) + 2 * Spacing.xl;
+  final revise = _measure(context, l10n.commonRevise, label) + 2 * Spacing.xl;
   return correct + Spacing.sm + revise + 2 * Spacing.sm;
 }
 
@@ -321,6 +322,7 @@ class _CostRateTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final dense = AppTypography.dense(context);
     final row = costRate;
@@ -358,7 +360,7 @@ class _CostRateTableRow extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                     ),
-                    child: const Text('Correct'),
+                    child: Text(l10n.commonCorrect),
                   ),
                   const SizedBox(width: Spacing.sm),
                   OutlinedButton(
@@ -374,7 +376,7 @@ class _CostRateTableRow extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                     ),
-                    child: const Text('Revise'),
+                    child: Text(l10n.commonRevise),
                   ),
                 ],
               ],
@@ -389,6 +391,7 @@ class _CostRateTableRow extends StatelessWidget {
 /// The period, with the closed chip beside it. One function for both shapes, so
 /// the table row and the card say the same thing about the same record.
 Widget _periodCell(BuildContext context, CostRate row) {
+  final l10n = AppLocalizations.of(context);
   final dense = AppTypography.dense(context);
   final palette = AppColors.of(context);
   return _shrinkWrapTargets(
@@ -402,7 +405,7 @@ Widget _periodCell(BuildContext context, CostRate row) {
         if (!row.isCurrent)
           StatusChip(
             key: CostRatesScreen.closedChipKey(row.id),
-            label: 'Closed',
+            label: l10n.commonClosed,
             tone: StatusTone.neutral,
           ),
       ],
@@ -428,6 +431,7 @@ class _CostRateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final dense = AppTypography.dense(context);
     final floor = AppTypography.floor(context);
     final palette = AppColors.of(context);
@@ -484,7 +488,7 @@ class _CostRateCard extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                     ),
-                    child: const Text('Correct'),
+                    child: Text(l10n.commonCorrect),
                   ),
                   OutlinedButton(
                     key: CostRatesScreen.reviseKey(row.id),
@@ -499,7 +503,7 @@ class _CostRateCard extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                     ),
-                    child: const Text('Revise'),
+                    child: Text(l10n.commonRevise),
                   ),
                 ],
               ),

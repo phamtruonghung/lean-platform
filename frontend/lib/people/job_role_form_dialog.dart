@@ -29,6 +29,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -149,22 +150,23 @@ class _JobRoleFormDialogState extends State<JobRoleFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final failure = _failure;
     return BlocListener<JobRolesBloc, JobRolesState>(
       listener: _onJobRolesChanged,
       child: AppDialog(
-        title: _isCorrection ? 'Correct job role' : 'Add job role',
+        title: _isCorrection ? l10n.jobRoleFormCorrectJobRole : l10n.commonAddJobRole,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: JobRoleFormDialog._cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: JobRoleFormDialog._submitId,
-            label: _awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add job role'),
+            label: _awaiting ? l10n.commonSaving : (_isCorrection ? l10n.commonSave : l10n.commonAddJobRole),
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -175,7 +177,7 @@ class _JobRoleFormDialogState extends State<JobRoleFormDialog> {
             AppScanField(
               key: JobRoleFormDialog.codeKey,
               controller: _code,
-              label: 'Code',
+              label: l10n.commonCode,
               enabled: !_awaiting,
               autofocus: true,
               onChanged: (_) => setState(() {}),
@@ -186,14 +188,14 @@ class _JobRoleFormDialogState extends State<JobRoleFormDialog> {
               controller: _name,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.commonName, border: OutlineInputBorder()),
             ),
             if (_isCorrection) ...[
               const SizedBox(height: Spacing.md),
               SwitchListTile(
                 key: JobRoleFormDialog.activeKey,
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Active'),
+                title: Text(l10n.commonActive),
                 value: _isActive,
                 onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
               ),

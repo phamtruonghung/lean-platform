@@ -17,6 +17,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/destinations.dart';
@@ -121,6 +122,7 @@ class _AccountCorrectionDialogState extends State<AccountCorrectionDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final wasDeactivated = widget.account.isApproved && !widget.account.isActive;
     final wasRejected = widget.account.approvalStatus == ApprovalStatuses.rejected;
@@ -129,7 +131,7 @@ class _AccountCorrectionDialogState extends State<AccountCorrectionDialog> {
       listener: _onAccountsChanged,
       builder: (context, state) {
         return AppDialog(
-          title: 'Change role and Grants',
+          title: l10n.accountCorrectionChangeRoleAndGrants,
           size: AppDialogSize.wide,
           // `child` last, as `sort_child_properties_last` requires. The 880 the
           // old `SizedBox` computed is now the shell's own `wide` width, whose
@@ -137,13 +139,13 @@ class _AccountCorrectionDialogState extends State<AccountCorrectionDialog> {
           actions: [
             AppDialogAction(
               id: 'correction-cancel',
-              label: 'Cancel',
+              label: l10n.commonCancel,
               kind: AppDialogActionKind.dismiss,
               onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
             ),
             AppDialogAction(
               id: 'correction-submit',
-              label: _awaiting ? 'Saving…' : 'Save',
+              label: _awaiting ? l10n.commonSaving : l10n.commonSave,
               onPressed: _awaiting ? null : _submit,
             ),
           ],
@@ -154,8 +156,7 @@ class _AccountCorrectionDialogState extends State<AccountCorrectionDialog> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '${widget.account.email} holds the role and the Org Unit Grants '
-                    'chosen here. Whatever is set below replaces what it has now.',
+                    l10n.accountCorrectionHoldsTheRoleAndTheOrgUnit(widget.account.email),
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
@@ -187,10 +188,7 @@ class _AccountCorrectionDialogState extends State<AccountCorrectionDialog> {
                       icon: Icons.warning_amber_outlined,
                       background: theme.colorScheme.errorContainer,
                       foreground: theme.colorScheme.onErrorContainer,
-                      message: 'An administrator can act everywhere. This Account will '
-                          'be able to see and change every Site and every Org Unit, and '
-                          'to admit other Accounts. Every Org Unit Grant it holds now is '
-                          'removed, and none are needed.',
+                      message: l10n.accountCorrectionAnAdministratorCanActEverywhereThisAccount,
                     )
                   else ...[
                     const SizedBox(height: Spacing.md),
@@ -208,10 +206,8 @@ class _AccountCorrectionDialogState extends State<AccountCorrectionDialog> {
                       background: theme.colorScheme.secondaryContainer,
                       foreground: theme.colorScheme.onSecondaryContainer,
                       message: wasRejected
-                          ? 'This Account was turned away. Saving this admits it to the '
-                              'Platform and lets it sign in.'
-                          : 'This Account is deactivated. Saving this reactivates it and '
-                              'lets it sign in again.',
+                          ? l10n.accountCorrectionThisAccountWasTurnedAwaySavingThis
+                          : l10n.accountCorrectionThisAccountIsDeactivatedSavingThisReactivates,
                     ),
                   if (_failure != null)
                     _Callout(

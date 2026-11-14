@@ -17,6 +17,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../people_api.dart';
@@ -55,11 +56,12 @@ class CapaOrgUnitFilterDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<CapasBloc>().state;
     final selectedId = state is CapasLoaded ? state.orgUnitFilterId : null;
 
     return AppDialog(
-      title: 'Filter by Org Unit',
+      title: l10n.commonFilterByOrgUnit,
       // A picker: one thing chosen from a list (issue #398's four widths).
       size: AppDialogSize.picker,
       actions: [
@@ -67,7 +69,7 @@ class CapaOrgUnitFilterDialog extends StatelessWidget {
         // `Cancel` is the dismiss action `Esc` runs.
         AppDialogAction(
           id: 'all-org-units',
-          label: 'All Org Units',
+          label: l10n.commonAllOrgUnits,
           onPressed: () {
             context.read<CapasBloc>().add(const CapasOrgUnitFilterCleared());
             Navigator.of(context).pop();
@@ -75,7 +77,7 @@ class CapaOrgUnitFilterDialog extends StatelessWidget {
         ),
         AppDialogAction(
           id: 'cancel',
-          label: 'Cancel',
+          label: l10n.commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -84,9 +86,8 @@ class CapaOrgUnitFilterDialog extends StatelessWidget {
         height: 420,
         child: OrgUnitChooser(
           selectedId: selectedId,
-          title: 'Narrow the list',
-          description: 'Choose the Org Unit whose investigations and everything beneath it you '
-              'want to read, or clear back to every one of them.',
+          title: l10n.workOrdersNarrowTitle,
+          description: l10n.capaOrgUnitFilterChooseTheOrgUnitWhoseInvestigationsAnd,
           onSelected: (node) {
             context.read<CapasBloc>().add(
                   CapasOrgUnitFilterSelected(orgUnitId: node.id, orgUnitName: node.name),

@@ -9,6 +9,7 @@
 /// nothing about where the PNG goes.
 library;
 
+import '../l10n/app_localizations.dart';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -100,9 +101,10 @@ class SignaturePad extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return Semantics(
-      label: 'Signature drawing area',
+      label: l10n.signaturePadSignatureDrawingArea,
       child: DecoratedBox(
         decoration: BoxDecoration(
           // Paper, not the card: the ink is dark in both palettes (it is what

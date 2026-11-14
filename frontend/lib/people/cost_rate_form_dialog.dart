@@ -37,6 +37,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_dialog.dart';
@@ -302,6 +303,7 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final existing = widget.costRate;
 
@@ -314,13 +316,13 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
         actions: [
           AppDialogAction(
             id: 'cost-rate-form-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'cost-rate-form-submit',
-            label: _awaiting ? 'Saving…' : _submitLabel,
+            label: _awaiting ? l10n.commonSaving : _submitLabel,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -334,8 +336,7 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: Spacing.md),
                     child: Text(
-                      'The rate below is closed on the day the new one takes effect. It stays '
-                      'readable, and a cost asked for an earlier date still resolves it.',
+                      l10n.costRateFormTheRateBelowIsClosedOnThe,
                       style: theme.textTheme.bodySmall
                           ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
@@ -345,8 +346,7 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
                     key: CostRateFormDialog.scopesFailureKey,
                     padding: const EdgeInsets.only(bottom: Spacing.md),
                     child: Text(
-                      'The list of Sites, Org Units, Assets and cost centres could not be read, '
-                      'so a scope cannot be chosen: ${widget.scopesFailure}',
+                      l10n.costRateFormTheListOfSitesOrgUnitsAssets(widget.scopesFailure ?? ''),
                       style: theme.textTheme.bodyMedium
                           ?.copyWith(color: theme.colorScheme.error),
                     ),
@@ -364,8 +364,8 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
                     // answer at any width — a rate type's own words are worth
                     // more than a label trimmed to fit the narrowest case.
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Scope',
+                    decoration: InputDecoration(
+                      labelText: l10n.commonScope,
                       border: OutlineInputBorder(),
                     ),
                     items: [
@@ -394,7 +394,7 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
                   const SizedBox(height: Spacing.md),
                   AppSearchField<CostRateScope>(
                     name: CostRateFormDialog._scopeFieldName,
-                    label: 'Which ${costRateScopeTypeLabel(_scopeType)}',
+                    label: l10n.costRateFormWhich(costRateScopeTypeLabel(_scopeType)),
                     value: _scope,
                     enabled: !_awaiting && widget.scopesFailure == null,
                     onChanged: (scope) => setState(() => _scope = scope),
@@ -427,8 +427,8 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
                     initialValue: _rateType,
                     // See the scope-type dropdown above for why.
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Rate type',
+                    decoration: InputDecoration(
+                      labelText: l10n.costRateFormRateType,
                       border: OutlineInputBorder(),
                     ),
                     items: [
@@ -453,11 +453,10 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
                   // correctable, shown so the person knows which row they are
                   // on, and never sent.
                   InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Scope and rate type',
+                    decoration: InputDecoration(
+                      labelText: l10n.costRateFormScopeAndRateType,
                       border: OutlineInputBorder(),
-                      helperText: "A rate's scope and rate type cannot be corrected — "
-                          'add a rate for the new scope instead',
+                      helperText: l10n.costRateFormARateSScopeAndRateType,
                     ),
                     child: Text(
                       '${existing!.scopeLabel} · ${costRateTypeLabel(existing.rateType)}',
@@ -473,10 +472,10 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
                     labelText: costRateIsMultiplier(_rateType)
-                        ? 'Multiplier (1.5 for time-and-a-half)'
-                        : 'Amount per hour',
+                        ? l10n.costRateFormMultiplier15ForTimeAndA
+                        : l10n.costRateFormAmountPerHour,
                     border: const OutlineInputBorder(),
-                    helperText: _isRevision ? 'The new amount, from the date below' : null,
+                    helperText: _isRevision ? l10n.costRateFormTheNewAmountFromTheDateBelow : null,
                   ),
                 ),
                 if (!costRateIsMultiplier(_rateType)) ...[
@@ -488,20 +487,20 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
                     maxLength: 3,
                     textCapitalization: TextCapitalization.characters,
                     onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
-                      labelText: 'Currency',
+                    decoration: InputDecoration(
+                      labelText: l10n.commonCurrency,
                       border: OutlineInputBorder(),
                       counterText: '',
-                      helperText: 'A three-letter code, such as USD',
+                      helperText: l10n.commonAThreeLetterCodeSuchAsUsd,
                     ),
                   ),
                 ],
                 const SizedBox(height: Spacing.md),
                 AppDateField(
                   name: CostRateFormDialog._effectiveFromFieldName,
-                  label: _isRevision ? 'New rate takes effect on' : 'Takes effect on',
+                  label: _isRevision ? l10n.costRateFormNewRateTakesEffectOn : l10n.commonTakesEffectOn,
                   helperText: _isRevision
-                      ? 'The old rate is closed on this day, and the new one starts'
+                      ? l10n.costRateFormTheOldRateIsClosedOnThis
                       : null,
                   value: _effectiveFrom,
                   onChanged: (value) => setState(() => _effectiveFrom = value),
@@ -511,9 +510,8 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
                   const SizedBox(height: Spacing.md),
                   AppDateField(
                     name: CostRateFormDialog._effectiveToFieldName,
-                    label: 'Applies until (optional)',
-                    helperText: 'Left blank, this rate is the current one. Setting it closes '
-                        'the rate on that day, which is the exclusive end of the period.',
+                    label: l10n.commonAppliesUntilOptional,
+                    helperText: l10n.costRateFormLeftBlankThisRateIsTheCurrent,
                     value: _effectiveTo,
                     onChanged: (value) => setState(() => _effectiveTo = value),
                     optional: true,
@@ -526,8 +524,8 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
                   controller: _note,
                   enabled: !_awaiting,
                   maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Note (optional)',
+                  decoration: InputDecoration(
+                    labelText: l10n.commonNoteOptional,
                     border: OutlineInputBorder(),
                   ),
                 ),

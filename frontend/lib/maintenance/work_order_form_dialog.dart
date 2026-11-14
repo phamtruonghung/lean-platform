@@ -11,6 +11,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -172,24 +173,25 @@ class _WorkOrderFormDialogState extends State<WorkOrderFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return BlocListener<WorkOrdersBloc, WorkOrdersState>(
       listener: _onWorkOrdersChanged,
       // A short form of five fields: the form width (520), now on the shell
       // rather than on a `SizedBox` inside the content (§11).
       child: AppDialog(
-        title: 'Raise a Work order',
+        title: l10n.workOrdersRaise,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: WorkOrderFormDialog._cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: WorkOrderFormDialog._submitId,
-            label: 'Raise',
+            label: l10n.commonRaise,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -212,7 +214,7 @@ class _WorkOrderFormDialogState extends State<WorkOrderFormDialog> {
               controller: _summary,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Summary', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.commonSummary, border: OutlineInputBorder()),
             ),
             const SizedBox(height: Spacing.md),
             Row(
@@ -222,8 +224,8 @@ class _WorkOrderFormDialogState extends State<WorkOrderFormDialog> {
                     key: WorkOrderFormDialog.workTypeKey,
                     initialValue: _workType,
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Work type',
+                    decoration: InputDecoration(
+                      labelText: l10n.commonWorkType,
                       border: OutlineInputBorder(),
                     ),
                     items: [
@@ -239,8 +241,8 @@ class _WorkOrderFormDialogState extends State<WorkOrderFormDialog> {
                     key: WorkOrderFormDialog.priorityKey,
                     initialValue: _priority,
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Priority',
+                    decoration: InputDecoration(
+                      labelText: l10n.commonPriority,
                       border: OutlineInputBorder(),
                     ),
                     items: [
@@ -264,8 +266,8 @@ class _WorkOrderFormDialogState extends State<WorkOrderFormDialog> {
               controller: _description,
               enabled: !_awaiting,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
+              decoration: InputDecoration(
+                labelText: l10n.jobPlanFormDescriptionOptional,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -316,6 +318,7 @@ class _AssetField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     switch (status) {
       case _AssetsStatus.loading:
@@ -331,16 +334,16 @@ class _AssetField extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              failure ?? 'The Assets could not be read.',
+              failure ?? l10n.commonAssetsFailed,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
             ),
-            TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
+            TextButton(onPressed: enabled ? onRetry : null, child: Text(l10n.commonTryAgain)),
           ],
         );
       case _AssetsStatus.ready:
         return AppSearchField<Asset>(
           name: WorkOrderFormDialog._assetFieldName,
-          label: 'Asset',
+          label: l10n.commonAsset,
           value: _selected,
           enabled: enabled,
           // A pick sets the dialog's own id; typing over the chosen Asset

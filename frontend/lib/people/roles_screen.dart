@@ -28,6 +28,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_list_card.dart';
@@ -64,6 +65,7 @@ class RolesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<RolesBloc>().state;
 
     return Scaffold(
@@ -71,7 +73,7 @@ class RolesScreen extends StatelessWidget {
         RolesLoading() => const SkeletonList(maxWidth: RolesScreen.maxWidth),
         RolesUnavailable(message: final message) => PlatformFailureState(
             key: RolesScreen.failedKey,
-            title: 'The roles could not be read',
+            title: l10n.rolesTheRolesCouldNotBeRead,
             message: message,
             retryKey: RolesScreen.retryKey,
             onRetry: () => context.read<RolesBloc>().add(const RolesStarted()),
@@ -92,6 +94,7 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final notice = state.notice;
 
@@ -102,16 +105,14 @@ class _Loaded extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
             AppPageHeader(
-              title: 'Roles',
-              description: 'What an Account may do. Each role is a group of permissions; '
-                  'every Account holds the default group, and a role marked automatic is '
-                  'earned by the Account\'s own role.',
+              title: l10n.navRoles,
+              description: l10n.rolesWhatAnAccountMayDoEachRole,
               actions: [
                 FilledButton.icon(
                   key: RolesScreen.addKey,
                   onPressed: state.isMutating ? null : () => RoleFormDialog.open(context),
                   icon: const Icon(Icons.add),
-                  label: const Text('Add role'),
+                  label: Text(l10n.commonAddRole),
                 ),
               ],
             ),
@@ -125,11 +126,10 @@ class _Loaded extends StatelessWidget {
             ],
             const SizedBox(height: Spacing.md),
             if (state.roles.isEmpty)
-              const PlatformEmptyState.noneExist(
+              PlatformEmptyState.noneExist(
                 key: RolesScreen.emptyKey,
-                title: 'No roles',
-                message: 'Nothing is carrying a permission. That should not happen: the seed '
-                    'creates the default group, so this means the deployment is incomplete.',
+                title: l10n.rolesNoRoles,
+                message: l10n.rolesNothingIsCarryingAPermissionThatShould,
                 icon: Icons.admin_panel_settings_outlined,
               )
             else
@@ -156,6 +156,7 @@ class _RoleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
 
     final line = Text.rich(
@@ -184,24 +185,22 @@ class _RoleRow extends StatelessWidget {
 
     final chips = <Widget>[
       if (role.isDefault)
-        StatusChip(key: RolesScreen.defaultChipKey(role.id), label: 'Default group', tone: StatusTone.info),
+        StatusChip(key: RolesScreen.defaultChipKey(role.id), label: l10n.rolesDefaultGroup, tone: StatusTone.info),
       if (role.legacyRole != null)
         StatusChip(
           key: RolesScreen.automaticChipKey(role.id),
-          label: 'Automatic: ${role.legacyRole}',
+          label: l10n.rolesAutomatic(role.legacyRole!),
           tone: StatusTone.neutral,
         ),
       if (!role.isActive)
-        StatusChip(key: RolesScreen.inactiveChipKey(role.id), label: 'Inactive', tone: StatusTone.neutral),
+        StatusChip(key: RolesScreen.inactiveChipKey(role.id), label: l10n.commonInactive, tone: StatusTone.neutral),
     ];
 
     // What the role carries and who it reaches — the two facts an administrator
     // weighs before editing it. The count is the code count, not a sentence
     // built from the labels: the editor is where the labels are read.
     final summary = Text(
-      '${role.permissionCodes.length} '
-      '${role.permissionCodes.length == 1 ? 'permission' : 'permissions'} · '
-      'reaches ${role.holderCount} ${role.holderCount == 1 ? 'Account' : 'Accounts'}',
+      l10n.rolesReaches(role.permissionCodes.length, role.holderCount),
       key: RolesScreen.countKey(role.id),
       style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
     );
@@ -210,12 +209,12 @@ class _RoleRow extends StatelessWidget {
       OutlinedButton(
         key: RolesScreen.permissionsKey(role.id),
         onPressed: isMutating ? null : () => RolePermissionsDialog.open(context, role: role),
-        child: const Text('Permissions'),
+        child: Text(l10n.rolesPermissions),
       ),
       OutlinedButton(
         key: RolesScreen.correctKey(role.id),
         onPressed: isMutating ? null : () => RoleFormDialog.open(context, role: role),
-        child: const Text('Correct'),
+        child: Text(l10n.commonCorrect),
       ),
     ];
 

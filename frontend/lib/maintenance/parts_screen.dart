@@ -13,6 +13,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/app_list_card.dart';
@@ -70,6 +71,7 @@ class PartsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<PartsBloc>().state;
 
     return Scaffold(
@@ -77,7 +79,7 @@ class PartsScreen extends StatelessWidget {
         PartsLoading() => const SkeletonList(maxWidth: PartsScreen.maxWidth),
         PartsUnavailable(message: final message) => PlatformFailureState(
           key: PartsScreen.failedKey,
-          title: 'The parts catalogue could not be read',
+          title: l10n.partsThePartsCatalogueCouldNotBeRead,
           message: message,
           retryKey: PartsScreen.retryKey,
           onRetry: () => context.read<PartsBloc>().add(const PartsStarted()),
@@ -124,6 +126,7 @@ class _LoadedState extends State<_Loaded> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     // Filtered here, immediately before the row widgets are built, so a term
     // can only ever narrow rows this Screen already read (issue #191).
     final matches = _matchingParts;
@@ -134,15 +137,15 @@ class _LoadedState extends State<_Loaded> {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
             AppPageHeader(
-              title: 'Parts',
-              description: 'The shared catalogue — defined once, reused at every Site.',
+              title: l10n.navParts,
+              description: l10n.partsTheSharedCatalogueDefinedOnceReusedAt,
               actions: [
                 if (widget.isAdmin)
                   FilledButton.icon(
                     key: PartsScreen.addKey,
                     onPressed: widget.state.isAdding ? null : () => PartFormDialog.open(context),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add part'),
+                    label: Text(l10n.commonAddPart),
                   ),
               ],
             ),
@@ -150,10 +153,10 @@ class _LoadedState extends State<_Loaded> {
             if (widget.state.parts.isEmpty)
               PlatformEmptyState.noneExist(
                 key: PartsScreen.emptyKey,
-                title: 'No parts yet',
-                message: 'Nothing has been defined in the catalogue.',
+                title: l10n.partsNoPartsYet,
+                message: l10n.commonNothingHasBeenDefinedInTheCatalogue,
                 icon: Icons.inventory_2_outlined,
-                actionLabel: widget.isAdmin ? 'Add part' : null,
+                actionLabel: widget.isAdmin ? l10n.commonAddPart : null,
                 actionKey: PartsScreen.emptyAddKey,
                 onAction: widget.isAdmin ? () => PartFormDialog.open(context) : null,
               )
@@ -171,8 +174,8 @@ class _LoadedState extends State<_Loaded> {
                       width: box.maxWidth,
                       child: AppFilterField(
                         name: PartsScreen.filterFieldName,
-                        label: 'Filter parts',
-                        helperText: 'By part number or description.',
+                        label: l10n.partsFilterParts,
+                        helperText: l10n.commonByPartNumberOrDescription,
                         term: _term,
                         onChanged: (term) => setState(() => _term = term),
                         shown: matches.length,
@@ -186,10 +189,9 @@ class _LoadedState extends State<_Loaded> {
               if (matches.isEmpty)
                 PlatformEmptyState.noneMatched(
                   key: PartsScreen.noMatchKey,
-                  title: 'No parts match',
+                  title: l10n.commonNoPartsMatch,
                   message:
-                      'Nothing in the catalogue matches "${_term.trim()}". Try a '
-                      'different part number or description, or clear the filter.',
+                      l10n.partsNothingInTheCatalogueMatchesTryA(_term.trim()),
                 )
               else
                 // Measured on the box the list actually got (a `LayoutBuilder`),
@@ -207,7 +209,7 @@ class _LoadedState extends State<_Loaded> {
                     }
                     // The register: the band and every row are built from the one
                     // column spec, so a label and its cells share an x.
-                    final columns = _columns();
+                    final columns = _columns(context);
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -229,10 +231,10 @@ class _LoadedState extends State<_Loaded> {
 /// quieter than the description it identifies (§6); the unit is a short code
 /// too and takes the smallest share. Nobody can tap a Part row, so the rows
 /// are the 32px of a row that holds nothing to press.
-List<AppTableColumn> _columns() => const [
-  AppTableColumn('Part number', flex: 2),
-  AppTableColumn('Description', flex: 5),
-  AppTableColumn('Unit', flex: 1),
+List<AppTableColumn> _columns(BuildContext context) => [
+  AppTableColumn(AppLocalizations.of(context).commonPartNumber, flex: 2),
+  AppTableColumn(AppLocalizations.of(context).commonDescription, flex: 5),
+  AppTableColumn(AppLocalizations.of(context).metersUnit, flex: 1),
 ];
 
 class _PartTableRow extends StatelessWidget {

@@ -26,6 +26,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_list_card.dart';
@@ -67,6 +68,7 @@ class DefectCodesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<DefectCodesBloc>().state;
 
     return Scaffold(
@@ -74,7 +76,7 @@ class DefectCodesScreen extends StatelessWidget {
         DefectCodesLoading() => const SkeletonList(maxWidth: DefectCodesScreen.maxWidth),
         DefectCodesUnavailable(message: final message) => PlatformFailureState(
             key: DefectCodesScreen.failedKey,
-            title: 'The Defect code catalogue could not be read',
+            title: l10n.defectCodesTheDefectCodeCatalogueCouldNotBe,
             message: message,
             retryKey: DefectCodesScreen.retryKey,
             onRetry: () => context.read<DefectCodesBloc>().add(const DefectCodesStarted()),
@@ -93,6 +95,7 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final rows = defectCodeTree(state.codes);
 
     return Center(
@@ -102,17 +105,16 @@ class _Loaded extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
             AppPageHeader(
-              title: 'Defect codes',
+              title: l10n.navDefectCodes,
               description:
-                  'The kinds of thing found wrong — one list shared by every '
-                  'Site, and the severity each starts a Non-conformance at.',
+                  l10n.defectCodesTheKindsOfThingFoundWrongOne,
               actions: [
                 if (isAdmin)
                   FilledButton.icon(
                     key: DefectCodesScreen.addKey,
                     onPressed: state.isMutating ? null : () => DefectCodeFormDialog.open(context),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add Defect code'),
+                    label: Text(l10n.commonAddDefectCode),
                   ),
               ],
             ),
@@ -120,10 +122,10 @@ class _Loaded extends StatelessWidget {
             if (rows.isEmpty)
               PlatformEmptyState.noneExist(
                 key: DefectCodesScreen.emptyKey,
-                title: 'No Defect codes yet',
-                message: 'Nothing has been defined in the catalogue.',
+                title: l10n.defectCodesNoDefectCodesYet,
+                message: l10n.commonNothingHasBeenDefinedInTheCatalogue,
                 icon: Icons.rule_outlined,
-                actionLabel: isAdmin ? 'Add Defect code' : null,
+                actionLabel: isAdmin ? l10n.commonAddDefectCode : null,
                 actionKey: DefectCodesScreen.emptyAddKey,
                 onAction: isAdmin ? () => DefectCodeFormDialog.open(context) : null,
               )
@@ -150,6 +152,7 @@ class _DefectCodeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final code = row.code;
 
@@ -181,7 +184,7 @@ class _DefectCodeRow extends StatelessWidget {
                           const SizedBox(width: Spacing.sm),
                           StatusChip(
                             key: DefectCodesScreen.inactiveChipKey(code.id),
-                            label: 'Inactive',
+                            label: l10n.jobPlansInactive,
                             tone: StatusTone.neutral,
                           ),
                         ],
@@ -193,9 +196,9 @@ class _DefectCodeRow extends StatelessWidget {
                     // that distinct from the code itself), and the severity a
                     // Non-conformance recorded against it starts at.
                     DisclosingText(
-                      '${row.parentName == null ? 'Top level' : 'Under ${row.parentName}'} · '
+                      '${row.parentName == null ? l10n.defectCodesTopLevel : l10n.defectCodesUnder(row.parentName!)} · '
                       '${DefectCategory.label(code.category)} · '
-                      'starts at ${DefectSeverity.label(code.defaultSeverity)}',
+                      '${l10n.defectCodesStartsAt(DefectSeverity.label(code.defaultSeverity))}',
                       style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
                     ),
                   ],
@@ -210,7 +213,7 @@ class _DefectCodeRow extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                 ),
-                child: const Text('Correct'),
+                child: Text(l10n.commonCorrect),
               ),
           ],
         ),

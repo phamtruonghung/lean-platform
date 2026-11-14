@@ -13,6 +13,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:lean_platform/l10n/app_localizations.dart';
+
 import 'package:lean_platform/widgets/app_date_field.dart';
 
 /// Wraps [AppDateField] the way a real call site will (#126): owns the
@@ -40,6 +42,8 @@ class _HarnessState extends State<_Harness> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: AppDateField(
           name: 'effective-from',
@@ -61,6 +65,8 @@ void main() {
       (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: AppDateField(
             name: 'effective-from',
@@ -84,6 +90,8 @@ void main() {
   testWidgets('tapping the field opens a date picker', (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: AppDateField(
             name: 'effective-from',
@@ -158,6 +166,8 @@ void main() {
       (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: AppDateField(
             name: 'effective-from',
@@ -176,6 +186,8 @@ void main() {
       (WidgetTester tester) async {
     Future<void> pumpRequired(String? value) => tester.pumpWidget(
           MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: Scaffold(
               body: AppDateField(
                 name: 'effective-from',
@@ -220,6 +232,8 @@ void main() {
   testWidgets('tapping the calendar icon opens the picker', (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: AppDateField(
             name: 'effective-from',
@@ -242,6 +256,8 @@ void main() {
   testWidgets('a pre-set initial value is displayed on first build', (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: AppDateField(
             name: 'effective-from',

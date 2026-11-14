@@ -26,6 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
@@ -74,6 +75,7 @@ class _Body extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<TrainingToConfirmBloc>().state;
     final bloc = context.read<TrainingToConfirmBloc>();
 
@@ -81,7 +83,7 @@ class _Body extends StatelessWidget {
     if (state.failure != null) {
       content = PlatformFailureState(
         key: TrainingToConfirmScreen.failureKey,
-        title: 'Your Training to confirm could not be read',
+        title: l10n.trainingToConfirmYourTrainingToConfirmCouldNotBe,
         message: state.failure!,
         retryKey: TrainingToConfirmScreen.retryKey,
         onRetry: () => bloc.add(const TrainingToConfirmStarted()),
@@ -92,10 +94,10 @@ class _Body extends StatelessWidget {
         child: Padding(padding: EdgeInsets.all(Spacing.lg), child: CircularProgressIndicator()),
       );
     } else if (state.entries.isEmpty) {
-      content = const PlatformEmptyState.noneExist(
+      content = PlatformEmptyState.noneExist(
         key: TrainingToConfirmScreen.emptyKey,
-        title: 'Nothing waiting on you',
-        message: 'No Training record has been sent to you that you have not answered.',
+        title: l10n.trainingToConfirmNothingWaitingOnYou,
+        message: l10n.trainingToConfirmNoTrainingRecordHasBeenSentTo,
         icon: Icons.school_outlined,
       );
     } else {
@@ -135,15 +137,14 @@ class _Body extends StatelessWidget {
                 child: TextButton.icon(
                   onPressed: () => context.go(Routes.training),
                   icon: const Icon(Icons.arrow_back),
-                  label: const Text('Back to Training records'),
+                  label: Text(l10n.commonBackToTrainingRecords),
                 ),
               ),
               const SizedBox(height: Spacing.sm),
-              const AppPageHeader(
-                title: 'Training to confirm',
+              AppPageHeader(
+                title: l10n.trainingToConfirm,
                 description:
-                    'Training records sent to you that you have not answered yet, oldest first. '
-                    'Confirm that you attended, or decline because the record is wrong.',
+                    l10n.trainingToConfirmTrainingRecordsSentToYouThatYou,
               ),
               const SizedBox(height: Spacing.lg),
               content,
@@ -165,6 +166,7 @@ class _EntryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final bloc = context.read<TrainingToConfirmBloc>();
     final trainer = entry.trainerName;
@@ -183,12 +185,12 @@ class _EntryCard extends StatelessWidget {
                   if (signature == null) return;
                   bloc.add(TrainingToConfirmAnswered(entry.traineeId, 'confirmed', signature: signature));
                 },
-          child: const Text('Confirm'),
+          child: Text(l10n.commonConfirm),
         ),
         OutlinedButton(
           key: TrainingToConfirmScreen.declineKey(entry.traineeId),
           onPressed: isWriting ? null : () => bloc.add(TrainingToConfirmAnswered(entry.traineeId, 'declined')),
-          child: const Text('Decline'),
+          child: Text(l10n.commonDecline),
         ),
       ],
     );
@@ -240,7 +242,7 @@ class _EntryCard extends StatelessWidget {
                 final stacked = constraints.maxWidth <
                     AppBreakpoints.effective(context, AppBreakpoints.headerActionsWrap);
                 final label = Text(
-                  'Your answer',
+                  l10n.trainingToConfirmYourAnswer,
                   style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
                 );
                 return stacked

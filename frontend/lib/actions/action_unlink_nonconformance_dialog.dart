@@ -21,6 +21,7 @@ import 'package:flutter/material.dart' hide Action;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'action.dart';
@@ -39,6 +40,7 @@ class ActionUnlinkNonconformanceDialogHost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<ActionDetailBloc>().state;
 
     return switch (state) {
@@ -48,13 +50,13 @@ class ActionUnlinkNonconformanceDialogHost extends StatelessWidget {
         ),
       ActionDetailUnavailable(message: final message) => AppDialog(
           key: notLinkedKey,
-          title: 'That Concern could not be read',
+          title: l10n.actionUnlinkNonconformanceThatConcernCouldNotBeRead,
           description: message,
           size: AppDialogSize.decision,
           actions: [
             AppDialogAction(
               id: 'close',
-              label: 'Back',
+              label: l10n.commonBack,
               kind: AppDialogActionKind.dismiss,
               onPressed: () => context.pop(),
             ),
@@ -68,14 +70,13 @@ class ActionUnlinkNonconformanceDialogHost extends StatelessWidget {
           if (found == null) {
             return AppDialog(
               key: notLinkedKey,
-              title: 'That Non-conformance is not linked here',
-              description: 'This Concern answers nothing by that id. It may have been unlinked '
-                  'already, or the address may be wrong.',
+              title: l10n.actionUnlinkNonconformanceThatNonConformanceIsNotLinkedHere,
+              description: l10n.actionUnlinkNonconformanceThisConcernAnswersNothingByThatId,
               size: AppDialogSize.decision,
               actions: [
                 AppDialogAction(
                   id: 'close',
-                  label: 'Back to the Concern',
+                  label: l10n.actionUnlinkNonconformanceBackToTheConcern,
                   kind: AppDialogActionKind.dismiss,
                   onPressed: () => context.pop(),
                 ),
@@ -148,25 +149,26 @@ class _ActionUnlinkNonconformanceDialogState extends State<ActionUnlinkNonconfor
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final occurrence = widget.occurrence;
 
     return BlocListener<ActionDetailBloc, ActionDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Unlink this Non-conformance',
+        title: l10n.actionUnlinkNonconformanceUnlinkThisNonConformance,
         // One question and a record's identity: a decision (issue #398).
         size: AppDialogSize.decision,
         actions: [
           AppDialogAction(
             id: 'keep-it-linked',
-            label: 'Keep it linked',
+            label: l10n.actionUnlinkNonconformanceKeepItLinked,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'unlink',
-            label: 'Unlink it',
+            label: l10n.actionUnlinkNonconformanceUnlinkIt,
             kind: AppDialogActionKind.destructive,
             onPressed: _awaiting ? null : _submit,
           ),
@@ -184,8 +186,7 @@ class _ActionUnlinkNonconformanceDialogState extends State<ActionUnlinkNonconfor
             ),
             const SizedBox(height: Spacing.md),
             Text(
-              'It stops being one of the occurrences this Concern answers. The Non-conformance '
-              'itself is untouched — it keeps its number, its Dispositions and its quantity.',
+              l10n.actionUnlinkNonconformanceItStopsBeingOneOfTheOccurrences,
               style: theme.textTheme.bodyMedium,
             ),
             if (_failure != null)

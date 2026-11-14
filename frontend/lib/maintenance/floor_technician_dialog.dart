@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/app_scan_field.dart';
@@ -113,6 +114,7 @@ class _FloorTechnicianDialogState extends State<FloorTechnicianDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return BlocListener<FloorBloc, FloorState>(
       listener: _onFloorChanged,
@@ -120,21 +122,20 @@ class _FloorTechnicianDialogState extends State<FloorTechnicianDialog> {
       // note — three fields at most (§11).
       child: AppDialog(
         title: widget.requireNote
-            ? 'Complete ${widget.workOrderNo}'
-            : 'Start ${widget.workOrderNo}',
+            ? l10n.floorTechnicianComplete(widget.workOrderNo)
+            : l10n.floorTechnicianStart(widget.workOrderNo),
         size: AppDialogSize.form,
-        description: 'Who is recording this? Your Employee number and PIN identify you '
-            'for this action only.',
+        description: l10n.floorTechnicianWhoIsRecordingThisYourEmployeeNumber,
         actions: [
           AppDialogAction(
             id: FloorTechnicianDialog._dismissId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: FloorTechnicianDialog._submitId,
-            label: widget.requireNote ? 'Complete' : 'Start',
+            label: widget.requireNote ? l10n.workOrdersComplete : l10n.workOrdersStart,
             onPressed: _ready && !_awaiting ? _submit : null,
           ),
         ],
@@ -145,8 +146,8 @@ class _FloorTechnicianDialogState extends State<FloorTechnicianDialog> {
             AppScanField(
               key: FloorTechnicianDialog.employeeNoKey,
               controller: _employeeNo,
-              label: 'Employee number',
-              helperText: 'Scan the badge or type the number.',
+              label: l10n.nonconformanceFloorEmployeeNumber,
+              helperText: l10n.floorTrainingScanTheBadgeOrTypeTheNumber,
               enabled: !_awaiting,
               autofocus: true,
               advanceFocusOnScan: true,
@@ -160,8 +161,8 @@ class _FloorTechnicianDialogState extends State<FloorTechnicianDialog> {
               obscureText: true,
               keyboardType: TextInputType.number,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'PIN',
+              decoration: InputDecoration(
+                labelText: l10n.nonconformanceFloorPin,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -173,8 +174,8 @@ class _FloorTechnicianDialogState extends State<FloorTechnicianDialog> {
                 enabled: !_awaiting,
                 maxLines: 3,
                 onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'What was found?',
+                decoration: InputDecoration(
+                  labelText: l10n.commonWhatWasFound,
                   border: OutlineInputBorder(),
                 ),
               ),

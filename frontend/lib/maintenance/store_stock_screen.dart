@@ -22,6 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
@@ -81,6 +82,7 @@ class StoreStockScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<StoreStockBloc>().state;
 
     return Scaffold(
@@ -88,7 +90,7 @@ class StoreStockScreen extends StatelessWidget {
         StoreStockLoading() => const SkeletonList(maxWidth: maxWidth),
         StoreStockUnavailable(message: final message) => PlatformFailureState(
           key: StoreStockScreen.failedKey,
-          title: 'This store could not be read',
+          title: l10n.storeStockThisStoreCouldNotBeRead,
           message: message,
           retryKey: StoreStockScreen.retryKey,
           onRetry: () => context.read<StoreStockBloc>().add(const StoreStockStarted()),
@@ -134,6 +136,7 @@ class _LoadedState extends State<_Loaded> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = widget.state;
     // Filtered here, immediately before the row widgets are built, so a term
     // can only ever narrow rows this Screen already read (issue #191).
@@ -157,7 +160,7 @@ class _LoadedState extends State<_Loaded> {
                     style: TextButton.styleFrom(
                       minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                     ),
-                    child: const Text('Stores', semanticsLabel: 'Back to Stores'),
+                    child: Text(l10n.navStores, semanticsLabel: l10n.storeStockBackToStores),
                   ),
                   ExcludeSemantics(
                     child: Icon(
@@ -180,16 +183,16 @@ class _LoadedState extends State<_Loaded> {
                         ? null
                         : () => ReceiveDialog.open(context, parts: state.parts),
                     icon: const Icon(Icons.add),
-                    label: const Text('Receive stock'),
+                    label: Text(l10n.commonReceiveStock),
                   ),
               ],
             ),
             const SizedBox(height: Spacing.lg),
             if (state.stock.isEmpty)
-              const PlatformEmptyState.noneExist(
+              PlatformEmptyState.noneExist(
                 key: StoreStockScreen.emptyKey,
-                title: 'Nothing on the shelf',
-                message: 'No part has moved in or out of this store yet.',
+                title: l10n.storeStockNothingOnTheShelf,
+                message: l10n.storeStockNoPartHasMovedInOrOut,
                 icon: Icons.inventory_2_outlined,
               )
             else ...[
@@ -206,8 +209,8 @@ class _LoadedState extends State<_Loaded> {
                       width: box.maxWidth,
                       child: AppFilterField(
                         name: StoreStockScreen.filterFieldName,
-                        label: 'Filter stock',
-                        helperText: 'By part number or description.',
+                        label: l10n.storeStockFilterStock,
+                        helperText: l10n.commonByPartNumberOrDescription,
                         term: _term,
                         onChanged: (term) => setState(() => _term = term),
                         shown: matches.length,
@@ -221,10 +224,9 @@ class _LoadedState extends State<_Loaded> {
               if (matches.isEmpty)
                 PlatformEmptyState.noneMatched(
                   key: StoreStockScreen.noMatchKey,
-                  title: 'No parts match',
+                  title: l10n.commonNoPartsMatch,
                   message:
-                      'This store holds stock, but nothing on its shelf matches '
-                      '"${_term.trim()}". Try a different part number or description.',
+                      l10n.storeStockThisStoreHoldsStockButNothingOn(_term.trim()),
                 )
               else
                 // Measured on the box the list actually got, scaled by the
@@ -241,7 +243,7 @@ class _LoadedState extends State<_Loaded> {
                         rows: [for (final level in matches) _StockRow(level: level)],
                       );
                     }
-                    final columns = _columns();
+                    final columns = _columns(context);
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -263,11 +265,11 @@ class _LoadedState extends State<_Loaded> {
 /// than the description it identifies; the quantity is the one number, so it is
 /// end-aligned and set in tabular figures. Nobody can tap a stock row, so a row
 /// is the 32px of one that holds nothing to press.
-List<AppTableColumn> _columns() => const [
-  AppTableColumn('Part number', flex: 2),
-  AppTableColumn('Description', flex: 5),
-  AppTableColumn('Quantity', flex: 1, align: AppColumnAlign.end),
-  AppTableColumn('Unit', flex: 1),
+List<AppTableColumn> _columns(BuildContext context) => [
+  AppTableColumn(AppLocalizations.of(context).commonPartNumber, flex: 2),
+  AppTableColumn(AppLocalizations.of(context).commonDescription, flex: 5),
+  AppTableColumn(AppLocalizations.of(context).commonQuantity, flex: 1, align: AppColumnAlign.end),
+  AppTableColumn(AppLocalizations.of(context).metersUnit, flex: 1),
 ];
 
 class _StockTableRow extends StatelessWidget {

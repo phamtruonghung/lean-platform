@@ -22,6 +22,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
@@ -61,6 +62,7 @@ class ProductCostsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<ProductCostsBloc>().state;
 
     return Scaffold(
@@ -68,7 +70,7 @@ class ProductCostsScreen extends StatelessWidget {
         ProductCostsLoading() => const SkeletonList(maxWidth: ProductCostsScreen.maxWidth),
         ProductCostsUnavailable(message: final message) => PlatformFailureState(
             key: ProductCostsScreen.failedKey,
-            title: 'The standard cost catalogue could not be read',
+            title: l10n.productCostsTheStandardCostCatalogueCouldNotBe,
             message: message,
             retryKey: ProductCostsScreen.retryKey,
             onRetry: () => context.read<ProductCostsBloc>().add(const ProductCostsStarted()),
@@ -94,6 +96,7 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: ProductCostsScreen.maxWidth,
@@ -101,19 +104,16 @@ class _Loaded extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
             AppPageHeader(
-              title: 'Product standard costs',
+              title: l10n.navProductStandardCosts,
               description:
-                  'What a unit is costed at — one catalogue shared by every Site, and what '
-                  'scrap and rework are priced with. A cost is never overwritten: it is '
-                  'closed, and a new one opened, so a cost reported for an earlier month '
-                  'stays what it was.',
+                  l10n.productCostsWhatAUnitIsCostedAtOne,
               actions: [
                 if (isAdmin)
                   FilledButton.icon(
                     key: ProductCostsScreen.addKey,
                     onPressed: state.isMutating ? null : () => _add(context),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add standard cost'),
+                    label: Text(l10n.productCostsAddStandardCost),
                   ),
               ],
             ),
@@ -121,10 +121,10 @@ class _Loaded extends StatelessWidget {
             if (state.productCosts.isEmpty)
               PlatformEmptyState.noneExist(
                 key: ProductCostsScreen.emptyKey,
-                title: 'No standard costs yet',
-                message: 'Until a cost is set, scrap and rework are priced at nothing.',
+                title: l10n.productCostsNoStandardCostsYet,
+                message: l10n.productCostsUntilACostIsSetScrapAnd,
                 icon: Icons.sell_outlined,
-                actionLabel: isAdmin ? 'Add standard cost' : null,
+                actionLabel: isAdmin ? l10n.productCostsAddStandardCost : null,
                 actionKey: ProductCostsScreen.emptyAddKey,
                 onAction: isAdmin ? () => _add(context) : null,
               )
@@ -140,14 +140,14 @@ class _Loaded extends StatelessWidget {
 /// The one column spec: the band and every row are built from it, so a label
 /// and its cells start at the same x.
 List<AppTableColumn> _columns(BuildContext context, List<ProductCost> rows) => [
-      const AppTableColumn('Product', flex: 5),
+      AppTableColumn(AppLocalizations.of(context).commonProduct, flex: 5),
       AppTableColumn(
         _amountColumnLabel(rows),
         width: _amountColumnWidth(context, rows),
         align: AppColumnAlign.end,
       ),
-      const AppTableColumn('Period', flex: 5),
-      AppTableColumn('Actions', width: _actionsColumnWidth(context), align: AppColumnAlign.end),
+      AppTableColumn(AppLocalizations.of(context).commonPeriod, flex: 5),
+      AppTableColumn(AppLocalizations.of(context).commonActions, width: _actionsColumnWidth(context), align: AppColumnAlign.end),
     ];
 
 /// Whether one currency is true of every row — §13 puts the unit on the label
@@ -179,9 +179,10 @@ double _amountColumnWidth(BuildContext context, List<ProductCost> rows) {
 /// `OutlinedButton`'s default, and what the quality registers measure for the
 /// same reason (#390).
 double _actionsColumnWidth(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
   final label = Theme.of(context).textTheme.labelLarge;
-  final correct = _measure(context, 'Correct', label) + 2 * Spacing.xl;
-  final revise = _measure(context, 'Revise', label) + 2 * Spacing.xl;
+  final correct = _measure(context, l10n.commonCorrect, label) + 2 * Spacing.xl;
+  final revise = _measure(context, l10n.commonRevise, label) + 2 * Spacing.xl;
   return correct + Spacing.sm + revise + 2 * Spacing.sm;
 }
 
@@ -318,7 +319,7 @@ class _ProductCostTableRow extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                 ),
-                child: const Text('Correct'),
+                child: Text(AppLocalizations.of(context).commonCorrect),
               ),
               const SizedBox(width: Spacing.sm),
               OutlinedButton(
@@ -334,7 +335,7 @@ class _ProductCostTableRow extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                 ),
-                child: const Text('Revise'),
+                child: Text(AppLocalizations.of(context).commonRevise),
               ),
             ],
           ],
@@ -345,6 +346,7 @@ class _ProductCostTableRow extends StatelessWidget {
 /// The period with the closed chip beside it — one function for both shapes, so
 /// the row and the card say the same thing about the same record.
 Widget _periodCell(BuildContext context, ProductCost row) {
+  final l10n = AppLocalizations.of(context);
   final dense = AppTypography.dense(context);
   final palette = AppColors.of(context);
   return _shrinkWrapTargets(
@@ -358,7 +360,7 @@ Widget _periodCell(BuildContext context, ProductCost row) {
         if (!row.isCurrent)
           StatusChip(
             key: ProductCostsScreen.closedChipKey(row.id),
-            label: 'Closed',
+            label: l10n.commonClosed,
             tone: StatusTone.neutral,
           ),
       ],
@@ -383,6 +385,7 @@ class _ProductCostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final dense = AppTypography.dense(context);
     final palette = AppColors.of(context);
     final row = productCost;
@@ -436,7 +439,7 @@ class _ProductCostCard extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                     ),
-                    child: const Text('Correct'),
+                    child: Text(l10n.commonCorrect),
                   ),
                   OutlinedButton(
                     key: ProductCostsScreen.reviseKey(row.id),
@@ -451,7 +454,7 @@ class _ProductCostCard extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                     ),
-                    child: const Text('Revise'),
+                    child: Text(l10n.commonRevise),
                   ),
                 ],
               ),

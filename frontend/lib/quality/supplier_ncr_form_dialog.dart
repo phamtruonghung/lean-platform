@@ -20,6 +20,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../theme.dart';
@@ -146,6 +147,7 @@ class _SupplierNcrFormDialogState extends State<SupplierNcrFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final state = context.watch<SupplierNcrsBloc>().state;
     final loaded = state is SupplierNcrsLoaded ? state : null;
@@ -153,18 +155,18 @@ class _SupplierNcrFormDialogState extends State<SupplierNcrFormDialog> {
     return BlocListener<SupplierNcrsBloc, SupplierNcrsState>(
       listener: _onSupplierNcrsChanged,
       child: AppDialog(
-        title: 'Record a supplier NCR',
+        title: l10n.commonRecordASupplierNcr,
         size: AppDialogSize.picker,
         actions: [
           AppDialogAction(
             id: 'supplier-ncr-form-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'supplier-ncr-form-submit',
-            label: _awaiting ? 'Saving…' : 'Record it',
+            label: _awaiting ? l10n.commonSaving : l10n.nonconformanceFormRecord,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -176,8 +178,8 @@ class _SupplierNcrFormDialogState extends State<SupplierNcrFormDialog> {
               key: SupplierNcrFormDialog.supplierKey,
               initialValue: _supplierId,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Supplier',
+              decoration: InputDecoration(
+                labelText: l10n.commonSupplier,
                 border: OutlineInputBorder(),
               ),
               items: [
@@ -194,14 +196,13 @@ class _SupplierNcrFormDialogState extends State<SupplierNcrFormDialog> {
               key: SupplierNcrFormDialog.productKey,
               initialValue: _productId,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Product (optional)',
-                helperText: 'What the lot is, when that is known. A Non-conformance recorded '
-                    'from this NCR needs one.',
+              decoration: InputDecoration(
+                labelText: l10n.supplierNcrFormProductOptional,
+                helperText: l10n.supplierNcrFormWhatTheLotIsWhenThatIs,
                 border: OutlineInputBorder(),
               ),
               items: [
-                const DropdownMenuItem<String?>(value: null, child: Text('Not named yet')),
+                DropdownMenuItem<String?>(value: null, child: Text(l10n.supplierNcrFormNotNamedYet)),
                 for (final product in loaded?.products ?? const [])
                   DropdownMenuItem<String?>(
                     value: product.id,
@@ -216,14 +217,13 @@ class _SupplierNcrFormDialogState extends State<SupplierNcrFormDialog> {
               key: SupplierNcrFormDialog.defectCodeKey,
               initialValue: _defectCodeId,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Defect code (optional)',
-                helperText: 'What is wrong with it. A Non-conformance recorded from this NCR '
-                    'carries it.',
+              decoration: InputDecoration(
+                labelText: l10n.commonDefectCodeOptional,
+                helperText: l10n.supplierNcrFormWhatIsWrongWithItANon,
                 border: OutlineInputBorder(),
               ),
               items: [
-                const DropdownMenuItem<String?>(value: null, child: Text('Not known yet')),
+                DropdownMenuItem<String?>(value: null, child: Text(l10n.commonNotKnownYet)),
                 for (final code in loaded?.defectCodes ?? const [])
                   DropdownMenuItem<String?>(
                     value: code.id,
@@ -239,9 +239,9 @@ class _SupplierNcrFormDialogState extends State<SupplierNcrFormDialog> {
               enabled: !_awaiting,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Quantity affected',
-                helperText: 'How much came in wrong.',
+              decoration: InputDecoration(
+                labelText: l10n.nonconformanceDetailQuantityAffected,
+                helperText: l10n.supplierNcrFormHowMuchCameInWrong,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -250,10 +250,9 @@ class _SupplierNcrFormDialogState extends State<SupplierNcrFormDialog> {
               key: SupplierNcrFormDialog.uomKey,
               initialValue: _uomCode,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Unit of measure',
-                helperText: 'What the quantity is counted in. Taken from the Product when one '
-                    'is named.',
+              decoration: InputDecoration(
+                labelText: l10n.commonUnitOfMeasure,
+                helperText: l10n.supplierNcrFormWhatTheQuantityIsCountedInTaken,
                 border: OutlineInputBorder(),
               ),
               items: [
@@ -270,9 +269,9 @@ class _SupplierNcrFormDialogState extends State<SupplierNcrFormDialog> {
               key: SupplierNcrFormDialog.lotKey,
               controller: _lot,
               enabled: !_awaiting,
-              decoration: const InputDecoration(
-                labelText: 'Incoming lot reference (optional)',
-                helperText: 'The lot the delivery note says.',
+              decoration: InputDecoration(
+                labelText: l10n.supplierNcrFormIncomingLotReferenceOptional,
+                helperText: l10n.supplierNcrFormTheLotTheDeliveryNoteSays,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -281,9 +280,9 @@ class _SupplierNcrFormDialogState extends State<SupplierNcrFormDialog> {
               key: SupplierNcrFormDialog.purchaseKey,
               controller: _purchase,
               enabled: !_awaiting,
-              decoration: const InputDecoration(
-                labelText: 'Purchase reference (optional)',
-                helperText: 'The order it arrived against.',
+              decoration: InputDecoration(
+                labelText: l10n.supplierNcrFormPurchaseReferenceOptional,
+                helperText: l10n.supplierNcrFormTheOrderItArrivedAgainst,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -291,8 +290,8 @@ class _SupplierNcrFormDialogState extends State<SupplierNcrFormDialog> {
             AppDateField(
               key: SupplierNcrFormDialog.responseDueKey,
               name: 'supplier-ncr-response-due',
-              label: 'Answer due (optional)',
-              helperText: 'The day the Supplier was given to answer.',
+              label: l10n.supplierNcrFormAnswerDueOptional,
+              helperText: l10n.supplierNcrFormTheDayTheSupplierWasGivenTo,
               value: _responseDueDate,
               optional: true,
               enabled: !_awaiting,
@@ -305,8 +304,8 @@ class _SupplierNcrFormDialogState extends State<SupplierNcrFormDialog> {
               enabled: !_awaiting,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'What is wrong with it (optional)',
+              decoration: InputDecoration(
+                labelText: l10n.supplierNcrFormWhatIsWrongWithItOptional,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -315,9 +314,8 @@ class _SupplierNcrFormDialogState extends State<SupplierNcrFormDialog> {
               selectedId: _orgUnit?.id,
               enabled: !_awaiting,
               showSitePicker: false,
-              title: 'Who works it',
-              description: 'Choose the Org Unit that will work this supplier NCR. This is '
-                  'what decides who may act on it.',
+              title: l10n.supplierNcrFormWhoWorksIt,
+              description: l10n.supplierNcrFormChooseTheOrgUnitThatWillWork,
               onSelected: (node) => setState(() => _orgUnit = node),
             ),
             if (_orgUnit != null)
@@ -325,7 +323,7 @@ class _SupplierNcrFormDialogState extends State<SupplierNcrFormDialog> {
                 key: SupplierNcrFormDialog.chosenOrgUnitKey,
                 padding: const EdgeInsets.only(top: Spacing.sm),
                 child: Text(
-                  'This supplier NCR will be filed at ${_orgUnit!.name}.',
+                  l10n.supplierNcrFormThisSupplierNcrWillBeFiledAt(_orgUnit!.name),
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),

@@ -20,6 +20,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart';
 import '../theme.dart';
 import '../widgets/app_page_header.dart';
@@ -87,6 +88,7 @@ class _ChangePasswordFormState extends State<_ChangePasswordForm> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return BlocConsumer<ChangePasswordBloc, ChangePasswordState>(
       listener: (context, state) {
@@ -98,7 +100,7 @@ class _ChangePasswordFormState extends State<_ChangePasswordForm> {
         final awaiting = state is ChangePasswordInProgress || state is ChangePasswordSucceeded;
         final failure = _localFailure ?? (state is ChangePasswordFailed ? state.message : null);
         return Scaffold(
-          appBar: AppBar(title: const Text('Platform')),
+          appBar: AppBar(title: Text(l10n.shellBrand)),
           body: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 460),
@@ -116,10 +118,9 @@ class _ChangePasswordFormState extends State<_ChangePasswordForm> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const AppPageHeader(
-                          title: 'Choose a new password',
-                          description: 'An administrator reset your password, so the one you '
-                              'were given is temporary. Choose your own to continue.',
+                        AppPageHeader(
+                          title: l10n.titleChooseNewPassword,
+                          description: l10n.changePasswordAnAdministratorResetYourPasswordSoThe,
                         ),
                         const SizedBox(height: Spacing.lg),
                         TextField(
@@ -128,7 +129,7 @@ class _ChangePasswordFormState extends State<_ChangePasswordForm> {
                           enabled: !awaiting,
                           obscureText: true,
                           autofocus: true,
-                          decoration: const InputDecoration(labelText: 'Current password'),
+                          decoration: InputDecoration(labelText: l10n.accountPasswordCurrent),
                         ),
                         const SizedBox(height: Spacing.md),
                         TextField(
@@ -137,8 +138,8 @@ class _ChangePasswordFormState extends State<_ChangePasswordForm> {
                           enabled: !awaiting,
                           obscureText: true,
                           decoration: InputDecoration(
-                            labelText: 'New password',
-                            helperText: 'At least ${PeopleApi.minimumPasswordLength} characters.',
+                            labelText: l10n.accountPasswordNew,
+                            helperText: l10n.accountPasswordAtLeastCharacters(PeopleApi.minimumPasswordLength),
                           ),
                           onSubmitted: (_) => _submit(state),
                         ),
@@ -160,14 +161,14 @@ class _ChangePasswordFormState extends State<_ChangePasswordForm> {
                             FilledButton(
                               key: ChangePasswordScreen.submitKey,
                               onPressed: awaiting ? null : () => _submit(state),
-                              child: Text(awaiting ? 'Saving…' : 'Change password'),
+                              child: Text(awaiting ? l10n.commonSaving : l10n.shellChangePassword),
                             ),
                             OutlinedButton(
                               key: ChangePasswordScreen.signOutKey,
                               onPressed: () => context
                                   .read<AccountBloc>()
                                   .add(const AccountSignOutRequested()),
-                              child: const Text('Sign out'),
+                              child: Text(l10n.shellSignOut),
                             ),
                           ],
                         ),

@@ -497,8 +497,9 @@ double _widestChip(BuildContext context, Iterable<String> labels) {
 /// The number column: `NC-HCM-2026-00001` is a fixed-width code, so the column
 /// is measured to it rather than taking a share of the flex.
 double _numberColumnWidth(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
   final painter = TextPainter(
-    text: TextSpan(text: 'NC-HCM-2026-00001', style: AppTypography.dense(context)),
+    text: TextSpan(text: l10n.nonconformancesNcHcm202600001, style: AppTypography.dense(context)),
     textDirection: Directionality.of(context),
     textScaler: MediaQuery.textScalerOf(context),
     maxLines: 1,

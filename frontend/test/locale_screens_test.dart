@@ -24,6 +24,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lean_platform/home_screen.dart';
 import 'package:lean_platform/maintenance/work_orders_screen.dart';
+import 'package:lean_platform/people/directory_screen.dart';
 import 'package:lean_platform/platform/change_password_dialog.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/locale_cubit.dart';
@@ -35,9 +36,11 @@ import 'harness.dart';
 
 /// One open Work order, one Site, and no queued Requests: enough for Home's
 /// Maintenance group and the Work orders register to have something to say.
-FakeWire _wire() => FakeWire(
+/// [employees] fills the Directory when a case needs a row to read.
+FakeWire _wire({List<Map<String, dynamic>>? employees}) => FakeWire(
       role: Roles.admin,
       sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      employees: employees ?? const <Map<String, dynamic>>[],
       workOrders: {
         '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
       },
@@ -51,6 +54,19 @@ FakeWire _wire() => FakeWire(
       nonconformances: {
         '1': [nonconformanceJson('701', 'NC-HCM-2026-00001')],
       },
+      // One Customer complaint whose product is controlled by a Non-conformance
+      // found by the customer: the detail screen picks its sentence from the
+      // stored detection point, so it is the record a Vietnamese assertion
+      // needs.
+      complaints: {
+        '1': [
+          customerComplaintJson(
+            '70',
+            'CC-2026-00001',
+            nonconformance: complaintNonconformanceJson('950', 'NC-HCM-2026-00050'),
+          ),
+        ],
+      },
     );
 
 /// Pumps the whole app at [at], in [language] (`null` = never chosen, so the
@@ -59,6 +75,7 @@ Future<RecordingDocumentChrome> _pump(
   WidgetTester tester, {
   required String at,
   String? language,
+  List<Map<String, dynamic>>? employees,
 }) async {
   SharedPreferences.setMockInitialValues(
     language == null ? <String, Object>{} : {LocaleCubit.storageKey: language},
@@ -70,7 +87,7 @@ Future<RecordingDocumentChrome> _pump(
   tester.view.physicalSize = const Size(1200, 1000);
   addTearDown(tester.view.reset);
 
-  final wire = _wire();
+  final wire = _wire(employees: employees);
   final chrome = RecordingDocumentChrome();
   await pumpApp(
     tester,
@@ -216,5 +233,59 @@ void main() {
     }
     expect(find.text('Sản phẩm không phù hợp'), findsNothing);
     expect(find.text('Ghi nhận không phù hợp'), findsNothing);
+  });
+
+  testWidgets('the Directory register is Vietnamese end to end: heading, its one action, and every '
+      'column header the register measures itself by', (tester) async {
+    await _pump(
+      tester,
+      at: Routes.directory,
+      language: 'vi',
+      employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
+    );
+
+    // The heading (the sidebar Destination's own word) and the one action that
+    // opens the Employee form.
+    expect(find.text('Danh bạ'), findsWidgets);
+    expect(find.text('Thêm Nhân viên'), findsOneWidget);
+    expect(
+      find.text('Ai làm việc ở đây — tìm kiếm, lọc, và Nhân viên đã rời được ẩn đi cho tới khi cần '
+          'xem.'),
+      findsOneWidget,
+    );
+    // The band: six headers, and the two whose width the register measures from
+    // the label it is drawing (`Code`, `State`) are measured from these.
+    for (final header in const [
+      'Nhân viên',
+      'Mã',
+      'Đơn vị tổ chức',
+      'Chức danh công việc',
+      'Hình thức làm việc',
+      'Trạng thái',
+    ]) {
+      expect(find.text(header), findsWidgets, reason: 'column header $header');
+    }
+    expect(find.text('Employee'), findsNothing);
+    expect(find.text('Job role'), findsNothing);
+    expect(find.text('Employment'), findsNothing);
+    // The register still holds the row it was given.
+    expect(find.byKey(DirectoryScreen.rowKey('7')), findsOneWidget);
+  });
+
+  testWidgets('a Customer complaint detail in Vietnamese still picks the sentence from the stored '
+      'detection point', (tester) async {
+    await _pump(tester, at: '/complaints/70', language: 'vi');
+
+    // The record says `detectionPoint: 'customer'` — a token the database
+    // stores, and one the screen must compare to as a token. The words change
+    // with the language; the branch does not. Comparing the token to the
+    // Vietnamese label instead made this false in Vietnamese only, so a
+    // Vietnamese reader was told the Non-conformance was recorded somewhere
+    // rather than found by the customer.
+    expect(
+      find.text('Do khách hàng phát hiện, nên khiếu nại này là nơi mọi việc bắt đầu.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Ghi nhận ngày customer'), findsNothing);
   });
 }

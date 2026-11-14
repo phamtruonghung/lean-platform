@@ -28,6 +28,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'attendance.dart';
@@ -104,7 +105,7 @@ class _AttendanceRecordDialogState extends State<AttendanceRecordDialog> {
     final changes = <String, Object?>{'attendanceStatus': _status};
     if (attendanceStatusNeedsReason(_status)) {
       if (_absenceReasonId == null) {
-        setState(() => _failure = 'Choose a reason for this absence.');
+        setState(() => _failure = AppLocalizations.of(context).attendanceRecordChooseAReasonForThisAbsence);
         return;
       }
       changes['absenceReasonId'] = _absenceReasonId;
@@ -137,23 +138,24 @@ class _AttendanceRecordDialogState extends State<AttendanceRecordDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final needsReason = attendanceStatusNeedsReason(_status);
     return BlocListener<AttendanceSheetBloc, AttendanceSheetState>(
       listener: _onStateChanged,
       child: AppDialog(
-        title: 'Mark ${widget.record.displayName}',
+        title: l10n.attendanceRecordMark(widget.record.displayName),
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: 'cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'save',
-            label: _awaiting ? 'Saving…' : 'Save',
+            label: _awaiting ? l10n.commonSaving : l10n.commonSave,
             onPressed: _awaiting ? null : _submit,
           ),
         ],
@@ -164,7 +166,7 @@ class _AttendanceRecordDialogState extends State<AttendanceRecordDialog> {
             DropdownButtonFormField<String>(
               key: AttendanceRecordDialog.statusFieldKey,
               initialValue: _status,
-              decoration: const InputDecoration(labelText: 'Status'),
+              decoration: InputDecoration(labelText: l10n.commonStatus),
               items: [
                 for (final status in attendanceStatuses)
                   DropdownMenuItem(value: status, child: Text(attendanceStatusLabel(status))),
@@ -176,7 +178,7 @@ class _AttendanceRecordDialogState extends State<AttendanceRecordDialog> {
               DropdownButtonFormField<String>(
                 key: AttendanceRecordDialog.reasonFieldKey,
                 initialValue: _absenceReasonId,
-                decoration: const InputDecoration(labelText: 'Reason'),
+                decoration: InputDecoration(labelText: l10n.commonReason),
                 items: [
                   for (final reason in widget.absenceReasons)
                     DropdownMenuItem(value: reason.id, child: Text(reason.name)),
@@ -190,7 +192,7 @@ class _AttendanceRecordDialogState extends State<AttendanceRecordDialog> {
                 controller: _workedMinutes,
                 enabled: !_awaiting,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Worked minutes'),
+                decoration: InputDecoration(labelText: l10n.attendanceRecordWorkedMinutes),
               ),
               const SizedBox(height: Spacing.md),
               TextField(
@@ -198,7 +200,7 @@ class _AttendanceRecordDialogState extends State<AttendanceRecordDialog> {
                 controller: _overtimeMinutes,
                 enabled: !_awaiting,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Overtime minutes'),
+                decoration: InputDecoration(labelText: l10n.attendanceRecordOvertimeMinutes),
               ),
             ],
             const SizedBox(height: Spacing.md),
@@ -206,7 +208,7 @@ class _AttendanceRecordDialogState extends State<AttendanceRecordDialog> {
               key: AttendanceRecordDialog.noteFieldKey,
               controller: _note,
               enabled: !_awaiting,
-              decoration: const InputDecoration(labelText: 'Note (optional)'),
+              decoration: InputDecoration(labelText: l10n.commonNoteOptional),
             ),
             if (_failure != null)
               Padding(

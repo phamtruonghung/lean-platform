@@ -11,6 +11,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../people_api.dart';
@@ -55,11 +56,12 @@ class SafetyObservationOrgUnitFilterDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<SafetyObservationsBloc>().state;
     final selectedId = state is SafetyObservationsLoaded ? state.filters.orgUnitId : null;
 
     return AppDialog(
-      title: 'Filter by Org Unit',
+      title: l10n.commonFilterByOrgUnit,
       // One tree of names, at the width this dialog has always been: `decision`
       // is 420, the box the hand-sized `AlertDialog` used, so moving the shell
       // onto [AppDialog] changes nothing a reader feels. `picker` (460) is for
@@ -70,13 +72,13 @@ class SafetyObservationOrgUnitFilterDialog extends StatelessWidget {
       actions: [
         AppDialogAction(
           id: 'safety-observations-filter-cancel',
-          label: 'Cancel',
+          label: l10n.commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(),
         ),
         AppDialogAction(
           id: 'safety-observations-filter-all',
-          label: 'All Org Units',
+          label: l10n.commonAllOrgUnits,
           onPressed: () {
             context.read<SafetyObservationsBloc>().add(const SafetyObservationsFiltersCleared());
             Navigator.of(context).pop();
@@ -90,9 +92,8 @@ class SafetyObservationOrgUnitFilterDialog extends StatelessWidget {
         child: OrgUnitChooser(
           selectedId: selectedId,
           showSitePicker: false,
-          title: 'Narrow the register',
-          description: 'Choose the Org Unit whose Safety observations and everything beneath it '
-              'you want to read, or clear back to the whole Site.',
+          title: l10n.commonNarrowTheRegister,
+          description: l10n.safetyObservationOrgUnitFilterChooseTheOrgUnitWhoseSafetyObservations,
           onSelected: (node) {
             context.read<SafetyObservationsBloc>().add(
                   SafetyObservationsOrgUnitFilterSet(orgUnitId: node.id, name: node.name),

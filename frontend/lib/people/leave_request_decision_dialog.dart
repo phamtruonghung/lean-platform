@@ -22,6 +22,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'leave_request.dart';
@@ -88,26 +89,29 @@ class _LeaveRequestDecisionDialogState extends State<LeaveRequestDecisionDialog>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final request = widget.request;
-    final verb = widget.approve ? 'Approve' : 'Reject';
+    final verb = widget.approve ? l10n.leaveRequestsApprove : l10n.commonReject;
     return BlocListener<LeaveRequestsBloc, LeaveRequestsState>(
       listener: _onStateChanged,
       child: AppDialog(
-        title: '$verb leave request',
+        title: widget.approve
+            ? l10n.leaveRequestDecisionApproveLeaveRequest
+            : l10n.leaveRequestDecisionRejectLeaveRequest,
         description: '${request.employee.displayName} · ${request.leaveTypeName} · '
             '${request.periodLabel} (${request.daysLabel})',
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: 'back',
-            label: 'Back',
+            label: l10n.commonBack,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'submit',
-            label: _awaiting ? 'Saving…' : verb,
+            label: _awaiting ? l10n.commonSaving : verb,
             onPressed: _awaiting ? null : _submit,
           ),
         ],
@@ -121,8 +125,8 @@ class _LeaveRequestDecisionDialogState extends State<LeaveRequestDecisionDialog>
               enabled: !_awaiting,
               minLines: 2,
               maxLines: 5,
-              decoration: const InputDecoration(
-                labelText: 'Note (optional)',
+              decoration: InputDecoration(
+                labelText: l10n.commonNoteOptional,
                 border: OutlineInputBorder(),
               ),
             ),

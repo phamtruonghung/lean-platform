@@ -26,6 +26,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -154,23 +155,24 @@ class _DowntimeClassifyDialogState extends State<DowntimeClassifyDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final requiresComment = _reason?.requiresComment ?? false;
     return BlocListener<DowntimeBloc, DowntimeState>(
       listener: _onDowntimeChanged,
       child: AppDialog(
-        title: 'Classify the stop for ${widget.downtimeEvent.assetName}',
+        title: l10n.downtimeClassifyClassifyTheStopFor(widget.downtimeEvent.assetName),
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: DowntimeClassifyDialog._dismissId,
-            label: 'Keep it unclassified',
+            label: l10n.downtimeClassifyKeepItUnclassified,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: DowntimeClassifyDialog._submitId,
-            label: 'Classify',
+            label: l10n.downtimeClassify,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -195,7 +197,7 @@ class _DowntimeClassifyDialogState extends State<DowntimeClassifyDialog> {
               onChanged: (_) => setState(() {}),
               maxLines: 3,
               decoration: InputDecoration(
-                labelText: requiresComment ? 'Description (required)' : 'Description (optional)',
+                labelText: requiresComment ? l10n.downtimeClassifyDescriptionRequired : l10n.jobPlanFormDescriptionOptional,
                 border: const OutlineInputBorder(),
               ),
             ),
@@ -236,6 +238,7 @@ class _ReasonField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     switch (status) {
       case _ReasonsStatus.loading:
@@ -255,10 +258,10 @@ class _ReasonField extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              failure ?? 'The Downtime reasons could not be read.',
+              failure ?? l10n.downtimeClassifyTheDowntimeReasonsCouldNotBeRead,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
-            TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
+            TextButton(onPressed: enabled ? onRetry : null, child: Text(l10n.commonTryAgain)),
           ],
         );
       case _ReasonsStatus.ready:
@@ -266,7 +269,7 @@ class _ReasonField extends StatelessWidget {
           key: DowntimeClassifyDialog.reasonKey,
           initialValue: selectedId,
           isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Reason', border: OutlineInputBorder()),
+          decoration: InputDecoration(labelText: l10n.downtimeReason, border: OutlineInputBorder()),
           items: [
             for (final reason in reasons)
               DropdownMenuItem<String>(value: reason.id, child: Text(reason.name)),

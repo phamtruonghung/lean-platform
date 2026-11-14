@@ -17,6 +17,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -123,23 +124,24 @@ class _ComplaintLinkDialogState extends State<ComplaintLinkDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     return BlocListener<ComplaintDetailBloc, ComplaintDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Link a Non-conformance',
+        title: l10n.commonLinkANonConformance,
         size: AppDialogSize.picker,
         actions: [
           AppDialogAction(
             id: 'complaint-link-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'complaint-link-submit',
-            label: _awaiting ? 'Linking…' : 'Link it',
+            label: _awaiting ? l10n.commonLinking : l10n.commonLinkIt,
             onPressed: _chosenId == null || _awaiting ? null : _submit,
           ),
         ],
@@ -148,9 +150,7 @@ class _ComplaintLinkDialogState extends State<ComplaintLinkDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'A Non-conformance that already exists for ${widget.complaint.productName} can '
-              'be linked to this complaint, instead of recording a second one for the same '
-              'problem.',
+              l10n.complaintLinkANonConformanceThatAlreadyExistsFor(widget.complaint.productName),
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
@@ -163,15 +163,14 @@ class _ComplaintLinkDialogState extends State<ComplaintLinkDialog> {
             else if (_loadFailure != null)
               PlatformFailureState(
                 key: ComplaintLinkDialog.candidatesFailedKey,
-                title: 'The Non-conformances could not be read',
+                title: l10n.commonTheNonConformancesCouldNotBeRead,
                 message: _loadFailure!,
                 retryKey: ComplaintLinkDialog.candidatesRetryKey,
                 onRetry: _loadCandidates,
               )
             else if (_candidates.isEmpty)
               Text(
-                'No Non-conformance has been recorded for this Product yet, so there is '
-                'nothing to link. Record one from this complaint instead.',
+                l10n.complaintLinkNoNonConformanceHasBeenRecordedFor,
                 key: ComplaintLinkDialog.noneKey,
                 style: theme.textTheme.bodyMedium
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
@@ -181,8 +180,8 @@ class _ComplaintLinkDialogState extends State<ComplaintLinkDialog> {
                 key: ComplaintLinkDialog.candidateKey,
                 initialValue: _chosenId,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'The Non-conformance that controls it',
+                decoration: InputDecoration(
+                  labelText: l10n.commonTheNonConformanceThatControlsIt,
                   border: OutlineInputBorder(),
                 ),
                 items: [

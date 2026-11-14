@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/destinations.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
@@ -162,6 +163,7 @@ class AccountsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<AccountsBloc>().state;
 
     return Scaffold(
@@ -175,7 +177,7 @@ class AccountsScreen extends StatelessWidget {
               AccountsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
               AccountsUnavailable(message: final message) => PlatformFailureState(
                   key: AccountsScreen.failedKey,
-                  title: 'The Accounts could not be loaded',
+                  title: l10n.accountsTheAccountsCouldNotBeLoaded,
                   message: message,
                   retryKey: retryKey,
                   onRetry: () => context.read<AccountsBloc>().add(const AccountsRequested()),
@@ -183,12 +185,12 @@ class AccountsScreen extends StatelessWidget {
               // Nothing has ever been recorded here — the *none exist* variant,
               // distinct from the filter's own *none matched* below (§7 of
               // `docs/design-language.md`).
-              AccountsLoaded() when state.accounts.isEmpty => const PlatformEmptyState.noneExist(
+              AccountsLoaded() when state.accounts.isEmpty => PlatformEmptyState.noneExist(
                   key: AccountsScreen.emptyKey,
-                  title: 'No Accounts yet',
+                  title: l10n.accountsNoAccountsYet,
                   // Literally true now that every Account is listed here (issue
                   // #112): nothing at all, not merely nothing admitted yet.
-                  message: 'Accounts appear here as soon as somebody signs in for the first time.',
+                  message: l10n.accountsAccountsAppearHereAsSoonAsSomebody,
                   icon: Icons.badge_outlined,
                 ),
               AccountsLoaded() => _AccountsList(
@@ -212,6 +214,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: AccountsScreen.maxWidth,
@@ -221,9 +224,9 @@ class _Header extends StatelessWidget {
           // #112, Decision B) — the wording that used to live here
           // ("Everyone already dealt with…") is exactly the confusion
           // that issue reports.
-          child: const AppPageHeader(
-            title: 'Accounts',
-            description: 'Every Account on this plant: what it holds, and whether it can sign in.',
+          child: AppPageHeader(
+            title: l10n.navAccounts,
+            description: l10n.accountsEveryAccountOnThisPlantWhatIt,
           ),
         ),
       ),
@@ -350,6 +353,7 @@ class _AccountsListState extends State<_AccountsList> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     // Filtered here, immediately before the rows are built, so a term can
     // only ever narrow rows this Screen already read (issue #191).
     final matches = _matchingAccounts;
@@ -387,8 +391,8 @@ class _AccountsListState extends State<_AccountsList> {
                   padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
                   child: AppFilterField(
                     name: AccountsScreen.filterFieldName,
-                    label: 'Filter Accounts',
-                    helperText: 'By name, email or role.',
+                    label: l10n.commonFilterAccounts,
+                    helperText: l10n.accountsByNameEmailOrRole,
                     term: _term,
                     onChanged: (term) => setState(() => _term = term),
                     shown: matches.length,
@@ -400,10 +404,8 @@ class _AccountsListState extends State<_AccountsList> {
                   child: matches.isEmpty
                       ? PlatformEmptyState.noneMatched(
                           key: AccountsScreen.noMatchKey,
-                          title: 'No Accounts match',
-                          message: 'This plant has Accounts, but none matches '
-                              '"${_term.trim()}". Try a different name, email or role, or '
-                              'clear the filter.',
+                          title: l10n.commonNoAccountsMatch,
+                          message: l10n.accountsThisPlantHasAccountsButNoneMatches(_term.trim()),
                         )
                       : narrow
                           ? ListView.separated(
@@ -457,6 +459,7 @@ class _AccountsListState extends State<_AccountsList> {
 /// enough for the label to win) and the register's seven text columns get the
 /// other 283px.
 double _actionsColumnWidth(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
   // The header's own style (`AppTableHeader`), so the label and the column are
   // measured against the same thing — and scaled with the reader's text, like
   // every other stated width (``AppLayout.atTextScale``).
@@ -464,7 +467,7 @@ double _actionsColumnWidth(BuildContext context) {
         fontWeight: FontWeight.w600,
         letterSpacing: 0.2,
       );
-  final headerLabel = _measure(context, 'Actions', label);
+  final headerLabel = _measure(context, l10n.commonActions, label);
   final target = AppLayout.atTextScale(context, AppTouchTarget.min);
   final widest = headerLabel > target ? headerLabel : target;
   return widest + Spacing.sm;
@@ -496,14 +499,14 @@ double _measure(BuildContext context, String text, TextStyle? style) {
 /// rather than in the Employee cell itself (a flex-sized column): that cell is
 /// narrow enough at ordinary widths that a button folded into it overflowed.
 List<AppTableColumn> _columns(BuildContext context) => [
-      const AppTableColumn('Name', flex: 5),
-      const AppTableColumn('Email', flex: 4),
-      const AppTableColumn('Role', flex: 3),
-      const AppTableColumn('Standing', flex: 4),
-      const AppTableColumn('Since', flex: 2),
-      const AppTableColumn('Grants', flex: 2),
-      const AppTableColumn('Employee', flex: 3),
-      AppTableColumn('Actions', width: _actionsColumnWidth(context), align: AppColumnAlign.end),
+      AppTableColumn(AppLocalizations.of(context).commonName, flex: 5),
+      AppTableColumn(AppLocalizations.of(context).accountsEmail, flex: 4),
+      AppTableColumn(AppLocalizations.of(context).accountsRole, flex: 3),
+      AppTableColumn(AppLocalizations.of(context).accountsStanding, flex: 4),
+      AppTableColumn(AppLocalizations.of(context).accountsSince, flex: 2),
+      AppTableColumn(AppLocalizations.of(context).accountsGrants, flex: 2),
+      AppTableColumn(AppLocalizations.of(context).titleEmployee, flex: 3),
+      AppTableColumn(AppLocalizations.of(context).commonActions, width: _actionsColumnWidth(context), align: AppColumnAlign.end),
     ];
 
 /// The tone a standing carries: an Account that may act reads as finished, one
@@ -773,6 +776,7 @@ class _RowActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     // Neither action is offered on the caller's own row: the server refuses
@@ -802,7 +806,7 @@ class _RowActions extends StatelessWidget {
       if (account.isPending)
         _RowOverflowItem(
           key: AccountsScreen.reviewInApprovalsKey(account.id),
-          label: 'Review in Approvals',
+          label: l10n.accountsReviewInApprovals,
           onSelected: () => context.go(Routes.approvals),
         )
       else ...[
@@ -812,12 +816,12 @@ class _RowActions extends StatelessWidget {
         if (account.isApproved)
           _RowOverflowItem(
             key: AccountsScreen.activeKey(account.id),
-            label: account.isActive ? 'Deactivate' : 'Reactivate',
+            label: account.isActive ? l10n.commonDeactivate : l10n.commonReactivate,
             onSelected: () => _toggleActive(context, account),
           ),
         _RowOverflowItem(
           key: AccountsScreen.correctKey(account.id),
-          label: 'Change',
+          label: l10n.accountsChange,
           onSelected: () => AccountCorrectionDialog.open(context, account),
         ),
         // The Employee link's own control (issue #116, ADR-0022), the password
@@ -827,17 +831,17 @@ class _RowActions extends StatelessWidget {
         // own.
         _RowOverflowItem(
           key: AccountsScreen.linkEmployeeKey(account.id),
-          label: account.linkedEmployee == null ? 'Link an Employee' : 'Change Employee link',
+          label: account.linkedEmployee == null ? l10n.accountsLinkAnEmployee : l10n.commonChangeEmployeeLink,
           onSelected: () => AccountEmployeeDialog.open(context, account),
         ),
         _RowOverflowItem(
           key: AccountsScreen.resetPasswordKey(account.id),
-          label: 'Reset password',
+          label: l10n.commonResetPassword,
           onSelected: () => AccountPasswordDialog.open(context, account),
         ),
         _RowOverflowItem(
           key: AccountsScreen.rolesKey(account.id),
-          label: 'Roles',
+          label: l10n.navRoles,
           onSelected: () => _openRoles(context),
         ),
       ],
@@ -888,9 +892,10 @@ class _RowOverflowButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return IconButton(
       key: AccountsScreen.rowActionsKey(accountId),
-      tooltip: 'Actions',
+      tooltip: l10n.commonActions,
       icon: const Icon(Icons.more_vert, size: 20),
       style: IconButton.styleFrom(
         minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
@@ -949,11 +954,12 @@ class _GrantsCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (account.role == Roles.admin) {
-      return Text('Everywhere', key: AccountsScreen.grantsKey(account.id));
+      return Text(l10n.accountsEverywhere, key: AccountsScreen.grantsKey(account.id));
     }
     if (account.grants.isEmpty) {
-      return Text('None', key: AccountsScreen.grantsKey(account.id));
+      return Text(l10n.accountsNone, key: AccountsScreen.grantsKey(account.id));
     }
     final count = account.grants.length;
     return Tooltip(
@@ -961,7 +967,7 @@ class _GrantsCell extends StatelessWidget {
       message: [
         for (final grant in account.grants) _grantLabel(grant),
       ].join('\n'),
-      child: Text('$count Org Unit${count == 1 ? '' : 's'}', overflow: TextOverflow.ellipsis),
+      child: Text(l10n.accountsOrgUnit(count), overflow: TextOverflow.ellipsis),
     );
   }
 }
@@ -975,19 +981,20 @@ class _Grants extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
 
     if (account.role == Roles.admin) {
       return Text(
-        'Acts everywhere, in every Site. No Org Unit Grants, and none needed.',
+        l10n.accountsActsEverywhereInEverySiteNoOrg,
         key: AccountsScreen.grantsKey(account.id),
         style: muted,
       );
     }
     if (account.grants.isEmpty) {
       return Text(
-        'No Org Unit Grants. Can sign in, but cannot act in any Org Unit.',
+        l10n.accountsNoOrgUnitGrantsCanSignIn,
         key: AccountsScreen.grantsKey(account.id),
         style: muted,
       );
@@ -1017,6 +1024,7 @@ class _Grants extends StatelessWidget {
 /// is yes — the same shape the Approval queue's rejection uses. Reactivating
 /// is not asked about: it takes nothing away.
 Future<void> _toggleActive(BuildContext context, ManagedAccount account) async {
+  final l10n = AppLocalizations.of(context);
   final bloc = context.read<AccountsBloc>();
   if (!account.isActive) {
     bloc.add(AccountsActiveToggled(accountId: account.id, isActive: true));
@@ -1025,12 +1033,10 @@ Future<void> _toggleActive(BuildContext context, ManagedAccount account) async {
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AppConfirmDialog(
-      title: 'Deactivate this Account?',
+      title: l10n.accountsDeactivateThisAccount,
       description:
-          '${account.email} will not be able to sign in. Nothing is deleted — '
-          'the role and the Org Unit Grants stay exactly as they are, and an '
-          'administrator can reactivate the Account at any time.',
-      confirmLabel: 'Deactivate',
+          l10n.accountsWillNotBeAbleToSignIn(account.email),
+      confirmLabel: l10n.commonDeactivate,
       dismissLabel: 'Cancel',
       onConfirm: () => Navigator.of(dialogContext).pop(true),
       onDismiss: () => Navigator.of(dialogContext).pop(false),

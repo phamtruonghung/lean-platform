@@ -28,6 +28,7 @@ import 'package:flutter/material.dart' hide Action;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../actions/actions.dart';
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'observation_detail_bloc.dart';
@@ -122,6 +123,7 @@ class _SafetyObservationRaiseActionDialogState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final record = widget.observation;
 
@@ -129,20 +131,19 @@ class _SafetyObservationRaiseActionDialogState
       listener: _onDetailChanged,
       // A form (520): four fields (§11).
       child: AppDialog(
-        title: 'Raise an Action',
+        title: l10n.commonRaiseAnAction,
         size: AppDialogSize.form,
-        description: 'This observation is recorded at ${record.orgUnitName}, and the Action is '
-            'raised there — a problem is owned where it was seen.',
+        description: l10n.observationRaiseActionThisObservationIsRecordedAtAndThe(record.orgUnitName),
         actions: [
           AppDialogAction(
             id: SafetyObservationRaiseActionDialog._dismissId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: SafetyObservationRaiseActionDialog._submitId,
-            label: 'Raise it',
+            label: l10n.actionFormRaiseIt,
             onPressed: _complete ? _submit : null,
           ),
         ],
@@ -154,13 +155,13 @@ class _SafetyObservationRaiseActionDialogState
               key: SafetyObservationRaiseActionDialog.actionTypeKey,
               initialValue: _actionType,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Kind of Action',
-                helperText: 'Choose what this is.',
+              decoration: InputDecoration(
+                labelText: l10n.commonKindOfAction,
+                helperText: l10n.observationRaiseActionChooseWhatThisIs,
                 border: OutlineInputBorder(),
               ),
               items: [
-                const DropdownMenuItem<String?>(value: null, child: Text('Choose a kind')),
+                DropdownMenuItem<String?>(value: null, child: Text(l10n.observationRaiseActionChooseAKind)),
                 for (final type in ActionType.values)
                   DropdownMenuItem<String?>(value: type.wire, child: Text(type.label)),
               ],
@@ -175,10 +176,9 @@ class _SafetyObservationRaiseActionDialogState
               enabled: !_awaiting,
               maxLines: 1,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'What needs doing?',
-                helperText: 'The Action is read in the action log, so say the work, not the '
-                    'observation.',
+              decoration: InputDecoration(
+                labelText: l10n.observationRaiseActionWhatNeedsDoing,
+                helperText: l10n.observationRaiseActionTheActionIsReadInTheAction,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -189,10 +189,9 @@ class _SafetyObservationRaiseActionDialogState
               enabled: !_awaiting,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Anything known yet',
-                helperText: 'Optional. The Safety observation itself is already linked as '
-                    'evidence.',
+              decoration: InputDecoration(
+                labelText: l10n.commonAnythingKnownYet,
+                helperText: l10n.observationRaiseActionOptionalTheSafetyObservationItselfIsAlready,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -201,9 +200,9 @@ class _SafetyObservationRaiseActionDialogState
               key: SafetyObservationRaiseActionDialog.priorityKey,
               initialValue: _priority,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Priority',
-                helperText: '1 is worst.',
+              decoration: InputDecoration(
+                labelText: l10n.commonPriority,
+                helperText: l10n.common1IsWorst,
                 border: OutlineInputBorder(),
               ),
               items: [

@@ -45,6 +45,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -112,6 +113,7 @@ class ComplaintsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<ComplaintsBloc>().state;
 
     return _RefreshOnMount(
@@ -132,15 +134,15 @@ class ComplaintsScreen extends StatelessWidget {
                 ComplaintsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
                 ComplaintsUnavailable(message: final message) => PlatformFailureState(
                     key: failedKey,
-                    title: 'The complaint register could not be read',
+                    title: l10n.complaintsTheComplaintRegisterCouldNotBeRead,
                     message: message,
                     retryKey: retryKey,
                     onRetry: () => context.read<ComplaintsBloc>().add(const ComplaintsStarted()),
                   ),
-                ComplaintsLoaded(siteId: null) => const PlatformEmptyState.noneExist(
+                ComplaintsLoaded(siteId: null) => PlatformEmptyState.noneExist(
                     key: noSiteKey,
-                    title: 'No Site to show',
-                    message: 'Your Account can see no Site yet, so there is nothing to read here.',
+                    title: l10n.nonconformancesNoSiteTitle,
+                    message: l10n.nonconformancesNoSiteMessage,
                     icon: Icons.factory_outlined,
                   ),
                 ComplaintsLoaded(complaints: final rows, filters: final filters)
@@ -193,6 +195,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final loaded = state is ComplaintsLoaded ? state as ComplaintsLoaded : null;
 
     return Center(
@@ -201,10 +204,9 @@ class _Header extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
-            title: 'Customer complaints',
+            title: l10n.navCustomerComplaints,
             description:
-                'What customers have complained about at this Site, and whether the '
-                'product they complained about is under control.',
+                l10n.complaintsWhatCustomersHaveComplainedAboutAtThis,
             actions: [
               if (loaded != null)
                 FilledButton.icon(
@@ -213,7 +215,7 @@ class _Header extends StatelessWidget {
                       ? null
                       : () => context.go('${Routes.complaints}/new'),
                   icon: const Icon(Icons.add),
-                  label: const Text('Record a complaint'),
+                  label: Text(l10n.complaintsRecordAComplaint),
                   style: FilledButton.styleFrom(
                     minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
@@ -234,6 +236,7 @@ class _Filters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final filters = loaded.filters;
 
@@ -247,7 +250,7 @@ class _Filters extends StatelessWidget {
               initialValue: loaded.siteId,
               isDense: true,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.commonSite, border: OutlineInputBorder()),
               items: [
                 for (final site in loaded.sites)
                   DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -262,7 +265,7 @@ class _Filters extends StatelessWidget {
           key: ComplaintsScreen.orgUnitFilterKey,
           onPressed: () => ComplaintOrgUnitFilterDialog.open(context, siteId: loaded.siteId),
           icon: const Icon(Icons.account_tree_outlined),
-          label: Text(filters.orgUnitName ?? 'All Org Units'),
+          label: Text(filters.orgUnitName ?? l10n.commonAllOrgUnits),
         ),
         SizedBox(
           width: AppLayout.atTextScale(context, 190),
@@ -271,9 +274,9 @@ class _Filters extends StatelessWidget {
             initialValue: filters.status,
             isDense: true,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: l10n.commonStatus, border: OutlineInputBorder()),
             items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('Any status')),
+              DropdownMenuItem<String?>(value: null, child: Text(l10n.nonconformancesAnyStatus)),
               for (final status in ComplaintStatus.values)
                 DropdownMenuItem<String?>(
                   value: status,
@@ -289,7 +292,7 @@ class _Filters extends StatelessWidget {
             key: ComplaintsScreen.clearFiltersKey,
             onPressed: () =>
                 context.read<ComplaintsBloc>().add(const ComplaintsFiltersCleared()),
-            child: Text('Clear filters', style: theme.textTheme.bodyMedium),
+            child: Text(l10n.workOrdersClearFilters, style: theme.textTheme.bodyMedium),
           ),
       ],
     );
@@ -303,6 +306,7 @@ class _Truncated extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return Center(
       child: AppPageFrame(
@@ -311,8 +315,7 @@ class _Truncated extends StatelessWidget {
           key: ComplaintsScreen.truncatedKey,
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.sm),
           child: Text(
-            'There are more complaints than this list shows. Narrow it by Org Unit or by status '
-            'to see the rest.',
+            l10n.complaintsThereAreMoreComplaintsThanThisList,
             style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
           ),
         ),
@@ -331,21 +334,21 @@ class _Empty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (isFiltered) {
       return PlatformEmptyState.noneMatched(
         key: ComplaintsScreen.emptyMatchedKey,
-        title: 'Nothing matches these filters',
-        message: 'The register has complaints, but none of them is in the area or state you '
-            'picked.',
-        actionLabel: 'Clear the filters',
+        title: l10n.nonconformancesNoMatchTitle,
+        message: l10n.complaintsTheRegisterHasComplaintsButNoneOf,
+        actionLabel: l10n.nonconformancesClearTheFilters,
         actionKey: ComplaintsScreen.emptyClearFiltersKey,
         onAction: () => context.read<ComplaintsBloc>().add(const ComplaintsFiltersCleared()),
       );
     }
-    return const PlatformEmptyState.noneExist(
+    return PlatformEmptyState.noneExist(
       key: ComplaintsScreen.emptyKey,
-      title: 'No complaints',
-      message: 'No customer has complained about anything from this Site.',
+      title: l10n.complaintsNoComplaints,
+      message: l10n.complaintsNoCustomerHasComplainedAboutAnythingFrom,
       icon: Icons.support_agent_outlined,
     );
   }
@@ -395,8 +398,9 @@ double _stateColumnWidth(BuildContext context) {
 /// The Actions column: the one Open button's label, the button's own horizontal
 /// padding either side ([Spacing.xl]) and the slot's gutter.
 double _openColumnWidth(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
   final painter = TextPainter(
-    text: TextSpan(text: 'Open', style: Theme.of(context).textTheme.labelLarge),
+    text: TextSpan(text: l10n.commonOpen, style: Theme.of(context).textTheme.labelLarge),
     textDirection: Directionality.of(context),
     textScaler: MediaQuery.textScalerOf(context),
     maxLines: 1,
@@ -409,12 +413,12 @@ double _openColumnWidth(BuildContext context) {
 /// The register's one column spec. [AppTableHeader] and every [AppTableRow] are
 /// built from this list, so a band label and its cells start at the same x.
 List<AppTableColumn> _columns(BuildContext context) => [
-      AppTableColumn('Complaint', width: _numberColumnWidth(context)),
-      const AppTableColumn('Customer and product', flex: 4),
-      AppTableColumn('State', width: _stateColumnWidth(context)),
-      const AppTableColumn('Response due', flex: 3),
-      const AppTableColumn('Control', flex: 4),
-      AppTableColumn('Actions', width: _openColumnWidth(context), align: AppColumnAlign.end),
+      AppTableColumn(AppLocalizations.of(context).complaintsComplaint, width: _numberColumnWidth(context)),
+      AppTableColumn(AppLocalizations.of(context).complaintsCustomerAndProduct, flex: 4),
+      AppTableColumn(AppLocalizations.of(context).commonState, width: _stateColumnWidth(context)),
+      AppTableColumn(AppLocalizations.of(context).complaintsResponseDue, flex: 3),
+      AppTableColumn(AppLocalizations.of(context).commonControl, flex: 4),
+      AppTableColumn(AppLocalizations.of(context).groupActions, width: _openColumnWidth(context), align: AppColumnAlign.end),
     ];
 
 /// The numbering a reader scans for, and the sentence the row is read as: who
@@ -441,11 +445,11 @@ List<Widget> _marks(BuildContext context, CustomerComplaint row) => [
       if (row.isOverdue)
         StatusChip(
           key: ComplaintsScreen.rowOverdueKey(row.id),
-          label: 'Past due',
+          label: AppLocalizations.of(context).commonPastDue,
           tone: StatusTone.danger,
         ),
       if (row.isWarranty)
-        const StatusChip(label: 'Warranty', tone: StatusTone.info),
+        StatusChip(label: AppLocalizations.of(context).complaintsWarranty, tone: StatusTone.info),
     ];
 
 class _Register extends StatelessWidget {
@@ -503,6 +507,7 @@ class _ComplaintTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final dense = AppTypography.dense(context);
     final row = complaint;
@@ -554,7 +559,7 @@ class _ComplaintTableRow extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
-                  child: const Text('Open'),
+                  child: Text(l10n.commonOpen),
                 ),
               ],
             ),
@@ -575,6 +580,7 @@ class _ComplaintCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final row = complaint;
 
@@ -640,7 +646,7 @@ class _ComplaintCard extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                     ),
-                    child: const Text('Open'),
+                    child: Text(l10n.commonOpen),
                   ),
                   const SizedBox(width: Spacing.xs),
                   SlideShowToggle(

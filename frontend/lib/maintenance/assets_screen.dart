@@ -30,6 +30,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_confirm_dialog.dart';
@@ -126,6 +127,7 @@ class AssetsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<AssetsBloc>().state;
 
     return Scaffold(
@@ -139,7 +141,7 @@ class AssetsScreen extends StatelessWidget {
               AssetsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
               AssetsUnavailable(message: final message) => PlatformFailureState(
                 key: AssetsScreen.failedKey,
-                title: 'The register could not be read',
+                title: l10n.assetsTheRegisterCouldNotBeRead,
                 message: message,
                 retryKey: AssetsScreen.retryKey,
                 onRetry: () => context.read<AssetsBloc>().add(const AssetsStarted()),
@@ -149,11 +151,10 @@ class AssetsScreen extends StatelessWidget {
                 maxWidth: maxWidth,
               ),
               AssetsLoaded(assets: final assets) when assets.isEmpty =>
-                const PlatformEmptyState.noneExist(
+                PlatformEmptyState.noneExist(
                   key: AssetsScreen.emptyKey,
-                  title: 'No Assets on the register yet',
-                  message: 'Nothing has been recorded at this Site. Add a machine and it '
-                      'can be worked on the same day.',
+                  title: l10n.assetsNoAssetsOnTheRegisterYet,
+                  message: l10n.assetsNothingHasBeenRecordedAtThisSite,
                   icon: Icons.precision_manufacturing_outlined,
                 ),
               AssetsLoaded(
@@ -183,6 +184,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final loaded = state is AssetsLoaded ? state as AssetsLoaded : null;
 
     return Center(
@@ -191,10 +193,9 @@ class _Header extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
-            title: 'Assets',
+            title: l10n.navAssets,
             description:
-                'Every machine on the register at this Site, and the Org '
-                'Unit each one sits at.',
+                l10n.assetsEveryMachineOnTheRegisterAtThis,
             actions: [
               if (canPlaceAnAsset && loaded != null)
                 FilledButton.icon(
@@ -203,7 +204,7 @@ class _Header extends StatelessWidget {
                       ? null
                       : () => AssetFormDialog.open(context, siteId: loaded.siteId),
                   icon: const Icon(Icons.add),
-                  label: const Text('Add an Asset'),
+                  label: Text(l10n.commonAddAnAsset),
                   style: FilledButton.styleFrom(
                     minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
@@ -222,8 +223,8 @@ class _Header extends StatelessWidget {
                             key: AssetsScreen.siteKey,
                             initialValue: loaded.siteId,
                             isDense: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Site',
+                            decoration: InputDecoration(
+                              labelText: l10n.commonSite,
                               border: OutlineInputBorder(),
                             ),
                             items: [
@@ -238,7 +239,7 @@ class _Header extends StatelessWidget {
                         ),
                       FilterChip(
                         key: AssetsScreen.showRetiredKey,
-                        label: const Text('Show retired'),
+                        label: Text(l10n.assetsShowRetired),
                         selected: loaded.showRetired,
                         // Same guard as the row actions below: toggling this while a
                         // mutation is in flight would interleave the re-read with the
@@ -438,6 +439,7 @@ class _AssetsListState extends State<_AssetsList> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     // Filtered here, immediately before the rows are built, and the tree is
     // built from the *matches*: `_AssetTree` treats an Asset whose parent is
     // absent as a root, so a machine found at any depth still renders with
@@ -475,8 +477,8 @@ class _AssetsListState extends State<_AssetsList> {
                           width: box.maxWidth,
                           child: AppFilterField(
                             name: AssetsScreen.filterFieldName,
-                            label: 'Filter Assets',
-                            helperText: 'By name or code.',
+                            label: l10n.assetsFilterAssets,
+                            helperText: l10n.jobRolesByNameOrCode,
                             term: _term,
                             onChanged: (term) => setState(() => _term = term),
                             shown: matches.length,
@@ -492,11 +494,9 @@ class _AssetsListState extends State<_AssetsList> {
                   child: matches.isEmpty
                       ? PlatformEmptyState.noneMatched(
                           key: AssetsScreen.noMatchKey,
-                          title: 'No Assets match',
+                          title: l10n.assetsNoAssetsMatch,
                           message:
-                              'This Site has Assets on the register, but none matches '
-                              '"${_term.trim()}". Try a different name or code, or clear the '
-                              'filter.',
+                              l10n.assetsThisSiteHasAssetsOnTheRegister(_term.trim()),
                         )
                       : narrow
                       ? ListView.separated(
@@ -581,11 +581,11 @@ double _criticalityColumnWidth(BuildContext context) {
 /// The register's one column spec. [AppTableHeader] and every [AppTableRow] are
 /// built from this list, so a header label and its cells start at the same x.
 List<AppTableColumn> _columns(BuildContext context) => [
-  const AppTableColumn('Name', flex: 3),
-  const AppTableColumn('Code · Type', flex: 3),
-  const AppTableColumn('Org Unit', flex: 2),
-  AppTableColumn('Criticality', width: _criticalityColumnWidth(context)),
-  AppTableColumn('Actions', width: _actionsColumnWidth(context), align: AppColumnAlign.end),
+  AppTableColumn(AppLocalizations.of(context).commonName, flex: 3),
+  AppTableColumn(AppLocalizations.of(context).assetsCodeType, flex: 3),
+  AppTableColumn(AppLocalizations.of(context).commonOrgUnit, flex: 2),
+  AppTableColumn(AppLocalizations.of(context).commonCriticality, width: _criticalityColumnWidth(context)),
+  AppTableColumn(AppLocalizations.of(context).groupActions, width: _actionsColumnWidth(context), align: AppColumnAlign.end),
 ];
 
 /// The card's inner width (at a text scale of 1) below which the Org Unit and
@@ -618,6 +618,7 @@ class _AssetRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: EdgeInsets.only(left: depth * Spacing.xl),
       child: Card(
@@ -663,7 +664,7 @@ class _AssetRow extends StatelessWidget {
                             const SizedBox(width: Spacing.sm),
                             StatusChip(
                               key: AssetsScreen.retiredChipKey(asset.id),
-                              label: 'Retired',
+                              label: l10n.orgUnitsRetired,
                               tone: StatusTone.neutral,
                             ),
                           ],
@@ -739,6 +740,7 @@ class _AssetActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     const size = Size(AppTouchTarget.min, AppTouchTarget.min);
     final style = OutlinedButton.styleFrom(minimumSize: size);
     return Wrap(
@@ -751,7 +753,7 @@ class _AssetActions extends StatelessWidget {
               : AssetsScreen.reinstateKey(asset.id),
           onPressed: disabled ? null : () => _toggleActive(context, asset),
           style: style,
-          child: Text(asset.isActive ? 'Retire' : 'Reinstate'),
+          child: Text(asset.isActive ? l10n.orgUnitsRetire : l10n.commonReinstate),
         ),
         // Absent outright for a caller without a write Grant reaching this
         // Asset's Org Unit (issue #173) — unlike every other action on this
@@ -762,7 +764,7 @@ class _AssetActions extends StatelessWidget {
             key: AssetsScreen.correctKey(asset.id),
             onPressed: disabled ? null : () => AssetFormDialog.open(context, asset: asset),
             style: style,
-            child: const Text('Correct details…'),
+            child: Text(l10n.assetsCorrectDetails),
           ),
         // Labelled for what it changes, not "Move": the register already reads
         // "move" as Nest under…/Detach, which moves an Asset in the tree rather
@@ -771,7 +773,7 @@ class _AssetActions extends StatelessWidget {
           key: AssetsScreen.orgUnitKey(asset.id),
           onPressed: disabled ? null : () => AssetMoveDialog.open(context, asset: asset),
           style: style,
-          child: const Text('Change Org Unit…'),
+          child: Text(l10n.assetsChangeOrgUnit),
         ),
         if (asset.parentId != null)
           OutlinedButton(
@@ -782,14 +784,14 @@ class _AssetActions extends StatelessWidget {
                     AssetParentChanged(assetId: asset.id, parentId: null),
                   ),
             style: style,
-            child: const Text('Detach'),
+            child: Text(l10n.assetsDetach),
           )
         else
           OutlinedButton(
             key: AssetsScreen.nestKey(asset.id),
             onPressed: disabled ? null : () => _openParentChooser(context, tree, asset),
             style: style,
-            child: const Text('Nest under…'),
+            child: Text(l10n.assetsNestUnder),
           ),
       ],
     );
@@ -820,6 +822,7 @@ class _AssetRowActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     const size = Size(AppTouchTarget.min, AppTouchTarget.min);
     final items = <(Key, String, VoidCallback)>[
       if (canCorrectAsset(asset.orgUnitId))
@@ -856,13 +859,13 @@ class _AssetRowActions extends StatelessWidget {
               : AssetsScreen.reinstateKey(asset.id),
           onPressed: disabled ? null : () => _toggleActive(context, asset),
           style: OutlinedButton.styleFrom(minimumSize: size),
-          child: Text(asset.isActive ? 'Retire' : 'Reinstate'),
+          child: Text(asset.isActive ? l10n.orgUnitsRetire : l10n.commonReinstate),
         ),
         const SizedBox(width: Spacing.sm),
         Builder(
           builder: (buttonContext) => IconButton(
             key: AssetsScreen.rowActionsKey(asset.id),
-            tooltip: 'More actions',
+            tooltip: l10n.commonMoreActions,
             icon: const Icon(Icons.more_vert),
             style: IconButton.styleFrom(minimumSize: size),
             onPressed: disabled ? null : () => _openMenu(buttonContext, items),
@@ -923,6 +926,7 @@ class _AssetTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final dense = AppTypography.dense(context);
     final muted = dense?.copyWith(color: palette.textMuted);
@@ -955,7 +959,7 @@ class _AssetTableRow extends StatelessWidget {
                   : shrinkWrapTargets(
                       StatusChip(
                         key: AssetsScreen.retiredChipKey(asset.id),
-                        label: 'Retired',
+                        label: l10n.orgUnitsRetired,
                         tone: StatusTone.neutral,
                       ),
                     ),
@@ -986,6 +990,7 @@ class _AssetTableRow extends StatelessWidget {
 /// parts still fitted (409). Reinstating is not asked about — it takes
 /// nothing away.
 Future<void> _toggleActive(BuildContext context, Asset asset) async {
+  final l10n = AppLocalizations.of(context);
   final bloc = context.read<AssetsBloc>();
   if (!asset.isActive) {
     bloc.add(AssetActiveToggled(assetId: asset.id, isActive: true));
@@ -994,11 +999,10 @@ Future<void> _toggleActive(BuildContext context, Asset asset) async {
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AppConfirmDialog(
-      title: 'Retire this Asset?',
+      title: l10n.assetsRetireThisAsset,
       description:
-          '${asset.name} will no longer appear on the active register. Nothing '
-          'is deleted, and it can be reinstated at any time.',
-      confirmLabel: 'Retire',
+          l10n.assetsWillNoLongerAppearOnTheActive(asset.name),
+      confirmLabel: l10n.orgUnitsRetire,
       dismissLabel: 'Cancel',
       onDismiss: () => Navigator.of(dialogContext).pop(false),
       onConfirm: () => Navigator.of(dialogContext).pop(true),
@@ -1017,6 +1021,7 @@ Future<void> _toggleActive(BuildContext context, Asset asset) async {
 /// the server still refuses a self-parent, a cycle, or a retired parent
 /// independently.
 Future<void> _openParentChooser(BuildContext context, _AssetTree tree, Asset asset) async {
+  final l10n = AppLocalizations.of(context);
   final bloc = context.read<AssetsBloc>();
   final excluded = {asset.id, ...tree.descendantsOf(asset.id)};
   final candidates = [
@@ -1027,7 +1032,7 @@ Future<void> _openParentChooser(BuildContext context, _AssetTree tree, Asset ass
     context: context,
     builder: (dialogContext) => AppDialog(
       key: AssetsScreen.parentChooserKey,
-      title: 'Nest under…',
+      title: l10n.assetsNestUnder,
       // A picker (460): one Asset to choose from a list. It stays a bare
       // `showDialog` that returns the id, dismissed by its Cancel, Esc or the
       // barrier exactly as the `SimpleDialog` it replaces was.
@@ -1035,7 +1040,7 @@ Future<void> _openParentChooser(BuildContext context, _AssetTree tree, Asset ass
       actions: [
         AppDialogAction(
           id: 'asset-parent-chooser-cancel',
-          label: 'Cancel',
+          label: l10n.commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(dialogContext).pop(),
         ),
@@ -1046,7 +1051,7 @@ Future<void> _openParentChooser(BuildContext context, _AssetTree tree, Asset ass
         children: [
           if (candidates.isEmpty)
             Text(
-              'There is nothing else on this register it could sit beneath.',
+              l10n.assetsThereIsNothingElseOnThisRegister,
               style: AppTypography.dense(dialogContext)
                   ?.copyWith(color: AppColors.of(dialogContext).textPrimary),
             ),

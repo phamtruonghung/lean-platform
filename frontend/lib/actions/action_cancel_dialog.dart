@@ -15,6 +15,7 @@ import 'package:flutter/material.dart' hide Action;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'action.dart';
@@ -31,6 +32,7 @@ class ActionCancelDialogHost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<ActionDetailBloc>().state;
 
     return switch (state) {
@@ -40,13 +42,13 @@ class ActionCancelDialogHost extends StatelessWidget {
         ),
       ActionDetailUnavailable(message: final message) => AppDialog(
           key: alreadyEndedKey,
-          title: 'That Action could not be read',
+          title: l10n.commonThatActionCouldNotBeRead,
           description: message,
           size: AppDialogSize.decision,
           actions: [
             AppDialogAction(
               id: 'close',
-              label: 'Back',
+              label: l10n.commonBack,
               kind: AppDialogActionKind.dismiss,
               onPressed: () => context.pop(),
             ),
@@ -55,15 +57,17 @@ class ActionCancelDialogHost extends StatelessWidget {
       ActionDetailLoaded(action: final action) => action.status == 'done' || action.status == 'cancelled'
           ? AppDialog(
               key: alreadyEndedKey,
-              title: 'That Action has ended',
+              title: l10n.commonThatActionHasEnded,
+              // The record's own wire token, not a localised word: see
+              // `action_escalate_dialog.dart`'s note on the same comparison.
               description: action.status == 'done'
-                  ? 'It is closed, so there is nothing left to call off.'
-                  : 'It was already cancelled.',
+                  ? l10n.actionCancelItIsClosedSoThereIsNothing
+                  : l10n.actionCancelItWasAlreadyCancelled,
               size: AppDialogSize.decision,
               actions: [
                 AppDialogAction(
                   id: 'close',
-                  label: 'Back to the Action',
+                  label: l10n.routerBackToAction,
                   kind: AppDialogActionKind.dismiss,
                   onPressed: () => context.pop(),
                 ),
@@ -128,17 +132,18 @@ class _ActionCancelDialogState extends State<ActionCancelDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocListener<ActionDetailBloc, ActionDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Call off ${widget.action.actionNo}?',
+        title: l10n.actionCancelCallOff(widget.action.actionNo),
         // A short form: one optional field (issue #398's four widths).
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: 'leave-alone',
-            label: 'Leave it alone',
+            label: l10n.actionCancelLeaveItAlone,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => context.pop(),
           ),
@@ -147,7 +152,7 @@ class _ActionCancelDialogState extends State<ActionCancelDialog> {
           // the way out rather than first.
           AppDialogAction(
             id: 'call-it-off',
-            label: 'Call it off',
+            label: l10n.actionCancelCallItOff,
             kind: AppDialogActionKind.destructive,
             onPressed: _awaiting ? null : _submit,
           ),
@@ -163,8 +168,7 @@ class _ActionCancelDialogState extends State<ActionCancelDialog> {
               ),
               const SizedBox(height: Spacing.sm),
               Text(
-                'Calling it off ends the record without claiming anything was done about it. '
-                'The row stays, with the reason you give it.',
+                l10n.actionCancelCallingItOffEndsTheRecordWithout,
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
@@ -175,9 +179,9 @@ class _ActionCancelDialogState extends State<ActionCancelDialog> {
                 enabled: !_awaiting,
                 minLines: 1,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Why (optional)',
-                  helperText: 'Raised in error, a duplicate, overtaken by events.',
+                decoration: InputDecoration(
+                  labelText: l10n.actionCancelWhyOptional,
+                  helperText: l10n.actionCancelRaisedInErrorADuplicateOvertakenBy,
                   border: OutlineInputBorder(),
                 ),
               ),

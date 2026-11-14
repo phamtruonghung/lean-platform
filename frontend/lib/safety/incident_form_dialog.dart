@@ -38,6 +38,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../people_api.dart';
@@ -236,6 +237,7 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     return BlocListener<SafetyIncidentsBloc, SafetyIncidentsState>(
@@ -246,18 +248,18 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
         // The widest of the four sizes (640): six fields, two of them
         // date-times, plus the Org Unit chooser (§11).
         child: AppDialog(
-          title: 'Record a Safety incident',
+          title: l10n.safetyIncidentRecord,
           size: AppDialogSize.wide,
           actions: [
             AppDialogAction(
               id: SafetyIncidentFormDialog._dismissId,
-              label: 'Cancel',
+              label: l10n.commonCancel,
               kind: AppDialogActionKind.dismiss,
               onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
             ),
             AppDialogAction(
               id: SafetyIncidentFormDialog._submitId,
-              label: 'Record it',
+              label: l10n.nonconformanceFormRecord,
               onPressed: _complete && !_awaiting ? _submit : null,
             ),
           ],
@@ -275,9 +277,9 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                           key: SafetyIncidentFormDialog.incidentTypeKey,
                           initialValue: _incidentType,
                           isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Incident type',
-                            helperText: 'What kind of event this was.',
+                          decoration: InputDecoration(
+                            labelText: l10n.safetyIncidentType,
+                            helperText: l10n.incidentFormWhatKindOfEventThisWas,
                             border: OutlineInputBorder(),
                           ),
                           items: IncidentType.dropdownItems(),
@@ -292,9 +294,9 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                           key: SafetyIncidentFormDialog.severityKey,
                           initialValue: _severityLevel,
                           isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Severity',
-                            helperText: 'The worst actual outcome to a person. Ladder order.',
+                          decoration: InputDecoration(
+                            labelText: l10n.nonconformancesSeverity,
+                            helperText: l10n.incidentFormTheWorstActualOutcomeToAPerson,
                             border: OutlineInputBorder(),
                           ),
                           // Ladder order, never alphabetical, and marking
@@ -318,9 +320,9 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                     minLines: 2,
                     maxLines: 4,
                     onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
-                      labelText: 'Description',
-                      helperText: 'What happened.',
+                    decoration: InputDecoration(
+                      labelText: l10n.commonDescription,
+                      helperText: l10n.incidentFormWhatHappened,
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -331,9 +333,9 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                     enabled: !_awaiting,
                     minLines: 2,
                     maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Immediate action (optional)',
-                      helperText: 'What was done at once.',
+                    decoration: InputDecoration(
+                      labelText: l10n.safetyImmediateAction,
+                      helperText: l10n.incidentFormWhatWasDoneAtOnce,
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -357,9 +359,8 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                   const SizedBox(height: Spacing.md),
                   AppSearchField<Employee>(
                     name: SafetyIncidentFormDialog.employeeFieldName,
-                    label: 'Injured Employee (optional)',
-                    helperText: 'Who was hurt, if anyone. Read only by Safety authority for '
-                        "this area and by the injured person's own Account.",
+                    label: l10n.incidentFormInjuredEmployeeOptional,
+                    helperText: l10n.incidentFormWhoWasHurtIfAnyoneReadOnly,
                     value: _employee,
                     enabled: !_awaiting,
                     onChanged: (employee) => setState(() => _employee = employee),
@@ -385,9 +386,8 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                   AppDateTimeField(
                     key: SafetyIncidentFormDialog.occurredAtKey,
                     name: 'safety-incident-occurred-at',
-                    label: 'Occurred at',
-                    helperText: 'When it happened. This is what decides the production day and '
-                        'shift it is filed against.',
+                    label: l10n.safetyOccurredAt,
+                    helperText: l10n.incidentFormWhenItHappenedThisIsWhatDecides,
                     value: _occurredAt,
                     enabled: !_awaiting,
                     onChanged: (value) => setState(() => _occurredAt = value),
@@ -396,8 +396,8 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                   AppDateTimeField(
                     key: SafetyIncidentFormDialog.reportedAtKey,
                     name: 'safety-incident-reported-at',
-                    label: 'Reported at (optional)',
-                    helperText: 'When it was reported, if that is not now.',
+                    label: l10n.incidentFormReportedAtOptional,
+                    helperText: l10n.incidentFormWhenItWasReportedIfThatIs,
                     value: _reportedAt,
                     optional: true,
                     enabled: !_awaiting,
@@ -408,9 +408,8 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                     selectedId: _orgUnit?.id,
                     enabled: !_awaiting,
                     showSitePicker: false,
-                    title: 'Where it happened',
-                    description: 'Choose the Org Unit the incident occurred at. This is what '
-                        'decides who may act on it.',
+                    title: l10n.incidentFormWhereItHappened,
+                    description: l10n.incidentFormChooseTheOrgUnitTheIncidentOccurred,
                     // Choosing a different Org Unit drops any Employee
                     // already picked: the picker only appears where this
                     // caller holds Safety authority, so carrying a pick across
@@ -427,7 +426,7 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                       key: SafetyIncidentFormDialog.chosenOrgUnitKey,
                       padding: const EdgeInsets.only(top: Spacing.sm),
                       child: Text(
-                        'This Safety incident will be recorded at ${_orgUnit!.name}.',
+                        l10n.incidentFormThisSafetyIncidentWillBeRecordedAt(_orgUnit!.name),
                         style: theme.textTheme.bodySmall
                             ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       ),
@@ -481,6 +480,7 @@ class _AssetField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     switch (status) {
       case _AssetsStatus.loading:
@@ -496,17 +496,17 @@ class _AssetField extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              failure ?? 'The Assets could not be read.',
+              failure ?? l10n.commonAssetsFailed,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
             ),
-            TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
+            TextButton(onPressed: enabled ? onRetry : null, child: Text(l10n.commonTryAgain)),
           ],
         );
       case _AssetsStatus.ready:
         return AppSearchField<Asset>(
           name: SafetyIncidentFormDialog.assetFieldName,
-          label: 'Asset (optional)',
-          helperText: 'Which machine, if the incident was on one. It must sit at that Org Unit.',
+          label: l10n.nonconformanceFormAssetOptional,
+          helperText: l10n.incidentFormWhichMachineIfTheIncidentWasOn,
           value: _selected,
           enabled: enabled,
           onChanged: (asset) => onChanged(asset?.id),

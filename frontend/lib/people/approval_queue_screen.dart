@@ -37,6 +37,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_confirm_dialog.dart';
@@ -92,6 +93,7 @@ class ApprovalQueueScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<ApprovalQueueBloc>().state;
 
     return Scaffold(
@@ -106,7 +108,7 @@ class ApprovalQueueScreen extends StatelessWidget {
               ApprovalQueueLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
               ApprovalQueueUnavailable(message: final message) => PlatformFailureState(
                   key: const ValueKey<String>('approval-queue-failed'),
-                  title: 'The queue could not be loaded',
+                  title: l10n.approvalQueueTheQueueCouldNotBeLoaded,
                   message: message,
                   retryKey: retryKey,
                   onRetry: () =>
@@ -116,10 +118,10 @@ class ApprovalQueueScreen extends StatelessWidget {
               // variant — distinct from the filter's own *none matched* below
               // (§7).
               ApprovalQueueLoaded(accounts: final accounts) when accounts.isEmpty =>
-                const PlatformEmptyState.noneExist(
+                PlatformEmptyState.noneExist(
                   key: ValueKey<String>('approval-queue-empty'),
-                  title: 'Nobody is waiting',
-                  message: 'Every Account has been dealt with. New requests appear here.',
+                  title: l10n.approvalQueueNobodyIsWaiting,
+                  message: l10n.approvalQueueEveryAccountHasBeenDealtWithNew,
                 ),
               ApprovalQueueLoaded(
                 accounts: final accounts,
@@ -144,14 +146,15 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: ApprovalQueueScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
-          child: const AppPageHeader(
-            title: 'Approval queue',
-            description: 'Everyone waiting to be let in to the Platform.',
+          child: AppPageHeader(
+            title: l10n.titleApprovalQueue,
+            description: l10n.approvalQueueEveryoneWaitingToBeLetInTo,
           ),
         ),
       ),
@@ -241,6 +244,7 @@ class _QueueListState extends State<_QueueList> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     // Filtered here, immediately before the row widgets are built, so a term
     // can only ever narrow rows this Screen already read (issue #191).
     final matches = _matchingAccounts;
@@ -254,8 +258,8 @@ class _QueueListState extends State<_QueueList> {
               padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
               child: AppFilterField(
                 name: ApprovalQueueScreen.filterFieldName,
-                label: 'Filter Accounts',
-                helperText: 'By email address.',
+                label: l10n.commonFilterAccounts,
+                helperText: l10n.approvalQueueByEmailAddress,
                 term: _term,
                 onChanged: (term) => setState(() => _term = term),
                 shown: matches.length,
@@ -267,9 +271,8 @@ class _QueueListState extends State<_QueueList> {
               child: matches.isEmpty
                   ? PlatformEmptyState.noneMatched(
                       key: ApprovalQueueScreen.noMatchKey,
-                      title: 'No Accounts match',
-                      message: 'Accounts are waiting, but none matches "${_term.trim()}". '
-                          'Try a different email address, or clear the filter.',
+                      title: l10n.commonNoAccountsMatch,
+                      message: l10n.approvalQueueAccountsAreWaitingButNoneMatchesTry(_term.trim()),
                     )
                   : _Register(
                       accounts: matches,
@@ -287,21 +290,22 @@ class _QueueListState extends State<_QueueList> {
 /// The one column spec: the band and every row are built from it, so a label and
 /// its cells start at the same x.
 List<AppTableColumn> _columns(BuildContext context) => [
-      const AppTableColumn('Account', flex: 5),
-      const AppTableColumn('Suggested Employee', flex: 4),
-      const AppTableColumn('Waiting', flex: 3),
-      AppTableColumn('Actions', width: _actionsColumnWidth(context), align: AppColumnAlign.end),
+      AppTableColumn(AppLocalizations.of(context).approvalQueueAccount, flex: 5),
+      AppTableColumn(AppLocalizations.of(context).approvalQueueSuggestedEmployee, flex: 4),
+      AppTableColumn(AppLocalizations.of(context).approvalQueueWaiting, flex: 3),
+      AppTableColumn(AppLocalizations.of(context).commonActions, width: _actionsColumnWidth(context), align: AppColumnAlign.end),
     ];
 
 /// Reject and Admit side by side at the 44px floor each states, plus gutters.
 /// Measured from the wider of the two labels *and* the two in-flight labels, so
 /// a row does not reflow the column the moment a request is dispatched.
 double _actionsColumnWidth(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
   final label = Theme.of(context).textTheme.labelLarge;
-  final reject = _measure(context, 'Rejecting…', label);
-  final rejectIdle = _measure(context, 'Reject', label);
-  final admit = _measure(context, 'Admitting…', label);
-  final admitIdle = _measure(context, 'Admit', label);
+  final reject = _measure(context, l10n.approvalQueueRejecting, label);
+  final rejectIdle = _measure(context, l10n.commonReject, label);
+  final admit = _measure(context, l10n.commonAdmitting, label);
+  final admitIdle = _measure(context, l10n.commonAdmit, label);
   final rejectWidth = reject > rejectIdle ? reject : rejectIdle;
   final admitWidth = admit > admitIdle ? admit : admitIdle;
   return rejectWidth + admitWidth + 4 * Spacing.md + 2 * Spacing.sm;
@@ -429,6 +433,7 @@ class _QueueTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final dense = AppTypography.dense(context);
 
@@ -467,7 +472,7 @@ class _QueueTableRow extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
-                  child: Text(rejecting ? 'Rejecting…' : 'Reject'),
+                  child: Text(rejecting ? l10n.approvalQueueRejecting : l10n.commonReject),
                 ),
                 const SizedBox(width: Spacing.sm),
                 FilledButton(
@@ -478,7 +483,7 @@ class _QueueTableRow extends StatelessWidget {
                   style: FilledButton.styleFrom(
                     minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
-                  child: Text(admitting ? 'Admitting…' : 'Admit'),
+                  child: Text(admitting ? l10n.commonAdmitting : l10n.commonAdmit),
                 ),
               ],
             ),
@@ -504,6 +509,7 @@ class _QueueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final dense = AppTypography.dense(context);
 
@@ -554,7 +560,7 @@ class _QueueCard extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
-                  child: Text(rejecting ? 'Rejecting…' : 'Reject'),
+                  child: Text(rejecting ? l10n.approvalQueueRejecting : l10n.commonReject),
                 ),
                 const SizedBox(width: Spacing.sm),
                 FilledButton(
@@ -565,7 +571,7 @@ class _QueueCard extends StatelessWidget {
                   style: FilledButton.styleFrom(
                     minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
-                  child: Text(admitting ? 'Admitting…' : 'Admit'),
+                  child: Text(admitting ? l10n.commonAdmitting : l10n.commonAdmit),
                 ),
               ],
             ),
@@ -583,16 +589,15 @@ class _QueueCard extends StatelessWidget {
 /// way out at the inline start, `Esc` cancels and initial focus is on the way
 /// out, so Enter on opening cannot turn somebody away.
 Future<void> _confirmRejection(BuildContext context, PendingAccount account) async {
+  final l10n = AppLocalizations.of(context);
   final bloc = context.read<ApprovalQueueBloc>();
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AppConfirmDialog(
-      title: 'Reject this Account?',
+      title: l10n.approvalQueueRejectThisAccount,
       description:
-          '${account.email} will not be let in to the Platform, and will be '
-          'told their request was turned down. An administrator can still admit '
-          'them later.',
-      confirmLabel: 'Reject',
+          l10n.approvalQueueWillNotBeLetInToThe(account.email),
+      confirmLabel: l10n.commonReject,
       dismissLabel: 'Cancel',
       onConfirm: () => Navigator.of(dialogContext).pop(true),
       onDismiss: () => Navigator.of(dialogContext).pop(false),

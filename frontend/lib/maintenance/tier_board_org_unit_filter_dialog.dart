@@ -13,6 +13,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
@@ -55,23 +56,24 @@ class TierBoardOrgUnitFilterDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<TierBoardBloc>().state;
     final selectedId = state is TierBoardLoaded ? state.orgUnitFilterId : null;
 
     // The picker width (460): one tree to choose a single Org Unit from (§11).
     return AppDialog(
-      title: 'Filter by Org Unit',
+      title: l10n.commonFilterByOrgUnit,
       size: AppDialogSize.picker,
       actions: [
         AppDialogAction(
           id: _cancelId,
-          label: 'Cancel',
+          label: l10n.commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(),
         ),
         AppDialogAction(
           id: _allOrgUnitsId,
-          label: 'All Org Units',
+          label: l10n.commonAllOrgUnits,
           onPressed: () {
             context.read<TierBoardBloc>().add(const TierBoardOrgUnitFilterCleared());
             Navigator.of(context).pop();
@@ -82,9 +84,8 @@ class TierBoardOrgUnitFilterDialog extends StatelessWidget {
         height: 420,
         child: OrgUnitChooser(
           selectedId: selectedId,
-          title: 'Narrow the board',
-          description: 'Choose the Org Unit whose numbers and everything beneath it you want '
-              'to read, or clear back to the whole Site.',
+          title: l10n.tierBoardOrgUnitFilterNarrowTheBoard,
+          description: l10n.tierBoardOrgUnitFilterChooseTheOrgUnitWhoseNumbersAnd,
           onSelected: (node) {
             context.read<TierBoardBloc>().add(
                   TierBoardOrgUnitFilterSelected(orgUnitId: node.id, orgUnitName: node.name),

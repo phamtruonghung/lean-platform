@@ -11,6 +11,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'directory_bloc.dart';
@@ -108,24 +109,25 @@ class _EmployeeFormDialogState extends State<EmployeeFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocListener<DirectoryBloc, DirectoryState>(
       listener: _onDirectoryChanged,
       child: AppDialog(
-        title: 'Add Employee',
+        title: l10n.commonAddEmployee,
         size: AppDialogSize.form,
         // `child` last, as `sort_child_properties_last` requires (and #398's
         // own note records for every migrated dialog).
         actions: [
           AppDialogAction(
             id: 'employee-form-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'employee-form-submit',
-            label: _awaiting ? 'Adding…' : 'Add Employee',
+            label: _awaiting ? l10n.commonAdding : l10n.commonAddEmployee,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -141,7 +143,7 @@ class _EmployeeFormDialogState extends State<EmployeeFormDialog> {
                   enabled: !_awaiting,
                   onChanged: (_) => setState(() {}),
                   decoration:
-                      const InputDecoration(labelText: 'Employee number', border: OutlineInputBorder()),
+                      InputDecoration(labelText: l10n.commonEmployeeNumber, border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: Spacing.md),
                 Row(
@@ -153,7 +155,7 @@ class _EmployeeFormDialogState extends State<EmployeeFormDialog> {
                         enabled: !_awaiting,
                         onChanged: (_) => setState(() {}),
                         decoration:
-                            const InputDecoration(labelText: 'First name', border: OutlineInputBorder()),
+                            InputDecoration(labelText: l10n.commonFirstName, border: OutlineInputBorder()),
                       ),
                     ),
                     const SizedBox(width: Spacing.md),
@@ -164,7 +166,7 @@ class _EmployeeFormDialogState extends State<EmployeeFormDialog> {
                         enabled: !_awaiting,
                         onChanged: (_) => setState(() {}),
                         decoration:
-                            const InputDecoration(labelText: 'Last name', border: OutlineInputBorder()),
+                            InputDecoration(labelText: l10n.commonLastName, border: OutlineInputBorder()),
                       ),
                     ),
                   ],
@@ -174,7 +176,7 @@ class _EmployeeFormDialogState extends State<EmployeeFormDialog> {
                   key: EmployeeFormDialog.employmentTypeKey,
                   initialValue: _employmentType,
                   decoration:
-                      const InputDecoration(labelText: 'Employment type', border: OutlineInputBorder()),
+                      InputDecoration(labelText: l10n.commonEmploymentType, border: OutlineInputBorder()),
                   items: [
                     for (final type in employmentTypes)
                       DropdownMenuItem<String>(value: type, child: Text(employmentTypeLabel(type))),
@@ -188,8 +190,8 @@ class _EmployeeFormDialogState extends State<EmployeeFormDialog> {
                   key: EmployeeFormDialog.workEmailKey,
                   controller: _workEmail,
                   enabled: !_awaiting,
-                  decoration: const InputDecoration(
-                    labelText: 'Work email (optional)',
+                  decoration: InputDecoration(
+                    labelText: l10n.commonWorkEmailOptional,
                     border: OutlineInputBorder(),
                   ),
                 ),

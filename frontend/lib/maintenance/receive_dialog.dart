@@ -13,6 +13,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'part.dart';
@@ -110,22 +111,23 @@ class _ReceiveDialogState extends State<ReceiveDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return BlocListener<StoreStockBloc, StoreStockState>(
       listener: _onChanged,
       child: AppDialog(
-        title: 'Receive stock',
+        title: l10n.commonReceiveStock,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: ReceiveDialog._cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: ReceiveDialog._submitId,
-            label: _awaiting ? 'Receiving…' : 'Receive',
+            label: _awaiting ? l10n.receiveReceiving : l10n.receiveReceive,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -137,7 +139,7 @@ class _ReceiveDialogState extends State<ReceiveDialog> {
               key: ReceiveDialog.partKey,
               initialValue: _partId,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Part', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.commonPart, border: OutlineInputBorder()),
               items: [
                 for (final part in widget.parts)
                   DropdownMenuItem<String>(
@@ -157,8 +159,8 @@ class _ReceiveDialogState extends State<ReceiveDialog> {
               enabled: !_awaiting,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Quantity',
+              decoration: InputDecoration(
+                labelText: l10n.commonQuantity,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -167,8 +169,8 @@ class _ReceiveDialogState extends State<ReceiveDialog> {
               key: ReceiveDialog.reasonKey,
               controller: _reason,
               enabled: !_awaiting,
-              decoration: const InputDecoration(
-                labelText: 'Reason (optional)',
+              decoration: InputDecoration(
+                labelText: l10n.receiveReasonOptional,
                 border: OutlineInputBorder(),
               ),
             ),

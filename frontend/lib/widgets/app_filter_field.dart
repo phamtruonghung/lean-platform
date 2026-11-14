@@ -55,6 +55,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 
 class AppFilterField extends StatefulWidget {
@@ -142,6 +143,7 @@ class _AppFilterFieldState extends State<AppFilterField> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final hasTerm = widget.term.isNotEmpty;
     final counts = widget.shown != null && widget.total != null;
@@ -183,7 +185,7 @@ class _AppFilterFieldState extends State<AppFilterField> {
               suffixIcon: hasTerm
                   ? IconButton(
                       key: AppFilterField.clearKey(widget.name),
-                      tooltip: 'Clear',
+                      tooltip: l10n.commonClear,
                       icon: const Icon(Icons.close),
                       onPressed: widget.enabled ? () => widget.onChanged('') : null,
                     )

@@ -22,6 +22,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_list_card.dart';
@@ -58,6 +59,7 @@ class BodyPartsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<BodyPartsBloc>().state;
 
     return Scaffold(
@@ -65,7 +67,7 @@ class BodyPartsScreen extends StatelessWidget {
         BodyPartsLoading() => const SkeletonList(maxWidth: BodyPartsScreen.maxWidth),
         BodyPartsUnavailable(message: final message) => PlatformFailureState(
             key: BodyPartsScreen.failedKey,
-            title: 'The Body part catalogue could not be read',
+            title: l10n.bodyPartsTheBodyPartCatalogueCouldNotBe,
             message: message,
             retryKey: BodyPartsScreen.retryKey,
             onRetry: () => context.read<BodyPartsBloc>().add(const BodyPartsStarted()),
@@ -84,6 +86,7 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: BodyPartsScreen.maxWidth,
@@ -91,17 +94,16 @@ class _Loaded extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
             AppPageHeader(
-              title: 'Body parts',
+              title: l10n.navBodyParts,
               description:
-                  'Where on the body an injury was — one catalogue shared by '
-                  'every Site, filed under the region each part belongs to.',
+                  l10n.bodyPartsWhereOnTheBodyAnInjuryWas,
               actions: [
                 if (isAdmin)
                   FilledButton.icon(
                     key: BodyPartsScreen.addKey,
                     onPressed: state.isMutating ? null : () => BodyPartFormDialog.open(context),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add Body part'),
+                    label: Text(l10n.commonAddBodyPart),
                   ),
               ],
             ),
@@ -109,10 +111,10 @@ class _Loaded extends StatelessWidget {
             if (state.bodyParts.isEmpty)
               PlatformEmptyState.noneExist(
                 key: BodyPartsScreen.emptyKey,
-                title: 'No Body parts yet',
-                message: 'Nothing has been defined in the catalogue.',
+                title: l10n.bodyPartsNoBodyPartsYet,
+                message: l10n.commonNothingHasBeenDefinedInTheCatalogue,
                 icon: Icons.accessibility_new_outlined,
-                actionLabel: isAdmin ? 'Add Body part' : null,
+                actionLabel: isAdmin ? l10n.commonAddBodyPart : null,
                 actionKey: BodyPartsScreen.emptyAddKey,
                 onAction: isAdmin ? () => BodyPartFormDialog.open(context) : null,
               )
@@ -147,6 +149,7 @@ class _BodyPartRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return ConstrainedBox(
       key: BodyPartsScreen.rowKey(bodyPart.id),
@@ -174,7 +177,7 @@ class _BodyPartRow extends StatelessWidget {
                     const SizedBox(width: Spacing.sm),
                     StatusChip(
                       key: BodyPartsScreen.inactiveChipKey(bodyPart.id),
-                      label: 'Inactive',
+                      label: l10n.jobPlansInactive,
                       tone: StatusTone.neutral,
                     ),
                   ],
@@ -190,7 +193,7 @@ class _BodyPartRow extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                 ),
-                child: const Text('Correct'),
+                child: Text(l10n.commonCorrect),
               ),
           ],
         ),

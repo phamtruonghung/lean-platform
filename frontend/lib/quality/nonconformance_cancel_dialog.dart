@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -79,6 +80,7 @@ class _NonconformanceCancelDialogState extends State<NonconformanceCancelDialog>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final record = widget.nonconformance;
 
@@ -89,13 +91,13 @@ class _NonconformanceCancelDialogState extends State<NonconformanceCancelDialog>
     if (!holdsQualityAuthority(context, record.orgUnitId)) {
       return AppDialog(
         key: NonconformanceCancelDialog.refusedKey,
-        title: 'Cannot cancel it',
+        title: l10n.nonconformanceCancelCannotCancelIt,
         size: AppDialogSize.decision,
-        description: 'Cancelling a Non-conformance needs Quality authority at its Org Unit.',
+        description: l10n.nonconformanceCancelCancellingANonConformanceNeedsQualityAuthority,
         actions: [
           AppDialogAction(
             id: 'nonconformance-cancel-refused-close',
-            label: 'Close',
+            label: l10n.downtimeClose,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -105,13 +107,13 @@ class _NonconformanceCancelDialogState extends State<NonconformanceCancelDialog>
     if (!record.canBeCancelled) {
       return AppDialog(
         key: NonconformanceCancelDialog.refusedKey,
-        title: 'Cannot cancel it',
+        title: l10n.nonconformanceCancelCannotCancelIt,
         size: AppDialogSize.decision,
-        description: 'A Non-conformance that is closed or already cancelled cannot be cancelled.',
+        description: l10n.nonconformanceCancelANonConformanceThatIsClosedOr,
         actions: [
           AppDialogAction(
             id: 'nonconformance-cancel-refused-close',
-            label: 'Close',
+            label: l10n.downtimeClose,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -122,18 +124,18 @@ class _NonconformanceCancelDialogState extends State<NonconformanceCancelDialog>
     return BlocListener<NonconformanceDetailBloc, NonconformanceDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Cancel this Non-conformance',
+        title: l10n.nonconformanceCancelCancelThisNonConformance,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: 'nonconformance-cancel-dismiss',
-            label: 'Leave it alone',
+            label: l10n.actionCancelLeaveItAlone,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'nonconformance-cancel-submit',
-            label: 'Cancel it',
+            label: l10n.nonconformanceCancelCancelIt,
             kind: AppDialogActionKind.destructive,
             onPressed: _complete ? _submit : null,
           ),
@@ -143,8 +145,7 @@ class _NonconformanceCancelDialogState extends State<NonconformanceCancelDialog>
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '${widget.nonconformance.issueNo} will be cancelled rather than dealt with. A '
-              'cancelled Non-conformance accepts no further Dispositions or quantity changes.',
+              l10n.nonconformanceCancelWillBeCancelledRatherThanDealtWith(widget.nonconformance.issueNo),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: Spacing.md),
@@ -155,9 +156,9 @@ class _NonconformanceCancelDialogState extends State<NonconformanceCancelDialog>
               minLines: 2,
               maxLines: 3,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Note',
-                helperText: 'Why it should never have been recorded.',
+              decoration: InputDecoration(
+                labelText: l10n.commonNote,
+                helperText: l10n.nonconformanceCancelWhyItShouldNeverHaveBeenRecorded,
                 border: OutlineInputBorder(),
               ),
             ),

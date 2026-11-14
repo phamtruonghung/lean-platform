@@ -22,6 +22,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/app_scan_field.dart';
@@ -152,22 +153,23 @@ class _CustomerFormDialogState extends State<CustomerFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocListener<CustomersBloc, CustomersState>(
       listener: _onCustomersChanged,
       child: AppDialog(
-        title: _isCorrection ? 'Correct Customer' : 'Add Customer',
+        title: _isCorrection ? l10n.customerFormCorrectCustomer : l10n.commonAddCustomer,
         size: AppDialogSize.decision,
         actions: [
           AppDialogAction(
             id: 'customer-form-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'customer-form-submit',
-            label: _awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add Customer'),
+            label: _awaiting ? l10n.commonSaving : (_isCorrection ? l10n.commonSave : l10n.commonAddCustomer),
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -178,8 +180,8 @@ class _CustomerFormDialogState extends State<CustomerFormDialog> {
             AppScanField(
               key: CustomerFormDialog.codeKey,
               controller: _code,
-              label: 'Code',
-              helperText: _isCorrection ? 'A Customer\'s code cannot be corrected' : null,
+              label: l10n.commonCode,
+              helperText: _isCorrection ? l10n.customerFormACustomerSCodeCannotBeCorrected : null,
               // A code is the one field a correction cannot rewrite.
               enabled: !_isCorrection && !_awaiting,
               autofocus: true,
@@ -191,8 +193,8 @@ class _CustomerFormDialogState extends State<CustomerFormDialog> {
               controller: _name,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Name',
+              decoration: InputDecoration(
+                labelText: l10n.commonName,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -202,8 +204,8 @@ class _CustomerFormDialogState extends State<CustomerFormDialog> {
               controller: _email,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Contact email (optional)',
+              decoration: InputDecoration(
+                labelText: l10n.commonContactEmailOptional,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -212,7 +214,7 @@ class _CustomerFormDialogState extends State<CustomerFormDialog> {
               SwitchListTile(
                 key: CustomerFormDialog.activeKey,
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Active'),
+                title: Text(l10n.commonActive),
                 value: _isActive,
                 onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
               ),

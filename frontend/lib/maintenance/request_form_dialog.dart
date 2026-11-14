@@ -22,6 +22,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -173,22 +174,23 @@ class _RequestFormDialogState extends State<RequestFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return BlocListener<MyRequestsBloc, MyRequestsState>(
       listener: _onMyRequestsChanged,
       child: AppDialog(
-        title: 'Raise a Request',
+        title: l10n.commonRaiseARequest,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: RequestFormDialog._dismissId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: RequestFormDialog._submitId,
-            label: 'Raise',
+            label: l10n.commonRaise,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -211,14 +213,14 @@ class _RequestFormDialogState extends State<RequestFormDialog> {
               controller: _summary,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Summary', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.commonSummary, border: OutlineInputBorder()),
             ),
             const SizedBox(height: Spacing.md),
             DropdownButtonFormField<RequestUrgency>(
               key: RequestFormDialog.urgencyKey,
               initialValue: _urgency,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Urgency', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.requestsUrgency, border: OutlineInputBorder()),
               items: [
                 for (final urgency in RequestUrgency.values)
                   DropdownMenuItem<RequestUrgency>(value: urgency, child: Text(urgency.label)),
@@ -231,7 +233,7 @@ class _RequestFormDialogState extends State<RequestFormDialog> {
               value: _productionStopped,
               contentPadding: EdgeInsets.zero,
               controlAffinity: ListTileControlAffinity.leading,
-              title: const Text('Production is stopped right now'),
+              title: Text(l10n.requestFormProductionIsStoppedRightNow),
               onChanged: _awaiting
                   ? null
                   : (value) => setState(() => _productionStopped = value ?? false),
@@ -242,8 +244,8 @@ class _RequestFormDialogState extends State<RequestFormDialog> {
               controller: _description,
               enabled: !_awaiting,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
+              decoration: InputDecoration(
+                labelText: l10n.jobPlanFormDescriptionOptional,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -294,6 +296,7 @@ class _AssetField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     switch (status) {
       case _AssetsStatus.loading:
@@ -313,16 +316,16 @@ class _AssetField extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              failure ?? 'The Assets could not be read.',
+              failure ?? l10n.commonAssetsFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
-            TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
+            TextButton(onPressed: enabled ? onRetry : null, child: Text(l10n.commonTryAgain)),
           ],
         );
       case _AssetsStatus.ready:
         return AppSearchField<Asset>(
           name: RequestFormDialog._assetFieldName,
-          label: 'Asset',
+          label: l10n.commonAsset,
           value: _selected,
           enabled: enabled,
           // A pick sets the dialog's own id; typing over the chosen Asset

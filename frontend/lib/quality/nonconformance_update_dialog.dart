@@ -20,6 +20,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'defect_code.dart';
@@ -113,6 +114,7 @@ class _NonconformanceUpdateDialogState extends State<NonconformanceUpdateDialog>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final row = widget.nonconformance;
     final offerable = _offerableSeverities;
@@ -120,7 +122,7 @@ class _NonconformanceUpdateDialogState extends State<NonconformanceUpdateDialog>
     return BlocListener<NonconformanceDetailBloc, NonconformanceDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Raise severity or contain it',
+        title: l10n.nonconformanceUpdate,
         size: AppDialogSize.wide,
         // The two writes live in the content rather than in the action row:
         // each has its own enabled condition on the field above it, so they sit
@@ -128,7 +130,7 @@ class _NonconformanceUpdateDialogState extends State<NonconformanceUpdateDialog>
         actions: [
           AppDialogAction(
             id: 'nonconformance-update-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
@@ -138,15 +140,13 @@ class _NonconformanceUpdateDialogState extends State<NonconformanceUpdateDialog>
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '${row.issueNo} is ${row.severityLabel.toLowerCase()} severity and '
-              '${row.statusLabel.toLowerCase()}.',
+              l10n.nonconformanceUpdateIsSeverityAnd(row.issueNo, row.severityLabel.toLowerCase(), row.statusLabel.toLowerCase()),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: Spacing.md),
             if (offerable.isEmpty)
               Text(
-                'This Non-conformance is already at the worst severity, so there is nothing '
-                'to raise it to.',
+                l10n.nonconformanceUpdateThisNonConformanceIsAlreadyAtThe,
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               )
@@ -155,15 +155,15 @@ class _NonconformanceUpdateDialogState extends State<NonconformanceUpdateDialog>
                 key: NonconformanceUpdateDialog.severityKey,
                 initialValue: _severity,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Raise the severity to',
-                  helperText: 'Severity can be raised here; lowering it is a later decision.',
+                decoration: InputDecoration(
+                  labelText: l10n.nonconformanceUpdateRaiseTheSeverityTo,
+                  helperText: l10n.nonconformanceUpdateSeverityCanBeRaisedHereLoweringIt,
                   border: OutlineInputBorder(),
                 ),
                 items: [
-                  const DropdownMenuItem<String?>(
+                  DropdownMenuItem<String?>(
                     value: null,
-                    child: Text('Leave the severity alone'),
+                    child: Text(l10n.commonLeaveTheSeverityAlone),
                   ),
                   for (final severity in offerable)
                     DropdownMenuItem<String?>(
@@ -182,7 +182,7 @@ class _NonconformanceUpdateDialogState extends State<NonconformanceUpdateDialog>
                   style: FilledButton.styleFrom(
                     minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
-                  child: const Text('Raise it'),
+                  child: Text(l10n.actionFormRaiseIt),
                 ),
               ),
             ],
@@ -194,9 +194,9 @@ class _NonconformanceUpdateDialogState extends State<NonconformanceUpdateDialog>
               onChanged: (_) => setState(() {}),
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Immediate containment',
-                helperText: 'What was done at once. Recording it makes this contained.',
+              decoration: InputDecoration(
+                labelText: l10n.nonconformanceDetailContainment,
+                helperText: l10n.nonconformanceFormContainmentHelp,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -209,7 +209,7 @@ class _NonconformanceUpdateDialogState extends State<NonconformanceUpdateDialog>
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                 ),
-                child: const Text('Record containment'),
+                child: Text(l10n.nonconformanceUpdateRecordContainment),
               ),
             ),
             if (_failure != null)

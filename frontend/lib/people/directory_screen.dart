@@ -46,6 +46,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
@@ -124,6 +125,7 @@ class DirectoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<DirectoryBloc>().state;
 
     // **The header scrolls with the register** — the first of this card's two
@@ -169,7 +171,7 @@ class DirectoryScreen extends StatelessWidget {
                         hasScrollBody: false,
                         child: PlatformFailureState(
                           key: failedKey,
-                          title: 'The Directory could not be read',
+                          title: l10n.directoryTheDirectoryCouldNotBeRead,
                           message: message,
                           retryKey: retryKey,
                           onRetry: () =>
@@ -190,12 +192,12 @@ class DirectoryScreen extends StatelessWidget {
                     // centred in the register's own area — while still letting
                     // the page scroll when the header is taller than the window.
                     DirectoryLoaded(employees: final employees) when employees.isEmpty =>
-                      const SliverFillRemaining(
+                      SliverFillRemaining(
                         hasScrollBody: false,
                         child: PlatformEmptyState.noneMatched(
                           key: emptyKey,
-                          title: 'Nobody matches this search',
-                          message: 'Try a different name, or clear a filter.',
+                          title: l10n.directoryNobodyMatchesThisSearch,
+                          message: l10n.directoryTryADifferentNameOrClearA,
                           icon: Icons.people_outline,
                         ),
                       ),
@@ -244,6 +246,7 @@ class _HeaderState extends State<_Header> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final loaded = widget.state is DirectoryLoaded ? widget.state as DirectoryLoaded : null;
 
     return Center(
@@ -256,10 +259,9 @@ class _HeaderState extends State<_Header> {
           // too narrow to share (the failure the old comment here guarded
           // against: "Directory" itself wrapping character by character).
           child: AppPageHeader(
-            title: 'Directory',
+            title: l10n.navDirectory,
             description:
-                'Who works here — searched, filtered, and Departed Employees kept '
-                'out of sight until asked for.',
+                l10n.directoryWhoWorksHereSearchedFilteredAndDeparted,
             actions: [
               if (widget.isAdmin)
                 FilledButton.icon(
@@ -268,13 +270,13 @@ class _HeaderState extends State<_Header> {
                       ? null
                       : () => EmployeeFormDialog.open(context),
                   icon: const Icon(Icons.person_add_alt_1_outlined),
-                  label: const Text('Add Employee'),
+                  label: Text(l10n.commonAddEmployee),
                 ),
               OutlinedButton.icon(
                 key: DirectoryScreen.myRecordKey,
                 onPressed: () => context.go('${Routes.directory}/me'),
                 icon: const Icon(Icons.badge_outlined),
-                label: const Text('My record'),
+                label: Text(l10n.directoryMyRecord),
               ),
             ],
             below: Column(
@@ -290,7 +292,7 @@ class _HeaderState extends State<_Header> {
                 // the same as jumping to one person (this ticket's own "Why").
                 AppSearchField<Employee>(
                   name: DirectoryScreen._searchFieldName,
-                  label: 'Search by name',
+                  label: l10n.directorySearchByName,
                   // No confirmed selection to seed or track here — unlike
                   // `SiteFormDialog`'s timezone field, a pick here navigates
                   // away rather than settling into this field, so there is
@@ -336,7 +338,7 @@ class _HeaderState extends State<_Header> {
                         key: DirectoryScreen.orgUnitFilterKey,
                         onPressed: () => DirectoryOrgUnitFilterDialog.open(context),
                         icon: const Icon(Icons.account_tree_outlined, size: 18),
-                        label: Text(loaded.orgUnitName ?? 'All Org Units'),
+                        label: Text(loaded.orgUnitName ?? l10n.commonAllOrgUnits),
                       ),
                       SizedBox(
                         width: AppLayout.atTextScale(context, 220),
@@ -346,9 +348,9 @@ class _HeaderState extends State<_Header> {
                           isDense: true,
                           isExpanded: true,
                           decoration:
-                              const InputDecoration(labelText: 'Job role', border: OutlineInputBorder()),
+                              InputDecoration(labelText: l10n.commonJobRole, border: OutlineInputBorder()),
                           items: [
-                            const DropdownMenuItem<String>(value: null, child: Text('All job roles')),
+                            DropdownMenuItem<String>(value: null, child: Text(l10n.directoryAllJobRoles)),
                             for (final jobRole in loaded.jobRoles)
                               DropdownMenuItem<String>(value: jobRole.id, child: Text(jobRole.name)),
                           ],
@@ -359,7 +361,7 @@ class _HeaderState extends State<_Header> {
                       ),
                       FilterChip(
                         key: DirectoryScreen.includeDepartedKey,
-                        label: const Text('Include Departed'),
+                        label: Text(l10n.directoryIncludeDeparted),
                         selected: loaded.includeDeparted,
                         onSelected: (value) =>
                             context.read<DirectoryBloc>().add(DirectoryIncludeDepartedChanged(value)),
@@ -405,32 +407,35 @@ String _initials(String displayName) {
 /// The register's one column spec: [AppTableHeader] and every [AppTableRow] are
 /// built from it, so a band label and its cells start at the same x.
 List<AppTableColumn> _columns(BuildContext context, List<Employee> rows) => [
-      const AppTableColumn('Employee', flex: 5),
-      AppTableColumn('Code', width: _codeColumnWidth(context, rows)),
-      const AppTableColumn('Org Unit', flex: 4),
-      const AppTableColumn('Job role', flex: 4),
-      const AppTableColumn('Employment', flex: 2),
-      AppTableColumn('State', width: _stateColumnWidth(context, rows), align: AppColumnAlign.start),
+      AppTableColumn(AppLocalizations.of(context).titleEmployee, flex: 5),
+      AppTableColumn(AppLocalizations.of(context).commonCode, width: _codeColumnWidth(context, rows)),
+      AppTableColumn(AppLocalizations.of(context).commonOrgUnit, flex: 4),
+      AppTableColumn(AppLocalizations.of(context).commonJobRole, flex: 4),
+      AppTableColumn(AppLocalizations.of(context).commonEmployment, flex: 2),
+      AppTableColumn(AppLocalizations.of(context).commonState,
+          width: _stateColumnWidth(context, rows), align: AppColumnAlign.start),
     ];
 
 /// The employee number column: the widest code in the list, plus the slot's own
 /// gutter. A code is never truncated — it is what a reader quotes.
 double _codeColumnWidth(BuildContext context, List<Employee> rows) {
+  final l10n = AppLocalizations.of(context);
   var widest = 0.0;
   for (final row in rows) {
     final width = _measure(context, row.employeeNo, AppTypography.dense(context));
     if (width > widest) widest = width;
   }
-  final header = _measure(context, 'Code', Theme.of(context).textTheme.labelMedium);
+  final header = _measure(context, l10n.commonCode, Theme.of(context).textTheme.labelMedium);
   return (widest > header ? widest : header) + 2 * Spacing.sm;
 }
 
 /// The state column: the widest word it can carry, so the column does not
 /// resize as people leave the plant.
 double _stateColumnWidth(BuildContext context, List<Employee> rows) {
+  final l10n = AppLocalizations.of(context);
   final label = Theme.of(context).textTheme.labelMedium;
-  final departed = _measure(context, 'Departed', label);
-  final active = _measure(context, 'Active', label);
+  final departed = _measure(context, l10n.commonDeparted, label);
+  final active = _measure(context, l10n.commonActive, label);
   return (departed > active ? departed : active) + 4 * Spacing.md;
 }
 
@@ -527,11 +532,11 @@ class _Initials extends StatelessWidget {
 /// The state cell: a chip, because a state is a tone (§6's alignment table). The
 /// Departed chip keeps its key — a test that finds it today still finds it, and
 /// finds it only on a Departed Employee, which is what it always meant.
-Widget _stateCell(Employee employee) => employee.isActive
-    ? const StatusChip(label: 'Active', tone: StatusTone.success)
+Widget _stateCell(BuildContext context, Employee employee) => employee.isActive
+    ? StatusChip(label: AppLocalizations.of(context).commonActive, tone: StatusTone.success)
     : StatusChip(
         key: DirectoryScreen.departedChipKey(employee.id),
-        label: 'Departed',
+        label: AppLocalizations.of(context).commonDeparted,
         tone: StatusTone.neutral,
       );
 
@@ -578,7 +583,7 @@ class _EmployeeTableRow extends StatelessWidget {
             employmentTypeLabel(row.employmentType),
             style: dense?.copyWith(color: palette.textMuted),
           ),
-          _stateCell(row),
+          _stateCell(context, row),
         ],
       ),
     );
@@ -628,7 +633,7 @@ class _EmployeeCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        _stateCell(row),
+                        _stateCell(context, row),
                       ],
                     ),
                     Text(

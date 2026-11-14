@@ -25,6 +25,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/app_date_time_field.dart';
@@ -84,22 +85,23 @@ class _DowntimeCloseDialogState extends State<DowntimeCloseDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return BlocListener<DowntimeBloc, DowntimeState>(
       listener: _onDowntimeChanged,
       child: AppDialog(
-        title: 'Close the stop for ${widget.downtimeEvent.assetName}?',
+        title: l10n.downtimeCloseCloseTheStopFor(widget.downtimeEvent.assetName),
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: DowntimeCloseDialog._dismissId,
-            label: 'Keep it open',
+            label: l10n.commonKeepItOpen,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: DowntimeCloseDialog._submitId,
-            label: 'Close this stop',
+            label: l10n.downtimeCloseCloseThisStop,
             onPressed: _awaiting ? null : _submit,
           ),
         ],
@@ -108,15 +110,15 @@ class _DowntimeCloseDialogState extends State<DowntimeCloseDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'The machine is running again. The server records how long it was down.',
+              l10n.downtimeCloseTheMachineIsRunningAgainTheServer,
               style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
             ),
             const SizedBox(height: Spacing.md),
             AppDateTimeField(
               key: DowntimeCloseDialog.endedAtKey,
               name: 'downtime-close-ended-at',
-              label: 'Ended at (optional)',
-              helperText: 'Leave blank to record now.',
+              label: l10n.downtimeCloseEndedAtOptional,
+              helperText: l10n.commonLeaveBlankToRecordNow,
               value: _endedAt,
               optional: true,
               enabled: !_awaiting,

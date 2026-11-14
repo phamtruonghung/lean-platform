@@ -12,6 +12,7 @@ import 'package:flutter/material.dart' hide Action;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -65,6 +66,7 @@ class ActionsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<ActionsBloc>().state;
 
     return _RefreshOnMount(
@@ -80,7 +82,7 @@ class ActionsScreen extends StatelessWidget {
                 ActionsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
                 ActionsUnavailable(message: final message) => PlatformFailureState(
                     key: failedKey,
-                    title: 'The action log could not be read',
+                    title: l10n.actionsTheActionLogCouldNotBeRead,
                     message: message,
                     retryKey: retryKey,
                     onRetry: () => context.read<ActionsBloc>().add(const ActionsStarted()),
@@ -140,6 +142,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final loaded = state is ActionsLoaded ? state as ActionsLoaded : null;
 
     return Center(
@@ -148,10 +151,9 @@ class _Header extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
-            title: 'Actions',
+            title: l10n.groupActions,
             description:
-                'What the plant owes at this Site: what was found, who owns it, and '
-                'when it is due. Overdue first.',
+                l10n.actionsWhatThePlantOwesAtThisSite,
             actions: [
               if (loaded != null)
                 FilledButton.icon(
@@ -160,7 +162,7 @@ class _Header extends StatelessWidget {
                       ? null
                       : () => context.go('${Routes.actions}/new'),
                   icon: const Icon(Icons.add),
-                  label: const Text('Raise a concern'),
+                  label: Text(l10n.commonRaiseAConcern),
                 ),
             ],
             below: loaded == null ? null : _Filters(loaded: loaded),
@@ -182,6 +184,7 @@ class _Filters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -196,7 +199,7 @@ class _Filters extends StatelessWidget {
                   initialValue: loaded.siteId,
                   isDense: true,
                   isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+                  decoration: InputDecoration(labelText: l10n.commonSite, border: OutlineInputBorder()),
                   items: [
                     for (final site in loaded.sites)
                       DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -211,7 +214,7 @@ class _Filters extends StatelessWidget {
               key: ActionsScreen.orgUnitFilterKey,
               onPressed: () => ActionOrgUnitFilterDialog.open(context, siteId: loaded.siteId),
               icon: const Icon(Icons.account_tree_outlined),
-              label: Text(loaded.orgUnitFilterName ?? 'All Org Units'),
+              label: Text(loaded.orgUnitFilterName ?? l10n.commonAllOrgUnits),
             ),
             // What was handed up to whom (issue #180) — the plant manager's
             // queue in one click, and a different question from where the work
@@ -223,8 +226,8 @@ class _Filters extends StatelessWidget {
               icon: const Icon(Icons.arrow_upward),
               label: Text(
                 loaded.escalatedToOrgUnitFilterName == null
-                    ? 'Escalated to anyone'
-                    : 'Escalated to ${loaded.escalatedToOrgUnitFilterName}',
+                    ? l10n.actionsEscalatedToAnyone
+                    : l10n.actionsEscalatedTo((loaded.escalatedToOrgUnitFilterName ?? '')),
               ),
             ),
             SizedBox(
@@ -234,9 +237,9 @@ class _Filters extends StatelessWidget {
                 initialValue: loaded.statusFilter,
                 isDense: true,
                 isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
+                decoration: InputDecoration(labelText: l10n.commonStatus, border: OutlineInputBorder()),
                 items: [
-                  const DropdownMenuItem<String?>(value: null, child: Text('Any status')),
+                  DropdownMenuItem<String?>(value: null, child: Text(l10n.nonconformancesAnyStatus)),
                   for (final entry in actionStatuses.entries)
                     DropdownMenuItem<String?>(value: entry.key, child: Text(entry.value.$1)),
                 ],
@@ -252,9 +255,9 @@ class _Filters extends StatelessWidget {
                 isDense: true,
                 isExpanded: true,
                 decoration:
-                    const InputDecoration(labelText: 'Kind of Action', border: OutlineInputBorder()),
+                    InputDecoration(labelText: l10n.commonKindOfAction, border: OutlineInputBorder()),
                 items: [
-                  const DropdownMenuItem<String?>(value: null, child: Text('Every kind')),
+                  DropdownMenuItem<String?>(value: null, child: Text(l10n.actionsEveryKind)),
                   for (final type in ActionType.values)
                     DropdownMenuItem<String?>(value: type.wire, child: Text(type.label)),
                 ],
@@ -271,14 +274,14 @@ class _Filters extends StatelessWidget {
                       context.read<ActionsBloc>().add(ActionsHistoryToggled(value)),
                 ),
                 const SizedBox(width: Spacing.xs),
-                Text('Show closed', style: theme.textTheme.bodyMedium),
+                Text(l10n.actionsShowClosed, style: theme.textTheme.bodyMedium),
               ],
             ),
             if (loaded.isFiltered || loaded.includeHistory)
               TextButton(
                 key: ActionsScreen.clearFiltersKey,
                 onPressed: () => context.read<ActionsBloc>().add(const ActionsFiltersCleared()),
-                child: const Text('Clear filters'),
+                child: Text(l10n.workOrdersClearFilters),
               ),
           ],
         ),
@@ -316,6 +319,7 @@ class _Truncated extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return Center(
       child: AppPageFrame(
@@ -324,8 +328,7 @@ class _Truncated extends StatelessWidget {
           key: ActionsScreen.truncatedKey,
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.sm),
           child: Text(
-            'There are more Actions than this list shows. Narrow it by Org Unit, by status or by '
-            'kind to see the rest.',
+            l10n.actionsThereAreMoreActionsThanThisList,
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ),
@@ -344,21 +347,21 @@ class _ActionsEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (isFiltered) {
       return PlatformEmptyState.noneMatched(
         key: ActionsEmptyKeys.matched,
-        title: 'Nothing matches these filters',
-        message: 'The log has Actions, but none of them is in the Org Unit, status or kind you '
-            'picked.',
-        actionLabel: 'Clear the filters',
+        title: l10n.nonconformancesNoMatchTitle,
+        message: l10n.actionsTheLogHasActionsButNoneOf,
+        actionLabel: l10n.nonconformancesClearTheFilters,
         actionKey: ActionsScreen.emptyClearFiltersKey,
         onAction: () => context.read<ActionsBloc>().add(const ActionsFiltersCleared()),
       );
     }
-    return const PlatformEmptyState.noneExist(
+    return PlatformEmptyState.noneExist(
       key: ActionsEmptyKeys.none,
-      title: 'Nothing on the log',
-      message: 'No Action has been raised at this Site yet.',
+      title: l10n.actionsNothingOnTheLog,
+      message: l10n.actionsNoActionHasBeenRaisedAtThis,
       icon: Icons.assignment_outlined,
     );
   }
@@ -384,11 +387,11 @@ abstract final class ActionsEmptyKeys {
 /// bounded content, and a column that took a share of the window would move the
 /// same word's x on two Screens.
 List<AppTableColumn> _columns(BuildContext context) => [
-      const AppTableColumn('Action', flex: 6),
-      const AppTableColumn('Owner', flex: 2),
-      const AppTableColumn('Due', flex: 3),
-      const AppTableColumn('Source', flex: 2),
-      AppTableColumn('State', width: _statusColumnWidth(context)),
+      AppTableColumn(AppLocalizations.of(context).titleAction, flex: 6),
+      AppTableColumn(AppLocalizations.of(context).commonOwner, flex: 2),
+      AppTableColumn(AppLocalizations.of(context).pmSchedulesDue, flex: 3),
+      AppTableColumn(AppLocalizations.of(context).actionsSource, flex: 2),
+      AppTableColumn(AppLocalizations.of(context).commonState, width: _statusColumnWidth(context)),
     ];
 
 /// The widest status label in a chip's own style at the reader's text scale,
@@ -417,11 +420,11 @@ double _statusColumnWidth(BuildContext context) {
 /// does not model (a Downtime event, a Work order) must not become a column of
 /// snake_case. `Raised here` is what `standalone` reads as on screen — an Action
 /// somebody raised on the log itself.
-String sourceLabel(Action action) {
-  if (action.safetyIncident != null) return 'Safety incident';
-  if (action.safetyObservation != null) return 'Safety observation';
-  if (action.nonconformances.isNotEmpty) return 'Non-conformance';
-  return 'Raised here';
+String sourceLabel(AppLocalizations l10n, Action action) {
+  if (action.safetyIncident != null) return l10n.titleSafetyIncident;
+  if (action.safetyObservation != null) return l10n.titleSafetyObservation;
+  if (action.nonconformances.isNotEmpty) return l10n.titleNonConformance;
+  return l10n.actionsSourceRaisedHere;
 }
 
 class _ActionsList extends StatelessWidget {
@@ -499,6 +502,7 @@ class _ActionTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final dense = AppTypography.dense(context);
     final muted = dense?.copyWith(color: palette.textMuted);
@@ -530,15 +534,13 @@ class _ActionTableRow extends StatelessWidget {
         ),
       if (action.measureCount > 0)
         Text(
-          '${action.measureCount} '
-          '${action.measureCount == 1 ? 'measure' : 'measures'}, '
-          '${action.countermeasureCount} of them countermeasures',
+          l10n.actionsOfThemCountermeasures(action.measureCount, action.countermeasureCount),
           key: ActionsScreen.measuresKey(action.id),
           style: floor,
         ),
       if (action.escalatedToOrgUnitName != null)
         Text(
-          'Escalated to ${action.escalatedToOrgUnitName}',
+          l10n.actionsEscalatedTo2((action.escalatedToOrgUnitName ?? '')),
           key: ActionsScreen.escalatedKey(action.id),
           style: floor,
         ),
@@ -574,10 +576,10 @@ class _ActionTableRow extends StatelessWidget {
           ),
           Text(
             action.isOverdue
-                ? 'Overdue by ${action.daysOverdue} days'
+                ? l10n.commonOverdueByDays((action.daysOverdue ?? 0))
                 : action.dueDate == null
-                    ? 'No due date'
-                    : 'Due ${action.dueDate}',
+                    ? l10n.actionsNoDueDate
+                    : l10n.actionsDue((action.dueDate ?? '')),
             key: ActionsScreen.dueKey(action.id),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -586,7 +588,7 @@ class _ActionTableRow extends StatelessWidget {
             ),
           ),
           Text(
-            sourceLabel(action),
+            sourceLabel(l10n, action),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: muted,
@@ -611,6 +613,7 @@ class _ActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return Card(
       key: ActionsScreen.rowKey(action.id),
@@ -653,9 +656,7 @@ class _ActionRow extends StatelessWidget {
                         // with no countermeasure is the one that cannot close,
                         // so it is visible without opening the row.
                         if (action.measureCount > 0)
-                          '${action.measureCount} '
-                              '${action.measureCount == 1 ? 'measure' : 'measures'}, '
-                              '${action.countermeasureCount} of them countermeasures',
+                          l10n.actionsOfThemCountermeasures(action.measureCount, action.countermeasureCount),
                       ].join(' · '),
                       key: ActionsScreen.measuresKey(action.id),
                       style: theme.textTheme.bodySmall
@@ -670,17 +671,17 @@ class _ActionRow extends StatelessWidget {
                 children: [
                   Text(
                     key: ActionsScreen.ownerKey(action.id),
-                    action.ownerName ?? 'Nobody yet',
+                    action.ownerName ?? l10n.commonNobodyYet,
                     style: theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: Spacing.xxs),
                   Text(
                     key: ActionsScreen.dueKey(action.id),
                     action.isOverdue
-                        ? 'Overdue by ${action.daysOverdue} days'
+                        ? l10n.commonOverdueByDays((action.daysOverdue ?? 0))
                         : action.dueDate == null
-                            ? 'No due date'
-                            : 'Due ${action.dueDate}',
+                            ? l10n.actionsNoDueDate
+                            : l10n.actionsDue((action.dueDate ?? '')),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: action.isOverdue
                           ? AppColors.of(context).statusDanger
@@ -691,7 +692,7 @@ class _ActionRow extends StatelessWidget {
                     const SizedBox(height: Spacing.xxs),
                     Text(
                       key: ActionsScreen.escalatedKey(action.id),
-                      'Escalated to ${action.escalatedToOrgUnitName}',
+                      l10n.actionsEscalatedTo2((action.escalatedToOrgUnitName ?? '')),
                       style: theme.textTheme.bodySmall,
                     ),
                   ],

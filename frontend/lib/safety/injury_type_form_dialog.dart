@@ -28,6 +28,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/app_scan_field.dart';
@@ -146,23 +147,24 @@ class _InjuryTypeFormDialogState extends State<InjuryTypeFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocListener<InjuryTypesBloc, InjuryTypesState>(
       listener: _onCatalogueChanged,
       child: AppDialog(
-        title: _isCorrection ? 'Correct Injury type' : 'Add Injury type',
+        title: _isCorrection ? l10n.injuryTypeFormCorrectInjuryType : l10n.commonAddInjuryType,
         // A short form (520): three fields at most (§11).
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: InjuryTypeFormDialog._dismissId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: InjuryTypeFormDialog._submitId,
-            label: _awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add Injury type'),
+            label: _awaiting ? l10n.commonSaving : (_isCorrection ? l10n.commonSave : l10n.commonAddInjuryType),
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -173,8 +175,8 @@ class _InjuryTypeFormDialogState extends State<InjuryTypeFormDialog> {
             AppScanField(
               key: InjuryTypeFormDialog.codeKey,
               controller: _code,
-              label: 'Code',
-              helperText: _isCorrection ? "An Injury type's code cannot be corrected" : null,
+              label: l10n.commonCode,
+              helperText: _isCorrection ? l10n.injuryTypeFormAnInjuryTypeSCodeCannotBe : null,
               enabled: !_isCorrection && !_awaiting,
               autofocus: true,
               onChanged: (_) => setState(() {}),
@@ -185,17 +187,16 @@ class _InjuryTypeFormDialogState extends State<InjuryTypeFormDialog> {
               controller: _name,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.commonName, border: OutlineInputBorder()),
             ),
             if (_isCorrection) ...[
               const SizedBox(height: Spacing.md),
               SwitchListTile(
                 key: InjuryTypeFormDialog.activeKey,
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Active'),
-                subtitle: const Text(
-                  'A retired Injury type is no longer offered while classifying, and '
-                  'stays on every incident that already names it.',
+                title: Text(l10n.commonActive),
+                subtitle: Text(
+                  l10n.injuryTypeFormARetiredInjuryTypeIsNoLonger,
                 ),
                 value: _isActive,
                 onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),

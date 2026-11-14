@@ -14,6 +14,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
@@ -55,6 +56,7 @@ class DirectoryOrgUnitFilterDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final state = context.watch<OrgUnitPickerBloc>().state;
     final bloc = context.read<OrgUnitPickerBloc>();
@@ -75,9 +77,9 @@ class DirectoryOrgUnitFilterDialog extends StatelessWidget {
         onRetry: () => bloc.add(OrgUnitPickerSiteSelected(state.siteId!)),
       );
     } else if (state.sites.isEmpty) {
-      body = const Text('There are no Sites to browse yet.');
+      body = Text(l10n.commonThereAreNoSitesToBrowseYet);
     } else if (state.rows.isEmpty) {
-      body = const Text('Nothing to browse in this Site.');
+      body = Text(l10n.commonNothingToBrowseInThisSite);
     } else {
       body = ListView.builder(
         shrinkWrap: true,
@@ -87,12 +89,12 @@ class DirectoryOrgUnitFilterDialog extends StatelessWidget {
     }
 
     return AppDialog(
-      title: 'Filter by Org Unit',
+      title: l10n.commonFilterByOrgUnit,
       size: AppDialogSize.picker,
       actions: [
         AppDialogAction(
           id: 'directory-org-unit-filter-all',
-          label: 'All Org Units',
+          label: l10n.commonAllOrgUnits,
           onPressed: () {
             context.read<DirectoryBloc>().add(const DirectoryOrgUnitFilterChanged());
             Navigator.of(context).pop();
@@ -100,7 +102,7 @@ class DirectoryOrgUnitFilterDialog extends StatelessWidget {
         ),
         AppDialogAction(
           id: 'directory-org-unit-filter-cancel',
-          label: 'Cancel',
+          label: l10n.commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -117,7 +119,7 @@ class DirectoryOrgUnitFilterDialog extends StatelessWidget {
                 key: siteKey,
                 initialValue: state.siteId,
                 isDense: true,
-                decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+                decoration: InputDecoration(labelText: l10n.commonSite, border: OutlineInputBorder()),
                 items: [
                   for (final site in state.sites)
                     DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -145,6 +147,7 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: EdgeInsets.only(left: row.depth * Spacing.lg),
       child: Row(
@@ -161,7 +164,7 @@ class _Row extends StatelessWidget {
                     key: DirectoryOrgUnitFilterDialog.expandKey(row.node.id),
                     padding: EdgeInsets.zero,
                     iconSize: 18,
-                    tooltip: row.isExpanded ? 'Collapse' : 'Expand',
+                    tooltip: row.isExpanded ? l10n.commonCollapse : l10n.commonExpand,
                     onPressed: () => bloc.add(
                       row.isExpanded
                           ? OrgUnitPickerCollapsed(row.node.id)
@@ -199,13 +202,14 @@ class _Failure extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(message, key: DirectoryOrgUnitFilterDialog.failureKey),
         const SizedBox(height: Spacing.xs),
-        TextButton(onPressed: onRetry, child: const Text('Try again')),
+        TextButton(onPressed: onRetry, child: Text(l10n.commonTryAgain)),
       ],
     );
   }

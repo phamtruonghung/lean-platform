@@ -14,6 +14,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_page_header.dart';
 import 'account_bloc.dart';
@@ -31,9 +32,10 @@ class SessionErrorScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Platform')),
+      appBar: AppBar(title: Text(l10n.shellBrand)),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),
@@ -64,8 +66,8 @@ class SessionErrorScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: Spacing.md),
                     AppPageHeader(
-                      title: 'The session could not be checked',
-                      description: "Could not check this Account's status: $message",
+                      title: l10n.sessionErrorTheSessionCouldNotBeChecked,
+                      description: l10n.sessionErrorCouldNotCheckThisAccountSStatus(message),
                     ),
                     const SizedBox(height: Spacing.lg),
                     Wrap(
@@ -76,13 +78,13 @@ class SessionErrorScreen extends StatelessWidget {
                           key: retryKey,
                           onPressed: () =>
                               context.read<AccountBloc>().add(const AccountRefreshRequested()),
-                          child: const Text('Try again'),
+                          child: Text(l10n.commonTryAgain),
                         ),
                         TextButton(
                           key: signOutKey,
                           onPressed: () =>
                               context.read<AccountBloc>().add(const AccountSignOutRequested()),
-                          child: const Text('Sign out'),
+                          child: Text(l10n.shellSignOut),
                         ),
                       ],
                     ),

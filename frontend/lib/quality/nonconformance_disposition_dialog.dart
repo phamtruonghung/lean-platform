@@ -17,6 +17,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'nonconformance.dart';
@@ -129,6 +130,7 @@ class _NonconformanceDispositionDialogState extends State<NonconformanceDisposit
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final record = widget.nonconformance;
     final unit = record.uomCode;
@@ -136,18 +138,18 @@ class _NonconformanceDispositionDialogState extends State<NonconformanceDisposit
     return BlocListener<NonconformanceDetailBloc, NonconformanceDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Record a Disposition',
+        title: l10n.nonconformanceDisposition,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: 'nonconformance-disposition-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'nonconformance-disposition-submit',
-            label: 'Record it',
+            label: l10n.nonconformanceFormRecord,
             onPressed: _complete ? _submit : null,
           ),
         ],
@@ -156,8 +158,7 @@ class _NonconformanceDispositionDialogState extends State<NonconformanceDisposit
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '${record.issueNo} has ${_number(_undecided)} $unit still undecided. Deal with '
-              'some of it here.',
+              l10n.nonconformanceDispositionHasStillUndecidedDealWithSomeOf(record.issueNo, _number(_undecided), unit),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: Spacing.md),
@@ -165,9 +166,9 @@ class _NonconformanceDispositionDialogState extends State<NonconformanceDisposit
               key: NonconformanceDispositionDialog.kindKey,
               initialValue: _kind,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Disposition',
-                helperText: 'Scrap, rework, or back to the supplier.',
+              decoration: InputDecoration(
+                labelText: l10n.commonDisposition,
+                helperText: l10n.nonconformanceDispositionScrapReworkOrBackToTheSupplier,
                 border: OutlineInputBorder(),
               ),
               items: [
@@ -187,8 +188,8 @@ class _NonconformanceDispositionDialogState extends State<NonconformanceDisposit
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                labelText: 'Quantity',
-                helperText: 'At most ${_number(_undecided)} $unit.',
+                labelText: l10n.commonQuantity,
+                helperText: l10n.nonconformanceDispositionAtMost(_number(_undecided), unit),
                 border: const OutlineInputBorder(),
               ),
             ),
@@ -200,9 +201,9 @@ class _NonconformanceDispositionDialogState extends State<NonconformanceDisposit
                 enabled: !_awaiting,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Rework minutes',
-                  helperText: 'How long the rework took, for cost of poor quality.',
+                decoration: InputDecoration(
+                  labelText: l10n.nonconformanceDispositionReworkMinutes,
+                  helperText: l10n.nonconformanceDispositionHowLongTheReworkTookForCost,
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -214,9 +215,9 @@ class _NonconformanceDispositionDialogState extends State<NonconformanceDisposit
               enabled: !_awaiting,
               minLines: 2,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Note (optional)',
-                helperText: 'What was done with it.',
+              decoration: InputDecoration(
+                labelText: l10n.commonNoteOptional,
+                helperText: l10n.nonconformanceDispositionWhatWasDoneWithIt,
                 border: OutlineInputBorder(),
               ),
             ),

@@ -16,6 +16,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
@@ -57,6 +58,7 @@ class SupplierNcrSupplierFilterDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final state = context.watch<SupplierNcrsBloc>().state;
     final loaded = state is SupplierNcrsLoaded ? state : null;
@@ -70,20 +72,20 @@ class SupplierNcrSupplierFilterDialog extends StatelessWidget {
     }
 
     return AppDialog(
-      title: 'Filter by Supplier',
+      title: l10n.supplierNcrSupplierFilterFilterBySupplier,
       size: AppDialogSize.picker,
       // Clearing is this dialog's own act (the primary, right-most); Cancel is
       // the dismiss, which is what `Esc` runs.
       actions: [
         AppDialogAction(
           id: 'supplier-ncrs-supplier-filter-cancel',
-          label: 'Cancel',
+          label: l10n.commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(),
         ),
         AppDialogAction(
           id: 'supplier-ncrs-supplier-filter-all',
-          label: 'All Suppliers',
+          label: l10n.commonAllSuppliers,
           onPressed: () {
             context.read<SupplierNcrsBloc>().add(const SupplierNcrsFiltersCleared());
             Navigator.of(context).pop();
@@ -95,16 +97,15 @@ class SupplierNcrSupplierFilterDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Choose the Supplier whose supplier NCRs you want to read, or clear back to '
-            'every Supplier.',
+            l10n.supplierNcrSupplierFilterChooseTheSupplierWhoseSupplierNcrsYou,
             style: theme.textTheme.bodyMedium
                 ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: Spacing.md),
           AppSearchField<Supplier>(
             name: fieldName,
-            label: 'Supplier',
-            helperText: 'By name or code.',
+            label: l10n.commonSupplier,
+            helperText: l10n.jobRolesByNameOrCode,
             value: chosen(),
             fetchSuggestions: (term) async {
               final needle = term.trim().toLowerCase();

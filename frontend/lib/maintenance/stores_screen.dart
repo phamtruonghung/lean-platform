@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
@@ -66,6 +67,7 @@ class StoresScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<StoresBloc>().state;
 
     return Scaffold(
@@ -78,7 +80,7 @@ class StoresScreen extends StatelessWidget {
               StoresLoading() => const SkeletonList(maxWidth: maxWidth),
               StoresUnavailable(message: final message) => PlatformFailureState(
                 key: StoresScreen.failedKey,
-                title: 'The stores could not be read',
+                title: l10n.storesTheStoresCouldNotBeRead,
                 message: message,
                 retryKey: StoresScreen.retryKey,
                 onRetry: () => context.read<StoresBloc>().add(const StoresStarted()),
@@ -101,6 +103,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final loaded = state is StoresLoaded ? state as StoresLoaded : null;
 
     return Center(
@@ -109,8 +112,8 @@ class _Header extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
-            title: 'Stores',
-            description: 'The shelves that hold parts at this Site.',
+            title: l10n.navStores,
+            description: l10n.storesTheShelvesThatHoldPartsAtThis,
             below: loaded != null && loaded.sites.length > 1
                 ? SizedBox(
                     width: 280,
@@ -118,8 +121,8 @@ class _Header extends StatelessWidget {
                       key: StoresScreen.siteKey,
                       initialValue: loaded.siteId,
                       isDense: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Site',
+                      decoration: InputDecoration(
+                        labelText: l10n.commonSite,
                         border: OutlineInputBorder(),
                       ),
                       items: [
@@ -144,11 +147,11 @@ class _StoresEmpty extends StatelessWidget {
   const _StoresEmpty();
 
   @override
-  Widget build(BuildContext context) => const Center(
+  Widget build(BuildContext context) => Center(
     child: PlatformEmptyState.noneExist(
       key: StoresScreen.emptyKey,
-      title: 'No stores yet',
-      message: 'Nothing here holds parts.',
+      title: AppLocalizations.of(context).storesNoStoresYet,
+      message: AppLocalizations.of(context).storesNothingHereHoldsParts,
       icon: Icons.warehouse_outlined,
     ),
   );
@@ -189,6 +192,7 @@ class _StoresListState extends State<_StoresList> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     // Filtered here, immediately before the row widgets are built, so a term
     // can only ever narrow rows this Screen already read (issue #191).
     final matches = _matchingStores;
@@ -198,7 +202,7 @@ class _StoresListState extends State<_StoresList> {
       builder: (context, constraints) {
         final narrow =
             constraints.maxWidth < AppBreakpoints.effective(context, StoresScreen.narrowBreakpoint);
-        final columns = _columns();
+        final columns = _columns(context);
         return Center(
           child: AppPageFrame(
             maxWidth: StoresScreen.maxWidth,
@@ -218,8 +222,8 @@ class _StoresListState extends State<_StoresList> {
                           width: box.maxWidth,
                           child: AppFilterField(
                             name: StoresScreen.filterFieldName,
-                            label: 'Filter stores',
-                            helperText: 'By name or code.',
+                            label: l10n.storesFilterStores,
+                            helperText: l10n.jobRolesByNameOrCode,
                             term: _term,
                             onChanged: (term) => setState(() => _term = term),
                             shown: matches.length,
@@ -235,10 +239,9 @@ class _StoresListState extends State<_StoresList> {
                   child: matches.isEmpty
                       ? PlatformEmptyState.noneMatched(
                           key: StoresScreen.noMatchKey,
-                          title: 'No stores match',
+                          title: l10n.storesNoStoresMatch,
                           message:
-                              'This Site has stores, but none matches "${_term.trim()}". '
-                              'Try a different name or code, or clear the filter.',
+                              l10n.storesThisSiteHasStoresButNoneMatches(_term.trim()),
                         )
                       : ListView(
                           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
@@ -266,7 +269,7 @@ class _StoresListState extends State<_StoresList> {
                             ],
                             const SizedBox(height: Spacing.md),
                             Text(
-                              'Tapping a store shows what is on its shelf.',
+                              l10n.storesTappingAStoreShowsWhatIsOn,
                               style: AppTypography.floor(context)
                                   ?.copyWith(color: AppColors.of(context).textMuted),
                             ),
@@ -286,9 +289,9 @@ class _StoresListState extends State<_StoresList> {
 /// last column is the chevron that says so, as the list card's trailing icon
 /// does; it has no label because it names nothing. The Store's code and Org Unit
 /// stay one cell, the string the card shows.
-List<AppTableColumn> _columns() => const [
-  AppTableColumn('Name', flex: 3),
-  AppTableColumn('Code · Org Unit', flex: 4),
+List<AppTableColumn> _columns(BuildContext context) => [
+  AppTableColumn(AppLocalizations.of(context).commonName, flex: 3),
+  AppTableColumn(AppLocalizations.of(context).storesCodeOrgUnit, flex: 4),
   AppTableColumn('', width: Spacing.xl + Spacing.sm, align: AppColumnAlign.end),
 ];
 
