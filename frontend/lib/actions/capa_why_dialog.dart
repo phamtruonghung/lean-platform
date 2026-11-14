@@ -28,6 +28,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -69,7 +70,7 @@ class _WhyRefusal extends StatelessWidget {
         actions: [
           AppDialogAction(
             id: 'back-to-the-capa',
-            label: 'Back to the CAPA',
+            label: AppLocalizations.of(context).commonBackToTheCapa,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => context.pop(),
           ),
@@ -100,39 +101,37 @@ Widget? capaWhyAddressRefusal(
     case CapaDetailUnavailable(message: final message):
       return _WhyRefusal(
         key: CapaWhyKeys.notLoadedKey,
-        title: 'That CAPA could not be read',
+        title: AppLocalizations.of(context).commonThatCapaCouldNotBeRead,
         message: message,
       );
     case CapaDetailLoaded(capa: final capa):
       if (!capaChainOrder.contains(chain)) {
-        return const _WhyRefusal(
+        return _WhyRefusal(
           key: CapaWhyKeys.unknownChainKey,
-          title: 'That is not a chain',
+          title: AppLocalizations.of(context).capaWhyThatIsNotAChain,
           message:
-              'A CAPA reasons with two chains: why the problem happened, and why it was not detected.',
+              AppLocalizations.of(context).capaWhyACapaReasonsWithTwoChainsWhy,
         );
       }
       if (!capa.isOpen) {
         return _WhyRefusal(
           key: CapaWhyKeys.closedKey,
-          title: 'This investigation is over',
-          message: '${capa.capaNo} is ${capa.statusLabel.toLowerCase()}, so its chains are a record '
-              'rather than a worklist.',
+          title: AppLocalizations.of(context).commonThisInvestigationIsOver,
+          message: AppLocalizations.of(context).capaWhyIsSoItsChainsAreARecord(capa.capaNo, capa.statusLabel.toLowerCase()),
         );
       }
       if (!mayEditCapaChains(context, capa)) {
-        return const _WhyRefusal(
+        return _WhyRefusal(
           key: CapaWhyKeys.refusedKey,
-          title: 'Not yours to write',
-          message: "Writing a CAPA's root causes needs edit access at its Org Unit, or a place on "
-              'its team.',
+          title: AppLocalizations.of(context).commonNotYoursToWrite,
+          message: AppLocalizations.of(context).commonWritingACapaSRootCausesNeeds,
         );
       }
       if (whyId != null && capa.whysIn(chain).every((why) => why.id != whyId)) {
-        return const _WhyRefusal(
+        return _WhyRefusal(
           key: CapaWhyKeys.missingWhyKey,
-          title: 'That Why is not in this chain',
-          message: 'It may have been removed a moment ago by somebody else.',
+          title: AppLocalizations.of(context).capaWhyThatWhyIsNotInThisChain,
+          message: AppLocalizations.of(context).commonItMayHaveBeenRemovedAMoment,
         );
       }
       return null;
@@ -155,13 +154,14 @@ class CapaWhyDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<CapaDetailBloc>().state;
     final refusal = capaWhyAddressRefusal(context, state, chain: chain, whyId: null);
     if (refusal != null) return refusal;
 
     return _WhyForm(
       chain: chain,
-      title: 'Add a Why',
+      title: l10n.commonAddAWhy,
       submitLabel: 'Add it',
       submitId: 'add-it',
       statementKey: statementKey,
@@ -187,6 +187,7 @@ class CapaWhyEditDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<CapaDetailBloc>().state;
     final refusal = capaWhyAddressRefusal(context, state, chain: chain, whyId: whyId);
     if (refusal != null) return refusal;
@@ -196,7 +197,7 @@ class CapaWhyEditDialog extends StatelessWidget {
 
     return _WhyForm(
       chain: chain,
-      title: 'Revise Why ${why.sequence}',
+      title: l10n.capaWhyReviseWhy(why.sequence),
       submitLabel: 'Save it',
       submitId: 'save-it',
       statementKey: statementKey,
@@ -260,6 +261,7 @@ class _CapaWhyRemoveDialogState extends State<CapaWhyRemoveDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final state = context.watch<CapaDetailBloc>().state;
     final refusal = capaWhyAddressRefusal(
@@ -276,20 +278,20 @@ class _CapaWhyRemoveDialogState extends State<CapaWhyRemoveDialog> {
     return BlocListener<CapaDetailBloc, CapaDetailState>(
       listener: _onChanged,
       child: AppDialog(
-        title: 'Remove Why ${why.sequence}?',
+        title: l10n.capaWhyRemoveWhy(why.sequence),
         // A decision, not a form: one sentence about what goes with it, and the
         // act that cannot be undone (issue #398's four widths).
         size: AppDialogSize.decision,
         actions: [
           AppDialogAction(
             id: 'cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'remove-it',
-            label: 'Remove it',
+            label: l10n.commonRemoveIt,
             kind: AppDialogActionKind.destructive,
             onPressed: _awaiting ? null : _submit,
           ),
@@ -304,8 +306,7 @@ class _CapaWhyRemoveDialogState extends State<CapaWhyRemoveDialog> {
             ),
             const SizedBox(height: Spacing.md),
             Text(
-              'It is taken out of the chain for good, and the Whys after it move up one. '
-              'The rest of the investigation is not touched.',
+              l10n.capaWhyItIsTakenOutOfTheChain,
               style: theme.textTheme.bodyMedium,
             ),
             if (_failure != null)
@@ -405,6 +406,7 @@ class _WhyFormState extends State<_WhyForm> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     return BlocListener<CapaDetailBloc, CapaDetailState>(
@@ -416,7 +418,7 @@ class _WhyFormState extends State<_WhyForm> {
         actions: [
           AppDialogAction(
             id: 'cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
@@ -431,7 +433,7 @@ class _WhyFormState extends State<_WhyForm> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '${capaChainLabel(widget.chain)} — one step of the reasoning, in your own words.',
+              l10n.capaWhyOneStepOfTheReasoningInYour(capaChainLabel(widget.chain)),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: Spacing.md),
@@ -443,9 +445,9 @@ class _WhyFormState extends State<_WhyForm> {
               minLines: 2,
               maxLines: 3,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'The Why',
-                helperText: 'What you found, said so the next person can follow it.',
+              decoration: InputDecoration(
+                labelText: l10n.capaWhyTheWhy,
+                helperText: l10n.capaWhyWhatYouFoundSaidSoTheNext,
                 border: OutlineInputBorder(),
               ),
             ),

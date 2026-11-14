@@ -29,6 +29,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -71,7 +72,7 @@ class _EffectivenessRefusal extends StatelessWidget {
         actions: [
           AppDialogAction(
             id: 'back-to-the-capa',
-            label: 'Back to the CAPA',
+            label: AppLocalizations.of(context).commonBackToTheCapa,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => context.pop(),
           ),
@@ -88,6 +89,7 @@ class _EffectivenessRefusal extends StatelessWidget {
 /// naming a closed investigation says so whether or not the caller could have
 /// recorded anything on it.
 Widget? capaEffectivenessAddressRefusal(BuildContext context, CapaDetailState state) {
+  final l10n = AppLocalizations.of(context);
   switch (state) {
     case CapaDetailLoading():
       return const AlertDialog(
@@ -97,32 +99,29 @@ Widget? capaEffectivenessAddressRefusal(BuildContext context, CapaDetailState st
     case CapaDetailUnavailable(message: final message):
       return _EffectivenessRefusal(
         key: CapaEffectivenessKeys.notLoadedKey,
-        title: 'That CAPA could not be read',
+        title: l10n.commonThatCapaCouldNotBeRead,
         message: message,
       );
     case CapaDetailLoaded(capa: final capa):
       if (!capa.isOpen) {
         return _EffectivenessRefusal(
           key: CapaEffectivenessKeys.closedKey,
-          title: 'This investigation is over',
-          message: '${capa.capaNo} is ${capa.statusLabel.toLowerCase()}, so its effectiveness is '
-              'recorded and the record is read rather than changed.',
+          title: l10n.commonThisInvestigationIsOver,
+          message: l10n.capaEffectivenessIsSoItsEffectivenessIsRecordedAnd(capa.capaNo, capa.statusLabel.toLowerCase()),
         );
       }
       if (!holdsQualityAuthority(context, capa.orgUnitId)) {
-        return const _EffectivenessRefusal(
+        return _EffectivenessRefusal(
           key: CapaEffectivenessKeys.refusedKey,
-          title: 'Not yours to decide',
-          message: "Recording a CAPA's effectiveness check needs Quality authority at its Org Unit.",
+          title: l10n.capaEffectivenessNotYoursToDecide,
+          message: l10n.capaEffectivenessRecordingACapaSEffectivenessCheckNeeds,
         );
       }
       if (isCapaTeamLeadAccount(context, capa)) {
         return _EffectivenessRefusal(
           key: CapaEffectivenessKeys.teamLeadKey,
-          title: 'Somebody else has to check this',
-          message: 'You lead the investigation on ${capa.capaNo}, so you are the one person whose '
-              "judgement about this fix is not evidence. A holder of Quality authority who is not "
-              "on the team lead's Account records the check.",
+          title: l10n.capaEffectivenessSomebodyElseHasToCheckThis,
+          message: l10n.capaEffectivenessYouLeadTheInvestigationOnSoYou(capa.capaNo),
         );
       }
       return null;
@@ -201,6 +200,7 @@ class _CapaEffectivenessDialogState extends State<CapaEffectivenessDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final state = context.watch<CapaDetailBloc>().state;
     final refusal = capaEffectivenessAddressRefusal(context, state);
@@ -211,19 +211,19 @@ class _CapaEffectivenessDialogState extends State<CapaEffectivenessDialog> {
     return BlocListener<CapaDetailBloc, CapaDetailState>(
       listener: _onChanged,
       child: AppDialog(
-        title: 'Record the effectiveness check',
+        title: l10n.commonRecordTheEffectivenessCheck,
         // Two fields and a sentence: a short form (issue #398's four widths).
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: 'cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'record-it',
-            label: 'Record it',
+            label: l10n.nonconformanceFormRecord,
             onPressed: _complete ? _submit : null,
           ),
         ],
@@ -238,10 +238,8 @@ class _CapaEffectivenessDialogState extends State<CapaEffectivenessDialog> {
             const SizedBox(height: Spacing.xs),
             Text(
               capa.effectivenessCheckDueAt == null
-                  ? 'The check falls due ${capa.effectivenessCheckDelayDays} days after the '
-                      'Concern closes.'
-                  : 'The Concern closed, and the check fell due on '
-                      '${capa.effectivenessCheckDueAt}.',
+                  ? l10n.capaEffectivenessTheCheckFallsDueDaysAfterThe(capa.effectivenessCheckDelayDays)
+                  : l10n.capaEffectivenessTheConcernClosedAndTheCheckFell((capa.effectivenessCheckDueAt ?? '')),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -254,8 +252,8 @@ class _CapaEffectivenessDialogState extends State<CapaEffectivenessDialog> {
               key: CapaEffectivenessDialog.outcomeKey,
               initialValue: _outcome,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'What the check found',
+              decoration: InputDecoration(
+                labelText: l10n.capaEffectivenessWhatTheCheckFound,
                 border: OutlineInputBorder(),
               ),
               items: [
@@ -277,9 +275,7 @@ class _CapaEffectivenessDialogState extends State<CapaEffectivenessDialog> {
                 key: CapaEffectivenessDialog.chainsOpenKey,
                 padding: const EdgeInsets.only(top: Spacing.sm),
                 child: Text(
-                  'A chain of this investigation has no confirmed root cause yet, so '
-                  '"${capaEffectivenessOutcomeLabel('effective')}" cannot close it: the '
-                  'investigation has to have finished before the fix is judged to have held.',
+                  l10n.capaEffectivenessAChainOfThisInvestigationHasNo(capaEffectivenessOutcomeLabel('effective')),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -294,9 +290,9 @@ class _CapaEffectivenessDialogState extends State<CapaEffectivenessDialog> {
               minLines: 3,
               maxLines: 5,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'What you checked, and what you found',
-                helperText: 'The evidence for the verdict, so the next reader can weigh it.',
+              decoration: InputDecoration(
+                labelText: l10n.capaEffectivenessWhatYouCheckedAndWhatYouFound,
+                helperText: l10n.capaEffectivenessTheEvidenceForTheVerdictSoThe,
                 border: OutlineInputBorder(),
               ),
             ),

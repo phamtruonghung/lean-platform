@@ -26,6 +26,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../status_tone.dart';
@@ -116,6 +117,7 @@ class _BodyState extends State<_Body> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final palette = AppColors.of(context);
     final state = context.watch<MySignatureBloc>().state;
@@ -126,7 +128,7 @@ class _BodyState extends State<_Body> {
     if (state.failure != null) {
       content = PlatformFailureState(
         key: MySignatureScreen.failureKey,
-        title: 'Your Signature could not be read',
+        title: l10n.mySignatureYourSignatureCouldNotBeRead,
         message: state.failure!,
         retryKey: MySignatureScreen.retryKey,
         onRetry: () => bloc.add(const MySignatureStarted()),
@@ -138,10 +140,10 @@ class _BodyState extends State<_Body> {
         maxWidth: MySignatureScreen.maxWidth,
       );
     } else if (state.image == null) {
-      content = const PlatformEmptyState.noneExist(
+      content = PlatformEmptyState.noneExist(
         key: MySignatureScreen.emptyKey,
-        title: 'No Signature kept',
-        message: 'You have not kept a Signature yet. Upload a picture of it, or draw it here.',
+        title: l10n.mySignatureNoSignatureKept,
+        message: l10n.mySignatureYouHaveNotKeptASignatureYet,
         icon: Icons.draw_outlined,
       );
     } else {
@@ -158,7 +160,7 @@ class _BodyState extends State<_Body> {
               padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
               color: palette.tableHeaderFill,
               child: Text(
-                'Your Signature',
+                l10n.mySignatureYourSignature,
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: palette.textMuted,
                   fontWeight: FontWeight.w600,
@@ -190,7 +192,7 @@ class _BodyState extends State<_Body> {
                     fit: BoxFit.contain,
                     alignment: Alignment.centerLeft,
                     errorBuilder: (context, error, stackTrace) => Text(
-                      'This Signature could not be shown.',
+                      l10n.commonThisSignatureCouldNotBeShown,
                       style: theme.textTheme.bodyMedium?.copyWith(color: palette.onSignatureBackdrop),
                     ),
                   ),
@@ -209,11 +211,10 @@ class _BodyState extends State<_Body> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
             children: [
-              const AppPageHeader(
-                title: 'My signature',
+              AppPageHeader(
+                title: l10n.navMySignature,
                 description:
-                    'Your own mark, kept once and applied wherever you would otherwise sign a sheet by hand. '
-                    'Replacing it never changes a sheet you have already signed.',
+                    l10n.mySignatureYourOwnMarkKeptOnceAndApplied,
               ),
               const SizedBox(height: Spacing.lg),
               content,
@@ -235,14 +236,14 @@ class _BodyState extends State<_Body> {
                     style: FilledButton.styleFrom(minimumSize: const Size(0, AppTouchTarget.min)),
                     onPressed: canWrite ? _upload : null,
                     icon: const Icon(Icons.upload_file_outlined, size: 18),
-                    label: Text(state.image == null ? 'Upload a picture' : 'Replace with a picture'),
+                    label: Text(state.image == null ? l10n.commonUploadAPicture : l10n.commonReplaceWithAPicture),
                   ),
                   OutlinedButton.icon(
                     key: MySignatureScreen.drawKey,
                     style: OutlinedButton.styleFrom(minimumSize: const Size(0, AppTouchTarget.min)),
                     onPressed: canWrite && !_drawing ? () => setState(() => _drawing = true) : null,
                     icon: const Icon(Icons.draw_outlined, size: 18),
-                    label: Text(state.image == null ? 'Draw it' : 'Draw a new one'),
+                    label: Text(state.image == null ? l10n.commonDrawIt : l10n.commonDrawANewOne),
                   ),
                   if (state.image != null)
                     OutlinedButton.icon(
@@ -250,7 +251,7 @@ class _BodyState extends State<_Body> {
                       style: OutlinedButton.styleFrom(minimumSize: const Size(0, AppTouchTarget.min)),
                       onPressed: canWrite ? () => bloc.add(const MySignatureRemoved()) : null,
                       icon: const Icon(Icons.delete_outline, size: 18),
-                      label: const Text('Remove'),
+                      label: Text(l10n.commonRemove),
                     ),
                 ],
               ),
@@ -265,7 +266,7 @@ class _BodyState extends State<_Body> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Draw your Signature',
+                          l10n.mySignatureDrawYourSignature,
                           style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: Spacing.sm),
@@ -283,7 +284,7 @@ class _BodyState extends State<_Body> {
                                   minimumSize: const Size(0, AppTouchTarget.min),
                                 ),
                                 onPressed: canWrite && !_pad.isEmpty ? _saveDrawn : null,
-                                child: const Text('Keep this Signature'),
+                                child: Text(l10n.commonKeepThisSignature),
                               ),
                               OutlinedButton(
                                 key: MySignatureScreen.clearDrawnKey,
@@ -291,7 +292,7 @@ class _BodyState extends State<_Body> {
                                   minimumSize: const Size(0, AppTouchTarget.min),
                                 ),
                                 onPressed: _pad.isEmpty ? null : _pad.clear,
-                                child: const Text('Clear'),
+                                child: Text(l10n.commonClear),
                               ),
                               TextButton(
                                 key: MySignatureScreen.cancelDrawnKey,
@@ -302,7 +303,7 @@ class _BodyState extends State<_Body> {
                                   _pad.clear();
                                   setState(() => _drawing = false);
                                 },
-                                child: const Text('Cancel'),
+                                child: Text(l10n.commonCancel),
                               ),
                             ],
                           ),

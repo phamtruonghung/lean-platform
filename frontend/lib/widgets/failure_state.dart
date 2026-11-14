@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 
 /// The shared "that failed" state (issue #103): names what broke and offers
@@ -116,11 +117,12 @@ class PlatformScopeRefusedState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final message = _message;
     return Semantics(
       liveRegion: true,
-      label: 'Not visible to you. $message',
+      label: l10n.failureStateNotVisibleToYou(message),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),
@@ -136,7 +138,7 @@ class PlatformScopeRefusedState extends StatelessWidget {
                 // still tells the two apart.
                 Icon(Icons.lock_outline, size: 48, color: AppColors.of(context).statusWarning),
                 const SizedBox(height: Spacing.md),
-                Text('Not visible to you', style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
+                Text(l10n.failureStateNotVisibleToYou2, style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
                 const SizedBox(height: Spacing.sm),
                 Text(
                   message,

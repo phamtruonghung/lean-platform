@@ -15,6 +15,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'package:lean_platform/l10n/app_localizations.dart';
 import 'package:lean_platform/theme.dart';
 import 'package:lean_platform/widgets/app_filter_field.dart';
 
@@ -44,6 +46,8 @@ class _HostState extends State<_Host> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       theme: buildAppTheme(),
       home: Scaffold(
         body: Center(

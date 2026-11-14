@@ -26,6 +26,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
@@ -197,6 +198,7 @@ class _WorkOrderAssignDialogState extends State<WorkOrderAssignDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final matching = _matchingCandidates();
     final visible = _visibleCandidates(matching);
@@ -211,7 +213,7 @@ class _WorkOrderAssignDialogState extends State<WorkOrderAssignDialog> {
         actions: [
           AppDialogAction(
             id: WorkOrderAssignDialog._cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
@@ -237,8 +239,8 @@ class _WorkOrderAssignDialogState extends State<WorkOrderAssignDialog> {
                   if (_status == _CandidatesStatus.ready && _candidates.isNotEmpty) ...[
                     AppFilterField(
                       name: WorkOrderAssignDialog.searchFieldName,
-                      label: 'Find a person',
-                      helperText: 'By name, employee number, or the qualification they hold.',
+                      label: l10n.workOrderAssignFindAPerson,
+                      helperText: l10n.workOrderAssignByNameEmployeeNumberOrTheQualification,
                       term: _term,
                       enabled: !_awaiting,
                       onChanged: (term) => setState(() => _term = term),
@@ -316,6 +318,7 @@ class _CandidatesList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     switch (status) {
       case _CandidatesStatus.loading:
@@ -329,10 +332,10 @@ class _CandidatesList extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              failure ?? 'The candidates could not be read.',
+              failure ?? l10n.workOrderAssignTheCandidatesCouldNotBeRead,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
             ),
-            TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
+            TextButton(onPressed: enabled ? onRetry : null, child: Text(l10n.commonTryAgain)),
           ],
         );
       case _CandidatesStatus.ready:
@@ -345,8 +348,8 @@ class _CandidatesList extends StatelessWidget {
               padding: const EdgeInsets.all(Spacing.md),
               child: Text(
                 isFiltered
-                    ? 'Nobody matches "${term.trim()}" — try a different name, number, or skill.'
-                    : 'There is nobody this Work order could be given to.',
+                    ? l10n.workOrderAssignNobodyMatchesTryADifferentNameNumber(term.trim())
+                    : l10n.workOrderAssignThereIsNobodyThisWorkOrderCould,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium,
               ),
@@ -384,6 +387,7 @@ class _CandidateRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return RadioListTile<String>(
       key: WorkOrderAssignDialog.candidateKey(candidate.id),
@@ -391,13 +395,13 @@ class _CandidateRow extends StatelessWidget {
       enabled: enabled,
       title: Text(candidate.displayName),
       subtitle: candidate.skills.isEmpty
-          ? const Text('No qualifications recorded')
+          ? Text(l10n.workOrderAssignNoQualificationsRecorded)
           : Padding(
               padding: const EdgeInsets.only(top: Spacing.xs),
               child: Wrap(
                 spacing: Spacing.xs,
                 runSpacing: Spacing.xs,
-                children: [for (final skill in candidate.skills) _skillChip(theme, candidate, skill)],
+                children: [for (final skill in candidate.skills) _skillChip(theme, context, candidate, skill)],
               ),
             ),
     );
@@ -412,7 +416,7 @@ class _CandidateRow extends StatelessWidget {
   /// "· Lapsed" state a fact about what the candidate holds, never a claim
   /// about whether they should get this Work order — see ADR-0018 for why
   /// this dialog never renders a warning or a disabled row either.
-  Widget _skillChip(ThemeData theme, AssigneeCandidate candidate, HeldSkill skill) {
+  Widget _skillChip(ThemeData theme, BuildContext context, AssigneeCandidate candidate, HeldSkill skill) {
     // The lapsed chip used to wear the error container's red, which is the one
     // colour this doc comment says this dialog never renders — a judgement
     // about a candidate. It is the neutral tone now (issues #168/#169), so the
@@ -421,7 +425,7 @@ class _CandidateRow extends StatelessWidget {
     final chip = skill.isLapsed
         ? StatusChip(
             key: WorkOrderAssignDialog.skillChipKey(candidate.id, skill.skillId),
-            label: '${skill.name} · Lapsed',
+            label: AppLocalizations.of(context).employeeDetailLapsed(skill.name),
             tone: StatusTone.neutral,
           )
         : Chip(

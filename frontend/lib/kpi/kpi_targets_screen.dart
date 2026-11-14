@@ -32,6 +32,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_list_card.dart';
@@ -83,13 +84,14 @@ class KpiTargetsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<KpiTargetsBloc>().state;
     return Scaffold(
       body: switch (state) {
         KpiTargetsLoading() => const SkeletonList(maxWidth: KpiTargetsScreen.maxWidth),
         KpiTargetsUnavailable(message: final message) => PlatformFailureState(
             key: KpiTargetsScreen.failedKey,
-            title: 'The Targets could not be read',
+            title: l10n.kpiTargetsTheTargetsCouldNotBeRead,
             message: message,
             retryKey: KpiTargetsScreen.retryKey,
             onRetry: () => context.read<KpiTargetsBloc>().add(KpiTargetsStarted(kpiId: kpiId)),
@@ -108,6 +110,7 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final kpi = state.targets.kpi;
     final muted = AppTypography.floor(context)?.copyWith(color: AppColors.of(context).textMuted);
     final dense = AppTypography.dense(context);
@@ -124,21 +127,21 @@ class _Loaded extends StatelessWidget {
                 key: KpiTargetsScreen.backKey,
                 onPressed: () => context.go(Routes.kpi),
                 icon: const Icon(Icons.arrow_back),
-                label: const Text('KPI catalogue'),
+                label: Text(l10n.navKpiCatalogue),
               ),
             ),
             KeyedSubtree(
               key: KpiTargetsScreen.headerKey,
               child: AppPageHeader(
                 title: '${kpi.kpi} · ${kpi.title}',
-                description: 'KPI Targets, ${kpi.direction} ${kpi.unit}'.trim(),
+                description: l10n.kpiTargetsKpiTargets(kpi.direction, kpi.unit).trim(),
                 actions: [
                   if (canWrite)
                     FilledButton.icon(
                       key: KpiTargetsScreen.changeTargetKey,
                       onPressed: () => ChangeTargetDialog.open(context, siteToday: state.siteToday),
                       icon: const Icon(Icons.edit_calendar_outlined),
-                      label: const Text('Change Target'),
+                      label: Text(l10n.commonChangeTarget),
                     ),
                 ],
                 below: state.sites.length > 1
@@ -148,8 +151,8 @@ class _Loaded extends StatelessWidget {
                           key: KpiTargetsScreen.siteKey,
                           initialValue: state.siteId,
                           isDense: true,
-                          decoration: const InputDecoration(
-                              labelText: 'Site', border: OutlineInputBorder()),
+                          decoration: InputDecoration(
+                              labelText: l10n.commonSite, border: OutlineInputBorder()),
                           items: [
                             for (final site in state.sites)
                               DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -165,13 +168,13 @@ class _Loaded extends StatelessWidget {
             ),
             const SizedBox(height: Spacing.lg),
             _SectionLabel(
-              title: 'Currently in force',
-              caption: 'What each grain is judged against today, and from when.',
+              title: l10n.kpiTargetsCurrentlyInForce,
+              caption: l10n.kpiTargetsWhatEachGrainIsJudgedAgainstToday,
               captionStyle: muted,
             ),
             const SizedBox(height: Spacing.sm),
             if (state.targets.current.isEmpty)
-              Text('No Target is in force today.', key: KpiTargetsScreen.currentKey, style: muted)
+              Text(l10n.kpiTargetsNoTargetIsInForceToday, key: KpiTargetsScreen.currentKey, style: muted)
             else
               Column(
                 key: KpiTargetsScreen.currentKey,
@@ -187,8 +190,7 @@ class _Loaded extends StatelessWidget {
                           child: Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
-                              '${entry.grain}: ${formatTarget(kpi, entry.target)} '
-                              '(from ${entry.validFrom})',
+                              l10n.kpiTargetsFrom(entry.grain, formatTarget(kpi, entry.target), entry.validFrom),
                               style: dense,
                             ),
                           ),
@@ -199,16 +201,16 @@ class _Loaded extends StatelessWidget {
               ),
             const SizedBox(height: Spacing.lg),
             _SectionLabel(
-              title: 'History',
-              caption: 'Newest first. An entry is never edited — a later one supersedes it.',
+              title: l10n.kpiTargetsHistory,
+              caption: l10n.kpiTargetsNewestFirstAnEntryIsNeverEdited,
               captionStyle: muted,
             ),
             const SizedBox(height: Spacing.sm),
             if (history.isEmpty)
-              const PlatformEmptyState.noneExist(
+              PlatformEmptyState.noneExist(
                 key: KpiTargetsScreen.emptyKey,
-                title: 'No Target has been set',
-                message: 'Every entry made for this KPI will be listed here.',
+                title: l10n.kpiTargetsNoTargetHasBeenSet,
+                message: l10n.kpiTargetsEveryEntryMadeForThisKpiWill,
                 icon: Icons.flag_outlined,
               )
             else

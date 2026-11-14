@@ -27,6 +27,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../status_tone.dart';
@@ -113,22 +114,23 @@ class _TrainingTraineeDialogState extends State<TrainingTraineeDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final failure = _failure;
     return BlocListener<TrainingDetailBloc, TrainingDetailState>(
       listener: _onRecordChanged,
       child: AppDialog(
-        title: 'Add Trainee',
+        title: l10n.commonAddTrainee,
         size: AppDialogSize.picker,
         actions: [
           AppDialogAction(
             id: TrainingTraineeDialog._cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: TrainingTraineeDialog._submitId,
-            label: _awaiting ? 'Adding…' : 'Add Trainee',
+            label: _awaiting ? l10n.commonAdding : l10n.commonAddTrainee,
             onPressed: _employee != null && !_awaiting ? _submit : null,
           ),
         ],
@@ -143,9 +145,9 @@ class _TrainingTraineeDialogState extends State<TrainingTraineeDialog> {
                 ButtonSegment<bool>(
                   value: false,
                   label: Text(widget.orgUnitName, overflow: TextOverflow.ellipsis),
-                  tooltip: 'Employees of ${widget.orgUnitName}',
+                  tooltip: l10n.trainingTraineeEmployeesOf(widget.orgUnitName),
                 ),
-                const ButtonSegment<bool>(value: true, label: Text('Whole Directory')),
+                ButtonSegment<bool>(value: true, label: Text(l10n.trainingTraineeWholeDirectory)),
               ],
               selected: {_wholeDirectory},
               onSelectionChanged: _awaiting
@@ -162,10 +164,10 @@ class _TrainingTraineeDialogState extends State<TrainingTraineeDialog> {
               key: ValueKey<bool>(_wholeDirectory),
               child: AppSearchField<Employee>(
                 name: TrainingTraineeDialog.employeeFieldName,
-                label: 'Employee',
+                label: l10n.titleEmployee,
                 helperText: _wholeDirectory
-                    ? 'Anyone in the Directory, found by name or number.'
-                    : 'An Employee of ${widget.orgUnitName}, found by name or number.',
+                    ? l10n.trainingTraineeAnyoneInTheDirectoryFoundByName
+                    : l10n.trainingTraineeAnEmployeeOfFoundByNameOr(widget.orgUnitName),
                 value: _employee,
                 enabled: !_awaiting,
                 onChanged: (employee) => setState(() => _employee = employee),

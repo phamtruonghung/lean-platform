@@ -29,6 +29,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
@@ -258,6 +259,7 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return MultiBlocListener(
       listeners: [
@@ -273,18 +275,18 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
           ),
       ],
       child: AppDialog(
-        title: _isCorrecting ? 'Correct details' : 'Add an Asset',
+        title: _isCorrecting ? l10n.assetFormCorrectDetails : l10n.commonAddAnAsset,
         size: _isCorrecting ? AppDialogSize.form : AppDialogSize.wide,
         actions: [
           AppDialogAction(
             id: AssetFormDialog._cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: AssetFormDialog._submitId,
-            label: _awaiting ? 'Saving…' : (_isCorrecting ? 'Save' : 'Add Asset'),
+            label: _awaiting ? l10n.commonSaving : (_isCorrecting ? l10n.commonSave : l10n.assetFormAddAsset),
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -295,8 +297,8 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
             AppScanField(
               key: AssetFormDialog.codeKey,
               controller: _code,
-              label: 'Code',
-              helperText: 'Unique across the whole Platform, not just this Site.',
+              label: l10n.commonCode,
+              helperText: l10n.assetFormUniqueAcrossTheWholePlatformNotJust,
               enabled: !_awaiting,
               autofocus: true,
               onChanged: (_) => setState(() {}),
@@ -307,7 +309,7 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
               controller: _name,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.commonName, border: OutlineInputBorder()),
             ),
             const SizedBox(height: Spacing.md),
             Row(
@@ -316,8 +318,8 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
                   child: DropdownButtonFormField<AssetType>(
                     key: AssetFormDialog.typeKey,
                     initialValue: _type,
-                    decoration: const InputDecoration(
-                      labelText: 'Kind',
+                    decoration: InputDecoration(
+                      labelText: l10n.assetFormKind,
                       border: OutlineInputBorder(),
                     ),
                     items: [
@@ -332,8 +334,8 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
                   child: DropdownButtonFormField<Criticality>(
                     key: AssetFormDialog.criticalityKey,
                     initialValue: _criticality,
-                    decoration: const InputDecoration(
-                      labelText: 'Criticality',
+                    decoration: InputDecoration(
+                      labelText: l10n.commonCriticality,
                       border: OutlineInputBorder(),
                     ),
                     items: [
@@ -354,7 +356,7 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
               // (issue #171) and its own transaction — this dialog only
               // ever carries one.
               Text(
-                'Where this Asset sits is changed with its own "Change Org Unit…" action.',
+                l10n.assetFormWhereThisAssetSitsIsChangedWith,
                 style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
               )
             else ...[
@@ -368,7 +370,7 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
                   key: AssetFormDialog.chosenKey,
                   padding: const EdgeInsets.only(top: Spacing.sm),
                   child: Text(
-                    'This Asset will sit at ${_orgUnit!.name}.',
+                    l10n.assetFormThisAssetWillSitAt(_orgUnit!.name),
                     style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
                   ),
                 ),

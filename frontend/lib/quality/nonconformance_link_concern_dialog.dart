@@ -29,6 +29,7 @@ import 'package:flutter/material.dart' hide Action;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../actions/actions.dart';
+import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -168,31 +169,32 @@ class _NonconformanceLinkConcernDialogState extends State<NonconformanceLinkConc
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final record = widget.nonconformance;
 
     return BlocListener<NonconformanceDetailBloc, NonconformanceDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Link it to a Concern',
+        title: l10n.nonconformanceLinkConcern,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: 'nonconformance-link-concern-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'nonconformance-link-concern-submit',
-            label: 'Link it',
+            label: l10n.commonLinkIt,
             onPressed: _complete ? _submit : null,
           ),
         ],
         child: _loadFailure != null
             ? PlatformFailureState(
                 key: NonconformanceLinkConcernDialog.loadFailedKey,
-                title: 'The action log could not be read',
+                title: l10n.actionsTheActionLogCouldNotBeRead,
                 message: _loadFailure!,
                 retryKey: NonconformanceLinkConcernDialog.retryKey,
                 onRetry: _load,
@@ -207,23 +209,22 @@ class _NonconformanceLinkConcernDialogState extends State<NonconformanceLinkConc
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '${record.issueNo} becomes one of the occurrences this Concern answers. '
-                        'The Concern keeps the Non-conformance it was raised from.',
+                        l10n.nonconformanceLinkConcernBecomesOneOfTheOccurrencesThisConcern(record.issueNo),
                         style: theme.textTheme.bodyMedium,
                       ),
                       const SizedBox(height: Spacing.md),
                       if (_concerns!.isEmpty)
                         Text(
                           key: NonconformanceLinkConcernDialog.emptyKey,
-                          'This Site has no open Concern to link it to. Raise one instead.',
+                          l10n.nonconformanceLinkConcernThisSiteHasNoOpenConcernTo,
                           style: theme.textTheme.bodyMedium
                               ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                         )
                       else
                         AppSearchField<Action>(
                           name: NonconformanceLinkConcernDialog.fieldName,
-                          label: 'Concern',
-                          helperText: 'By its number or its title.',
+                          label: l10n.nonconformanceLinkConcernConcern,
+                          helperText: l10n.nonconformanceLinkConcernByItsNumberOrItsTitle,
                           value: _picked,
                           enabled: !_awaiting,
                           fetchSuggestions: _suggestions,

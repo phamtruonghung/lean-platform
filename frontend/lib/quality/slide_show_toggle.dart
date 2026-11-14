@@ -17,6 +17,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 
 class SlideShowToggle extends StatelessWidget {
@@ -50,10 +51,11 @@ class SlideShowToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (!canWrite) {
       if (!expanded) return const SizedBox.shrink();
       return Text(
-        inSlideShow ? 'On the slide show' : 'Not on the slide show',
+        inSlideShow ? l10n.slideShowToggleOnTheSlideShow : l10n.slideShowToggleNotOnTheSlideShow,
         style: AppTypography.dense(context)?.copyWith(color: AppColors.of(context).textMuted),
       );
     }
@@ -90,11 +92,11 @@ class SlideShowToggle extends StatelessWidget {
       onChanged: onChanged,
       contentPadding: EdgeInsets.zero,
       title: Text(
-        inSlideShow ? 'On the slide show' : 'Not on the slide show',
+        inSlideShow ? l10n.slideShowToggleOnTheSlideShow : l10n.slideShowToggleNotOnTheSlideShow,
         style: AppTypography.body(context),
       ),
-      subtitle: const Text(
-        'Chosen issues play in the Quality slide show, one picture at a time.',
+      subtitle: Text(
+        l10n.slideShowToggleChosenIssuesPlayInTheQualitySlide,
       ),
     );
   }

@@ -47,6 +47,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
@@ -173,6 +174,7 @@ class _WorkedHoursBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final state = context.watch<WorkedHoursBloc>().state;
     final bloc = context.read<WorkedHoursBloc>();
@@ -183,9 +185,9 @@ class _WorkedHoursBody extends StatelessWidget {
     final figureStyle = AppTableRow.numberStyle(context);
     final totalStyle = _totalFigure(context);
     final columns = [
-      const AppTableColumn('Day', flex: 3),
+      AppTableColumn(l10n.workedHoursDay, flex: 3),
       AppTableColumn(
-        'Worked',
+        l10n.workedHoursWorked,
         width: _columnWidth(
           context,
           [
@@ -197,7 +199,7 @@ class _WorkedHoursBody extends StatelessWidget {
         align: AppColumnAlign.end,
       ),
       AppTableColumn(
-        'Overtime',
+        l10n.commonOvertime,
         width: _columnWidth(
           context,
           [
@@ -230,22 +232,21 @@ class _WorkedHoursBody extends StatelessWidget {
                   ),
                   onPressed: () => context.go('${Routes.directory}/$employeeId'),
                   icon: const Icon(Icons.arrow_back, size: 18),
-                  label: const Text('Back to Employee'),
+                  label: Text(l10n.workedHoursBackToEmployee),
                 ),
               ),
               const SizedBox(height: Spacing.xs),
               AppPageHeader(
-                title: 'Worked hours',
+                title: l10n.titleWorkedHours,
                 description:
-                    'The confirmed hours this Employee actually worked, day by day. '
-                    'Only confirmed attendance counts — an unconfirmed sheet is a draft.',
+                    l10n.workedHoursTheConfirmedHoursThisEmployeeActuallyWorked,
                 below: _WindowFields(state: state, bloc: bloc),
               ),
               const SizedBox(height: Spacing.lg),
               if (state.failure != null)
                 PlatformFailureState(
                   key: WorkedHoursScreen.failureKey,
-                  title: 'The worked-hours summary could not be read',
+                  title: l10n.workedHoursTheWorkedHoursSummaryCouldNotBe,
                   message: state.failure!,
                   retryKey: WorkedHoursScreen.retryKey,
                   // The same window again: `WorkedHoursStarted` takes the bounds
@@ -266,9 +267,8 @@ class _WorkedHoursBody extends StatelessWidget {
               else if (state.days.isEmpty)
                 PlatformEmptyState.noneExist(
                   key: WorkedHoursScreen.emptyKey,
-                  title: 'No confirmed worked hours in this window.',
-                  message: 'Widen the window, or confirm the shift sheets for the days '
-                      'this Employee worked.',
+                  title: l10n.workedHoursNoConfirmedWorkedHoursInThisWindow,
+                  message: l10n.workedHoursWidenTheWindowOrConfirmTheShift,
                   icon: Icons.schedule_outlined,
                 )
               else
@@ -311,7 +311,7 @@ class _WorkedHoursBody extends StatelessWidget {
                                 columns: columns,
                                 cells: [
                                   Text(
-                                    'Totals',
+                                    l10n.workedHoursTotals,
                                     style: AppTypography.dense(context)?.copyWith(
                                       color: palette.textPrimary,
                                       fontWeight: FontWeight.w600,
@@ -337,7 +337,7 @@ class _WorkedHoursBody extends StatelessWidget {
                                   Spacing.sm,
                                 ),
                                 child: Text(
-                                  'of ${formatWorkedMinutes(state.totals!.scheduledMinutes)} scheduled',
+                                  l10n.workedHoursOfScheduled(formatWorkedMinutes(state.totals!.scheduledMinutes)),
                                   style: AppTypography.floor(context)?.copyWith(
                                     color: palette.textMuted,
                                     fontFeatures: const [FontFeature.tabularFigures()],
@@ -374,10 +374,11 @@ class _WindowFields extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final from = AppDateField(
       key: WorkedHoursScreen.fromFieldKey,
       name: 'work-hours-from',
-      label: 'From',
+      label: l10n.commonFrom,
       value: state.from,
       optional: true,
       onChanged: (value) => bloc.add(WorkedHoursFromChosen(value)),
@@ -385,7 +386,7 @@ class _WindowFields extends StatelessWidget {
     final to = AppDateField(
       key: WorkedHoursScreen.toFieldKey,
       name: 'work-hours-to',
-      label: 'To',
+      label: l10n.commonTo,
       value: state.to,
       optional: true,
       onChanged: (value) => bloc.add(WorkedHoursToChosen(value)),

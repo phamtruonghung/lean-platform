@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../people_api.dart';
@@ -153,6 +154,7 @@ class _ActionFormDialogState extends State<ActionFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocListener<ActionsBloc, ActionsState>(
       listener: _onActionsChanged,
@@ -160,20 +162,20 @@ class _ActionFormDialogState extends State<ActionFormDialog> {
         listenWhen: (previous, current) => previous.siteId != current.siteId,
         listener: (context, state) => _onOrgUnitSiteChanged(state),
         child: AppDialog(
-          title: 'Raise a concern',
+          title: l10n.commonRaiseAConcern,
           // A long form: two dropdowns, a Pillar, a searched owner, a date and
           // an Org Unit chooser (issue #398's four widths).
           size: AppDialogSize.wide,
           actions: [
             AppDialogAction(
               id: 'cancel',
-              label: 'Cancel',
+              label: l10n.commonCancel,
               kind: AppDialogActionKind.dismiss,
               onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
             ),
             AppDialogAction(
               id: 'raise-it',
-              label: 'Raise it',
+              label: l10n.actionFormRaiseIt,
               onPressed: _complete && !_awaiting ? _submit : null,
             ),
           ],
@@ -188,9 +190,9 @@ class _ActionFormDialogState extends State<ActionFormDialog> {
                     controller: _title,
                     enabled: !_awaiting,
                     onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
-                      labelText: 'What was found',
-                      helperText: 'One line. The cause goes in the Plan phase, not here.',
+                    decoration: InputDecoration(
+                      labelText: l10n.nonconformancesFoundColumn,
+                      helperText: l10n.actionFormOneLineTheCauseGoesInThe,
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -201,8 +203,8 @@ class _ActionFormDialogState extends State<ActionFormDialog> {
                     enabled: !_awaiting,
                     minLines: 2,
                     maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Detail (optional)',
+                    decoration: InputDecoration(
+                      labelText: l10n.nonconformanceFormDetailOptional,
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -214,8 +216,8 @@ class _ActionFormDialogState extends State<ActionFormDialog> {
                           key: ActionFormDialog.typeKey,
                           initialValue: _type,
                           isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Kind of Action',
+                          decoration: InputDecoration(
+                            labelText: l10n.commonKindOfAction,
                             border: OutlineInputBorder(),
                           ),
                           items: [
@@ -232,8 +234,8 @@ class _ActionFormDialogState extends State<ActionFormDialog> {
                           key: ActionFormDialog.priorityKey,
                           initialValue: _priority,
                           isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Priority',
+                          decoration: InputDecoration(
+                            labelText: l10n.commonPriority,
                             border: OutlineInputBorder(),
                           ),
                           items: [
@@ -250,7 +252,7 @@ class _ActionFormDialogState extends State<ActionFormDialog> {
                   const SizedBox(height: Spacing.md),
                   if (_pillarsFailed)
                     Text(
-                      'The Pillar catalogue could not be read, so no Pillar can be chosen.',
+                      l10n.actionFormThePillarCatalogueCouldNotBeRead,
                       style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
                     )
                   else
@@ -258,13 +260,13 @@ class _ActionFormDialogState extends State<ActionFormDialog> {
                       key: ActionFormDialog.pillarKey,
                       initialValue: _pillarCode,
                       isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Pillar (optional)',
-                        helperText: 'Which SQDCP number does this threaten?',
+                      decoration: InputDecoration(
+                        labelText: l10n.actionFormPillarOptional,
+                        helperText: l10n.actionFormWhichSqdcpNumberDoesThisThreaten,
                         border: OutlineInputBorder(),
                       ),
                       items: [
-                        const DropdownMenuItem<String?>(value: null, child: Text('No Pillar')),
+                        DropdownMenuItem<String?>(value: null, child: Text(l10n.actionFormNoPillar)),
                         for (final pillar in _pillars)
                           DropdownMenuItem<String?>(
                             value: pillar.code,
@@ -279,8 +281,8 @@ class _ActionFormDialogState extends State<ActionFormDialog> {
                   AppSearchField<Employee>(
                     key: ActionFormDialog.ownerKey,
                     name: 'action-owner',
-                    label: 'Owner (optional)',
-                    helperText: 'Who will do it. An Action nobody owns is visibly nobody\'s.',
+                    label: l10n.commonOwnerOptional,
+                    helperText: l10n.actionFormWhoWillDoItAnActionNobody,
                     value: _owner,
                     enabled: !_awaiting,
                     // The field reports the record it now stands for, picked or
@@ -309,7 +311,7 @@ class _ActionFormDialogState extends State<ActionFormDialog> {
                   AppDateField(
                     key: ActionFormDialog.dueDateKey,
                     name: 'action-due-date',
-                    label: 'Due (optional)',
+                    label: l10n.commonDueOptional,
                     value: _dueDate,
                     optional: true,
                     enabled: !_awaiting,
@@ -320,9 +322,8 @@ class _ActionFormDialogState extends State<ActionFormDialog> {
                     selectedId: _orgUnit?.id,
                     enabled: !_awaiting,
                     showSitePicker: false,
-                    title: 'Where it was found',
-                    description: 'Choose the Org Unit this concern is about. This is what decides '
-                        'who may act on it.',
+                    title: l10n.nonconformanceFormWhereFound,
+                    description: l10n.actionFormChooseTheOrgUnitThisConcernIs,
                     onSelected: (node) => setState(() => _orgUnit = node),
                   ),
                   if (_orgUnit != null)
@@ -330,7 +331,7 @@ class _ActionFormDialogState extends State<ActionFormDialog> {
                       key: ActionFormDialog.chosenKey,
                       padding: const EdgeInsets.only(top: Spacing.sm),
                       child: Text(
-                        'This concern will be recorded at ${_orgUnit!.name}.',
+                        l10n.actionFormThisConcernWillBeRecordedAt(_orgUnit!.name),
                         style: theme.textTheme.bodySmall
                             ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       ),

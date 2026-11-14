@@ -10,6 +10,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart' show PeopleApi;
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -92,24 +93,25 @@ class _AccountPasswordDialogState extends State<AccountPasswordDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocConsumer<AccountsBloc, AccountsState>(
       listener: _onAccountsChanged,
       builder: (context, state) {
         return AppDialog(
-          title: 'Reset password',
+          title: l10n.commonResetPassword,
           size: AppDialogSize.form,
           // `child` last, as `sort_child_properties_last` requires.
           actions: [
             AppDialogAction(
               id: 'account-password-cancel',
-              label: 'Cancel',
+              label: l10n.commonCancel,
               kind: AppDialogActionKind.dismiss,
               onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
             ),
             AppDialogAction(
               id: 'account-password-submit',
-              label: _awaiting ? 'Saving…' : 'Reset password',
+              label: _awaiting ? l10n.commonSaving : l10n.commonResetPassword,
               onPressed: _awaiting ? null : _submit,
             ),
           ],
@@ -120,8 +122,7 @@ class _AccountPasswordDialogState extends State<AccountPasswordDialog> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Choose a new password for ${widget.account.email}. '
-                    'Tell them what it is yourself; it is not shown again.',
+                    l10n.accountPasswordChooseANewPasswordForTellThem(widget.account.email),
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
@@ -133,8 +134,8 @@ class _AccountPasswordDialogState extends State<AccountPasswordDialog> {
                     obscureText: true,
                     autofocus: true,
                     decoration: InputDecoration(
-                      labelText: 'New password',
-                      helperText: 'At least ${PeopleApi.minimumPasswordLength} characters.',
+                      labelText: l10n.accountPasswordNew,
+                      helperText: l10n.accountPasswordAtLeastCharacters(PeopleApi.minimumPasswordLength),
                     ),
                     onSubmitted: (_) => _submit(),
                   ),

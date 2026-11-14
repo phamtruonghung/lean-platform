@@ -18,6 +18,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../widgets/app_dialog.dart';
 import 'leave_request.dart';
 import 'leave_requests_bloc.dart';
@@ -64,25 +65,26 @@ class _LeaveRequestCancelDialogState extends State<LeaveRequestCancelDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final request = widget.request;
     return BlocListener<LeaveRequestsBloc, LeaveRequestsState>(
       listener: _onStateChanged,
       child: AppDialog(
-        title: 'Cancel leave request',
-        description: 'Cancel the ${request.leaveTypeName} request for ${request.employee.displayName}, '
-            '${request.periodLabel} (${request.daysLabel})?',
+        title: l10n.leaveRequestCancelCancelLeaveRequest,
+        description: l10n.leaveRequestCancelCancelTheRequestFor(request.leaveTypeName,
+            request.employee.displayName, request.periodLabel, request.daysLabel),
         size: AppDialogSize.decision,
         actions: [
           AppDialogAction(
             id: 'back',
-            label: 'Keep request',
+            label: l10n.leaveRequestCancelKeepRequest,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'submit',
-            label: _awaiting ? 'Cancelling…' : 'Cancel request',
+            label: _awaiting ? l10n.leaveRequestCancelCancelling : l10n.commonCancelRequest,
             onPressed: _awaiting ? null : _submit,
           ),
         ],

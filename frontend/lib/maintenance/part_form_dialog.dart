@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -147,22 +148,23 @@ class _PartFormDialogState extends State<PartFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return BlocListener<PartsBloc, PartsState>(
       listener: _onPartsChanged,
       child: AppDialog(
-        title: 'Add part',
+        title: l10n.commonAddPart,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: PartFormDialog._cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: PartFormDialog._submitId,
-            label: _awaiting ? 'Saving…' : 'Add part',
+            label: _awaiting ? l10n.commonSaving : l10n.commonAddPart,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -173,7 +175,7 @@ class _PartFormDialogState extends State<PartFormDialog> {
             AppScanField(
               key: PartFormDialog.partNoKey,
               controller: _partNo,
-              label: 'Part number',
+              label: l10n.commonPartNumber,
               enabled: !_awaiting,
               autofocus: true,
               onChanged: (_) => setState(() {}),
@@ -184,8 +186,8 @@ class _PartFormDialogState extends State<PartFormDialog> {
               controller: _description,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Description',
+              decoration: InputDecoration(
+                labelText: l10n.commonDescription,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -198,7 +200,7 @@ class _PartFormDialogState extends State<PartFormDialog> {
             else if (_unitsFailure != null)
               PlatformFailureState(
                 key: PartFormDialog.unitsFailedKey,
-                title: 'The units of measure could not be read',
+                title: l10n.productFormTheUnitsOfMeasureCouldNotBe,
                 message: _unitsFailure!,
                 retryKey: PartFormDialog.unitsRetryKey,
                 onRetry: _loadUnits,
@@ -208,8 +210,8 @@ class _PartFormDialogState extends State<PartFormDialog> {
                 key: PartFormDialog.uomKey,
                 initialValue: _uomCode,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Unit of measure',
+                decoration: InputDecoration(
+                  labelText: l10n.commonUnitOfMeasure,
                   border: OutlineInputBorder(),
                 ),
                 items: [

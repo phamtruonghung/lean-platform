@@ -36,6 +36,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -85,6 +86,7 @@ class SupplierNcrDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<SupplierNcrDetailBloc>().state;
 
     return Scaffold(
@@ -97,7 +99,7 @@ class SupplierNcrDetailScreen extends StatelessWidget {
               SupplierNcrDetailLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
               SupplierNcrDetailUnavailable(message: final message) => PlatformFailureState(
                   key: failedKey,
-                  title: 'That supplier NCR could not be read',
+                  title: l10n.supplierNcrDetailThatSupplierNcrCouldNotBeRead,
                   message: message,
                   retryKey: retryKey,
                   onRetry: () => context
@@ -121,6 +123,7 @@ class SupplierNcrDetailScreen extends StatelessWidget {
 class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: SupplierNcrDetailScreen.maxWidth,
@@ -136,13 +139,13 @@ class _Header extends StatelessWidget {
                 key: SupplierNcrDetailScreen.backKey,
                 onPressed: () => context.go(Routes.supplierNcrs),
                 icon: const Icon(Icons.arrow_back),
-                label: const Text('Back to Supplier NCRs'),
+                label: Text(l10n.supplierNcrDetailBackToSupplierNcrs),
                 style: TextButton.styleFrom(
                   minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                 ),
               ),
               const SizedBox(height: Spacing.sm),
-              const AppPageHeader(title: 'Supplier NCR'),
+              AppPageHeader(title: l10n.titleSupplierNcr),
             ],
           ),
         ),
@@ -262,6 +265,7 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final record = supplierNcr;
     final product = record.productName;
@@ -304,7 +308,7 @@ class _SummaryCard extends StatelessWidget {
                 if (record.isOverdue)
                   StatusChip(
                     key: SupplierNcrDetailScreen.overdueKey,
-                    label: 'Past due',
+                    label: l10n.commonPastDue,
                     tone: StatusTone.danger,
                   ),
               ],
@@ -317,7 +321,7 @@ class _SummaryCard extends StatelessWidget {
             ),
             const SizedBox(height: Spacing.xxs),
             Text(
-              record.description ?? 'Nothing was written down about it.',
+              record.description ?? l10n.supplierNcrDetailNothingWasWrittenDownAboutIt,
               style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
             ),
             const SizedBox(height: Spacing.md),
@@ -360,16 +364,16 @@ class _ControlSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final record = supplierNcr.nonconformance;
 
     return AppDetailSection(
-      title: 'The material this is about',
+      title: l10n.supplierNcrDetailTheMaterialThisIsAbout,
       children: [
         if (record == null) ...[
           Text(
-            'Nothing controls the material this NCR is about yet. Record a Non-conformance '
-            'from this NCR, or link one that already exists for the same lot.',
+            l10n.supplierNcrDetailNothingControlsTheMaterialThisNcrIs,
             key: SupplierNcrDetailScreen.noControlKey,
             style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
           ),
@@ -384,7 +388,7 @@ class _ControlSection extends StatelessWidget {
                     ? null
                     : () => context.go('${Routes.supplierNcrs}/${supplierNcr.id}/nonconformance'),
                 icon: const Icon(Icons.fact_check_outlined),
-                label: const Text('Record a Non-conformance'),
+                label: Text(l10n.nonconformanceRecord),
                 style: SupplierNcrDetailScreen.actionStyle,
               ),
               OutlinedButton.icon(
@@ -393,7 +397,7 @@ class _ControlSection extends StatelessWidget {
                     ? null
                     : () => context.go('${Routes.supplierNcrs}/${supplierNcr.id}/link'),
                 icon: const Icon(Icons.link_outlined),
-                label: const Text('Link one that exists'),
+                label: Text(l10n.commonLinkOneThatExists),
                 style: SupplierNcrDetailScreen.secondaryStyle,
               ),
             ],
@@ -410,22 +414,21 @@ class _ControlSection extends StatelessWidget {
                 style: AppTypography.dense(context)
                     ?.copyWith(color: palette.textPrimary, fontWeight: FontWeight.w500),
               ),
-              const StatusChip(label: 'Open record', tone: StatusTone.info),
+              StatusChip(label: l10n.commonOpenRecord, tone: StatusTone.info),
             ],
           ),
           const SizedBox(height: Spacing.xxs),
           Text(
-            record.detectionPoint == 'incoming'
-                ? 'Found at goods-in, so this NCR is where it started.'
-                : 'Recorded at ${record.detectionPoint ?? 'another detection point'}, and '
-                    'linked to this NCR.',
+            record.detectionPoint == l10n.supplierNcrDetailIncoming
+                ? l10n.supplierNcrDetailFoundAtGoodsInSoThisNcr
+                : l10n.supplierNcrDetailRecordedAtAndLinkedToThisNcr(record.detectionPoint ?? 'another detection point'),
             style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
           ),
           const SizedBox(height: Spacing.md),
           OutlinedButton.icon(
             onPressed: () => context.go('${Routes.nonConformances}/${record.id}'),
             icon: const Icon(Icons.open_in_new),
-            label: const Text('Open the Non-conformance'),
+            label: Text(l10n.commonOpenTheNonConformance),
             style: SupplierNcrDetailScreen.secondaryStyle,
           ),
         ],
@@ -443,11 +446,12 @@ class _DispositionSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final record = supplierNcr;
 
     return AppDetailSection(
-      title: "The Supplier's disposition",
+      title: l10n.supplierNcrDetailTheSupplierSDisposition,
       children: [
         Text(
           record.dispositionLabel,
@@ -460,15 +464,15 @@ class _DispositionSection extends StatelessWidget {
           // What was clawed back, or that nothing was — a different fact from
           // nobody having decided.
           record.costRecovered == null
-              ? 'Nothing has been recovered from this Supplier.'
-              : 'Recovered ${record.costRecoveredLabel}.',
+              ? l10n.supplierNcrDetailNothingHasBeenRecoveredFromThisSupplier
+              : l10n.supplierNcrDetailRecovered(record.costRecoveredLabel),
           key: SupplierNcrDetailScreen.costRecoveredKey,
           style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
         ),
         if (record.closedAt != null) ...[
           const SizedBox(height: Spacing.xxs),
           Text(
-            'Closed ${record.closedAt}',
+            l10n.supplierNcrDetailClosed((record.closedAt ?? '')),
             style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
           ),
         ],
@@ -485,8 +489,8 @@ class _DispositionSection extends StatelessWidget {
               icon: const Icon(Icons.gavel_outlined),
               label: Text(
                 record.costRecovered == null && record.status == SupplierNcrStatus.open
-                    ? 'Record the disposition'
-                    : 'Correct the disposition',
+                    ? l10n.commonRecordTheDisposition
+                    : l10n.supplierNcrDetailCorrectTheDisposition,
               ),
               style: SupplierNcrDetailScreen.actionStyle,
             ),
@@ -498,7 +502,7 @@ class _DispositionSection extends StatelessWidget {
                         SupplierNcrCloseConfirmed(record.id),
                       ),
               icon: const Icon(Icons.lock_outline),
-              label: const Text('Close the NCR'),
+              label: Text(l10n.supplierNcrDetailCloseTheNcr),
               style: SupplierNcrDetailScreen.secondaryStyle,
             ),
           ],

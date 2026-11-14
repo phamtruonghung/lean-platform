@@ -16,6 +16,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/account_bloc.dart';
 import '../theme.dart';
 import '../widgets/app_page_header.dart';
@@ -33,10 +34,11 @@ class AwaitingApprovalScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Platform')),
+      appBar: AppBar(title: Text(l10n.shellBrand)),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),
@@ -67,9 +69,8 @@ class AwaitingApprovalScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: Spacing.md),
                     AppPageHeader(
-                      title: 'Awaiting approval',
-                      description: "You're signed in as $email, but an administrator hasn't "
-                          'admitted you to the Platform yet. Check back once they have.',
+                      title: l10n.titleAwaitingApproval,
+                      description: l10n.awaitingApprovalYouReSignedInAsButAn(email),
                     ),
                     const SizedBox(height: Spacing.lg),
                     // Being admitted changes nothing in this browser — the
@@ -84,7 +85,7 @@ class AwaitingApprovalScreen extends StatelessWidget {
                           key: checkAgainKey,
                           onPressed: () =>
                               context.read<AccountBloc>().add(const AccountRefreshRequested()),
-                          child: const Text('Check again'),
+                          child: Text(l10n.awaitingApprovalCheckAgain),
                         ),
                         OutlinedButton(
                           // Dispatched through AccountBloc, not called on
@@ -95,7 +96,7 @@ class AwaitingApprovalScreen extends StatelessWidget {
                           onPressed: () => context
                               .read<AccountBloc>()
                               .add(const AccountSignOutRequested()),
-                          child: const Text('Sign out'),
+                          child: Text(l10n.shellSignOut),
                         ),
                       ],
                     ),

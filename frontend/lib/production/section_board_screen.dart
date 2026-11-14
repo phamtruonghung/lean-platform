@@ -43,6 +43,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
@@ -123,6 +124,7 @@ class SectionBoardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final orgUnitId = this.orgUnitId;
     if (orgUnitId == null) return const _SectionChooser();
 
@@ -132,7 +134,7 @@ class SectionBoardScreen extends StatelessWidget {
         SectionBoardLoading() => const SkeletonList(maxWidth: maxWidth),
         SectionBoardUnavailable(message: final message) => PlatformFailureState(
             key: failedKey,
-            title: "That Section's day could not be read",
+            title: l10n.sectionThatSectionSDayCouldNotBe,
             message: message,
             retryKey: retryKey,
             onRetry: () =>
@@ -153,6 +155,7 @@ class _Board extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final at = now ?? DateTime.now();
     final shifts = day.shifts;
     return Center(
@@ -172,15 +175,14 @@ class _Board extends StatelessWidget {
                 child: TextButton.icon(
                   onPressed: () => context.go(Routes.production),
                   icon: const Icon(Icons.arrow_back),
-                  label: const Text('Choose another Section'),
+                  label: Text(l10n.sectionChooseAnotherSection),
                 ),
               ),
             ),
             const SizedBox(height: Spacing.sm),
             AppPageHeader(
               title: day.sectionName,
-              description: 'Every shift of the production day, with its handover and what is still open at each '
-                  'shift boundary.',
+              description: l10n.sectionEveryShiftOfTheProductionDayWith,
               below: AppToolbar(
                 filters: [
                   SizedBox(
@@ -188,7 +190,7 @@ class _Board extends StatelessWidget {
                     child: AppDateField(
                       key: SectionBoardScreen.dateFieldKey,
                       name: 'section-board-date',
-                      label: 'Production day',
+                      label: l10n.attendancePickerProductionDay,
                       value: day.productionDate,
                       onChanged: (value) {
                         if (value != null) context.go(Routes.sectionBoard(orgUnitId, date: value));
@@ -204,8 +206,8 @@ class _Board extends StatelessWidget {
             if (shifts.isEmpty)
               PlatformEmptyState.noneExist(
                 key: SectionBoardScreen.emptyKey,
-                title: 'No shifts scheduled',
-                message: 'No shifts are scheduled at this Section on that day.',
+                title: l10n.sectionNoShiftsScheduled,
+                message: l10n.sectionNoShiftsAreScheduledAtThisSection,
               )
             else
               Column(
@@ -301,6 +303,7 @@ class _ShiftRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final palette = AppColors.of(context);
     final id = shift.shiftInstanceId;
@@ -329,7 +332,7 @@ class _ShiftRow extends StatelessWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Text(
-                  'Shift ${formatClock(shift.startsAt)}–${formatClock(shift.endsAt)}',
+                  l10n.sectionShift(formatClock(shift.startsAt), formatClock(shift.endsAt)),
                   key: SectionBoardScreen.shiftTitleKey(id),
                   style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
@@ -349,7 +352,7 @@ class _ShiftRow extends StatelessWidget {
                     },
                   ),
                 if (shift.late == true)
-                  StatusChip(key: SectionBoardScreen.lateKey(id), label: 'Late', tone: StatusTone.warning),
+                  StatusChip(key: SectionBoardScreen.lateKey(id), label: l10n.commonLate, tone: StatusTone.warning),
                 for (final exception in shift.exceptions)
                   StatusChip(
                     key: SectionBoardScreen.exceptionKey(id, exception),
@@ -368,8 +371,8 @@ class _ShiftRow extends StatelessWidget {
               const SizedBox(height: Spacing.sm),
               Text(
                 [
-                  if (handover?.authorDisplayName != null) 'Handed over by ${handover!.authorDisplayName}',
-                  if (latency != null) 'acknowledged ${formatMinutes(latency)} after the shift began',
+                  if (handover?.authorDisplayName != null) l10n.sectionHandedOverBy((handover!.authorDisplayName ?? '')),
+                  if (latency != null) l10n.sectionAcknowledgedAfterTheShiftBegan(formatMinutes(latency)),
                 ].join(' · '),
                 key: latency != null ? SectionBoardScreen.latencyKey(id) : null,
                 style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
@@ -397,7 +400,7 @@ class _ShiftRow extends StatelessWidget {
                       Routes.handoverAcknowledge(orgUnitId, handover.id, date: day.productionDate),
                     ),
                     icon: const Icon(Icons.how_to_reg_outlined),
-                    label: const Text('Acknowledge'),
+                    label: Text(l10n.commonAcknowledge),
                   ),
               ],
             ),
@@ -559,6 +562,7 @@ class _ChooserBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<OrgUnitPickerBloc>().state;
     final bloc = context.read<OrgUnitPickerBloc>();
 
@@ -577,7 +581,7 @@ class _ChooserBody extends StatelessWidget {
     if (failure != null) {
       body = PlatformFailureState(
         key: SectionBoardScreen.failedKey,
-        title: 'That Section tree could not be read',
+        title: l10n.sectionThatSectionTreeCouldNotBeRead,
         message: failure,
         retryKey: SectionBoardScreen.chooserRetryKey,
         // Re-dispatching the read the chooser already opened with: the same
@@ -587,8 +591,8 @@ class _ChooserBody extends StatelessWidget {
     } else if (state.rows.isEmpty) {
       body = PlatformEmptyState.noneExist(
         key: SectionBoardScreen.chooserEmptyKey,
-        title: 'Nothing to open here',
-        message: 'Nothing to browse in this Site.',
+        title: l10n.sectionNothingToOpenHere,
+        message: l10n.commonNothingToBrowseInThisSite,
         icon: Icons.account_tree_outlined,
       );
     } else {
@@ -606,13 +610,13 @@ class _ChooserBody extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
             children: [
               AppPageHeader(
-                title: 'Shift handovers',
-                description: "Choose a Section to open its board: the day's shifts and the handover at each.",
+                title: l10n.navShiftHandovers,
+                description: l10n.sectionChooseASectionToOpenItsBoard,
                 below: state.sites.length > 1
                     ? DropdownButtonFormField<String>(
                         initialValue: state.siteId,
                         isDense: true,
-                        decoration: const InputDecoration(labelText: 'Site'),
+                        decoration: InputDecoration(labelText: l10n.commonSite),
                         items: [
                           for (final site in state.sites)
                             DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -646,6 +650,7 @@ class _OrgUnitRow extends StatelessWidget {
   /// it used to sit in is under every guideline this Platform holds itself to.
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final isSection = row.node.unitType == _sectionUnitType;
     return Padding(
@@ -663,7 +668,7 @@ class _OrgUnitRow extends StatelessWidget {
                 : IconButton(
                     padding: EdgeInsets.zero,
                     iconSize: 18,
-                    tooltip: row.isExpanded ? 'Collapse' : 'Expand',
+                    tooltip: row.isExpanded ? l10n.commonCollapse : l10n.commonExpand,
                     onPressed: () => bloc.add(
                       row.isExpanded ? OrgUnitPickerCollapsed(row.node.id) : OrgUnitPickerExpanded(row.node.id),
                     ),

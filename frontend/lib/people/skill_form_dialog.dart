@@ -25,6 +25,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -172,22 +173,23 @@ class _SkillFormDialogState extends State<SkillFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final failure = _failure;
     return BlocListener<SkillsBloc, SkillsState>(
       listener: _onSkillsChanged,
       child: AppDialog(
-        title: _isCorrection ? 'Correct skill' : 'Add skill',
+        title: _isCorrection ? l10n.skillFormCorrectSkill : l10n.commonAddSkill,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: SkillFormDialog._cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: SkillFormDialog._submitId,
-            label: _awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add skill'),
+            label: _awaiting ? l10n.commonSaving : (_isCorrection ? l10n.commonSave : l10n.commonAddSkill),
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -198,7 +200,7 @@ class _SkillFormDialogState extends State<SkillFormDialog> {
             AppScanField(
               key: SkillFormDialog.codeKey,
               controller: _code,
-              label: 'Code',
+              label: l10n.commonCode,
               enabled: !_awaiting,
               autofocus: true,
               onChanged: (_) => setState(() {}),
@@ -209,13 +211,13 @@ class _SkillFormDialogState extends State<SkillFormDialog> {
               controller: _name,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.commonName, border: OutlineInputBorder()),
             ),
             const SizedBox(height: Spacing.md),
             DropdownButtonFormField<String>(
               key: SkillFormDialog.categoryKey,
               initialValue: _skillCategory,
-              decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.commonCategory, border: OutlineInputBorder()),
               items: [
                 for (final category in skillCategories)
                   DropdownMenuItem<String>(value: category, child: Text(category)),
@@ -226,7 +228,7 @@ class _SkillFormDialogState extends State<SkillFormDialog> {
             SwitchListTile(
               key: SkillFormDialog.requiresCertificationKey,
               contentPadding: EdgeInsets.zero,
-              title: const Text('Requires certification'),
+              title: Text(l10n.skillFormRequiresCertification),
               value: _requiresCertification,
               onChanged: _awaiting ? null : (value) => setState(() => _requiresCertification = value),
             ),
@@ -236,9 +238,9 @@ class _SkillFormDialogState extends State<SkillFormDialog> {
               controller: _revalidationMonths,
               enabled: !_awaiting,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Revalidation period, in months (optional)',
-                helperText: 'Left blank, this skill never needs revalidating.',
+              decoration: InputDecoration(
+                labelText: l10n.skillFormRevalidationPeriodInMonthsOptional,
+                helperText: l10n.skillFormLeftBlankThisSkillNeverNeedsRevalidating,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -247,7 +249,7 @@ class _SkillFormDialogState extends State<SkillFormDialog> {
               SwitchListTile(
                 key: SkillFormDialog.activeKey,
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Active'),
+                title: Text(l10n.commonActive),
                 value: _isActive,
                 onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
               ),

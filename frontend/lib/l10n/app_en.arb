@@ -2250,5 +2250,2567 @@
   "cameraScanUnsupportedBody": "Type the code instead, or use the shop-floor reader.",
   "@cameraScanUnsupportedBody": {
     "description": "What a person does instead when their browser cannot decode a code from the camera."
-  }
+  },
+  "accountCorrectionChangeRoleAndGrants": "Change role and Grants",
+  "commonSave": "Save",
+  "accountCorrectionHoldsTheRoleAndTheOrgUnit": "{email} holds the role and the Org Unit Grants chosen here. Whatever is set below replaces what it has now.",
+  "@accountCorrectionHoldsTheRoleAndTheOrgUnit": {
+    "placeholders": {
+      "email": {"type": "Object"}
+    }
+  },
+  "accountCorrectionAnAdministratorCanActEverywhereThisAccount": "An administrator can act everywhere. This Account will be able to see and change every Site and every Org Unit, and to admit other Accounts. Every Org Unit Grant it holds now is removed, and none are needed.",
+  "accountCorrectionThisAccountWasTurnedAwaySavingThis": "This Account was turned away. Saving this admits it to the Platform and lets it sign in.",
+  "accountCorrectionThisAccountIsDeactivatedSavingThisReactivates": "This Account is deactivated. Saving this reactivates it and lets it sign in again.",
+  "commonChangeEmployeeLink": "Change Employee link",
+  "accountEmployeeWillBeLinkedToTheEmployeeChosen": "{email} will be linked to the Employee chosen here, or to none.",
+  "@accountEmployeeWillBeLinkedToTheEmployeeChosen": {
+    "placeholders": {
+      "email": {"type": "Object"}
+    }
+  },
+  "commonResetPassword": "Reset password",
+  "accountPasswordChooseANewPasswordForTellThem": "Choose a new password for {email}. Tell them what it is yourself; it is not shown again.",
+  "@accountPasswordChooseANewPasswordForTellThem": {
+    "placeholders": {
+      "email": {"type": "Object"}
+    }
+  },
+  "accountPasswordAtLeastCharacters": "At least {minimumPasswordLength} characters.",
+  "@accountPasswordAtLeastCharacters": {
+    "placeholders": {
+      "minimumPasswordLength": {"type": "Object"}
+    }
+  },
+  "accountRolesRolesFor": "Roles for {accountName}",
+  "@accountRolesRolesFor": {
+    "placeholders": {
+      "accountName": {"type": "Object"}
+    }
+  },
+  "commonAssigning": "Assigning…",
+  "accountRolesRoleAssigned": "{length, plural, =1{1 role assigned} other{{length} roles assigned}}",
+  "@accountRolesRoleAssigned": {
+    "placeholders": {
+      "length": {"type": "int"}
+    }
+  },
+  "accountRolesEveryAccountHoldsThis": "{code} — every Account holds this",
+  "@accountRolesEveryAccountHoldsThis": {
+    "placeholders": {
+      "code": {"type": "Object"}
+    }
+  },
+  "accountRolesEveryAccountWhoseOwnRoleIs": "{code} — every Account whose own role is {legacyRole}",
+  "@accountRolesEveryAccountWhoseOwnRoleIs": {
+    "placeholders": {
+      "code": {"type": "Object"},
+      "legacyRole": {"type": "Object"}
+    }
+  },
+  "accountRolesPermission": "{code} — {length, plural, =1{1 permission} other{{length} permissions}}",
+  "@accountRolesPermission": {
+    "placeholders": {
+      "code": {"type": "String"},
+      "length": {"type": "int"}
+    }
+  },
+  "accountsTheAccountsCouldNotBeLoaded": "The Accounts could not be loaded",
+  "accountsNoAccountsYet": "No Accounts yet",
+  "accountsAccountsAppearHereAsSoonAsSomebody": "Accounts appear here as soon as somebody signs in for the first time.",
+  "accountsEveryAccountOnThisPlantWhatIt": "Every Account on this plant: what it holds, and whether it can sign in.",
+  "commonFilterAccounts": "Filter Accounts",
+  "accountsByNameEmailOrRole": "By name, email or role.",
+  "commonNoAccountsMatch": "No Accounts match",
+  "accountsThisPlantHasAccountsButNoneMatches": "This plant has Accounts, but none matches \"{term}\". Try a different name, email or role, or clear the filter.",
+  "@accountsThisPlantHasAccountsButNoneMatches": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "accountsEmail": "Email",
+  "accountsRole": "Role",
+  "accountsStanding": "Standing",
+  "accountsSince": "Since",
+  "accountsGrants": "Grants",
+  "accountsReviewInApprovals": "Review in Approvals",
+  "accountsChange": "Change",
+  "accountsLinkAnEmployee": "Link an Employee",
+  "accountsEverywhere": "Everywhere",
+  "accountsNone": "None",
+  "accountsOrgUnit": "{count, plural, =1{1 Org Unit} other{{count} Org Units}}",
+  "@accountsOrgUnit": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "accountsActsEverywhereInEverySiteNoOrg": "Acts everywhere, in every Site. No Org Unit Grants, and none needed.",
+  "accountsNoOrgUnitGrantsCanSignIn": "No Org Unit Grants. Can sign in, but cannot act in any Org Unit.",
+  "accountsDeactivateThisAccount": "Deactivate this Account?",
+  "accountsWillNotBeAbleToSignIn": "{email} will not be able to sign in. Nothing is deleted — the role and the Org Unit Grants stay exactly as they are, and an administrator can reactivate the Account at any time.",
+  "@accountsWillNotBeAbleToSignIn": {
+    "placeholders": {
+      "email": {"type": "Object"}
+    }
+  },
+  "admissionAdmitThisAccount": "Admit this Account",
+  "commonAdmitting": "Admitting…",
+  "commonAdmit": "Admit",
+  "admissionWillBeLetInToThePlatform": "{email} will be let in to the Platform with the role chosen here.",
+  "@admissionWillBeLetInToThePlatform": {
+    "placeholders": {
+      "email": {"type": "Object"}
+    }
+  },
+  "admissionAnAdministratorCanActEverywhereThisAccount": "An administrator can act everywhere. This Account will be able to see and change every Site and every Org Unit, and to admit other Accounts. No Org Unit Grants are given, and none are needed.",
+  "admissionThisAccountWillBeAdmittedWithNo": "This Account will be admitted with no Org Unit Grants, so it can sign in but cannot yet act in any Org Unit.",
+  "approvalQueueTheQueueCouldNotBeLoaded": "The queue could not be loaded",
+  "approvalQueueNobodyIsWaiting": "Nobody is waiting",
+  "approvalQueueEveryAccountHasBeenDealtWithNew": "Every Account has been dealt with. New requests appear here.",
+  "approvalQueueEveryoneWaitingToBeLetInTo": "Everyone waiting to be let in to the Platform.",
+  "approvalQueueByEmailAddress": "By email address.",
+  "approvalQueueAccountsAreWaitingButNoneMatchesTry": "Accounts are waiting, but none matches \"{term}\". Try a different email address, or clear the filter.",
+  "@approvalQueueAccountsAreWaitingButNoneMatchesTry": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "approvalQueueAccount": "Account",
+  "approvalQueueSuggestedEmployee": "Suggested Employee",
+  "approvalQueueWaiting": "Waiting",
+  "approvalQueueRejecting": "Rejecting…",
+  "commonReject": "Reject",
+  "approvalQueueRejectThisAccount": "Reject this Account?",
+  "approvalQueueWillNotBeLetInToThe": "{email} will not be let in to the Platform, and will be told their request was turned down. An administrator can still admit them later.",
+  "@approvalQueueWillNotBeLetInToThe": {
+    "placeholders": {
+      "email": {"type": "Object"}
+    }
+  },
+  "attendancePickerChooseAnOrgUnitAndAProduction": "Choose an Org Unit and a production day to open that shift's attendance sheet.",
+  "attendancePickerProductionDay": "Production day",
+  "attendancePickerTheShiftsCouldNotBeRead": "The shifts could not be read",
+  "attendancePickerNoShiftsAreScheduledHereOnThat": "No shifts are scheduled here on that day.",
+  "attendancePickerChooseAnotherProductionDayOrAnotherOrg": "Choose another production day, or another Org Unit.",
+  "commonTheSitesAreUnavailable": "The Sites are unavailable.",
+  "commonThereAreNoSitesToBrowseYet": "There are no Sites to browse yet.",
+  "commonNothingToBrowseInThisSite": "Nothing to browse in this Site.",
+  "commonCollapse": "Collapse",
+  "commonExpand": "Expand",
+  "attendanceRecordMark": "Mark {displayName}",
+  "@attendanceRecordMark": {
+    "placeholders": {
+      "displayName": {"type": "Object"}
+    }
+  },
+  "attendanceRecordWorkedMinutes": "Worked minutes",
+  "attendanceRecordOvertimeMinutes": "Overtime minutes",
+  "attendanceSheetTheAttendanceSheetCouldNotBeRead": "The attendance sheet could not be read",
+  "attendanceSheetNobodyWithAnEditGrantHereHas": "Nobody with an edit Grant here has opened this sheet yet, so there is nothing to show. Only a supervisor holding an edit Grant reaching this shift — or an administrator — can start it.",
+  "attendanceSheetConfirmed": "Confirmed",
+  "attendanceSheetConfirming": "Confirming…",
+  "commonConfirm": "Confirm",
+  "attendanceSheetNobodyIsOnThisSheetYet": "Nobody is on this sheet yet.",
+  "attendanceSheetAddAStandInFromTheDirectory": "Add a stand-in from the Directory below to open the sheet with somebody on it.",
+  "attendanceSheetASupervisorHoldingAnEditGrantReaching": "A supervisor holding an edit Grant reaching this shift adds the people who were on it.",
+  "attendanceSheetMarkAnException": "Mark an exception",
+  "attendanceSheetRemoveFromTheSheet": "Remove from the sheet",
+  "attendanceSheetAddAStandIn": "Add a stand-in",
+  "commonSearchTheDirectory": "Search the Directory",
+  "attendanceSheetWorkedMin": "Worked (min)",
+  "attendanceSheetOvertimeMin": "Overtime (min)",
+  "attendanceToConfirmPastShiftsWhoseSheetIsMissingOr": "Past shifts whose sheet is missing or hasn't been confirmed yet, oldest first, across the Org Units you can confirm one at.",
+  "attendanceToConfirmTheWorklistCouldNotBeRead": "The worklist could not be read",
+  "attendanceToConfirmNothingToConfirmHere": "Nothing to confirm here.",
+  "attendanceToConfirmEveryPastShiftYouCanConfirmHas": "Every past shift you can confirm has a confirmed sheet.",
+  "attendanceToConfirmNoShiftInThisWindowNeedsConfirming": "No shift in this window needs confirming. Widen the window, or clear the Org Unit.",
+  "commonFrom": "From",
+  "commonOrgUnit2": "Org Unit: {orgUnitName}",
+  "@commonOrgUnit2": {
+    "placeholders": {
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "commonClear": "Clear",
+  "commonHideOrgUnits": "Hide Org Units",
+  "commonFilterByOrgUnit": "Filter by Org Unit",
+  "attendanceToConfirmOpenSheet": "Open sheet",
+  "commonUsd": "USD",
+  "costRateFormTheRateBelowIsClosedOnThe": "The rate below is closed on the day the new one takes effect. It stays readable, and a cost asked for an earlier date still resolves it.",
+  "costRateFormTheListOfSitesOrgUnitsAssets": "The list of Sites, Org Units, Assets and cost centres could not be read, so a scope cannot be chosen: {scopesFailure}",
+  "@costRateFormTheListOfSitesOrgUnitsAssets": {
+    "placeholders": {
+      "scopesFailure": {"type": "Object"}
+    }
+  },
+  "commonScope": "Scope",
+  "costRateFormWhich": "Which {value}",
+  "@costRateFormWhich": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "costRateFormRateType": "Rate type",
+  "costRateFormScopeAndRateType": "Scope and rate type",
+  "costRateFormARateSScopeAndRateType": "A rate's scope and rate type cannot be corrected — add a rate for the new scope instead",
+  "costRateFormMultiplier15ForTimeAndA": "Multiplier (1.5 for time-and-a-half)",
+  "costRateFormAmountPerHour": "Amount per hour",
+  "costRateFormTheNewAmountFromTheDateBelow": "The new amount, from the date below",
+  "commonCurrency": "Currency",
+  "commonAThreeLetterCodeSuchAsUsd": "A three-letter code, such as USD",
+  "costRateFormNewRateTakesEffectOn": "New rate takes effect on",
+  "commonTakesEffectOn": "Takes effect on",
+  "costRateFormTheOldRateIsClosedOnThis": "The old rate is closed on this day, and the new one starts",
+  "commonAppliesUntilOptional": "Applies until (optional)",
+  "costRateFormLeftBlankThisRateIsTheCurrent": "Left blank, this rate is the current one. Setting it closes the rate on that day, which is the exclusive end of the period.",
+  "costRatesTheCostRateCatalogueCouldNotBe": "The cost rate catalogue could not be read",
+  "costRatesWhatAnHourCostsOneCatalogueShared": "What an hour costs — one catalogue shared by every Site, and what the Cost numbers on the tier board are worked out from. A rate is never overwritten: it is closed, and a new one opened, so a cost reported for an earlier month stays what it was.",
+  "costRatesAddCostRate": "Add cost rate",
+  "costRatesNoCostRatesYet": "No cost rates yet",
+  "costRatesUntilARateIsSetEveryCost": "Until a rate is set, every Cost number resolves to nothing.",
+  "costRatesRate": "Rate",
+  "commonPeriod": "Period",
+  "commonCorrect": "Correct",
+  "commonRevise": "Revise",
+  "commonClosed": "Closed",
+  "directoryTheDirectoryCouldNotBeRead": "The Directory could not be read",
+  "directoryNobodyMatchesThisSearch": "Nobody matches this search",
+  "directoryTryADifferentNameOrClearA": "Try a different name, or clear a filter.",
+  "directoryWhoWorksHereSearchedFilteredAndDeparted": "Who works here — searched, filtered, and Departed Employees kept out of sight until asked for.",
+  "commonAddEmployee": "Add Employee",
+  "directoryMyRecord": "My record",
+  "directorySearchByName": "Search by name",
+  "commonJobRole": "Job role",
+  "directoryAllJobRoles": "All job roles",
+  "directoryIncludeDeparted": "Include Departed",
+  "commonEmployment": "Employment",
+  "commonDeparted": "Departed",
+  "commonActive": "Active",
+  "employeeAssignmentAssignToAnOrgUnit": "Assign {displayName} to an Org Unit",
+  "@employeeAssignmentAssignToAnOrgUnit": {
+    "placeholders": {
+      "displayName": {"type": "Object"}
+    }
+  },
+  "employeeAssignmentWhereItWorksNow": "Where it works now",
+  "employeeAssignmentJobRoleOptional": "Job role (optional)",
+  "employeeAssignmentNoJobRole": "No job role",
+  "employeeAssignmentEffectiveDate": "Effective date",
+  "employeeCorrectionCorrectSRecord": "Correct {displayName}'s record",
+  "@employeeCorrectionCorrectSRecord": {
+    "placeholders": {
+      "displayName": {"type": "Object"}
+    }
+  },
+  "commonFirstName": "First name",
+  "commonLastName": "Last name",
+  "commonEmploymentType": "Employment type",
+  "commonWorkEmailOptional": "Work email (optional)",
+  "employeeDepartureRecordThatHasLeft": "Record that {displayName} has left",
+  "@employeeDepartureRecordThatHasLeft": {
+    "placeholders": {
+      "displayName": {"type": "Object"}
+    }
+  },
+  "employeeDepartureAccountStillLinked": "Account still linked",
+  "employeeDepartureTheRecordStaysNothingIsDeletedAnd": "The record stays — nothing is deleted, and this can be undone by reinstating the record at any time.",
+  "employeeDepartureEffectiveDateOptional": "Effective date (optional)",
+  "commonLeftBlankTodayIsRecorded": "Left blank, today is recorded.",
+  "employeeDepartureRecording": "Recording…",
+  "commonRecordDeparture": "Record departure",
+  "employeeDepartureHasLeftAndTheirAccountCanStill": "{displayName} has left, and their Account ({email}) can still sign in. The departure is already recorded either way — deactivating the Account is a separate, optional step.",
+  "@employeeDepartureHasLeftAndTheirAccountCanStill": {
+    "placeholders": {
+      "displayName": {"type": "Object"},
+      "email": {"type": "Object"}
+    }
+  },
+  "employeeDepartureNotNow": "Not now",
+  "employeeDepartureDeactivating": "Deactivating…",
+  "employeeDepartureDeactivateAccount": "Deactivate Account",
+  "employeeDetailThisRecordCouldNotBeRead": "This record could not be read",
+  "employeeDetailAssignmentHistory": "Assignment history",
+  "employeeDetailNoAssignmentHasBeenRecorded": "No Assignment has been recorded.",
+  "employeeDetailRecordSkill": "Record skill",
+  "employeeDetailNoQualificationsRecorded": "No qualifications recorded.",
+  "employeeDetailHired": "Hired",
+  "employeeDetailWorkEmail": "Work email",
+  "commonCorrectRecord": "Correct record",
+  "employeeDetailSignature": "Signature",
+  "commonReinstate": "Reinstate",
+  "employeeDetailCurrent": "Current",
+  "employeeDetailLapsed": "{name} · Lapsed",
+  "@employeeDetailLapsed": {
+    "placeholders": {
+      "name": {"type": "Object"}
+    }
+  },
+  "employeeDetailReAssess": "Re-assess",
+  "commonAdding": "Adding…",
+  "employeeLinkPickerSuggestedMatch": "Suggested match: {value}",
+  "@employeeLinkPickerSuggestedMatch": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "employeeLinkPickerLinkedTo": "Linked to: {value}",
+  "@employeeLinkPickerLinkedTo": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "commonRemove": "Remove",
+  "employeeLinkPickerNoEmployeeWillBeLinked": "No Employee will be linked.",
+  "employeeSignatureNoSignatureIsKeptForUploadA": "No Signature is kept for {displayName}. Upload a picture of it, or draw it here.",
+  "@employeeSignatureNoSignatureIsKeptForUploadA": {
+    "placeholders": {
+      "displayName": {"type": "Object"}
+    }
+  },
+  "commonThisSignatureCouldNotBeShown": "This Signature could not be shown.",
+  "employeeSignatureSetForBy": "Set for {displayName} by {who}",
+  "@employeeSignatureSetForBy": {
+    "placeholders": {
+      "displayName": {"type": "Object"},
+      "who": {"type": "Object"}
+    }
+  },
+  "employeeSignatureSetBy": "Set by {displayName}",
+  "@employeeSignatureSetBy": {
+    "placeholders": {
+      "displayName": {"type": "Object"}
+    }
+  },
+  "employeeSignatureSignatureOf": "Signature of {displayName}",
+  "@employeeSignatureSignatureOf": {
+    "placeholders": {
+      "displayName": {"type": "Object"}
+    }
+  },
+  "commonUploadAPicture": "Upload a picture",
+  "commonReplaceWithAPicture": "Replace with a picture",
+  "commonDrawIt": "Draw it",
+  "commonDrawANewOne": "Draw a new one",
+  "commonKeepThisSignature": "Keep this Signature",
+  "employeeSkillFormReAssessFor": "Re-assess {value} for {displayName}",
+  "@employeeSkillFormReAssessFor": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "displayName": {"type": "Object"}
+    }
+  },
+  "employeeSkillFormRecordASkillFor": "Record a skill for {displayName}",
+  "@employeeSkillFormRecordASkillFor": {
+    "placeholders": {
+      "displayName": {"type": "Object"}
+    }
+  },
+  "employeeSkillFormSkill": "Skill",
+  "employeeSkillFormProficiency04Iluo": "Proficiency (0–4, ILUO)",
+  "employeeSkillForm0None": "0 — none",
+  "employeeSkillFormAssessedOnOptional": "Assessed on (optional)",
+  "employeeSkillFormExpiresOnOptional": "Expires on (optional)",
+  "employeeSkillFormLeftBlankNeverExpiresOrIsRe": "Left blank, never expires (or is re-derived from the skill's own revalidation period).",
+  "employeeSkillFormEvidenceReferenceOptional": "Evidence reference (optional)",
+  "floorTrainingTrainingFor": "Training for {employeeName}",
+  "@floorTrainingTrainingFor": {
+    "placeholders": {
+      "employeeName": {"type": "Object"}
+    }
+  },
+  "floorTrainingYourTraining": "Your training",
+  "floorTrainingDone": "Done",
+  "floorTrainingShowMyTraining": "Show my training",
+  "floorTrainingWhoAreYouYourEmployeeNumberAnd": "Who are you? Your Employee number and PIN show the training waiting on you at this device.",
+  "floorTrainingScanTheBadgeOrTypeTheNumber": "Scan the badge or type the number.",
+  "floorTrainingNothingIsWaitingOnYouAtThis": "Nothing is waiting on you at this device.",
+  "jobRoleFormCorrectJobRole": "Correct job role",
+  "commonAddJobRole": "Add job role",
+  "jobRolesTheJobRoleCatalogueCouldNotBe": "The job role catalogue could not be read",
+  "jobRolesWhatAnEmployeeDoesDefinedOnceShared": "What an Employee does — defined once, shared by every Site.",
+  "jobRolesNoJobRolesYet": "No job roles yet",
+  "commonNothingHasBeenDefinedInTheCatalogue": "Nothing has been defined in the catalogue.",
+  "jobRolesFilterJobRoles": "Filter job roles",
+  "jobRolesByNameOrCode": "By name or code.",
+  "jobRolesNoJobRolesMatch": "No job roles match",
+  "jobRolesNothingInTheCatalogueMatchesTryA": "Nothing in the catalogue matches \"{term}\". Try a different name or code, or clear the filter.",
+  "@jobRolesNothingInTheCatalogueMatchesTryA": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "leaveRequestCancelCancelLeaveRequest": "Cancel leave request",
+  "leaveRequestCancelCancelTheRequestFor": "Cancel the {leaveTypeName} request for {displayName}, {periodLabel} ({daysLabel})?",
+  "@leaveRequestCancelCancelTheRequestFor": {
+    "placeholders": {
+      "leaveTypeName": {"type": "Object"},
+      "displayName": {"type": "Object"},
+      "periodLabel": {"type": "Object"},
+      "daysLabel": {"type": "Object"}
+    }
+  },
+  "leaveRequestCancelKeepRequest": "Keep request",
+  "leaveRequestCancelCancelling": "Cancelling…",
+  "commonCancelRequest": "Cancel request",
+  "commonRequestLeave": "Request leave",
+  "leaveRequestFormRequesting": "Requesting…",
+  "leaveRequestFormLeaveTypesCouldNotBeRead": "Leave types could not be read",
+  "leaveRequestFormLeaveType": "Leave type",
+  "leaveRequestFormFirstDay": "First day",
+  "leaveRequestFormLastDay": "Last day",
+  "leaveRequestsLeaveRequestsCouldNotBeRead": "Leave requests could not be read",
+  "leaveRequestsAskToBeAwayFromWorkAnd": "Ask to be away from work, and follow what became of it.",
+  "leaveRequestsMine": "Mine",
+  "leaveRequestsToDecide": "To decide",
+  "leaveRequestsNoLeaveRequestsYet": "No leave requests yet",
+  "leaveRequestsNothingToDecide": "Nothing to decide",
+  "leaveRequestsRequestLeaveToAskForTimeAway": "Request leave to ask for time away.",
+  "leaveRequestsNoPendingLeaveRequestsAreWaitingFor": "No pending leave requests are waiting for you.",
+  "leaveRequestsNote": "Note: {note}",
+  "@leaveRequestsNote": {
+    "placeholders": {
+      "note": {"type": "Object"}
+    }
+  },
+  "leaveRequestsDecisionNote": "Decision note: {decisionNote}",
+  "@leaveRequestsDecisionNote": {
+    "placeholders": {
+      "decisionNote": {"type": "Object"}
+    }
+  },
+  "leaveRequestsApprove": "Approve",
+  "mySignatureYourSignatureCouldNotBeRead": "Your Signature could not be read",
+  "mySignatureNoSignatureKept": "No Signature kept",
+  "mySignatureYouHaveNotKeptASignatureYet": "You have not kept a Signature yet. Upload a picture of it, or draw it here.",
+  "mySignatureYourSignature": "Your Signature",
+  "mySignatureYourOwnMarkKeptOnceAndApplied": "Your own mark, kept once and applied wherever you would otherwise sign a sheet by hand. Replacing it never changes a sheet you have already signed.",
+  "mySignatureDrawYourSignature": "Draw your Signature",
+  "commonAddRootOrgUnit": "Add root Org Unit",
+  "orgUnitFormAddOrgUnit": "Add Org Unit",
+  "orgUnitFormUnitType": "Unit type",
+  "orgUnitFormSortOrderOptional": "Sort order (optional)",
+  "commonImportABranch": "Import a branch",
+  "orgUnitImportImporting": "Importing…",
+  "orgUnitImportImport": "Import",
+  "orgUnitImportAJsonArrayOfRowsEachRow": "A JSON array of rows. Each row references its own parent by \"parentCode\" — another row in this same array, or an existing code at this Site — never by id.",
+  "orgUnitImportRow": "Row {row}{code}{field}: {message}",
+  "@orgUnitImportRow": {
+    "placeholders": {
+      "row": {"type": "String"},
+      "code": {"type": "String"},
+      "field": {"type": "String"},
+      "message": {"type": "String"}
+    }
+  },
+  "orgUnitPickerOrgUnitGrants": "Org Unit Grants",
+  "orgUnitPickerEverythingOnTheRightIsWhatThis": "Everything on the right is what this Account will hold. Nothing is added to what it has now — this is the whole set.",
+  "orgUnitPickerQualityAuthorityAndSafetyAuthorityAreEach": "Quality authority and Safety authority are each separate from the level and from each other — a view-only Grant may carry either, and an edit Grant need not — and each reaches everything beneath the Org Unit it is given on.",
+  "orgUnitPickerBrowse": "Browse",
+  "orgUnitPickerGranted": "Granted",
+  "orgUnitPickerGrantThisOrgUnit": "Grant this Org Unit",
+  "orgUnitPickerNothingBeneathThis": "Nothing beneath this",
+  "orgUnitPickerGranted2": "Granted ({length})",
+  "@orgUnitPickerGranted2": {
+    "placeholders": {
+      "length": {"type": "Object"}
+    }
+  },
+  "orgUnitPickerNoOrgUnitsGrantedThisAccountWill": "No Org Units granted. This Account will be able to sign in but not act anywhere.",
+  "orgUnitPickerQualityAuthority": "Quality authority",
+  "orgUnitPickerSafetyAuthority": "Safety authority",
+  "orgUnitPickerRemoveThisGrant": "Remove this Grant",
+  "orgUnitsASiteSOwnShapeWhereA": "A Site's own shape — where a KPI is measured, an Account is granted, and an Asset sits.",
+  "commonAddSite": "Add Site",
+  "commonEditSite": "Edit Site",
+  "orgUnitsTheSitesCouldNotBeRead": "The Sites could not be read",
+  "orgUnitsThereAreNoSitesYet": "There are no Sites yet.",
+  "orgUnitsAnAdministratorAddsTheFirstSiteEvery": "An administrator adds the first Site; every Org Unit sits beneath one.",
+  "orgUnitsFindAnOrgUnitByName": "Find an Org Unit by name",
+  "orgUnitsPickingOneRevealsAndSelectsItIn": "Picking one reveals and selects it in the tree below.",
+  "orgUnitsRetired": "Retired",
+  "orgUnitsTheOrgUnitTreeCouldNotBe": "The Org Unit tree could not be read",
+  "orgUnitsNothingToBrowseInThisSiteYet": "Nothing to browse in this Site yet.",
+  "orgUnitsAnAdministratorAddsTheFirstOrgUnit": "An administrator adds the first Org Unit, or imports a branch.",
+  "orgUnitsBelow": "{childCount} below",
+  "@orgUnitsBelow": {
+    "placeholders": {
+      "childCount": {"type": "Object"}
+    }
+  },
+  "orgUnitsAddAnOrgUnitHere": "Add an Org Unit here",
+  "orgUnitsRetire": "Retire",
+  "orgUnitsRetireThisOrgUnit": "Retire this Org Unit?",
+  "orgUnitsWillReadAsRetiredRatherThanDeleted": "{name} will read as retired rather than deleted, and can be reinstated at any time.",
+  "@orgUnitsWillReadAsRetiredRatherThanDeleted": {
+    "placeholders": {
+      "name": {"type": "Object"}
+    }
+  },
+  "productCostFormTheCostBelowIsClosedOnThe": "The cost below is closed on the day the new one takes effect. It stays readable, and scrap already costed at it keeps that figure.",
+  "productCostFormTheProductListCouldNotBeRead": "The Product list could not be read, so a Product cannot be chosen: {productsFailure}",
+  "@productCostFormTheProductListCouldNotBeRead": {
+    "placeholders": {
+      "productsFailure": {"type": "Object"}
+    }
+  },
+  "productCostFormTheProductAStandardCostBelongsTo": "The Product a standard cost belongs to cannot be corrected — record a cost against the other Product instead",
+  "productCostFormStandardCostPerUnit": "Standard cost, per unit",
+  "productCostFormTheNewCostFromTheDateBelow": "The new cost, from the date below",
+  "productCostFormNewCostTakesEffectOn": "New cost takes effect on",
+  "productCostFormTheOldCostIsClosedOnThis": "The old cost is closed on this day, and the new one starts",
+  "productCostFormLeftBlankThisCostIsTheCurrent": "Left blank, this cost is the current one. Setting it closes the cost on that day, which is the exclusive end of the period.",
+  "productCostsTheStandardCostCatalogueCouldNotBe": "The standard cost catalogue could not be read",
+  "productCostsWhatAUnitIsCostedAtOne": "What a unit is costed at — one catalogue shared by every Site, and what scrap and rework are priced with. A cost is never overwritten: it is closed, and a new one opened, so a cost reported for an earlier month stays what it was.",
+  "productCostsAddStandardCost": "Add standard cost",
+  "productCostsNoStandardCostsYet": "No standard costs yet",
+  "productCostsUntilACostIsSetScrapAnd": "Until a cost is set, scrap and rework are priced at nothing.",
+  "roleFormCorrectRole": "Correct role",
+  "commonAddRole": "Add role",
+  "roleForm330CharactersAZ09": "3–30 characters: A–Z, 0–9 and underscore, e.g. ROLE_STORE_ROOM",
+  "roleFormWhatItIsFor": "What it is for",
+  "roleFormInActiveUse": "In active use",
+  "roleFormARetiredRoleKeepsItsHistoryAnd": "A retired role keeps its history and can be assigned to nobody.",
+  "rolePermissionsWhatCarries": "What {code} carries",
+  "@rolePermissionsWhatCarries": {
+    "placeholders": {
+      "code": {"type": "Object"}
+    }
+  },
+  "rolePermissionsOfPermissions": "{length} of {total} permissions",
+  "@rolePermissionsOfPermissions": {
+    "placeholders": {
+      "length": {"type": "Object"},
+      "total": {"type": "Object"}
+    }
+  },
+  "rolesTheRolesCouldNotBeRead": "The roles could not be read",
+  "rolesWhatAnAccountMayDoEachRole": "What an Account may do. Each role is a group of permissions; every Account holds the default group, and a role marked automatic is earned by the Account's own role.",
+  "rolesNoRoles": "No roles",
+  "rolesNothingIsCarryingAPermissionThatShould": "Nothing is carrying a permission. That should not happen: the seed creates the default group, so this means the deployment is incomplete.",
+  "rolesDefaultGroup": "Default group",
+  "rolesAutomatic": "Automatic: {legacyRole}",
+  "@rolesAutomatic": {
+    "placeholders": {
+      "legacyRole": {"type": "Object"}
+    }
+  },
+  "rolesReaches": "{length, plural, =1{1 permission} other{{length} permissions}} · reaches {holderCount, plural, =1{1 Account} other{{holderCount} Accounts}}",
+  "@rolesReaches": {
+    "placeholders": {
+      "length": {"type": "int"},
+      "holderCount": {"type": "int"}
+    }
+  },
+  "rolesPermissions": "Permissions",
+  "siteFormTimezonesUnavailable": "Timezones unavailable",
+  "siteFormTheTimezoneListCouldNotBeLoaded": "The timezone list could not be loaded.",
+  "siteFormTimezone": "Timezone",
+  "siteFormCountryCodeOptional": "Country code (optional)",
+  "skillCoverageOrgUnitAndSkill": "Org Unit and skill",
+  "skillCoverageRequired": "Required",
+  "skillCoverageQualified": "Qualified",
+  "skillCoverageLapsed": "Lapsed",
+  "skillCoverageShortfall": "Shortfall",
+  "skillCoverageSkillCoverageCouldNotBeRead": "Skill coverage could not be read",
+  "skillCoverageWhereThisSiteFallsShortOfIts": "Where this Site falls short of its own skill requirements.",
+  "skillCoverageEveryRequirementIsMet": "Every requirement is met",
+  "skillCoverageThisSiteHasNoShortfallAgainstThe": "This Site has no shortfall against the skill requirements it has set for itself.",
+  "skillCoverageFilterSkillCoverage": "Filter skill coverage",
+  "skillCoverageByOrgUnitOrSkill": "By Org Unit or skill.",
+  "skillCoverageNoShortfallsMatch": "No shortfalls match",
+  "skillCoverageThisSiteIsShortSomewhereButNothing": "This Site is short somewhere, but nothing matches \"{term}\". Try a different Org Unit or skill, or clear the filter.",
+  "@skillCoverageThisSiteIsShortSomewhereButNothing": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "skillCoverageNeedsAtLevelQualifiedLapsed": "Needs {minimumQualifiedHeadcount} at level {minimumLevel}+, {qualifiedHeadcount} qualified, {expiredHeadcount} lapsed",
+  "@skillCoverageNeedsAtLevelQualifiedLapsed": {
+    "placeholders": {
+      "minimumQualifiedHeadcount": {"type": "Object"},
+      "minimumLevel": {"type": "Object"},
+      "qualifiedHeadcount": {"type": "Object"},
+      "expiredHeadcount": {"type": "Object"}
+    }
+  },
+  "skillCoverageShort": "Short {shortfall}",
+  "@skillCoverageShort": {
+    "placeholders": {
+      "shortfall": {"type": "Object"}
+    }
+  },
+  "skillFormCorrectSkill": "Correct skill",
+  "commonAddSkill": "Add skill",
+  "skillFormRequiresCertification": "Requires certification",
+  "skillFormRevalidationPeriodInMonthsOptional": "Revalidation period, in months (optional)",
+  "skillFormLeftBlankThisSkillNeverNeedsRevalidating": "Left blank, this skill never needs revalidating.",
+  "skillQualifiedEmployeesWhoHolds": "Who holds {name}",
+  "@skillQualifiedEmployeesWhoHolds": {
+    "placeholders": {
+      "name": {"type": "Object"}
+    }
+  },
+  "skillQualifiedEmployeesScopedTo": "Scoped to",
+  "skillQualifiedEmployeesMinimumProficiency": "Minimum proficiency",
+  "skillQualifiedEmployeesSearch": "Search",
+  "skillQualifiedEmployeesChooseAnOrgUnitThenSearch": "Choose an Org Unit, then search.",
+  "skillQualifiedEmployeesNobodyCurrentlyQualifiesAtThisOrgUnit": "Nobody currently qualifies at this Org Unit.",
+  "skillQualifiedEmployeesLevel": "Level {proficiencyLevel}",
+  "@skillQualifiedEmployeesLevel": {
+    "placeholders": {
+      "proficiencyLevel": {"type": "Object"}
+    }
+  },
+  "skillsTheSkillCatalogueCouldNotBeRead": "The skill catalogue could not be read",
+  "skillsWhatThePlantQualifiesAnEmployeeTo": "What the plant qualifies an Employee to do — defined once, shared by every Site.",
+  "skillsNoSkillsYet": "No skills yet",
+  "skillsFilterSkills": "Filter skills",
+  "skillsByNameCodeOrCategory": "By name, code or category.",
+  "skillsNoSkillsMatch": "No skills match",
+  "skillsNothingInTheCatalogueMatchesTryA": "Nothing in the catalogue matches \"{term}\". Try a different name, code or category, or clear the filter.",
+  "@skillsNothingInTheCatalogueMatchesTryA": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "skillsWhoHoldsThis": "Who holds this",
+  "trainingAnswerSignYourConfirmation": "Sign your confirmation",
+  "trainingAnswerChooseWhatYourAnswerIsSignedWith": "Choose what your answer is signed with. You can also confirm without a Signature.",
+  "trainingAnswerYouKeepNoSignatureDrawOneNow": "You keep no Signature. Draw one now for this answer, or confirm without a Signature.",
+  "trainingAnswerYourSignatureWhichUseMySignatureApplies": "Your Signature, which \"Use my Signature\" applies:",
+  "trainingAnswerUseMySignature": "Use my Signature",
+  "trainingAnswerDrawOneNow": "Draw one now",
+  "trainingAnswerNoSignature": "No Signature",
+  "trainingAnswerConfirmWithThisSignature": "Confirm with this Signature",
+  "commonNoSuchTrainingRecord": "No such Training record",
+  "commonBackToTrainingRecords": "Back to Training records",
+  "trainingDetailTheTrainingRecordCouldNotBeRead": "The Training record could not be read",
+  "trainingDetailTheForm": "The form",
+  "trainingDetailTheTraining": "The training",
+  "commonTrainedOn": "Trained on",
+  "trainingDetailDuration": "Duration",
+  "trainingDetailTrainer": "Trainer",
+  "trainingDetailObjective": "Objective",
+  "trainingDetailTrainees": "Trainees ({traineeCount})",
+  "@trainingDetailTrainees": {
+    "placeholders": {
+      "traineeCount": {"type": "Object"}
+    }
+  },
+  "commonAddTrainee": "Add Trainee",
+  "trainingDetailNoTraineesAreOnThisTrainingRecord": "No Trainees are on this Training record yet.",
+  "trainingDetailSendToTrainees": "Send to Trainees",
+  "trainingDetailDiscardDraft": "Discard draft",
+  "trainingDetailEvaluated": "Evaluated: {value}",
+  "@trainingDetailEvaluated": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "trainingDetailRemove": "Remove {employeeName}",
+  "@trainingDetailRemove": {
+    "placeholders": {
+      "employeeName": {"type": "Object"}
+    }
+  },
+  "trainingDetailDiscardThisDraft": "Discard this draft?",
+  "trainingDetailTheDraftAndTheTraineesListedOn": "The draft and the Trainees listed on it will be deleted, and it cannot be brought back. Nobody has been asked about it yet.",
+  "trainingDetailDiscard": "Discard",
+  "commonEvaluation": "Evaluation",
+  "trainingFormThatTrainingFormCouldNotBeRead": "That training form could not be read",
+  "trainingFormTrainingRecord": "Training Record",
+  "trainingFormBiNBNGhiNhN": "Biên bản ghi nhận đào tạo",
+  "trainingFormAttendanceListDanhSChThamGia": "Attendance list/ danh sách tham gia :",
+  "trainingRaiseCorrectTrainingRecord": "Correct training record",
+  "commonRaiseTrainingRecord": "Raise training record",
+  "trainingRaiseCorrecting": "Correcting…",
+  "trainingRaiseRaising": "Raising…",
+  "trainingRaiseTitle": "Title",
+  "trainingRaiseWhatTheTrainingWas": "What the training was.",
+  "trainingRaiseTheDayItWasGiven": "The day it was given.",
+  "trainingRaiseDurationHours": "Duration (hours)",
+  "trainingRaiseHowLongItLastedEG1": "How long it lasted, e.g. 1.5.",
+  "trainingRaiseTrainerOptional": "Trainer (optional)",
+  "trainingRaiseWhoGaveItFoundInTheDirectory": "Who gave it, found in the Directory.",
+  "trainingRaiseObjectiveOptional": "Objective (optional)",
+  "trainingRaiseWhatTheTrainingSetOutToTeach": "What the training set out to teach.",
+  "trainingRecord": "Record",
+  "trainingTrainees": "Trainees",
+  "trainingAnswers": "Answers",
+  "trainingTrainingRecordsCouldNotBeRead": "Training records could not be read",
+  "trainingNoTrainingRecordsMatch": "No Training records match",
+  "trainingNothingWasTrainedUnderThatOrgUnit": "Nothing was trained under that Org Unit in those days.",
+  "trainingNoTrainingRecordsYet": "No Training records yet",
+  "trainingRaiseATrainingRecordToStartThe": "Raise a Training record to start the register.",
+  "trainingNothingHasBeenRecordedAsTrainedYet": "Nothing has been recorded as trained yet.",
+  "trainingWhatThePlantHasTrainedPeopleOn": "What the plant has trained people on, and when.",
+  "trainingThereAreMoreTrainingRecordsThanThis": "There are more Training records than this list shows. Narrow it by Org Unit or by dates to see the rest.",
+  "trainingTheFormFor": "The form for {number}",
+  "@trainingTheFormFor": {
+    "placeholders": {
+      "number": {"type": "Object"}
+    }
+  },
+  "trainingToConfirmYourTrainingToConfirmCouldNotBe": "Your Training to confirm could not be read",
+  "trainingToConfirmNothingWaitingOnYou": "Nothing waiting on you",
+  "trainingToConfirmNoTrainingRecordHasBeenSentTo": "No Training record has been sent to you that you have not answered.",
+  "trainingToConfirmTrainingRecordsSentToYouThatYou": "Training records sent to you that you have not answered yet, oldest first. Confirm that you attended, or decline because the record is wrong.",
+  "trainingToConfirmYourAnswer": "Your answer",
+  "trainingTraineeEmployeesOf": "Employees of {orgUnitName}",
+  "@trainingTraineeEmployeesOf": {
+    "placeholders": {
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "trainingTraineeWholeDirectory": "Whole Directory",
+  "trainingTraineeAnyoneInTheDirectoryFoundByName": "Anyone in the Directory, found by name or number.",
+  "trainingTraineeAnEmployeeOfFoundByNameOr": "An Employee of {orgUnitName}, found by name or number.",
+  "@trainingTraineeAnEmployeeOfFoundByNameOr": {
+    "placeholders": {
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "workedHoursDay": "Day",
+  "workedHoursWorked": "Worked",
+  "workedHoursBackToEmployee": "Back to Employee",
+  "workedHoursTheConfirmedHoursThisEmployeeActuallyWorked": "The confirmed hours this Employee actually worked, day by day. Only confirmed attendance counts — an unconfirmed sheet is a draft.",
+  "workedHoursTheWorkedHoursSummaryCouldNotBe": "The worked-hours summary could not be read",
+  "workedHoursNoConfirmedWorkedHoursInThisWindow": "No confirmed worked hours in this window.",
+  "workedHoursWidenTheWindowOrConfirmTheShift": "Widen the window, or confirm the shift sheets for the days this Employee worked.",
+  "workedHoursTotals": "Totals",
+  "workedHoursOfScheduled": "of {value} scheduled",
+  "@workedHoursOfScheduled": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "leaveRequestDecisionApproveLeaveRequest": "Approve leave request",
+  "leaveRequestDecisionRejectLeaveRequest": "Reject leave request",
+  "commonTo": "To",
+  "commonEmployeeNumber": "Employee number",
+  "commonPin": "PIN",
+  "commonInactive": "Inactive",
+  "commonDeactivate": "Deactivate",
+  "commonReactivate": "Reactivate",
+  "commonClose": "Close",
+  "commonReason": "Reason",
+  "commonAssign": "Assign",
+  "commonDecline": "Decline",
+  "commonOvertime": "Overtime",
+  "commonSessionEnded": "This session has ended. Sign in again to continue.",
+  "attendanceRecordChooseAReasonForThisAbsence": "Choose a reason for this absence.",
+  "commonThatActionCouldNotBeRead": "That Action could not be read",
+  "commonThatActionHasEnded": "That Action has ended",
+  "commonDone": "done",
+  "actionCancelItIsClosedSoThereIsNothing": "It is closed, so there is nothing left to call off.",
+  "actionCancelItWasAlreadyCancelled": "It was already cancelled.",
+  "actionCancelCallOff": "Call off {actionNo}?",
+  "@actionCancelCallOff": {
+    "placeholders": {
+      "actionNo": {"type": "Object"}
+    }
+  },
+  "actionCancelLeaveItAlone": "Leave it alone",
+  "actionCancelCallItOff": "Call it off",
+  "actionCancelCallingItOffEndsTheRecordWithout": "Calling it off ends the record without claiming anything was done about it. The row stays, with the reason you give it.",
+  "actionCancelWhyOptional": "Why (optional)",
+  "actionCancelRaisedInErrorADuplicateOvertakenBy": "Raised in error, a duplicate, overtaken by events.",
+  "commonBackToTheActionLog": "Back to the action log",
+  "actionDetailHandItUp": "Hand it up…",
+  "actionDetailCallItOff": "Call it off…",
+  "actionDetailWhereItStands": "Where it stands",
+  "commonOwner": "Owner",
+  "actionDetailEscalatedTo": "Escalated to",
+  "actionDetailClosingNote": "Closing note",
+  "actionDetailPillar": "Pillar {pillarCode}",
+  "@actionDetailPillar": {
+    "placeholders": {
+      "pillarCode": {"type": "Object"}
+    }
+  },
+  "commonOverdueByDays": "Overdue by {daysOverdue} days",
+  "@commonOverdueByDays": {
+    "placeholders": {
+      "daysOverdue": {"type": "Object"}
+    }
+  },
+  "actionDetailCycle": "Cycle {currentCycle}",
+  "@actionDetailCycle": {
+    "placeholders": {
+      "currentCycle": {"type": "Object"}
+    }
+  },
+  "actionDetailCompleteThe": "Complete the {phaseLabel}",
+  "@actionDetailCompleteThe": {
+    "placeholders": {
+      "phaseLabel": {"type": "Object"}
+    }
+  },
+  "actionDetailThisActionHasNoPhasesLeft": "This Action has no phases left.",
+  "actionDetailEarlierRounds": "Earlier rounds",
+  "actionDetailOpenWaitingOnThis": "Open — waiting on this",
+  "actionDetailNoNoteRecorded": "No note recorded",
+  "actionDetailDue": "due {dueDate}",
+  "@actionDetailDue": {
+    "placeholders": {
+      "dueDate": {"type": "Object"}
+    }
+  },
+  "actionDetailDone": "done {value}",
+  "@actionDetailDone": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "actionDetailAnswers": "Answers {actionNo}",
+  "@actionDetailAnswers": {
+    "placeholders": {
+      "actionNo": {"type": "Object"}
+    }
+  },
+  "commonCapa": "CAPA",
+  "actionDetailAFormal8dInvestigationOpenedOnThis": "A formal 8D investigation opened on this Concern: its team, its problem description and — as those slices land — its root causes and its effectiveness check. Its actions are the ones below, recorded once in the action log and read there.",
+  "actionDetailUnderInvestigation": "Under investigation: {capaNo}",
+  "@actionDetailUnderInvestigation": {
+    "placeholders": {
+      "capaNo": {"type": "Object"}
+    }
+  },
+  "actionDetailOpenACapa": "Open a CAPA…",
+  "actionDetailNobodyHasOpenedACapaOnThis": "Nobody has opened a CAPA on this Concern. Opening one needs Quality authority at this Concern's Org Unit.",
+  "actionDetailMeasures": "Measures",
+  "actionDetailMeasuresOfThemCountermeasures": "Measures ({length}, {countermeasureCount} of them countermeasures)",
+  "@actionDetailMeasuresOfThemCountermeasures": {
+    "placeholders": {
+      "length": {"type": "Object"},
+      "countermeasureCount": {"type": "Object"}
+    }
+  },
+  "actionDetailAddAMeasure": "Add a measure",
+  "actionDetailAddA": "Add a {value}…",
+  "@actionDetailAddA": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "actionDetailEachMeasureIsAnActionOfIts": "Each measure is an Action of its own: open one and run its own cycle to its Act, and it counts as closed.",
+  "actionDetailThisActionAnswersNoConcernOfIts": "This Action answers no Concern of its own.",
+  "actionDetailNothingAnswersThisYetAContainmentStops": "Nothing answers this yet. A containment stops the effect now; a countermeasure removes the cause.",
+  "commonNobodyYet": "Nobody yet",
+  "actionDetailOverdueByDays": "overdue by {daysOverdue} days",
+  "@actionDetailOverdueByDays": {
+    "placeholders": {
+      "daysOverdue": {"type": "Object"}
+    }
+  },
+  "commonWaitingOnIts": "waiting on its {value}",
+  "@commonWaitingOnIts": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "actionDetailCompleteThe2": "Complete the {value}…",
+  "@actionDetailCompleteThe2": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "actionDetailNonConformances": "Non-conformances ({length})",
+  "@actionDetailNonConformances": {
+    "placeholders": {
+      "length": {"type": "Object"}
+    }
+  },
+  "actionDetailTheOccurrencesThisConcernAnswersOneProblem": "The occurrences this Concern answers. One problem that shows up several times stays one Concern, so a further occurrence is linked here rather than raised as another.",
+  "actionDetailNoNonConformanceIsLinkedToThis": "No Non-conformance is linked to this Concern.",
+  "actionDetailRaisedFromThis": "Raised from this",
+  "actionDetailUnlink": "Unlink…",
+  "actionDetailTheObservationThisActionWasRaisedFrom": "The observation this Action was raised from — what was seen, and how bad it could have been.",
+  "actionDetailTheIncidentThisConcernWasRaisedFrom": "The incident this Concern was raised from — its number and its severity, never who was hurt or their diagnosis.",
+  "actionEscalateItIsClosedWhoeverNeededToKnow": "It is closed. Whoever needed to know about it was told before it was.",
+  "actionEscalateItWasCalledOffSoThereIs": "It was called off, so there is nothing to hand up.",
+  "actionEscalateNowhereToHandItUpTo": "Nowhere to hand it up to",
+  "actionEscalateThereIsNobodyAboveThis": "There is nobody above this",
+  "actionEscalateSitsAtWhichIsAlreadyTheTop": "{actionNo} sits at {orgUnitName}, which is already the top of this Site. Nothing above it can be told.",
+  "@actionEscalateSitsAtWhichIsAlreadyTheTop": {
+    "placeholders": {
+      "actionNo": {"type": "Object"},
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "actionEscalateHandUp": "Hand {actionNo} up",
+  "@actionEscalateHandUp": {
+    "placeholders": {
+      "actionNo": {"type": "Object"}
+    }
+  },
+  "actionEscalateHandItUp": "Hand it up",
+  "actionEscalateRaisingThisTellsTheOrgUnitYou": "Raising this tells the Org Unit you choose. It stays where it is and keeps its owner and its cycle — this asks somebody above to know about it, not to take it over.",
+  "actionEscalateNearestAboveIt": "{code} · nearest above it",
+  "@actionEscalateNearestAboveIt": {
+    "placeholders": {
+      "code": {"type": "Object"}
+    }
+  },
+  "actionEscalatedToFilterFilterByWhatWasHandedUp": "Filter by what was handed up",
+  "actionEscalatedToFilterAnyone": "Anyone",
+  "actionEscalatedToFilterWhoseQueue": "Whose queue",
+  "actionEscalatedToFilterChooseTheOrgUnitThatConcernsWere": "Choose the Org Unit that concerns were handed up to — what is waiting on the area, not what sits at the line — or clear back to everything.",
+  "commonRaiseAConcern": "Raise a concern",
+  "actionFormRaiseIt": "Raise it",
+  "actionFormOneLineTheCauseGoesInThe": "One line. The cause goes in the Plan phase, not here.",
+  "commonKindOfAction": "Kind of Action",
+  "actionFormThePillarCatalogueCouldNotBeRead": "The Pillar catalogue could not be read, so no Pillar can be chosen.",
+  "actionFormPillarOptional": "Pillar (optional)",
+  "actionFormWhichSqdcpNumberDoesThisThreaten": "Which SQDCP number does this threaten?",
+  "actionFormNoPillar": "No Pillar",
+  "commonOwnerOptional": "Owner (optional)",
+  "actionFormWhoWillDoItAnActionNobody": "Who will do it. An Action nobody owns is visibly nobody's.",
+  "commonDueOptional": "Due (optional)",
+  "actionFormChooseTheOrgUnitThisConcernIs": "Choose the Org Unit this concern is about. This is what decides who may act on it.",
+  "actionFormThisConcernWillBeRecordedAt": "This concern will be recorded at {value}.",
+  "@actionFormThisConcernWillBeRecordedAt": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "actionMeasureAddA": "Add a {value}",
+  "@actionMeasureAddA": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "actionMeasureAddThe": "Add the {value}",
+  "@actionMeasureAddThe": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "actionMeasureAnswering": "Answering {actionNo}: {title}",
+  "@actionMeasureAnswering": {
+    "placeholders": {
+      "actionNo": {"type": "Object"},
+      "title": {"type": "Object"}
+    }
+  },
+  "actionMeasureWhatWillBeDone": "What will be done",
+  "actionMeasureWhoWillDoIt": "Who will do it.",
+  "actionMeasureWhereThisWorkHappens": "Where this work happens",
+  "actionMeasureLeaveItAloneToRecordTheMeasure": "Leave it alone to record the measure at {orgUnitName}, where the concern sits. A fix that belongs somewhere else — a store, a supplier — can name that instead.",
+  "@actionMeasureLeaveItAloneToRecordTheMeasure": {
+    "placeholders": {
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "actionOrgUnitFilterNarrowTheLog": "Narrow the log",
+  "actionOrgUnitFilterChooseTheOrgUnitWhoseActionsAnd": "Choose the Org Unit whose Actions and everything beneath it you want to read, or clear back to the whole Site.",
+  "actionPhaseCompleteThatIsNotTheOpenPhase": "That is not the open phase",
+  "actionPhaseCompleteThisActionHasNoOpenPhaseLeft": "This Action has no open phase left.",
+  "actionPhaseCompleteThisActionIsWaitingOnItsPhase": "This Action is waiting on its {value} phase, not its {value2}.",
+  "@actionPhaseCompleteThisActionIsWaitingOnItsPhase": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "actionPhaseCompleteCompleteThe": "Complete the {label}",
+  "@actionPhaseCompleteCompleteThe": {
+    "placeholders": {
+      "label": {"type": "Object"}
+    }
+  },
+  "actionPhaseCompleteWhatWasMeasured": "What was measured",
+  "actionPhaseCompleteWhatWasDone": "What was done",
+  "actionPhaseCompleteDidItHold": "Did it hold?",
+  "actionPhaseCompleteAnsweringThatItDidNotOpensThe": "Answering that it did not opens the next cycle rather than closing the Action, and keeps this round on the record.",
+  "actionUnlinkNonconformanceThatConcernCouldNotBeRead": "That Concern could not be read",
+  "actionUnlinkNonconformanceThatNonConformanceIsNotLinkedHere": "That Non-conformance is not linked here",
+  "actionUnlinkNonconformanceThisConcernAnswersNothingByThatId": "This Concern answers nothing by that id. It may have been unlinked already, or the address may be wrong.",
+  "actionUnlinkNonconformanceBackToTheConcern": "Back to the Concern",
+  "actionUnlinkNonconformanceUnlinkThisNonConformance": "Unlink this Non-conformance",
+  "actionUnlinkNonconformanceKeepItLinked": "Keep it linked",
+  "actionUnlinkNonconformanceUnlinkIt": "Unlink it",
+  "actionUnlinkNonconformanceItStopsBeingOneOfTheOccurrences": "It stops being one of the occurrences this Concern answers. The Non-conformance itself is untouched — it keeps its number, its Dispositions and its quantity.",
+  "actionsTheActionLogCouldNotBeRead": "The action log could not be read",
+  "actionsWhatThePlantOwesAtThisSite": "What the plant owes at this Site: what was found, who owns it, and when it is due. Overdue first.",
+  "actionsEscalatedToAnyone": "Escalated to anyone",
+  "actionsEscalatedTo": "Escalated to {escalatedToOrgUnitFilterName}",
+  "@actionsEscalatedTo": {
+    "placeholders": {
+      "escalatedToOrgUnitFilterName": {"type": "Object"}
+    }
+  },
+  "actionsEveryKind": "Every kind",
+  "actionsShowClosed": "Show closed",
+  "actionsThereAreMoreActionsThanThisList": "There are more Actions than this list shows. Narrow it by Org Unit, by status or by kind to see the rest.",
+  "actionsTheLogHasActionsButNoneOf": "The log has Actions, but none of them is in the Org Unit, status or kind you picked.",
+  "actionsNothingOnTheLog": "Nothing on the log",
+  "actionsNoActionHasBeenRaisedAtThis": "No Action has been raised at this Site yet.",
+  "actionsSource": "Source",
+  "actionsOfThemCountermeasures": "{measureCount, plural, =1{1 measure} other{{measureCount} measures}}, {countermeasureCount} of them countermeasures",
+  "@actionsOfThemCountermeasures": {
+    "placeholders": {
+      "measureCount": {"type": "int"},
+      "countermeasureCount": {"type": "int"}
+    }
+  },
+  "actionsEscalatedTo2": "Escalated to {escalatedToOrgUnitName}",
+  "@actionsEscalatedTo2": {
+    "placeholders": {
+      "escalatedToOrgUnitName": {"type": "Object"}
+    }
+  },
+  "actionsNoDueDate": "No due date",
+  "actionsDue": "Due {dueDate}",
+  "@actionsDue": {
+    "placeholders": {
+      "dueDate": {"type": "Object"}
+    }
+  },
+  "commonBackToTheCapa": "Back to the CAPA",
+  "commonThatCapaCouldNotBeRead": "That CAPA could not be read",
+  "capaCauseThatIsNotA6mCategory": "That is not a 6M category",
+  "capaCauseAFishboneHasSixBonesManMachine": "A fishbone has six bones: Man, Machine, Method, Material, Measurement and Environment.",
+  "commonThisInvestigationIsOver": "This investigation is over",
+  "capaCauseIsSoItsFishboneIsARecord": "{capaNo} is {value}, so its fishbone is a record rather than a worklist.",
+  "@capaCauseIsSoItsFishboneIsARecord": {
+    "placeholders": {
+      "capaNo": {"type": "Object"},
+      "value": {"type": "Object"}
+    }
+  },
+  "commonNotYoursToWrite": "Not yours to write",
+  "commonWritingACapaSRootCausesNeeds": "Writing a CAPA's root causes needs edit access at its Org Unit, or a place on its team.",
+  "capaCauseThatCauseIsNotOnThisBone": "That cause is not on this bone",
+  "commonItMayHaveBeenRemovedAMoment": "It may have been removed a moment ago by somebody else.",
+  "capaCauseRecordACandidateCause": "Record a candidate cause",
+  "capaCauseReviseTheCause": "Revise the cause",
+  "capaCauseRemoveThisCause": "Remove this cause?",
+  "commonRemoveIt": "Remove it",
+  "capaCauseItIsTakenOffTheBoneFor": "It is taken off the {categoryLabel} bone for good{value}. A chain started from it keeps the Why it began with.",
+  "@capaCauseItIsTakenOffTheBoneFor": {
+    "placeholders": {
+      "categoryLabel": {"type": "Object"},
+      "value": {"type": "Object"}
+    }
+  },
+  "capaCauseBothChainsHaveBeenStarted": "Both chains have been started",
+  "capaCauseAlreadyReasonsBothWhyTheProblemHappened": "{capaNo} already reasons both why the problem happened and why it was not detected, so the Why for this cause belongs in one of them rather than at the head of a chain.",
+  "@capaCauseAlreadyReasonsBothWhyTheProblemHappened": {
+    "placeholders": {
+      "capaNo": {"type": "Object"}
+    }
+  },
+  "capaCauseTheBoneItHangsFrom": "The bone it hangs from",
+  "capaCauseTheCandidateCause": "The candidate cause",
+  "capaCauseWhatYouSuspectSaidSoTheNext": "What you suspect, said so the next person can check it.",
+  "capaCauseDecideThisCause": "Decide this cause",
+  "capaCauseRecordTheVerdict": "Record the verdict",
+  "capaCauseAVerdictIsADecisionTheReport": "A verdict is a decision the report reads back, so it is recorded with the evidence for it.",
+  "capaCauseTheEvidence": "The evidence",
+  "capaCauseWhatYouLookedAtAndWhatIt": "What you looked at, and what it showed.",
+  "capaCauseStartAChainFromThisCause": "Start a chain from this cause",
+  "capaCauseStartTheChain": "Start the chain",
+  "capaCauseTheEvidenceConfirmedThisCauseSoA": "The evidence confirmed this cause, so a chain may begin with it. What it says is the first Why.",
+  "capaCauseWhichChainItBegins": "Which chain it begins",
+  "capaCauseTheFirstWhy": "The first Why",
+  "capaCauseTheConfirmedCauseSaidTheWayThe": "The confirmed cause, said the way the chain should read.",
+  "capaDetailBackTo": "Back to {actionNo}",
+  "@capaDetailBackTo": {
+    "placeholders": {
+      "actionNo": {"type": "Object"}
+    }
+  },
+  "capaDetailTheReport": "The report",
+  "capaDetailInvestigation": "{methodLabel} investigation",
+  "@capaDetailInvestigation": {
+    "placeholders": {
+      "methodLabel": {"type": "Object"}
+    }
+  },
+  "capaDetailDue": "due {dueDate}",
+  "@capaDetailDue": {
+    "placeholders": {
+      "dueDate": {"type": "Object"}
+    }
+  },
+  "capaDetailEffectiveness": "Effectiveness",
+  "commonACapaClosesOnlyWhenBothChains": "A CAPA closes only when both chains have a confirmed root cause, its Concern is closed, and somebody holding Quality authority other than its team lead has verified, some time later, that the problem has not come back.",
+  "capaDetailRecordedByOn": "recorded by {value} on {value2}",
+  "@capaDetailRecordedByOn": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "capaDetailTheCheckDidNotHoldSoThe": "The check did not hold, so the Concern is open again in its next cycle: the work is on its Screen, in the Concern this investigation answers.",
+  "commonTheConcernHasClosedSoTheEffectiveness": "The Concern has closed, so the effectiveness check is due on {dueAt}.",
+  "@commonTheConcernHasClosedSoTheEffectiveness": {
+    "placeholders": {
+      "dueAt": {"type": "Object"}
+    }
+  },
+  "commonOverdue": "Overdue",
+  "commonRecordTheEffectivenessCheck": "Record the effectiveness check",
+  "capaDetailYouLeadThisInvestigationSoSomebodyElse": "You lead this investigation, so somebody else records the check: a holder of Quality authority who is not on the team lead's Account.",
+  "capaDetailRecordingTheCheckNeedsQualityAuthorityAt": "Recording the check needs Quality authority at this Org Unit.",
+  "capaDetailTheCheckFallsDueDaysAfterThe": "The check falls due {effectivenessCheckDelayDays} days after the Concern closes, and the Concern has not closed yet.",
+  "@capaDetailTheCheckFallsDueDaysAfterThe": {
+    "placeholders": {
+      "effectivenessCheckDelayDays": {"type": "Object"}
+    }
+  },
+  "capaDetailTeam": "Team",
+  "commonNobodyIsOnThisInvestigationYet": "Nobody is on this investigation yet.",
+  "commonTeamLead": "{name} · team lead",
+  "@commonTeamLead": {
+    "placeholders": {
+      "name": {"type": "Object"}
+    }
+  },
+  "capaDetailTheProblem": "The problem",
+  "commonNobodyHasWrittenTheProblemDescriptionYet": "Nobody has written the problem description yet.",
+  "capaDetailCandidateCauses": "Candidate causes",
+  "capaDetailTheFishboneWhatTheTeamSuspectedBy": "The fishbone: what the team suspected, by 6M category, and what the evidence said about each one. The chain that follows begins with the cause it confirmed.",
+  "capaDetailThisInvestigationIsOverSoItsFishbone": "This investigation is over, so its fishbone is a record rather than a worklist.",
+  "capaDetailRecordACause": "Record a cause",
+  "capaDetailNothingIsRecordedUnder": "Nothing is recorded under {value}.",
+  "@capaDetailNothingIsRecordedUnder": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "capaDetailCause": "Cause {sequence}",
+  "@capaDetailCause": {
+    "placeholders": {
+      "sequence": {"type": "Object"}
+    }
+  },
+  "commonEvidence": "Evidence: {evidenceNote}",
+  "@commonEvidence": {
+    "placeholders": {
+      "evidenceNote": {"type": "Object"}
+    }
+  },
+  "capaDetailChangeTheVerdict": "Change the verdict",
+  "capaDetailDecideIt": "Decide it",
+  "capaDetailStartAChainFromIt": "Start a chain from it",
+  "capaDetailRootCause": "Root cause",
+  "capaDetailTwoChainsEachEndingAtOneConfirmed": "Two chains, each ending at one confirmed root cause: why the problem happened, and why it was not detected.",
+  "capaDetailThisInvestigationIsOverSoItsChains": "This investigation is over, so its chains are a record rather than a worklist.",
+  "commonAddAWhy": "Add a Why",
+  "capaDetailOccurrence": "occurrence",
+  "capaDetailWhyTheProblemHappenedOneStepAt": "Why the problem happened, one step at a time.",
+  "capaDetailWhyItWasNotDetectedOneStep": "Why it was not detected, one step at a time.",
+  "commonNobodyHasStartedThisChainYet": "Nobody has started this chain yet.",
+  "commonThisChainHasNoConfirmedRootCause": "This chain has no confirmed root cause yet.",
+  "commonConfirmedRootCause": "Confirmed root cause: {statement}",
+  "@commonConfirmedRootCause": {
+    "placeholders": {
+      "statement": {"type": "Object"}
+    }
+  },
+  "capaDetailWhy": "Why {sequence}",
+  "@capaDetailWhy": {
+    "placeholders": {
+      "sequence": {"type": "Object"}
+    }
+  },
+  "capaDetailConfirmedRootCause": "Confirmed root cause",
+  "capaDetailClearTheRootCause": "Clear the root cause",
+  "capaDetailThisIsTheRootCause": "This is the root cause",
+  "capaDetailMoveItEarlierInTheChain": "Move it earlier in the chain",
+  "capaDetailMoveItLaterInTheChain": "Move it later in the chain",
+  "capaDetailTheConcern": "The Concern",
+  "capaDetailTheConcern2": "The Concern: {actionNo}",
+  "@capaDetailTheConcern2": {
+    "placeholders": {
+      "actionNo": {"type": "Object"}
+    }
+  },
+  "capaDetailWhatTheConcernHasDone": "What the Concern has done",
+  "capaDetailWhatTheConcernHasDone2": "What the Concern has done ({length})",
+  "@capaDetailWhatTheConcernHasDone2": {
+    "placeholders": {
+      "length": {"type": "Object"}
+    }
+  },
+  "capaDetailTheContainmentD3TheCountermeasuresD5D6": "The containment (D3), the countermeasures (D5-D6) and the preventive actions (D7) are the Concern's own, recorded once in the action log — this is where they are read, not where they are recorded again.",
+  "capaDetailNothingAnswersThisConcernYetSoThere": "Nothing answers this Concern yet, so there is no work to show.",
+  "commonCycle": "Cycle {cycle} · {phaseLabel}",
+  "@commonCycle": {
+    "placeholders": {
+      "cycle": {"type": "Object"},
+      "phaseLabel": {"type": "Object"}
+    }
+  },
+  "commonOpen2": "open",
+  "capaEffectivenessIsSoItsEffectivenessIsRecordedAnd": "{capaNo} is {value}, so its effectiveness is recorded and the record is read rather than changed.",
+  "@capaEffectivenessIsSoItsEffectivenessIsRecordedAnd": {
+    "placeholders": {
+      "capaNo": {"type": "Object"},
+      "value": {"type": "Object"}
+    }
+  },
+  "capaEffectivenessNotYoursToDecide": "Not yours to decide",
+  "capaEffectivenessRecordingACapaSEffectivenessCheckNeeds": "Recording a CAPA's effectiveness check needs Quality authority at its Org Unit.",
+  "capaEffectivenessSomebodyElseHasToCheckThis": "Somebody else has to check this",
+  "capaEffectivenessYouLeadTheInvestigationOnSoYou": "You lead the investigation on {capaNo}, so you are the one person whose judgement about this fix is not evidence. A holder of Quality authority who is not on the team lead's Account records the check.",
+  "@capaEffectivenessYouLeadTheInvestigationOnSoYou": {
+    "placeholders": {
+      "capaNo": {"type": "Object"}
+    }
+  },
+  "capaEffectivenessTheCheckFallsDueDaysAfterThe": "The check falls due {effectivenessCheckDelayDays} days after the Concern closes.",
+  "@capaEffectivenessTheCheckFallsDueDaysAfterThe": {
+    "placeholders": {
+      "effectivenessCheckDelayDays": {"type": "Object"}
+    }
+  },
+  "capaEffectivenessTheConcernClosedAndTheCheckFell": "The Concern closed, and the check fell due on {effectivenessCheckDueAt}.",
+  "@capaEffectivenessTheConcernClosedAndTheCheckFell": {
+    "placeholders": {
+      "effectivenessCheckDueAt": {"type": "Object"}
+    }
+  },
+  "capaEffectivenessWhatTheCheckFound": "What the check found",
+  "capaEffectivenessAChainOfThisInvestigationHasNo": "A chain of this investigation has no confirmed root cause yet, so \"{value}\" cannot close it: the investigation has to have finished before the fix is judged to have held.",
+  "@capaEffectivenessAChainOfThisInvestigationHasNo": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "capaEffectivenessWhatYouCheckedAndWhatYouFound": "What you checked, and what you found",
+  "capaEffectivenessTheEvidenceForTheVerdictSoThe": "The evidence for the verdict, so the next reader can weigh it.",
+  "capaOrgUnitFilterChooseTheOrgUnitWhoseInvestigationsAnd": "Choose the Org Unit whose investigations and everything beneath it you want to read, or clear back to every one of them.",
+  "capaReportThatCapaReportCouldNotBeRead": "That CAPA report could not be read",
+  "capaReportThe8dRecordOfThisInvestigationIts": "The 8D record of this investigation: its team, the problem it answers, what was done about it, and whether the fix held.",
+  "capaReportAnswersTheConcern": "Answers the Concern {actionNo} · {title}",
+  "@capaReportAnswersTheConcern": {
+    "placeholders": {
+      "actionNo": {"type": "Object"},
+      "title": {"type": "Object"}
+    }
+  },
+  "capaReportNotYetDone": "Not yet done",
+  "capaReportWhatThisReportIsStillWaitingFor": "What this report is still waiting for.",
+  "capaReportD1Team": "D1 · Team",
+  "capaReportWhoInvestigatedThisProblemAndWhoLed": "Who investigated this problem, and who led it.",
+  "capaReportD2TheProblem": "D2 · The problem",
+  "capaReportWhatTheTeamIsInvestigatingInThe": "What the team is investigating, in the investigation's own words.",
+  "capaReportD3Containment": "D3 · Containment",
+  "capaReportWhatWasDoneToStopTheBad": "What was done to stop the bad product going any further.",
+  "capaReportD4RootCause": "D4 · Root cause",
+  "capaReportTheCandidateCausesTheTeamConsideredAnd": "The candidate causes the team considered and the verdict on each, then two chains ending at one confirmed root cause: why the problem happened, and why it was not detected.",
+  "capaReportD5D6Countermeasures": "D5–D6 · Countermeasures",
+  "capaReportWhatWasDoneAboutTheCauseAnd": "What was done about the cause, and whether its Check held.",
+  "capaReportD7PreventiveActions": "D7 · Preventive actions",
+  "capaReportWhatStopsItHappeningOnThisLine": "What stops it happening on this line again, with the outcome of every round.",
+  "capaReportTheSafetyIncidentThisInvestigationAnswers": "The Safety incident this investigation answers",
+  "capaReportTheIncidentTheConcernWasRaisedFrom": "The incident the Concern was raised from, with its number and severity — never the injury details, which the incident's own record restricts.",
+  "capaReportTheNonConformancesThisInvestigationAnswers": "The Non-conformances this investigation answers",
+  "capaReportTheOccurrencesTheConcernAnswersWithThe": "The occurrences the Concern answers, with the number, the Product, the Defect code, the quantity and what was decided about the product.",
+  "capaReportNoNonConformanceIsLinkedToThis": "No Non-conformance is linked to this Concern, so the report has no evidence to list.",
+  "capaReportNoPhaseOfThisActionHasBeen": "No phase of this Action has been completed yet.",
+  "capaReportTheCandidateCausesConsidered": "The candidate causes considered",
+  "capaReportNoCandidateCauseIsRecordedSoNo": "No candidate cause is recorded, so no fishbone was worked.",
+  "capaReportWhy": "Why {sequence} · {statement}",
+  "@capaReportWhy": {
+    "placeholders": {
+      "sequence": {"type": "Object"},
+      "statement": {"type": "Object"}
+    }
+  },
+  "capaReportD8Effectiveness": "D8 · Effectiveness",
+  "capaReportVerifiedByOn": "verified by {value} on {value2}",
+  "@capaReportVerifiedByOn": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "capaReportTheCheckFallsDueDaysAfterThe": "The check falls due {effectivenessCheckDelayDays} days after the Concern closes, and the Concern has not closed yet, so nothing has been verified.",
+  "@capaReportTheCheckFallsDueDaysAfterThe": {
+    "placeholders": {
+      "effectivenessCheckDelayDays": {"type": "Object"}
+    }
+  },
+  "capaReportRaisedFromThis": "raised from this",
+  "capaReportLinkedToThisConcern": "linked to this Concern",
+  "capaReportNoProductFromThisOccurrenceHasA": "No product from this occurrence has a Disposition yet.",
+  "capaReportMinRework": "{value} min rework",
+  "@capaReportMinRework": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "capaReportDecidedBy": "decided by {decidedBy}",
+  "@capaReportDecidedBy": {
+    "placeholders": {
+      "decidedBy": {"type": "Object"}
+    }
+  },
+  "capaWhyThatIsNotAChain": "That is not a chain",
+  "capaWhyACapaReasonsWithTwoChainsWhy": "A CAPA reasons with two chains: why the problem happened, and why it was not detected.",
+  "capaWhyIsSoItsChainsAreARecord": "{capaNo} is {value}, so its chains are a record rather than a worklist.",
+  "@capaWhyIsSoItsChainsAreARecord": {
+    "placeholders": {
+      "capaNo": {"type": "Object"},
+      "value": {"type": "Object"}
+    }
+  },
+  "capaWhyThatWhyIsNotInThisChain": "That Why is not in this chain",
+  "capaWhyReviseWhy": "Revise Why {sequence}",
+  "@capaWhyReviseWhy": {
+    "placeholders": {
+      "sequence": {"type": "Object"}
+    }
+  },
+  "capaWhyRemoveWhy": "Remove Why {sequence}?",
+  "@capaWhyRemoveWhy": {
+    "placeholders": {
+      "sequence": {"type": "Object"}
+    }
+  },
+  "capaWhyItIsTakenOutOfTheChain": "It is taken out of the chain for good, and the Whys after it move up one. The rest of the investigation is not touched.",
+  "capaWhyOneStepOfTheReasoningInYour": "{value} — one step of the reasoning, in your own words.",
+  "@capaWhyOneStepOfTheReasoningInYour": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "capaWhyTheWhy": "The Why",
+  "capaWhyWhatYouFoundSaidSoTheNext": "What you found, said so the next person can follow it.",
+  "capasTheCapaListCouldNotBeRead": "The CAPA list could not be read",
+  "capasTheInvestigationsOpenedOnAConcernAnd": "The investigations opened on a Concern, and the effectiveness check each one is waiting on.",
+  "capasOverdueChecks": "Overdue checks",
+  "capasThereAreMoreInvestigationsThanThisList": "There are more investigations than this list shows. Narrow it by Org Unit or status.",
+  "capasNoInvestigationMatchesTheOrgUnitStatus": "No investigation matches the Org Unit, status or overdue check you asked for.",
+  "capasNoInvestigationsYet": "No investigations yet",
+  "capasACapaIsOpenedFromAConcern": "A CAPA is opened from a Concern, when somebody decides that the problem needs a root cause and a fix that holds.",
+  "capasInvestigation": "Investigation",
+  "capasEffectivenessCheck": "Effectiveness check",
+  "capasOverdueCheck": "Overdue check",
+  "capasRecordedBy": "{value}, recorded by {value2}.",
+  "@capasRecordedBy": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "capasTheEffectivenessCheckWasDueOn": "The effectiveness check was due on {effectivenessCheckDueAt}.",
+  "@capasTheEffectivenessCheckWasDueOn": {
+    "placeholders": {
+      "effectivenessCheckDueAt": {"type": "Object"}
+    }
+  },
+  "capasTheEffectivenessCheckIsDueOn": "The effectiveness check is due on {effectivenessCheckDueAt}.",
+  "@capasTheEffectivenessCheckIsDueOn": {
+    "placeholders": {
+      "effectivenessCheckDueAt": {"type": "Object"}
+    }
+  },
+  "capasTheEffectivenessCheckFallsDueDaysAfter": "The effectiveness check falls due {effectivenessCheckDelayDays} days after the Concern closes.",
+  "@capasTheEffectivenessCheckFallsDueDaysAfter": {
+    "placeholders": {
+      "effectivenessCheckDelayDays": {"type": "Object"}
+    }
+  },
+  "capasOnTheTeam": "{length} on the team",
+  "@capasOnTheTeam": {
+    "placeholders": {
+      "length": {"type": "Object"}
+    }
+  },
+  "openCapaOpeningACapaNeedsAuthority": "Opening a CAPA needs authority",
+  "openCapaOpeningACapaNeedsQualityAuthorityAt": "Opening a CAPA needs Quality authority at this Concern's Org Unit.",
+  "openCapaOpenACapaOn": "Open a CAPA on {actionNo}",
+  "@openCapaOpenACapaOn": {
+    "placeholders": {
+      "actionNo": {"type": "Object"}
+    }
+  },
+  "openCapaOpenTheCapa": "Open the CAPA",
+  "openCapaAn8dInvestigationInTheActionLog": "{title} — an 8D investigation, in the action log, on this Concern. Its containments, countermeasures and preventive actions are the Concern\\u2019s own and are read on the CAPA rather than recorded again.",
+  "@openCapaAn8dInvestigationInTheActionLog": {
+    "placeholders": {
+      "title": {"type": "Object"}
+    }
+  },
+  "openCapaTheProblemOptional": "The problem (optional)",
+  "openCapaD2WhatTheInvestigationIsAboutIn": "D2 — what the investigation is about, in the words a team will work from.",
+  "openCapaTheTeam": "The team",
+  "openCapaChosenFromTheEmployeeDirectoryLeaveIt": "Chosen from the Employee directory. Leave it empty to decide the team later — the investigation is what is being opened here.",
+  "openCapaTeamLeadOptional": "Team lead (optional)",
+  "openCapaWhoIsAnswerableForTheInvestigation": "Who is answerable for the investigation.",
+  "openCapaAddATeamMemberOptional": "Add a team member (optional)",
+  "openCapaNobodyElseIsOnThisInvestigationYet": "Nobody else is on this investigation yet.",
+  "awaitingApprovalYouReSignedInAsButAn": "You're signed in as {email}, but an administrator hasn't admitted you to the Platform yet. Check back once they have.",
+  "@awaitingApprovalYouReSignedInAsButAn": {
+    "placeholders": {
+      "email": {"type": "Object"}
+    }
+  },
+  "awaitingApprovalCheckAgain": "Check again",
+  "signInPassword": "Password",
+  "signInCreateAnAccount": "Create an account",
+  "signInContinueWithGoogle": "Continue with Google",
+  "signInOneApplicationForRunningSeveralManufacturingPlants": "One application for running several manufacturing plants.",
+  "accessDeniedNotAvailableToYou": "Not available to you",
+  "accessDeniedThisPartOfThePlatformIsFor": "This part of the Platform is for administrators. Ask one if you need what is here.",
+  "commonBackToHome": "Back to Home",
+  "changePasswordAnAdministratorResetYourPasswordSoThe": "An administrator reset your password, so the one you were given is temporary. Choose your own to continue.",
+  "notFoundScreenNotFound": "Screen not found",
+  "notFoundThereIsNothingAt": "There is nothing at {location}.",
+  "@notFoundThereIsNothingAt": {
+    "placeholders": {
+      "location": {"type": "Object"}
+    }
+  },
+  "sessionErrorTheSessionCouldNotBeChecked": "The session could not be checked",
+  "sessionErrorCouldNotCheckThisAccountSStatus": "Could not check this Account's status: {message}",
+  "@sessionErrorCouldNotCheckThisAccountSStatus": {
+    "placeholders": {
+      "message": {"type": "Object"}
+    }
+  },
+  "appDateFieldChooseADate": "Choose a date",
+  "appDateTimeFieldChooseADateAndTime": "Choose a date and time",
+  "appSearchFieldNoMatches": "No matches",
+  "appSearchFieldNothingMatchedTryADifferentTerm": "Nothing matched \"{lastQueriedTerm}\" — try a different term.",
+  "@appSearchFieldNothingMatchedTryADifferentTerm": {
+    "placeholders": {
+      "lastQueriedTerm": {"type": "Object"}
+    }
+  },
+  "appSearchFieldSearchFailed": "Search failed",
+  "appSearchFieldThereAreMoreMatchesThanAreShown": "There are more matches than are shown — keep typing to narrow the list.",
+  "failureStateNotVisibleToYou": "Not visible to you. {message}",
+  "@failureStateNotVisibleToYou": {
+    "placeholders": {
+      "message": {"type": "Object"}
+    }
+  },
+  "failureStateNotVisibleToYou2": "Not visible to you",
+  "signaturePadSignatureDrawingArea": "Signature drawing area",
+  "complaintDetailThatComplaintCouldNotBeRead": "That complaint could not be read",
+  "complaintDetailBackToCustomerComplaints": "Back to Customer complaints",
+  "commonPastDue": "Past due",
+  "commonWarrantyClaim": "Warranty claim",
+  "complaintDetailTheProductThisIsAbout": "The product this is about",
+  "complaintDetailNothingControlsTheProductThisCustomerComplained": "Nothing controls the product this customer complained about yet. Record a Non-conformance from this complaint, or link one that already exists for the same Product.",
+  "commonLinkOneThatExists": "Link one that exists",
+  "commonOpenRecord": "Open record",
+  "complaintDetailCustomer": "customer",
+  "complaintDetailFoundByTheCustomerSoThisComplaint": "Found by the customer, so this complaint is where it started.",
+  "complaintDetailRecordedAtAndLinkedToThisComplaint": "Recorded at {value}, and linked to this complaint.",
+  "@complaintDetailRecordedAtAndLinkedToThisComplaint": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "commonOpenTheNonConformance": "Open the Non-conformance",
+  "commonTheResponse": "The response",
+  "complaintDetailClosed": "Closed {closedAt}",
+  "@complaintDetailClosed": {
+    "placeholders": {
+      "closedAt": {"type": "Object"}
+    }
+  },
+  "complaintDetailNothingHasBeenSaidBackToThis": "Nothing has been said back to this customer yet.",
+  "complaintDetailCloseWithTheResponse": "Close with the response",
+  "complaintFormRecordACustomerComplaint": "Record a customer complaint",
+  "complaintFormCustomer": "Customer",
+  "commonDefectCodeOptional": "Defect code (optional)",
+  "complaintFormWhatTheCustomerSaysIsWrongA": "What the customer says is wrong. A Non-conformance recorded from this complaint carries it.",
+  "commonNotKnownYet": "Not known yet",
+  "complaintFormQuantityOptional": "Quantity (optional)",
+  "complaintFormInTheProductSOwnUnitOf": "In the Product's own unit of measure.",
+  "complaintFormResponseDueOptional": "Response due (optional)",
+  "complaintFormTheDayTheCustomerWasPromisedAn": "The day the customer was promised an answer.",
+  "complaintFormWhatTheCustomerSaid": "What the customer said",
+  "complaintFormWhoAnswersIt": "Who answers it",
+  "complaintFormChooseTheOrgUnitThatWillAnswer": "Choose the Org Unit that will answer this complaint. This is what decides who may act on it.",
+  "complaintFormThisComplaintWillBeFiledAt": "This complaint will be filed at {value}.",
+  "@complaintFormThisComplaintWillBeFiledAt": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "commonLinkANonConformance": "Link a Non-conformance",
+  "commonLinking": "Linking…",
+  "commonLinkIt": "Link it",
+  "complaintLinkANonConformanceThatAlreadyExistsFor": "A Non-conformance that already exists for {productName} can be linked to this complaint, instead of recording a second one for the same problem.",
+  "@complaintLinkANonConformanceThatAlreadyExistsFor": {
+    "placeholders": {
+      "productName": {"type": "Object"}
+    }
+  },
+  "commonTheNonConformancesCouldNotBeRead": "The Non-conformances could not be read",
+  "complaintLinkNoNonConformanceHasBeenRecordedFor": "No Non-conformance has been recorded for this Product yet, so there is nothing to link. Record one from this complaint instead.",
+  "commonTheNonConformanceThatControlsIt": "The Non-conformance that controls it",
+  "complaintNonconformanceControlTheProduct": "Control the product",
+  "complaintNonconformanceANonConformanceIsRecordedAtFor": "A Non-conformance is recorded at {orgUnitName} for {productName}, found by the customer.",
+  "@complaintNonconformanceANonConformanceIsRecordedAtFor": {
+    "placeholders": {
+      "orgUnitName": {"type": "Object"},
+      "productName": {"type": "Object"}
+    }
+  },
+  "complaintNonconformanceHowMuchProductIsInQuestionIn": "How much product is in question, in the Product's own unit.",
+  "complaintNonconformanceTheComplaintSOwnDefectCodeIs": "The complaint's own Defect code is carried onto the record.",
+  "commonTheDefectCodesCouldNotBeRead": "The Defect codes could not be read",
+  "complaintNonconformanceThisComplaintCarriesNoneSoChooseThe": "This complaint carries none, so choose the one to record it against.",
+  "commonWhatWasDoneAtOnceRecordingIt": "What was done at once. Recording it makes the record contained.",
+  "commonNarrowTheRegister": "Narrow the register",
+  "complaintOrgUnitFilterChooseTheOrgUnitWhoseComplaintsAnd": "Choose the Org Unit whose complaints, and everything beneath it, you want to read — or clear back to the whole Site.",
+  "complaintRespondAnswerTheCustomer": "Answer the customer",
+  "complaintRespondClosing": "Closing…",
+  "complaintRespondCloseTheComplaint": "Close the complaint",
+  "complaintRespondWhatWasSaidBackToAboutThis": "What was said back to {customerName} about {complaintNo}. This closes the complaint.",
+  "@complaintRespondWhatWasSaidBackToAboutThis": {
+    "placeholders": {
+      "customerName": {"type": "Object"},
+      "complaintNo": {"type": "Object"}
+    }
+  },
+  "complaintsTheComplaintRegisterCouldNotBeRead": "The complaint register could not be read",
+  "complaintsWhatCustomersHaveComplainedAboutAtThis": "What customers have complained about at this Site, and whether the product they complained about is under control.",
+  "complaintsRecordAComplaint": "Record a complaint",
+  "complaintsThereAreMoreComplaintsThanThisList": "There are more complaints than this list shows. Narrow it by Org Unit or by status to see the rest.",
+  "complaintsTheRegisterHasComplaintsButNoneOf": "The register has complaints, but none of them is in the area or state you picked.",
+  "complaintsNoComplaints": "No complaints",
+  "complaintsNoCustomerHasComplainedAboutAnythingFrom": "No customer has complained about anything from this Site.",
+  "complaintsComplaint": "Complaint",
+  "complaintsCustomerAndProduct": "Customer and product",
+  "complaintsResponseDue": "Response due",
+  "commonControl": "Control",
+  "complaintsWarranty": "Warranty",
+  "customerFormCorrectCustomer": "Correct Customer",
+  "commonAddCustomer": "Add Customer",
+  "customerFormACustomerSCodeCannotBeCorrected": "A Customer's code cannot be corrected",
+  "commonContactEmailOptional": "Contact email (optional)",
+  "customersTheCustomerListCouldNotBeRead": "The Customer list could not be read",
+  "customersWhoThePlantSCustomersAreSo": "Who the plant's customers are, so a complaint has someone to belong to and a response has somewhere to go.",
+  "customersNoCustomersYet": "No Customers yet",
+  "commonNothingHasBeenDefinedInTheList": "Nothing has been defined in the list.",
+  "customersFilterCustomers": "Filter Customers",
+  "customersNoCustomersMatch": "No Customers match",
+  "commonNothingInTheListMatchesTryA": "Nothing in the list matches \"{term}\". Try a different name or code, or clear the filter.",
+  "@commonNothingInTheListMatchesTryA": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "defectCodeFormCorrectDefectCode": "Correct Defect code",
+  "commonAddDefectCode": "Add Defect code",
+  "defectCodeFormADefectCodeCannotBeCorrected": "A Defect code cannot be corrected",
+  "defectCodeFormDefaultSeverity": "Default severity",
+  "defectCodeFormWhatANonConformanceRecordedAgainstThis": "What a Non-conformance recorded against this code starts at",
+  "defectCodeFormParent": "Parent",
+  "defectCodeFormNoParentTopLevel": "No parent — top level",
+  "defectCodesTheDefectCodeCatalogueCouldNotBe": "The Defect code catalogue could not be read",
+  "defectCodesTheKindsOfThingFoundWrongOne": "The kinds of thing found wrong — one list shared by every Site, and the severity each starts a Non-conformance at.",
+  "defectCodesNoDefectCodesYet": "No Defect codes yet",
+  "issueImagesRemoveThisPicture": "Remove this picture?",
+  "issueImagesThePictureIsTakenOffTheRecord": "The picture is taken off the record. A slide needs one, so the issue may leave the show until another is added.",
+  "issueImagesAddPicture": "Add picture",
+  "issueImagesPictures": "Pictures",
+  "issueImagesThePicturesCouldNotBeRead": "The pictures could not be read",
+  "issueImagesNoPictureYetASlideNeedsAt": "No picture yet. A slide needs at least one: add the photo that shows the problem.",
+  "commonThePictureCouldNotBeLoaded": "The picture could not be loaded",
+  "issueImagesAPictureOfTheIssue": "A picture of the issue",
+  "issueImagesRemoveThisPicture2": "Remove this picture",
+  "issueImagesAddThisPicture": "Add this picture",
+  "issueImagesTheCaptionIsWhatTheSlideSays": "The caption is what the slide says under it. It is optional.",
+  "issueImagesAddIt": "Add it",
+  "issueImagesCaptionOptional": "Caption (optional)",
+  "issueImagesBurrOnTheFlangeNearTheLocating": "Burr on the flange, near the locating lug",
+  "nonconformanceCancelCannotCancelIt": "Cannot cancel it",
+  "nonconformanceCancelCancellingANonConformanceNeedsQualityAuthority": "Cancelling a Non-conformance needs Quality authority at its Org Unit.",
+  "nonconformanceCancelANonConformanceThatIsClosedOr": "A Non-conformance that is closed or already cancelled cannot be cancelled.",
+  "nonconformanceCancelCancelThisNonConformance": "Cancel this Non-conformance",
+  "nonconformanceCancelCancelIt": "Cancel it",
+  "nonconformanceCancelWillBeCancelledRatherThanDealtWith": "{issueNo} will be cancelled rather than dealt with. A cancelled Non-conformance accepts no further Dispositions or quantity changes.",
+  "@nonconformanceCancelWillBeCancelledRatherThanDealtWith": {
+    "placeholders": {
+      "issueNo": {"type": "Object"}
+    }
+  },
+  "commonNote": "Note",
+  "nonconformanceCancelWhyItShouldNeverHaveBeenRecorded": "Why it should never have been recorded.",
+  "nonconformanceConcessionCannotGrantIt": "Cannot grant it",
+  "nonconformanceConcessionGrantingAConcessionNeedsQualityAuthorityAt": "Granting a Concession needs Quality authority at this Non-conformance's Org Unit.",
+  "nonconformanceConcessionGrantIt": "Grant it",
+  "nonconformanceConcessionAcceptingTheProductAsItIsNeeds": "Accepting the product as it is needs Quality authority, and your name stays on {issueNo}.",
+  "@nonconformanceConcessionAcceptingTheProductAsItIsNeeds": {
+    "placeholders": {
+      "issueNo": {"type": "Object"}
+    }
+  },
+  "nonconformanceConcessionQuantityAcceptedAsItIs": "Quantity accepted as it is",
+  "nonconformanceConcessionAtMost": "At most {value} {unit}.",
+  "@nonconformanceConcessionAtMost": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "unit": {"type": "Object"}
+    }
+  },
+  "nonconformanceConcessionReference": "Reference",
+  "nonconformanceConcessionTheDeviationOrApprovalNumberItIs": "The deviation or approval number it is granted under.",
+  "nonconformanceConcessionWhyTheProductIsAcceptableAsIt": "Why the product is acceptable as it is.",
+  "nonconformanceDispositionHasStillUndecidedDealWithSomeOf": "{issueNo} has {value} {unit} still undecided. Deal with some of it here.",
+  "@nonconformanceDispositionHasStillUndecidedDealWithSomeOf": {
+    "placeholders": {
+      "issueNo": {"type": "Object"},
+      "value": {"type": "Object"},
+      "unit": {"type": "Object"}
+    }
+  },
+  "commonDisposition": "Disposition",
+  "nonconformanceDispositionScrapReworkOrBackToTheSupplier": "Scrap, rework, or back to the supplier.",
+  "nonconformanceDispositionAtMost": "At most {value} {unit}.",
+  "@nonconformanceDispositionAtMost": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "unit": {"type": "Object"}
+    }
+  },
+  "nonconformanceDispositionReworkMinutes": "Rework minutes",
+  "nonconformanceDispositionHowLongTheReworkTookForCost": "How long the rework took, for cost of poor quality.",
+  "nonconformanceDispositionWhatWasDoneWithIt": "What was done with it.",
+  "nonconformanceLinkConcernBecomesOneOfTheOccurrencesThisConcern": "{issueNo} becomes one of the occurrences this Concern answers. The Concern keeps the Non-conformance it was raised from.",
+  "@nonconformanceLinkConcernBecomesOneOfTheOccurrencesThisConcern": {
+    "placeholders": {
+      "issueNo": {"type": "Object"}
+    }
+  },
+  "nonconformanceLinkConcernThisSiteHasNoOpenConcernTo": "This Site has no open Concern to link it to. Raise one instead.",
+  "nonconformanceLinkConcernConcern": "Concern",
+  "nonconformanceLinkConcernByItsNumberOrItsTitle": "By its number or its title.",
+  "nonconformanceLowerSeverityCannotLowerIt": "Cannot lower it",
+  "nonconformanceLowerSeverityLoweringASeverityNeedsQualityAuthorityAt": "Lowering a severity needs Quality authority at this Non-conformance's Org Unit.",
+  "nonconformanceLowerSeverityLowerIt": "Lower it",
+  "nonconformanceLowerSeverityIsSeverityAndItsDefectCodeStarts": "{issueNo} is {value} severity, and its Defect code starts at {value2}.",
+  "@nonconformanceLowerSeverityIsSeverityAndItsDefectCodeStarts": {
+    "placeholders": {
+      "issueNo": {"type": "Object"},
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "nonconformanceLowerSeverityThisNonConformanceIsAlreadyAtThe": "This Non-conformance is already at the lightest severity.",
+  "nonconformanceLowerSeverityLowerTheSeverityTo": "Lower the severity to",
+  "nonconformanceLowerSeverityLoweringWhatTheDefectCodeSaysNeeds": "Lowering what the Defect code says needs Quality authority.",
+  "commonLeaveTheSeverityAlone": "Leave the severity alone",
+  "nonconformanceLowerSeverityWhyItIsLessBadThanThe": "Why it is less bad than the Defect code says.",
+  "nonconformanceOrgUnitFilterChooseTheOrgUnitWhoseNonConformances": "Choose the Org Unit whose Non-conformances and everything beneath it you want to read, or clear back to the whole Site.",
+  "nonconformanceQuantityIncreaseTheAffectedQuantity": "Increase the affected quantity",
+  "nonconformanceQuantityIncreaseIt": "Increase it",
+  "nonconformanceQuantityCurrentlyCoversItCanOnlyGrow": "{issueNo} currently covers {value} {unit}. It can only grow.",
+  "@nonconformanceQuantityCurrentlyCoversItCanOnlyGrow": {
+    "placeholders": {
+      "issueNo": {"type": "Object"},
+      "value": {"type": "Object"},
+      "unit": {"type": "Object"}
+    }
+  },
+  "nonconformanceQuantityNewAffectedQuantity": "New affected quantity",
+  "nonconformanceQuantityMoreThanOrNothingAtAll": "More than {value} {unit}, or nothing at all.",
+  "@nonconformanceQuantityMoreThanOrNothingAtAll": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "unit": {"type": "Object"}
+    }
+  },
+  "nonconformanceQuantityWhyItChangedSortingTheBinFound": "Why it changed — \"sorting the bin found eight more\".",
+  "nonconformanceRaiseConcernIsRecordedAtAndTheConcernIs": "{issueNo} is recorded at {orgUnitName}, and the Concern is raised there — a problem is solved where it happened.",
+  "@nonconformanceRaiseConcernIsRecordedAtAndTheConcernIs": {
+    "placeholders": {
+      "issueNo": {"type": "Object"},
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "nonconformanceRaiseConcernWhatIsTheProblemToSolve": "What is the problem to solve?",
+  "nonconformanceRaiseConcernTheConcernIsReadInTheAction": "The Concern is read in the action log, so say the problem, not the product.",
+  "commonAnythingKnownYet": "Anything known yet",
+  "nonconformanceRaiseConcernOptionalTheNonConformanceItselfIsAlready": "Optional. The Non-conformance itself is already linked as evidence.",
+  "common1IsWorst": "1 is worst.",
+  "nonconformanceReopenCannotReopenIt": "Cannot reopen it",
+  "nonconformanceReopenReopeningANonConformanceNeedsQualityAuthority": "Reopening a Non-conformance needs Quality authority at its Org Unit.",
+  "nonconformanceReopenOnlyAClosedNonConformanceCanBe": "Only a closed Non-conformance can be reopened.",
+  "nonconformanceReopenReopenThisNonConformance": "Reopen this Non-conformance",
+  "nonconformanceReopenIsClosedReopeningItPutsItBack": "{issueNo} is closed. Reopening it puts it back to dispositioned, and its closing time goes with it.",
+  "@nonconformanceReopenIsClosedReopeningItPutsItBack": {
+    "placeholders": {
+      "issueNo": {"type": "Object"}
+    }
+  },
+  "nonconformanceReopenWhyItIsBeingReopened": "Why it is being reopened.",
+  "nonconformanceUpdateIsSeverityAnd": "{issueNo} is {value} severity and {value2}.",
+  "@nonconformanceUpdateIsSeverityAnd": {
+    "placeholders": {
+      "issueNo": {"type": "Object"},
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "nonconformanceUpdateThisNonConformanceIsAlreadyAtThe": "This Non-conformance is already at the worst severity, so there is nothing to raise it to.",
+  "nonconformanceUpdateRaiseTheSeverityTo": "Raise the severity to",
+  "nonconformanceUpdateSeverityCanBeRaisedHereLoweringIt": "Severity can be raised here; lowering it is a later decision.",
+  "nonconformanceUpdateRecordContainment": "Record containment",
+  "nonconformancesNcHcm202600001": "NC-HCM-2026-00001",
+  "productFormCorrectProduct": "Correct Product",
+  "commonAddProduct": "Add Product",
+  "productFormAProductSCodeCannotBeCorrected": "A Product's code cannot be corrected",
+  "productFormAProductSUnitOfMeasureCannot": "A Product's unit of measure cannot be corrected",
+  "productFormTheUnitsOfMeasureCouldNotBe": "The units of measure could not be read",
+  "productsTheProductCatalogueCouldNotBeRead": "The Product catalogue could not be read",
+  "productsWhatThePlantMakesOneCatalogueShared": "What the plant makes — one catalogue shared by every Site, and what each Product is measured in.",
+  "productsNoProductsYet": "No Products yet",
+  "slideShowTheSlideShowCouldNotBeRead": "The slide show could not be read",
+  "slideShowTheQualityIssuesChosenForThisSite": "The Quality issues chosen for this Site, one picture at a time. Choose an issue from its register or its own Screen, and set the order here.",
+  "slideShowPauseTheShow": "Pause the show",
+  "slideShowPlayTheShow": "Play the show",
+  "slideShowChooseTheOrder": "Choose the order",
+  "slideShowNothingIsOnTheWallYet": "Nothing is on the wall yet",
+  "slideShowChooseACustomerComplaintOrANon": "Choose a Customer complaint or a Non-conformance in its register, and add at least one picture to it. The chosen issues appear here.",
+  "slideShowChosenNoneWithAPicture": "{length} chosen, none with a picture",
+  "@slideShowChosenNoneWithAPicture": {
+    "placeholders": {
+      "length": {"type": "Object"}
+    }
+  },
+  "slideShowASlideNeedsAPictureOpenAnd": "A slide needs a picture. Open {value} and add one, and {value2} will appear here.",
+  "@slideShowASlideNeedsAPictureOpenAnd": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "slideShowAPictureOf": "A picture of {value}",
+  "@slideShowAPictureOf": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "slideShowPreviousSlide": "Previous slide",
+  "slideShowNoSlides": "No slides",
+  "slideShowNextSlide": "Next slide",
+  "slideShowChosenWithoutAPicture": "{length} chosen without a picture",
+  "@slideShowChosenWithoutAPicture": {
+    "placeholders": {
+      "length": {"type": "Object"}
+    }
+  },
+  "slideShowTheOrderTheShowPlaysIn": "The order the show plays in",
+  "slideShowNothingIsChosenYet": "Nothing is chosen yet.",
+  "slideShowPicture": "{value} picture{value2}",
+  "@slideShowPicture": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "slideShowNoPictureYetItWillNotAppear": "No picture yet — it will not appear until one is added",
+  "slideShowMoveEarlier": "Move earlier",
+  "slideShowMoveLater": "Move later",
+  "slideShowTakeOffTheWall": "Take off the wall",
+  "slideShowToggleOnTheSlideShow": "On the slide show",
+  "slideShowToggleNotOnTheSlideShow": "Not on the slide show",
+  "slideShowToggleChosenIssuesPlayInTheQualitySlide": "Chosen issues play in the Quality slide show, one picture at a time.",
+  "supplierFormCorrectSupplier": "Correct Supplier",
+  "commonAddSupplier": "Add Supplier",
+  "supplierFormASupplierSCodeCannotBeCorrected": "A Supplier's code cannot be corrected",
+  "supplierNcrDetailThatSupplierNcrCouldNotBeRead": "That supplier NCR could not be read",
+  "supplierNcrDetailBackToSupplierNcrs": "Back to Supplier NCRs",
+  "supplierNcrDetailNothingWasWrittenDownAboutIt": "Nothing was written down about it.",
+  "supplierNcrDetailTheMaterialThisIsAbout": "The material this is about",
+  "supplierNcrDetailNothingControlsTheMaterialThisNcrIs": "Nothing controls the material this NCR is about yet. Record a Non-conformance from this NCR, or link one that already exists for the same lot.",
+  "supplierNcrDetailIncoming": "incoming",
+  "supplierNcrDetailFoundAtGoodsInSoThisNcr": "Found at goods-in, so this NCR is where it started.",
+  "supplierNcrDetailRecordedAtAndLinkedToThisNcr": "Recorded at {value}, and linked to this NCR.",
+  "@supplierNcrDetailRecordedAtAndLinkedToThisNcr": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "supplierNcrDetailTheSupplierSDisposition": "The Supplier's disposition",
+  "supplierNcrDetailNothingHasBeenRecoveredFromThisSupplier": "Nothing has been recovered from this Supplier.",
+  "supplierNcrDetailRecovered": "Recovered {costRecoveredLabel}.",
+  "@supplierNcrDetailRecovered": {
+    "placeholders": {
+      "costRecoveredLabel": {"type": "Object"}
+    }
+  },
+  "supplierNcrDetailClosed": "Closed {closedAt}",
+  "@supplierNcrDetailClosed": {
+    "placeholders": {
+      "closedAt": {"type": "Object"}
+    }
+  },
+  "commonRecordTheDisposition": "Record the disposition",
+  "supplierNcrDetailCorrectTheDisposition": "Correct the disposition",
+  "supplierNcrDetailCloseTheNcr": "Close the NCR",
+  "supplierNcrDispositionDecideTheMaterial": "Decide the material",
+  "supplierNcrDispositionWhatHappensToThatCameFromOn": "What happens to {quantityLabel} that came from {supplierName} on {ncrNo}.",
+  "@supplierNcrDispositionWhatHappensToThatCameFromOn": {
+    "placeholders": {
+      "quantityLabel": {"type": "Object"},
+      "supplierName": {"type": "Object"},
+      "ncrNo": {"type": "Object"}
+    }
+  },
+  "supplierNcrDispositionWhatThePlantDecidedHappensToThe": "What the plant decided happens to the received material.",
+  "supplierNcrDispositionCostRecoveredOptional": "Cost recovered (optional)",
+  "supplierNcrDispositionWhatWasClawedBackFromTheSupplier": "What was clawed back from the Supplier. Leave it blank when nothing was claimed.",
+  "supplierNcrDispositionThreeLettersTheCurrencyTheCostRecovered": "Three letters, the currency the cost recovered is in.",
+  "commonRecordASupplierNcr": "Record a supplier NCR",
+  "commonSupplier": "Supplier",
+  "supplierNcrFormProductOptional": "Product (optional)",
+  "supplierNcrFormWhatTheLotIsWhenThatIs": "What the lot is, when that is known. A Non-conformance recorded from this NCR needs one.",
+  "supplierNcrFormNotNamedYet": "Not named yet",
+  "supplierNcrFormWhatIsWrongWithItANon": "What is wrong with it. A Non-conformance recorded from this NCR carries it.",
+  "supplierNcrFormHowMuchCameInWrong": "How much came in wrong.",
+  "supplierNcrFormWhatTheQuantityIsCountedInTaken": "What the quantity is counted in. Taken from the Product when one is named.",
+  "supplierNcrFormIncomingLotReferenceOptional": "Incoming lot reference (optional)",
+  "supplierNcrFormTheLotTheDeliveryNoteSays": "The lot the delivery note says.",
+  "supplierNcrFormPurchaseReferenceOptional": "Purchase reference (optional)",
+  "supplierNcrFormTheOrderItArrivedAgainst": "The order it arrived against.",
+  "supplierNcrFormAnswerDueOptional": "Answer due (optional)",
+  "supplierNcrFormTheDayTheSupplierWasGivenTo": "The day the Supplier was given to answer.",
+  "supplierNcrFormWhatIsWrongWithItOptional": "What is wrong with it (optional)",
+  "supplierNcrFormWhoWorksIt": "Who works it",
+  "supplierNcrFormChooseTheOrgUnitThatWillWork": "Choose the Org Unit that will work this supplier NCR. This is what decides who may act on it.",
+  "supplierNcrFormThisSupplierNcrWillBeFiledAt": "This supplier NCR will be filed at {value}.",
+  "@supplierNcrFormThisSupplierNcrWillBeFiledAt": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "supplierNcrLinkANonConformanceThatAlreadyExistsCan": "A Non-conformance that already exists{value} can be linked to this supplier NCR, instead of recording a second one for the same problem.",
+  "@supplierNcrLinkANonConformanceThatAlreadyExistsCan": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "supplierNcrLinkNoNonConformanceHasBeenRecordedFor": "No Non-conformance has been recorded for this Product yet, so there is nothing to link. Record one from this supplier NCR instead.",
+  "supplierNcrNonconformanceControlTheMaterial": "Control the material",
+  "supplierNcrNonconformanceANonConformanceIsRecordedAtFound": "A Non-conformance is recorded at {orgUnitName}{value}, found at goods-in.",
+  "@supplierNcrNonconformanceANonConformanceIsRecordedAtFound": {
+    "placeholders": {
+      "orgUnitName": {"type": "Object"},
+      "value": {"type": "Object"}
+    }
+  },
+  "supplierNcrNonconformanceHowMuchMaterialIsInQuestionIn": "How much material is in question, in the unit it came in.",
+  "supplierNcrNonconformanceTheSupplierNcrSOwnProductIs": "The supplier NCR's own Product is carried onto the record.",
+  "supplierNcrNonconformanceTheProductsCouldNotBeRead": "The Products could not be read",
+  "supplierNcrNonconformanceThisSupplierNcrNamesNoneSoChoose": "This supplier NCR names none, so choose what the lot was for.",
+  "supplierNcrNonconformanceTheSupplierNcrSOwnDefectCode": "The supplier NCR's own Defect code is carried onto the record.",
+  "supplierNcrNonconformanceThisSupplierNcrCarriesNoneSoChoose": "This supplier NCR carries none, so choose the one to record it against.",
+  "supplierNcrOrgUnitFilterChooseTheOrgUnitWhoseSupplierNcrs": "Choose the Org Unit whose supplier NCRs, and everything beneath it, you want to read — or clear back to the whole Site.",
+  "supplierNcrSupplierFilterFilterBySupplier": "Filter by Supplier",
+  "commonAllSuppliers": "All Suppliers",
+  "supplierNcrSupplierFilterChooseTheSupplierWhoseSupplierNcrsYou": "Choose the Supplier whose supplier NCRs you want to read, or clear back to every Supplier.",
+  "supplierNcrsTheSupplierNcrRegisterCouldNotBe": "The supplier NCR register could not be read",
+  "supplierNcrsWhatArrivedWrongFromASupplierAt": "What arrived wrong from a Supplier at this Site, and whether the material it came in with is under control.",
+  "supplierNcrsThereAreMoreSupplierNcrsThanThis": "There are more supplier NCRs than this list shows. Narrow it by Supplier or by status to see the rest.",
+  "supplierNcrsTheRegisterHasSupplierNcrsButNone": "The register has supplier NCRs, but none of them is in the area, the Supplier or the state you picked.",
+  "supplierNcrsNoSupplierNcrs": "No supplier NCRs",
+  "supplierNcrsNothingHasComeInWrongFromA": "Nothing has come in wrong from a Supplier at this Site.",
+  "supplierNcrsNcr": "NCR",
+  "supplierNcrsSupplierAndProduct": "Supplier and product",
+  "supplierNcrsAnswerDue": "Answer due",
+  "suppliersTheSupplierListCouldNotBeRead": "The Supplier list could not be read",
+  "suppliersWhoThePlantBuysFromSoAn": "Who the plant buys from, so an incoming lot that is wrong has someone to belong to and a claim has somewhere to go.",
+  "suppliersNoSuppliersYet": "No Suppliers yet",
+  "suppliersFilterSuppliers": "Filter Suppliers",
+  "suppliersNoSuppliersMatch": "No Suppliers match",
+  "bodyPartFormCorrectBodyPart": "Correct Body part",
+  "commonAddBodyPart": "Add Body part",
+  "bodyPartFormABodyPartSCodeCannotBe": "A Body part's code cannot be corrected",
+  "bodyPartFormRegion": "Region",
+  "bodyPartFormARetiredBodyPartIsNoLonger": "A retired Body part is no longer offered while classifying, and stays on every incident that already names it.",
+  "bodyPartsTheBodyPartCatalogueCouldNotBe": "The Body part catalogue could not be read",
+  "bodyPartsWhereOnTheBodyAnInjuryWas": "Where on the body an injury was — one catalogue shared by every Site, filed under the region each part belongs to.",
+  "bodyPartsNoBodyPartsYet": "No Body parts yet",
+  "commonClassifyTheInjury": "Classify the injury",
+  "incidentClassifyClassifyingTheInjuryNeedsSafetyAuthorityAt": "Classifying the injury needs Safety authority at this Safety incident's Org Unit.",
+  "incidentClassifySitsOnTheNoInjuryRungNobody": "{incidentNo} sits on the no-injury rung. Nobody was hurt, so there is nothing to classify — correct the severity first if that is wrong.",
+  "@incidentClassifySitsOnTheNoInjuryRungNobody": {
+    "placeholders": {
+      "incidentNo": {"type": "Object"}
+    }
+  },
+  "incidentClassifyWhoWasHurtWhatTheInjuryWas": "Who was hurt, what the injury was and where on the body. These three are read only by a holder of Safety authority for this area and by the injured person's own Account.",
+  "incidentClassifySaveTheClassification": "Save the classification",
+  "commonInjuredEmployee": "Injured Employee",
+  "incidentClassifyWhoWasHurt": "Who was hurt.",
+  "incidentClassifyClearTheInjuredEmployee": "Clear the injured Employee",
+  "incidentClassifyTheInjuryTypeAndBodyPartCatalogues": "The Injury type and Body part catalogues could not be read",
+  "commonInjuryType": "Injury type",
+  "incidentClassifyWhatTheInjuryWas": "What the injury was.",
+  "incidentClassifyClearTheInjuryType": "Clear the Injury type",
+  "commonBodyPart": "Body part",
+  "incidentClassifyWhereOnTheBody": "Where on the body.",
+  "incidentClassifyClearTheBodyPart": "Clear the Body part",
+  "incidentCloseCloseThisSafetyIncident": "Close this Safety incident",
+  "incidentCloseClosingASafetyIncidentNeedsSafetyAuthority": "Closing a Safety incident needs Safety authority at its Org Unit.",
+  "incidentCloseThisSafetyIncidentIsAlreadyClosed": "This Safety incident is already closed.",
+  "incidentCloseWillBeClosedAConcernRaisedFrom": "{incidentNo} will be closed. A Concern raised from it, if any, keeps working the cause on its own.",
+  "@incidentCloseWillBeClosedAConcernRaisedFrom": {
+    "placeholders": {
+      "incidentNo": {"type": "Object"}
+    }
+  },
+  "incidentCloseLeaveItOpen": "Leave it open",
+  "commonCloseIt": "Close it",
+  "incidentCloseWhyThisIncidentIsBeingClosed": "Why this incident is being closed.",
+  "commonRecordTheDays": "Record the days",
+  "incidentDaysRecordingTheDaysNeedsSafetyAuthorityAt": "Recording the days needs Safety authority at this Safety incident's Org Unit.",
+  "incidentDaysThisSafetyIncidentIsClosedItsDays": "This Safety incident is closed; its days cannot be changed.",
+  "incidentDaysWhatCostZeroIsARealAnswer": "What {incidentNo} cost — zero is a real answer, and settles it.",
+  "@incidentDaysWhatCostZeroIsARealAnswer": {
+    "placeholders": {
+      "incidentNo": {"type": "Object"}
+    }
+  },
+  "commonLostTimeDays": "Lost-time days",
+  "commonRestrictedDays": "Restricted days",
+  "incidentDetailNoSuchSafetyIncident": "No such Safety incident",
+  "incidentDetailBackToSafetyIncidents": "Back to Safety incidents",
+  "incidentDetailTheSafetyIncidentCouldNotBeRead": "The Safety incident could not be read",
+  "incidentDetailReportedAt": "Reported at",
+  "incidentDetailImmediateAction": "Immediate action",
+  "commonInvestigationDueDate": "Investigation due date",
+  "incidentDetailMoveTo": "Move to {value}",
+  "@incidentDetailMoveTo": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "commonCorrectTheSeverity": "Correct the severity",
+  "incidentDetailClosed": "Closed {closedAt}",
+  "@incidentDetailClosed": {
+    "placeholders": {
+      "closedAt": {"type": "Object"}
+    }
+  },
+  "commonInvestigationDueAt": "Investigation due at",
+  "incidentDetailTheInjury": "The injury",
+  "incidentDetailRestrictedVisibleToSafetyAuthorityForThis": "Restricted — visible to Safety authority for this area.",
+  "incidentDetailNotClassifiedYetWhoWasHurtWhat": "Not classified yet. Who was hurt, what the injury was and where on the body have not been recorded.",
+  "incidentDetailTheIncidentItselfIsRecordedHereThe": "The incident itself is recorded here; the cause behind it is solved in the action log, as a Concern.",
+  "incidentDetailEventHistory": "Event history",
+  "incidentDetailEverySeverityChangeStatusMoveDaysChange": "Every severity change, status move, days change, closure and classification change, kept with who and when.",
+  "incidentDetailNothingHasChangedAboutThisRecordSince": "Nothing has changed about this record since it was recorded.",
+  "incidentDueDateThisSafetyIncidentIsClosedItsInvestigation": "This Safety incident is closed; its investigation due date cannot be changed.",
+  "incidentDueDateSInvestigationDeadline": "{incidentNo}'s investigation deadline.",
+  "@incidentDueDateSInvestigationDeadline": {
+    "placeholders": {
+      "incidentNo": {"type": "Object"}
+    }
+  },
+  "incidentFormWhatKindOfEventThisWas": "What kind of event this was.",
+  "incidentFormTheWorstActualOutcomeToAPerson": "The worst actual outcome to a person. Ladder order.",
+  "incidentFormWhatHappened": "What happened.",
+  "incidentFormWhatWasDoneAtOnce": "What was done at once.",
+  "incidentFormInjuredEmployeeOptional": "Injured Employee (optional)",
+  "incidentFormWhoWasHurtIfAnyoneReadOnly": "Who was hurt, if anyone. Read only by Safety authority for this area and by the injured person's own Account.",
+  "incidentFormWhenItHappenedThisIsWhatDecides": "When it happened. This is what decides the production day and shift it is filed against.",
+  "incidentFormReportedAtOptional": "Reported at (optional)",
+  "incidentFormWhenItWasReportedIfThatIs": "When it was reported, if that is not now.",
+  "incidentFormWhereItHappened": "Where it happened",
+  "incidentFormChooseTheOrgUnitTheIncidentOccurred": "Choose the Org Unit the incident occurred at. This is what decides who may act on it.",
+  "incidentFormThisSafetyIncidentWillBeRecordedAt": "This Safety incident will be recorded at {value}.",
+  "@incidentFormThisSafetyIncidentWillBeRecordedAt": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "incidentFormWhichMachineIfTheIncidentWasOn": "Which machine, if the incident was on one. It must sit at that Org Unit.",
+  "incidentRaiseConcernIsRecordedAtAndTheConcernIs": "{incidentNo} is recorded at {orgUnitName}, and the Concern is raised there — a problem is solved where it happened.",
+  "@incidentRaiseConcernIsRecordedAtAndTheConcernIs": {
+    "placeholders": {
+      "incidentNo": {"type": "Object"},
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "incidentRaiseConcernWhatIsTheCauseToSolve": "What is the cause to solve?",
+  "incidentRaiseConcernTheConcernIsReadInTheAction": "The Concern is read in the action log, so say the problem, not the injury.",
+  "incidentRaiseConcernOptionalTheSafetyIncidentItselfIsAlready": "Optional. The Safety incident itself is already linked as evidence.",
+  "incidentSeverityCorrectingTheSeverityNeedsSafetyAuthorityAt": "Correcting the severity needs Safety authority at this Safety incident's Org Unit.",
+  "incidentSeverityIsCorrectingItRestatesThePeriodIt": "{incidentNo} is {value}. Correcting it restates the period it occurred in.",
+  "@incidentSeverityIsCorrectingItRestatesThePeriodIt": {
+    "placeholders": {
+      "incidentNo": {"type": "Object"},
+      "value": {"type": "Object"}
+    }
+  },
+  "incidentSeverityCorrectIt": "Correct it",
+  "incidentSeverityCorrectTheSeverityTo": "Correct the severity to",
+  "incidentSeverityWhyTheSeverityIsBeingCorrected": "Why the severity is being corrected.",
+  "incidentStatusMoveTheStatus": "Move the status",
+  "incidentStatusThisSafetyIncidentIsClosedItsStatus": "This Safety incident is closed; its status cannot be moved.",
+  "incidentStatusThisSafetyIncidentIsAlreadyOnlyClosing": "This Safety incident is already {value}; only closing moves it further.",
+  "@incidentStatusThisSafetyIncidentIsAlreadyOnlyClosing": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "incidentStatusMovesFromTo": "{incidentNo} moves from {statusLabel} to {value}.",
+  "@incidentStatusMovesFromTo": {
+    "placeholders": {
+      "incidentNo": {"type": "Object"},
+      "statusLabel": {"type": "Object"},
+      "value": {"type": "Object"}
+    }
+  },
+  "incidentStatusMoveTo": "Move to {value}",
+  "@incidentStatusMoveTo": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "incidents1SafetyIncident": "1 Safety incident",
+  "incidentsSafetyIncidents": "{length} Safety incidents",
+  "@incidentsSafetyIncidents": {
+    "placeholders": {
+      "length": {"type": "Object"}
+    }
+  },
+  "incidentsSiHcm202600001": "SI-HCM-2026-00001",
+  "injuryTypeFormCorrectInjuryType": "Correct Injury type",
+  "commonAddInjuryType": "Add Injury type",
+  "injuryTypeFormAnInjuryTypeSCodeCannotBe": "An Injury type's code cannot be corrected",
+  "injuryTypeFormARetiredInjuryTypeIsNoLonger": "A retired Injury type is no longer offered while classifying, and stays on every incident that already names it.",
+  "injuryTypesTheInjuryTypeCatalogueCouldNotBe": "The Injury type catalogue could not be read",
+  "injuryTypesWhatAnInjuryWasOneCatalogueShared": "What an injury was — one catalogue shared by every Site, and what a Safety incident is classified against.",
+  "injuryTypesNoInjuryTypesYet": "No Injury types yet",
+  "observationDetailNoSuchSafetyObservation": "No such Safety observation",
+  "observationDetailBackToSafetyObservations": "Back to Safety observations",
+  "observationDetailTheSafetyObservationCouldNotBeRead": "The Safety observation could not be read",
+  "observationDetailActionTaken": "Action taken",
+  "observationDetailRecordedBy": "Recorded by",
+  "observationDetailObservedAt": "Observed at",
+  "observationDetailClosingTheLoop": "Closing the loop",
+  "observationDetailTheObservationItselfIsRecordedHereWhat": "The observation itself is recorded here; what somebody does about it is owned in the action log, as an Action.",
+  "observationDetailNothingIsBeingDoneAboutThisYet": "Nothing is being done about this yet.",
+  "commonRaiseAnAction": "Raise an Action",
+  "observationFormASafeActAnUnsafeActOr": "A safe act, an unsafe act, or an unsafe condition.",
+  "observationFormTheWorstCredibleOutcomeNotWhatActually": "The worst credible outcome, not what actually happened.",
+  "observationFormWhatWasSeen": "What was seen.",
+  "observationFormWhatWasDoneOnTheSpot": "What was done on the spot.",
+  "observationFormRareAndTheSingleStrongestSignalThat": "Rare, and the single strongest signal that the safety culture is real.",
+  "observationFormObservedAtOptional": "Observed at (optional)",
+  "observationFormWhenItWasSeenIfNotNow": "When it was seen, if not now. This is what decides the production day and shift it is filed against.",
+  "observationFormWhereItWasSeen": "Where it was seen",
+  "observationFormChooseTheOrgUnitTheObservationWas": "Choose the Org Unit the observation was made at. This is what decides who may act on it.",
+  "observationFormThisSafetyObservationWillBeRecordedAt": "This Safety observation will be recorded at {value}.",
+  "@observationFormThisSafetyObservationWillBeRecordedAt": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "observationRaiseActionThisObservationIsRecordedAtAndThe": "This observation is recorded at {orgUnitName}, and the Action is raised there — a problem is owned where it was seen.",
+  "@observationRaiseActionThisObservationIsRecordedAtAndThe": {
+    "placeholders": {
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "observationRaiseActionChooseWhatThisIs": "Choose what this is.",
+  "observationRaiseActionChooseAKind": "Choose a kind",
+  "observationRaiseActionWhatNeedsDoing": "What needs doing?",
+  "observationRaiseActionTheActionIsReadInTheAction": "The Action is read in the action log, so say the work, not the observation.",
+  "observationRaiseActionOptionalTheSafetyObservationItselfIsAlready": "Optional. The Safety observation itself is already linked as evidence.",
+  "observations1SafetyObservation": "1 Safety observation",
+  "observationsSafetyObservations": "{length} Safety observations",
+  "@observationsSafetyObservations": {
+    "placeholders": {
+      "length": {"type": "Object"}
+    }
+  },
+  "safetyIncidentRecordable": "{value} · recordable",
+  "@safetyIncidentRecordable": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "safetyObservationOrgUnitFilterChooseTheOrgUnitWhoseSafetyObservations": "Choose the Org Unit whose Safety observations and everything beneath it you want to read, or clear back to the whole Site.",
+  "safetyOrgUnitFilterChooseTheOrgUnitWhoseSafetyIncidents": "Choose the Org Unit whose Safety incidents and everything beneath it you want to read, or clear back to the whole Site.",
+  "handoverAcknowledgeYouAreAcceptingAndTheShift": "You are accepting {value} and the shift{value2}.",
+  "@handoverAcknowledgeYouAreAcceptingAndTheShift": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "handoverAcknowledgeTheOutgoingShiftDeclaredNoChangePoints": "The outgoing shift declared no change points.",
+  "handoverAcknowledgeThereAreNoChangePointsToWatch": "There are no change points to watch.",
+  "handoverAcknowledgeWhatEachWatchShowed": "What each watch showed",
+  "handoverAcknowledgeWatch": "Watch: {watchNote}",
+  "@handoverAcknowledgeWatch": {
+    "placeholders": {
+      "watchNote": {"type": "Object"}
+    }
+  },
+  "handoverAcknowledgeFound": "Found",
+  "handoverAcknowledgeNotAnswered": "Not answered",
+  "handoverAcknowledgeNoteOnTheHandoverOptional": "Note on the handover (optional)",
+  "handoverAcknowledgeAcknowledgeTheHandover": "Acknowledge the handover",
+  "handoverAcknowledgeAcknowledging": "Acknowledging…",
+  "commonAcknowledge": "Acknowledge",
+  "sectionThatSectionSDayCouldNotBe": "That Section's day could not be read",
+  "sectionChooseAnotherSection": "Choose another Section",
+  "sectionEveryShiftOfTheProductionDayWith": "Every shift of the production day, with its handover and what is still open at each shift boundary.",
+  "sectionNoShiftsScheduled": "No shifts scheduled",
+  "sectionNoShiftsAreScheduledAtThisSection": "No shifts are scheduled at this Section on that day.",
+  "sectionShift": "Shift {value}–{value2}",
+  "@sectionShift": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "commonLate": "Late",
+  "sectionHandedOverBy": "Handed over by {value}",
+  "@sectionHandedOverBy": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "sectionAcknowledgedAfterTheShiftBegan": "acknowledged {value} after the shift began",
+  "@sectionAcknowledgedAfterTheShiftBegan": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "sectionThatSectionTreeCouldNotBeRead": "That Section tree could not be read",
+  "sectionNothingToOpenHere": "Nothing to open here",
+  "sectionChooseASectionToOpenItsBoard": "Choose a Section to open its board: the day's shifts and the handover at each.",
+  "shiftHandoverThatHandoverCouldNotBeOpened": "That handover could not be opened",
+  "shiftHandoverSubmitTheHandover": "Submit the handover",
+  "shiftHandoverBackToTheSectionBoard": "Back to the Section board",
+  "shiftHandoverShiftHandover": "Shift handover · {value}",
+  "@shiftHandoverShiftHandover": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "shiftHandoverVersion": "Version {version}",
+  "@shiftHandoverVersion": {
+    "placeholders": {
+      "version": {"type": "Object"}
+    }
+  },
+  "shiftHandoverTheNumbersTheShiftClosedOn": "The numbers the shift closed on",
+  "shiftHandoverFrozenWhenTheHandoverIsSubmitted": "Frozen when the handover is submitted.",
+  "shiftHandoverFrozenAtSubmit": "Frozen at submit.",
+  "shiftHandoverMachines": "Machines",
+  "shiftHandoverOneLinePerAssetInTheSection": "One line per Asset in the Section.",
+  "shiftHandoverThisSectionHasNoActiveAssets": "This Section has no active Assets.",
+  "shiftHandoverChangePoints": "Change points",
+  "shiftHandoverWhatTheIncomingShiftWillMeetThat": "What the incoming shift will meet that differs, and what to watch.",
+  "shiftHandoverCarriedActions": "Carried actions",
+  "shiftHandoverEveryOpenActionOfTheSectionIs": "Every open Action of the Section is carried, reassigned or closed.",
+  "shiftHandoverHandoverEvidence": "Handover evidence",
+  "shiftHandoverAcknowledged": "Acknowledged {value}{value2}",
+  "@shiftHandoverAcknowledged": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "shiftHandoverThisHandoverCannotBeSubmittedYet": "This handover cannot be submitted yet",
+  "shiftHandoverNoLineYet": "No line yet",
+  "shiftHandoverAbnormality": "Abnormality",
+  "shiftHandoverNoneFound": "None found",
+  "shiftHandoverRequiredSayWhyItIsNotRunning": "Required: say why it is not running normally",
+  "shiftHandoverWhatTheIncomingShiftMustWatch": "What the incoming shift must watch",
+  "shiftHandoverWalked": "Walked",
+  "shiftHandoverSaveLine": "Save line",
+  "shiftHandoverRecordLine": "Record line",
+  "shiftHandoverNoChangePointsThisShift": "No change points this shift",
+  "shiftHandoverNoneRecorded": "None recorded",
+  "shiftHandoverWatch": "Watch: {watchNote}{value}",
+  "@shiftHandoverWatch": {
+    "placeholders": {
+      "watchNote": {"type": "Object"},
+      "value": {"type": "Object"}
+    }
+  },
+  "shiftHandoverAddAChangePoint": "Add a change point",
+  "shiftHandoverDimension": "Dimension",
+  "shiftHandoverWhatIsDifferent": "What is different",
+  "shiftHandoverWhatTheIncomingShiftMustWatchFor": "What the incoming shift must watch for",
+  "shiftHandoverAddChangePoint": "Add change point",
+  "shiftHandoverTheSectionHasNoOpenActionsTo": "The Section has no open Actions to hand over.",
+  "shiftHandoverOld": "{value} {value2} old",
+  "@shiftHandoverOld": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "shiftHandoverOwner": "Owner {ownerName}",
+  "@shiftHandoverOwner": {
+    "placeholders": {
+      "ownerName": {"type": "Object"}
+    }
+  },
+  "shiftHandoverNoDispositionYet": "no disposition yet",
+  "shiftHandoverNewOwner": "New owner",
+  "shiftHandoverWhatClosedIt": "What closed it",
+  "shiftHandoverRecordDisposition": "Record disposition",
+  "shiftHandoverJointWalkDone": "Joint walk done",
+  "shiftHandoverCriticalItems": "Critical items",
+  "shiftHandoverDeviationFromTheStandardHandover": "Deviation from the standard handover",
+  "shiftHandoverSaveEvidence": "Save evidence",
+  "commonAddKpi": "Add KPI",
+  "addKpiAdd": "Add",
+  "addKpiKpi": "KPI",
+  "addKpiTheCodeEGOee": "The code, e.g. OEE",
+  "addKpiUnitOptional": "Unit (optional)",
+  "addKpiDirection": "Direction",
+  "addKpiIsMetAtOrAboveTheTarget": ">= is met at or above the Target, <= at or below it",
+  "addKpiDecimals": "Decimals",
+  "addKpiAWholeNumberFrom0To6": "A whole number from 0 to 6",
+  "addKpiDecimalsMustBeAWholeNumberFrom": "Decimals must be a whole number from 0 to 6",
+  "addKpiValueMeasureOptional": "Value measure (optional)",
+  "commonChangeTarget": "Change Target",
+  "changeTargetGrain": "Grain",
+  "changeTargetValidFrom": "Valid from",
+  "changeTargetTodayAtThisSiteIsATarget": "Today at this Site is {siteToday}; a Target starts today or later.",
+  "@changeTargetTodayAtThisSiteIsATarget": {
+    "placeholders": {
+      "siteToday": {"type": "Object"}
+    }
+  },
+  "changeTargetTarget": "Target",
+  "changeTargetLeaveBlankForNoTargetFromThat": "Leave blank for no target from that date on.",
+  "changeTargetTheTargetMustBeANumberOr": "The Target must be a number, or blank for no target",
+  "kpiCatalogueTheKpiCatalogueCouldNotBeRead": "The KPI catalogue could not be read",
+  "kpiCatalogueTheKpisOfTheMtuLineWith": "The KPIs of the MTU line, with the Target in force per grain.",
+  "kpiCatalogueTheKpisOfTheMtuLineWith2": "The KPIs of the MTU line, with the Target in force per grain and the review state for today, {reviewDate}.",
+  "@kpiCatalogueTheKpisOfTheMtuLineWith2": {
+    "placeholders": {
+      "reviewDate": {"type": "Object"}
+    }
+  },
+  "kpiCatalogueNoKpisInTheCatalogueYet": "No KPIs in the catalogue yet",
+  "kpiCatalogueNothingHasBeenAddedToTheKpi": "Nothing has been added to the KPI catalogue.",
+  "commonFilterKpis": "Filter KPIs",
+  "kpiCatalogueByCodeOrTitle": "By code or title.",
+  "commonNoKpisMatch": "No KPIs match",
+  "kpiCatalogueNothingInTheCatalogueMatchesTryA": "Nothing in the catalogue matches \"{term}\". Try a different code or title, or clear the filter.",
+  "@kpiCatalogueNothingInTheCatalogueMatchesTryA": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "kpiCatalogueValueMeasure": "Value measure: {measure}",
+  "@kpiCatalogueValueMeasure": {
+    "placeholders": {
+      "measure": {"type": "Object"}
+    }
+  },
+  "kpiReviewTheKpiReviewCouldNotBeRead": "The KPI Review could not be read",
+  "kpiReviewKpiReview": "KPI Review",
+  "kpiReviewKpiReviewFor": "KPI Review for {reviewDate}",
+  "@kpiReviewKpiReviewFor": {
+    "placeholders": {
+      "reviewDate": {"type": "Object"}
+    }
+  },
+  "kpiReviewJudgeEachKpiOfTheMtuLine": "Judge each KPI of the MTU line against its Daily Target: met, missed or not measured.",
+  "kpiReviewNoKpisToReview": "No KPIs to review",
+  "kpiReviewTheKpiCatalogueHasNoKpiYet": "The KPI catalogue has no KPI yet.",
+  "kpiReviewByTitle": "By title.",
+  "kpiReviewNoKpiOfTheReviewMatchesTry": "No KPI of the review matches \"{term}\". Try a different title, or clear the filter.",
+  "@kpiReviewNoKpiOfTheReviewMatchesTry": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "kpiReview1ChangedKpiIsHiddenByThe": "1 changed KPI is hidden by the search.",
+  "kpiReviewChangedKpisAreHiddenByTheSearch": "{hiddenChanges} changed KPIs are hidden by the search.",
+  "@kpiReviewChangedKpisAreHiddenByTheSearch": {
+    "placeholders": {
+      "hiddenChanges": {"type": "Object"}
+    }
+  },
+  "kpiReviewSavedFor": "Saved {savedCount} {value} for {reviewDate}.",
+  "@kpiReviewSavedFor": {
+    "placeholders": {
+      "savedCount": {"type": "Object"},
+      "value": {"type": "Object"},
+      "reviewDate": {"type": "Object"}
+    }
+  },
+  "kpiReviewNoTarget": "No target",
+  "kpiReviewDailyTarget": "Daily target: {targetText}",
+  "@kpiReviewDailyTarget": {
+    "placeholders": {
+      "targetText": {"type": "Object"}
+    }
+  },
+  "kpiReviewReadTheNote": "Read the note",
+  "kpiReviewWhyWasItMissed": "Why was it missed?",
+  "kpiReviewWhyWasTheTargetMissed": "Why was the Target ({targetText}) missed?",
+  "@kpiReviewWhyWasTheTargetMissed": {
+    "placeholders": {
+      "targetText": {"type": "Object"}
+    }
+  },
+  "kpiReviewANoteOfAtLeastCharactersIs": "A note of at least {minNoteLength} characters is required when a KPI is missed ({length} so far).",
+  "@kpiReviewANoteOfAtLeastCharactersIs": {
+    "placeholders": {
+      "minNoteLength": {"type": "Object"},
+      "length": {"type": "Object"}
+    }
+  },
+  "kpiReviewEdit": "Edit",
+  "kpiTargetsTheTargetsCouldNotBeRead": "The Targets could not be read",
+  "kpiTargetsKpiTargets": "KPI Targets, {direction} {unit}",
+  "@kpiTargetsKpiTargets": {
+    "placeholders": {
+      "direction": {"type": "Object"},
+      "unit": {"type": "Object"}
+    }
+  },
+  "kpiTargetsCurrentlyInForce": "Currently in force",
+  "kpiTargetsWhatEachGrainIsJudgedAgainstToday": "What each grain is judged against today, and from when.",
+  "kpiTargetsNoTargetIsInForceToday": "No Target is in force today.",
+  "kpiTargetsFrom": "{grain}: {value} (from {validFrom})",
+  "@kpiTargetsFrom": {
+    "placeholders": {
+      "grain": {"type": "Object"},
+      "value": {"type": "Object"},
+      "validFrom": {"type": "Object"}
+    }
+  },
+  "kpiTargetsHistory": "History",
+  "kpiTargetsNewestFirstAnEntryIsNeverEdited": "Newest first. An entry is never edited — a later one supersedes it.",
+  "kpiTargetsNoTargetHasBeenSet": "No Target has been set",
+  "kpiTargetsEveryEntryMadeForThisKpiWill": "Every entry made for this KPI will be listed here.",
+  "assetFormCorrectDetails": "Correct details",
+  "commonAddAnAsset": "Add an Asset",
+  "assetFormAddAsset": "Add Asset",
+  "assetFormUniqueAcrossTheWholePlatformNotJust": "Unique across the whole Platform, not just this Site.",
+  "assetFormKind": "Kind",
+  "commonCriticality": "Criticality",
+  "assetFormWhereThisAssetSitsIsChangedWith": "Where this Asset sits is changed with its own \"Change Org Unit…\" action.",
+  "assetFormThisAssetWillSitAt": "This Asset will sit at {value}.",
+  "@assetFormThisAssetWillSitAt": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "assetMoveChangeWhereThisAssetSits": "Change where this Asset sits",
+  "assetMoveChangeOrgUnit": "Change Org Unit",
+  "assetMoveSitsAtNow": "{name} ({code}) sits at {orgUnitName} now.",
+  "@assetMoveSitsAtNow": {
+    "placeholders": {
+      "name": {"type": "Object"},
+      "code": {"type": "Object"},
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "assetMoveMoveItTo": "Move it to",
+  "assetMoveWhereThisAssetWillSitItDecides": "Where this Asset will sit. It decides who may raise and close work against it; work already recorded against it stays where it happened.",
+  "assetMoveThisAssetWillSitAt": "This Asset will sit at {value}.",
+  "@assetMoveThisAssetWillSitAt": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "assetsTheRegisterCouldNotBeRead": "The register could not be read",
+  "assetsNoAssetsOnTheRegisterYet": "No Assets on the register yet",
+  "assetsNothingHasBeenRecordedAtThisSite": "Nothing has been recorded at this Site. Add a machine and it can be worked on the same day.",
+  "assetsEveryMachineOnTheRegisterAtThis": "Every machine on the register at this Site, and the Org Unit each one sits at.",
+  "assetsShowRetired": "Show retired",
+  "assetsFilterAssets": "Filter Assets",
+  "assetsNoAssetsMatch": "No Assets match",
+  "assetsThisSiteHasAssetsOnTheRegister": "This Site has Assets on the register, but none matches \"{term}\". Try a different name or code, or clear the filter.",
+  "@assetsThisSiteHasAssetsOnTheRegister": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "assetsCodeType": "Code · Type",
+  "assetsCorrectDetails": "Correct details…",
+  "assetsChangeOrgUnit": "Change Org Unit…",
+  "assetsDetach": "Detach",
+  "assetsNestUnder": "Nest under…",
+  "assetsRetireThisAsset": "Retire this Asset?",
+  "assetsWillNoLongerAppearOnTheActive": "{name} will no longer appear on the active register. Nothing is deleted, and it can be reinstated at any time.",
+  "@assetsWillNoLongerAppearOnTheActive": {
+    "placeholders": {
+      "name": {"type": "Object"}
+    }
+  },
+  "assetsThereIsNothingElseOnThisRegister": "There is nothing else on this register it could sit beneath.",
+  "breakdownReportReportABreakdown": "Report a Breakdown",
+  "breakdownReportReport": "Report",
+  "breakdownReportStartedAtOptional": "Started at (optional)",
+  "commonLeaveBlankToRecordNow": "Leave blank to record now.",
+  "downtimeClassifyClassifyTheStopFor": "Classify the stop for {assetName}",
+  "@downtimeClassifyClassifyTheStopFor": {
+    "placeholders": {
+      "assetName": {"type": "Object"}
+    }
+  },
+  "downtimeClassifyKeepItUnclassified": "Keep it unclassified",
+  "downtimeClassifyDescriptionRequired": "Description (required)",
+  "downtimeClassifyTheDowntimeReasonsCouldNotBeRead": "The Downtime reasons could not be read.",
+  "downtimeCloseCloseTheStopFor": "Close the stop for {assetName}?",
+  "@downtimeCloseCloseTheStopFor": {
+    "placeholders": {
+      "assetName": {"type": "Object"}
+    }
+  },
+  "commonKeepItOpen": "Keep it open",
+  "downtimeCloseCloseThisStop": "Close this stop",
+  "downtimeCloseTheMachineIsRunningAgainTheServer": "The machine is running again. The server records how long it was down.",
+  "downtimeCloseEndedAtOptional": "Ended at (optional)",
+  "floorTheFloorWorkCouldNotBeLoaded": "The floor work could not be loaded",
+  "floorNoOpenWork": "No open work",
+  "floorThereIsNoOpenWorkForRight": "There is no open work for {orgUnitName} right now.",
+  "@floorThereIsNoOpenWorkForRight": {
+    "placeholders": {
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "floorRefresh": "Refresh",
+  "floorFloorWork": "Floor work",
+  "floorObservation": "Observation",
+  "floorMyTraining": "My training",
+  "floorTechnicianComplete": "Complete {workOrderNo}",
+  "@floorTechnicianComplete": {
+    "placeholders": {
+      "workOrderNo": {"type": "Object"}
+    }
+  },
+  "floorTechnicianStart": "Start {workOrderNo}",
+  "@floorTechnicianStart": {
+    "placeholders": {
+      "workOrderNo": {"type": "Object"}
+    }
+  },
+  "floorTechnicianWhoIsRecordingThisYourEmployeeNumber": "Who is recording this? Your Employee number and PIN identify you for this action only.",
+  "commonWhatWasFound": "What was found?",
+  "myRequestsYourRequestsCouldNotBeRead": "Your requests could not be read",
+  "myRequestsWhatYouRaisedAndWhatBecameOf": "What you raised, and what became of each.",
+  "commonRaiseARequest": "Raise a Request",
+  "myRequestsYouHaveRequestsAtThisSiteBut": "You have Requests at this Site, but none matches \"{term}\". Try a different description or Asset.",
+  "@myRequestsYouHaveRequestsAtThisSiteBut": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "myRequestsOutcome": "Outcome",
+  "myRequestsBecameWorkOrder": "Became Work order {workOrderNo}",
+  "@myRequestsBecameWorkOrder": {
+    "placeholders": {
+      "workOrderNo": {"type": "Object"}
+    }
+  },
+  "myRequestsDeclined": "Declined: {rejectionReason}",
+  "@myRequestsDeclined": {
+    "placeholders": {
+      "rejectionReason": {"type": "Object"}
+    }
+  },
+  "myRequestsNothingRaisedYet": "Nothing raised yet",
+  "myRequestsYouHaveNotRaisedAnyRequestsAt": "You have not raised any Requests at this Site. Raise one and it will show up here with whatever becomes of it.",
+  "commonAddPart": "Add part",
+  "commonPartNumber": "Part number",
+  "partsThePartsCatalogueCouldNotBeRead": "The parts catalogue could not be read",
+  "partsTheSharedCatalogueDefinedOnceReusedAt": "The shared catalogue — defined once, reused at every Site.",
+  "partsNoPartsYet": "No parts yet",
+  "partsFilterParts": "Filter parts",
+  "commonByPartNumberOrDescription": "By part number or description.",
+  "commonNoPartsMatch": "No parts match",
+  "partsNothingInTheCatalogueMatchesTryA": "Nothing in the catalogue matches \"{term}\". Try a different part number or description, or clear the filter.",
+  "@partsNothingInTheCatalogueMatchesTryA": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "commonReceiveStock": "Receive stock",
+  "receiveReceiving": "Receiving…",
+  "receiveReceive": "Receive",
+  "receiveReasonOptional": "Reason (optional)",
+  "commonRaise": "Raise",
+  "requestFormProductionIsStoppedRightNow": "Production is stopped right now",
+  "storeStockThisStoreCouldNotBeRead": "This store could not be read",
+  "storeStockBackToStores": "Back to Stores",
+  "storeStockNothingOnTheShelf": "Nothing on the shelf",
+  "storeStockNoPartHasMovedInOrOut": "No part has moved in or out of this store yet.",
+  "storeStockFilterStock": "Filter stock",
+  "storeStockThisStoreHoldsStockButNothingOn": "This store holds stock, but nothing on its shelf matches \"{term}\". Try a different part number or description.",
+  "@storeStockThisStoreHoldsStockButNothingOn": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "storesTheStoresCouldNotBeRead": "The stores could not be read",
+  "storesTheShelvesThatHoldPartsAtThis": "The shelves that hold parts at this Site.",
+  "storesNoStoresYet": "No stores yet",
+  "storesNothingHereHoldsParts": "Nothing here holds parts.",
+  "storesFilterStores": "Filter stores",
+  "storesNoStoresMatch": "No stores match",
+  "storesThisSiteHasStoresButNoneMatches": "This Site has stores, but none matches \"{term}\". Try a different name or code, or clear the filter.",
+  "@storesThisSiteHasStoresButNoneMatches": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "storesTappingAStoreShowsWhatIsOn": "Tapping a store shows what is on its shelf.",
+  "storesCodeOrgUnit": "Code · Org Unit",
+  "taskReadingRecordAReadingOn": "Record a reading on {value}",
+  "@taskReadingRecordAReadingOn": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "taskReadingWhatTheMeterReads": "What the meter reads",
+  "tierBoardOrgUnitFilterNarrowTheBoard": "Narrow the board",
+  "tierBoardOrgUnitFilterChooseTheOrgUnitWhoseNumbersAnd": "Choose the Org Unit whose numbers and everything beneath it you want to read, or clear back to the whole Site.",
+  "tierTheTierBoardCouldNotBeRead": "The tier board could not be read",
+  "tierTheNumbersThisSiteSWorkProduces": "The numbers this Site's work produces, reported under the five Pillars. Every Pillar is shown whether or not anything reports under it yet.",
+  "tierDate": "Date",
+  "tierNoPillarsToShow": "No Pillars to show",
+  "tierThisSiteHasNoPillarsToReport": "This Site has no Pillars to report against yet.",
+  "tierNoDataYet": "No data yet",
+  "tierNoKpiIsDefinedUnderThisPillar": "No KPI is defined under this Pillar yet.",
+  "tierValue": "Value",
+  "workOrderAssignFindAPerson": "Find a person",
+  "workOrderAssignByNameEmployeeNumberOrTheQualification": "By name, employee number, or the qualification they hold.",
+  "workOrderAssignTheCandidatesCouldNotBeRead": "The candidates could not be read.",
+  "workOrderAssignNobodyMatchesTryADifferentNameNumber": "Nobody matches \"{term}\" — try a different name, number, or skill.",
+  "@workOrderAssignNobodyMatchesTryADifferentNameNumber": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "workOrderAssignThereIsNobodyThisWorkOrderCould": "There is nobody this Work order could be given to.",
+  "workOrderAssignNoQualificationsRecorded": "No qualifications recorded",
+  "workOrderCancelCancelThisWorkOrder": "Cancel this Work order?",
+  "workOrderCancelCancelThisWorkOrder2": "Cancel this Work order",
+  "workOrderCancelWhyIsThisBeingCancelledOptional": "Why is this being cancelled? (optional)",
+  "workOrderCompleteCompleteThisWorkOrder": "Complete this Work order",
+  "workOrderDialogYouDoNotHoldAWriteGrant": "You do not hold a write Grant that reaches this Work order.",
+  "workOrderDialogLoadingThisWorkOrder": "Loading this Work order",
+  "workOrderDialogThatIsNoLongerAvailable": "That is no longer available",
+  "workOrderDialogThisWorkOrderIsNowWhichNo": "This Work order is now {statusLabel}, which no longer offers this action.",
+  "@workOrderDialogThisWorkOrderIsNowWhichNo": {
+    "placeholders": {
+      "statusLabel": {"type": "Object"}
+    }
+  },
+  "workOrderDialogThatWorkOrderIsNotInThis": "That Work order is not in this list",
+  "workOrderDialogItMayHaveBeenCompletedCancelledOr": "It may have been completed, cancelled, or it is outside the Site or Org Unit the list is currently showing.",
+  "workOrdersWoBuc202600001": "WO-BUC-2026-00001"
 }

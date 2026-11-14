@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -99,6 +100,7 @@ class _SafetyIncidentDaysDialogState extends State<SafetyIncidentDaysDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final incident = widget.incident;
 
@@ -107,14 +109,14 @@ class _SafetyIncidentDaysDialogState extends State<SafetyIncidentDaysDialog> {
       // description and the single action closes it.
       return AppDialog(
         key: SafetyIncidentDaysDialog.refusedKey,
-        title: 'Record the days',
+        title: l10n.commonRecordTheDays,
         size: AppDialogSize.decision,
         description:
-            "Recording the days needs Safety authority at this Safety incident's Org Unit.",
+            l10n.incidentDaysRecordingTheDaysNeedsSafetyAuthorityAt,
         actions: [
           AppDialogAction(
             id: SafetyIncidentDaysDialog._closeId,
-            label: 'Close',
+            label: l10n.downtimeClose,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -124,13 +126,13 @@ class _SafetyIncidentDaysDialogState extends State<SafetyIncidentDaysDialog> {
     if (incident.isClosed) {
       return AppDialog(
         key: SafetyIncidentDaysDialog.refusedKey,
-        title: 'Record the days',
+        title: l10n.commonRecordTheDays,
         size: AppDialogSize.decision,
-        description: 'This Safety incident is closed; its days cannot be changed.',
+        description: l10n.incidentDaysThisSafetyIncidentIsClosedItsDays,
         actions: [
           AppDialogAction(
             id: SafetyIncidentDaysDialog._closeId,
-            label: 'Close',
+            label: l10n.downtimeClose,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -142,19 +144,19 @@ class _SafetyIncidentDaysDialogState extends State<SafetyIncidentDaysDialog> {
       listener: _onDetailChanged,
       // A form (520): two numeric fields (§11).
       child: AppDialog(
-        title: 'Record the days',
+        title: l10n.commonRecordTheDays,
         size: AppDialogSize.form,
-        description: 'What ${incident.incidentNo} cost — zero is a real answer, and settles it.',
+        description: l10n.incidentDaysWhatCostZeroIsARealAnswer(incident.incidentNo),
         actions: [
           AppDialogAction(
             id: SafetyIncidentDaysDialog._dismissId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: SafetyIncidentDaysDialog._submitId,
-            label: 'Save',
+            label: l10n.commonSave,
             onPressed: _complete ? _submit : null,
           ),
         ],
@@ -168,8 +170,8 @@ class _SafetyIncidentDaysDialogState extends State<SafetyIncidentDaysDialog> {
               enabled: !_awaiting,
               keyboardType: TextInputType.number,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Lost-time days',
+              decoration: InputDecoration(
+                labelText: l10n.commonLostTimeDays,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -180,8 +182,8 @@ class _SafetyIncidentDaysDialogState extends State<SafetyIncidentDaysDialog> {
               enabled: !_awaiting,
               keyboardType: TextInputType.number,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Restricted days',
+              decoration: InputDecoration(
+                labelText: l10n.commonRestrictedDays,
                 border: OutlineInputBorder(),
               ),
             ),

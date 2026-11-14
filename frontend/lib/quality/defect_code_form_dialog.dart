@@ -27,6 +27,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/app_scan_field.dart';
@@ -181,22 +182,23 @@ class _DefectCodeFormDialogState extends State<DefectCodeFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocListener<DefectCodesBloc, DefectCodesState>(
       listener: _onDefectCodesChanged,
       child: AppDialog(
-        title: _isCorrection ? 'Correct Defect code' : 'Add Defect code',
+        title: _isCorrection ? l10n.defectCodeFormCorrectDefectCode : l10n.commonAddDefectCode,
         size: AppDialogSize.decision,
         actions: [
           AppDialogAction(
             id: 'defect-code-form-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'defect-code-form-submit',
-            label: _awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add Defect code'),
+            label: _awaiting ? l10n.commonSaving : (_isCorrection ? l10n.commonSave : l10n.commonAddDefectCode),
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -207,8 +209,8 @@ class _DefectCodeFormDialogState extends State<DefectCodeFormDialog> {
             AppScanField(
               key: DefectCodeFormDialog.codeKey,
               controller: _code,
-              label: 'Code',
-              helperText: _isCorrection ? 'A Defect code cannot be corrected' : null,
+              label: l10n.commonCode,
+              helperText: _isCorrection ? l10n.defectCodeFormADefectCodeCannotBeCorrected : null,
               // A code is the one field a correction cannot rewrite.
               enabled: !_isCorrection && !_awaiting,
               autofocus: true,
@@ -220,15 +222,15 @@ class _DefectCodeFormDialogState extends State<DefectCodeFormDialog> {
               controller: _name,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.commonName, border: OutlineInputBorder()),
             ),
             const SizedBox(height: Spacing.md),
             DropdownButtonFormField<String>(
               key: DefectCodeFormDialog.categoryKey,
               initialValue: _category,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Category',
+              decoration: InputDecoration(
+                labelText: l10n.commonCategory,
                 border: OutlineInputBorder(),
               ),
               items: [
@@ -245,10 +247,10 @@ class _DefectCodeFormDialogState extends State<DefectCodeFormDialog> {
               key: DefectCodeFormDialog.severityKey,
               initialValue: _severity,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Default severity',
+              decoration: InputDecoration(
+                labelText: l10n.defectCodeFormDefaultSeverity,
                 border: OutlineInputBorder(),
-                helperText: 'What a Non-conformance recorded against this code starts at',
+                helperText: l10n.defectCodeFormWhatANonConformanceRecordedAgainstThis,
               ),
               items: [
                 for (final severity in DefectSeverity.values)
@@ -264,14 +266,14 @@ class _DefectCodeFormDialogState extends State<DefectCodeFormDialog> {
               key: DefectCodeFormDialog.parentKey,
               initialValue: _parentId,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Parent',
+              decoration: InputDecoration(
+                labelText: l10n.defectCodeFormParent,
                 border: OutlineInputBorder(),
               ),
               items: [
-                const DropdownMenuItem<String?>(
+                DropdownMenuItem<String?>(
                   value: null,
-                  child: Text('No parent — top level'),
+                  child: Text(l10n.defectCodeFormNoParentTopLevel),
                 ),
                 for (final code in _parentChoices)
                   DropdownMenuItem<String?>(
@@ -289,7 +291,7 @@ class _DefectCodeFormDialogState extends State<DefectCodeFormDialog> {
               SwitchListTile(
                 key: DefectCodeFormDialog.activeKey,
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Active'),
+                title: Text(l10n.commonActive),
                 value: _isActive,
                 onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
               ),

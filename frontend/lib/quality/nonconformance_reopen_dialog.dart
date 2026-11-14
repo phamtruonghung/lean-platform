@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -79,6 +80,7 @@ class _NonconformanceReopenDialogState extends State<NonconformanceReopenDialog>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final record = widget.nonconformance;
 
@@ -89,13 +91,13 @@ class _NonconformanceReopenDialogState extends State<NonconformanceReopenDialog>
     if (!holdsQualityAuthority(context, record.orgUnitId)) {
       return AppDialog(
         key: NonconformanceReopenDialog.refusedKey,
-        title: 'Cannot reopen it',
+        title: l10n.nonconformanceReopenCannotReopenIt,
         size: AppDialogSize.decision,
-        description: 'Reopening a Non-conformance needs Quality authority at its Org Unit.',
+        description: l10n.nonconformanceReopenReopeningANonConformanceNeedsQualityAuthority,
         actions: [
           AppDialogAction(
             id: 'nonconformance-reopen-refused-close',
-            label: 'Close',
+            label: l10n.downtimeClose,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -105,13 +107,13 @@ class _NonconformanceReopenDialogState extends State<NonconformanceReopenDialog>
     if (!record.canBeReopened) {
       return AppDialog(
         key: NonconformanceReopenDialog.refusedKey,
-        title: 'Cannot reopen it',
+        title: l10n.nonconformanceReopenCannotReopenIt,
         size: AppDialogSize.decision,
-        description: 'Only a closed Non-conformance can be reopened.',
+        description: l10n.nonconformanceReopenOnlyAClosedNonConformanceCanBe,
         actions: [
           AppDialogAction(
             id: 'nonconformance-reopen-refused-close',
-            label: 'Close',
+            label: l10n.downtimeClose,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -122,18 +124,18 @@ class _NonconformanceReopenDialogState extends State<NonconformanceReopenDialog>
     return BlocListener<NonconformanceDetailBloc, NonconformanceDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Reopen this Non-conformance',
+        title: l10n.nonconformanceReopenReopenThisNonConformance,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: 'nonconformance-reopen-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'nonconformance-reopen-submit',
-            label: 'Reopen it',
+            label: l10n.nonconformanceReopen,
             onPressed: _complete ? _submit : null,
           ),
         ],
@@ -142,8 +144,7 @@ class _NonconformanceReopenDialogState extends State<NonconformanceReopenDialog>
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '${widget.nonconformance.issueNo} is closed. Reopening it puts it back to '
-              'dispositioned, and its closing time goes with it.',
+              l10n.nonconformanceReopenIsClosedReopeningItPutsItBack(widget.nonconformance.issueNo),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: Spacing.md),
@@ -154,9 +155,9 @@ class _NonconformanceReopenDialogState extends State<NonconformanceReopenDialog>
               minLines: 2,
               maxLines: 3,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Note',
-                helperText: 'Why it is being reopened.',
+              decoration: InputDecoration(
+                labelText: l10n.commonNote,
+                helperText: l10n.nonconformanceReopenWhyItIsBeingReopened,
                 border: OutlineInputBorder(),
               ),
             ),

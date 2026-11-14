@@ -25,6 +25,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_dialog.dart';
@@ -174,6 +175,7 @@ class _EmployeeSkillFormDialogState extends State<EmployeeSkillFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final activeSkills = [for (final skill in widget.skills) if (skill.isActive) skill];
 
@@ -181,20 +183,20 @@ class _EmployeeSkillFormDialogState extends State<EmployeeSkillFormDialog> {
       listener: _onDetailChanged,
       child: AppDialog(
         title: _isReassessment
-            ? 'Re-assess ${widget.existing!.name} for ${widget.employee.displayName}'
-            : 'Record a skill for ${widget.employee.displayName}',
+            ? l10n.employeeSkillFormReAssessFor(widget.existing!.name, widget.employee.displayName)
+            : l10n.employeeSkillFormRecordASkillFor(widget.employee.displayName),
         size: AppDialogSize.form,
         // `child` last, as `sort_child_properties_last` requires.
         actions: [
           AppDialogAction(
             id: 'employee-skill-form-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'employee-skill-form-submit',
-            label: _awaiting ? 'Saving…' : 'Save',
+            label: _awaiting ? l10n.commonSaving : l10n.commonSave,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -206,7 +208,7 @@ class _EmployeeSkillFormDialogState extends State<EmployeeSkillFormDialog> {
               children: [
                 AppSearchField<Skill>(
                   name: EmployeeSkillFormDialog._skillFieldName,
-                  label: 'Skill',
+                  label: l10n.employeeSkillFormSkill,
                   value: _selectedSkill(activeSkills),
                   // Locked while re-assessing: a different skill is a first
                   // assessment against that skill, which the "Record skill"
@@ -244,12 +246,12 @@ class _EmployeeSkillFormDialogState extends State<EmployeeSkillFormDialog> {
                 DropdownButtonFormField<int>(
                   key: EmployeeSkillFormDialog.proficiencyKey,
                   initialValue: _proficiencyLevel,
-                  decoration: const InputDecoration(
-                    labelText: 'Proficiency (0–4, ILUO)',
+                  decoration: InputDecoration(
+                    labelText: l10n.employeeSkillFormProficiency04Iluo,
                     border: OutlineInputBorder(),
                   ),
-                  items: const [
-                    DropdownMenuItem<int>(value: 0, child: Text('0 — none')),
+                  items: [
+                    DropdownMenuItem<int>(value: 0, child: Text(l10n.employeeSkillForm0None)),
                     DropdownMenuItem<int>(value: 1, child: Text('1')),
                     DropdownMenuItem<int>(value: 2, child: Text('2')),
                     DropdownMenuItem<int>(value: 3, child: Text('3')),
@@ -266,8 +268,8 @@ class _EmployeeSkillFormDialogState extends State<EmployeeSkillFormDialog> {
                 AppDateField(
                   key: EmployeeSkillFormDialog.assessedOnKey,
                   name: 'skill-assessed-on',
-                  label: 'Assessed on (optional)',
-                  helperText: 'Left blank, today is recorded.',
+                  label: l10n.employeeSkillFormAssessedOnOptional,
+                  helperText: l10n.commonLeftBlankTodayIsRecorded,
                   value: _assessedOn,
                   onChanged: (value) => setState(() => _assessedOn = value),
                   optional: true,
@@ -277,9 +279,8 @@ class _EmployeeSkillFormDialogState extends State<EmployeeSkillFormDialog> {
                 AppDateField(
                   key: EmployeeSkillFormDialog.expiresOnKey,
                   name: 'skill-expires-on',
-                  label: 'Expires on (optional)',
-                  helperText: "Left blank, never expires (or is re-derived from the skill's own "
-                      'revalidation period).',
+                  label: l10n.employeeSkillFormExpiresOnOptional,
+                  helperText: l10n.employeeSkillFormLeftBlankNeverExpiresOrIsRe,
                   value: _expiresOn,
                   onChanged: (value) => setState(() => _expiresOn = value),
                   optional: true,
@@ -290,8 +291,8 @@ class _EmployeeSkillFormDialogState extends State<EmployeeSkillFormDialog> {
                   key: EmployeeSkillFormDialog.evidenceRefKey,
                   controller: _evidenceRef,
                   enabled: !_awaiting,
-                  decoration: const InputDecoration(
-                    labelText: 'Evidence reference (optional)',
+                  decoration: InputDecoration(
+                    labelText: l10n.employeeSkillFormEvidenceReferenceOptional,
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -301,7 +302,7 @@ class _EmployeeSkillFormDialogState extends State<EmployeeSkillFormDialog> {
                   controller: _note,
                   enabled: !_awaiting,
                   maxLines: 2,
-                  decoration: const InputDecoration(labelText: 'Note (optional)', border: OutlineInputBorder()),
+                  decoration: InputDecoration(labelText: l10n.commonNoteOptional, border: OutlineInputBorder()),
                 ),
                 if (_failure != null)
                   Padding(

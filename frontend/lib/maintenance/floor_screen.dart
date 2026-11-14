@@ -19,6 +19,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/floor_device_gateway.dart';
@@ -217,6 +218,7 @@ class FloorScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: AppColors.of(context).canvas,
       body: SafeArea(
@@ -229,7 +231,7 @@ class FloorScreen extends StatelessWidget {
             FloorUnavailable(message: final message) => _FloorFrame(
                 orgUnitName: null,
                 child: PlatformFailureState(
-                  title: 'The floor work could not be loaded',
+                  title: l10n.floorTheFloorWorkCouldNotBeLoaded,
                   message: message,
                   retryKey: retryKey,
                   onRetry: () => context.read<FloorBloc>().add(const FloorStarted()),
@@ -263,9 +265,9 @@ class FloorScreen extends StatelessWidget {
                 notice: notice,
                 child: workOrders.isEmpty
                     ? PlatformEmptyState.noneExist(
-                        title: 'No open work',
-                        message: 'There is no open work for ${info.orgUnitName} right now.',
-                        actionLabel: 'Refresh',
+                        title: l10n.floorNoOpenWork,
+                        message: l10n.floorThereIsNoOpenWorkForRight(info.orgUnitName),
+                        actionLabel: l10n.floorRefresh,
                         actionKey: refreshKey,
                         onAction: () => context.read<FloorBloc>().add(const FloorStarted()),
                         icon: Icons.check_circle_outline,
@@ -310,6 +312,7 @@ class _FloorFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -333,7 +336,7 @@ class _FloorFrame extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Floor work',
+                          l10n.floorFloorWork,
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                 color: Theme.of(context).colorScheme.onPrimary,
                                 fontWeight: FontWeight.w700,
@@ -355,7 +358,7 @@ class _FloorFrame extends StatelessWidget {
                       onPressed: onRefresh,
                       color: Theme.of(context).colorScheme.onPrimary,
                       iconSize: 32,
-                      tooltip: 'Refresh',
+                      tooltip: l10n.floorRefresh,
                       icon: const Icon(Icons.refresh),
                     ),
                 ],
@@ -392,7 +395,7 @@ class _FloorFrame extends StatelessWidget {
                           minimumSize: const Size(0, 48),
                         ),
                         icon: const Icon(Icons.report_outlined),
-                        label: const Text('Non-conformance'),
+                        label: Text(l10n.titleNonConformance),
                       ),
                     // Reporting a Safety incident is the one Safety action
                     // the floor surface offers (issue #227), beside the
@@ -408,7 +411,7 @@ class _FloorFrame extends StatelessWidget {
                           minimumSize: const Size(0, 48),
                         ),
                         icon: const Icon(Icons.health_and_safety_outlined),
-                        label: const Text('Safety incident'),
+                        label: Text(l10n.titleSafetyIncident),
                       ),
                     // Recording a Safety observation is the third action the
                     // floor surface offers (issue #230), beside the other
@@ -424,7 +427,7 @@ class _FloorFrame extends StatelessWidget {
                           minimumSize: const Size(0, 48),
                         ),
                         icon: const Icon(Icons.visibility_outlined),
-                        label: const Text('Observation'),
+                        label: Text(l10n.floorObservation),
                       ),
                     // A Trainee answering the training waiting on them
                     // (issue #293) is the fourth, for the same reason.
@@ -438,7 +441,7 @@ class _FloorFrame extends StatelessWidget {
                           minimumSize: const Size(0, 48),
                         ),
                         icon: const Icon(Icons.school_outlined),
-                        label: const Text('My training'),
+                        label: Text(l10n.floorMyTraining),
                       ),
                   ],
                 ),
@@ -560,6 +563,7 @@ class _FloorWorkOrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return Card(
       margin: EdgeInsets.zero,
@@ -604,7 +608,7 @@ class _FloorWorkOrderCard extends StatelessWidget {
                 onPressed: isActing ? null : onStart,
                 style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(64)),
                 icon: const Icon(Icons.play_arrow),
-                label: const Text('Start'),
+                label: Text(l10n.workOrdersStart),
               )
             else if (workOrder.status == 'in_progress')
               FilledButton.icon(
@@ -612,7 +616,7 @@ class _FloorWorkOrderCard extends StatelessWidget {
                 onPressed: isActing ? null : onComplete,
                 style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(64)),
                 icon: const Icon(Icons.check),
-                label: const Text('Complete'),
+                label: Text(l10n.workOrdersComplete),
               ),
           ],
         ),

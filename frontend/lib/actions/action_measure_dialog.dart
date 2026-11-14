@@ -15,6 +15,7 @@ import 'package:flutter/material.dart' hide Action;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../people_api.dart';
@@ -108,23 +109,24 @@ class _ActionMeasureDialogState extends State<ActionMeasureDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocListener<ActionDetailBloc, ActionDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Add a ${_label.toLowerCase()}',
+        title: l10n.actionMeasureAddA(_label.toLowerCase()),
         // A long form: five fields and the Org Unit chooser (issue #398).
         size: AppDialogSize.wide,
         actions: [
           AppDialogAction(
             id: 'cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => context.pop(),
           ),
           AppDialogAction(
             id: 'add',
-            label: 'Add the ${_label.toLowerCase()}',
+            label: l10n.actionMeasureAddThe(_label.toLowerCase()),
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -134,7 +136,7 @@ class _ActionMeasureDialogState extends State<ActionMeasureDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
                 Text(
-                  'Answering ${widget.concern.actionNo}: ${widget.concern.title}',
+                  l10n.actionMeasureAnswering(widget.concern.actionNo, widget.concern.title),
                   style: theme.textTheme.bodyMedium
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
@@ -156,8 +158,8 @@ class _ActionMeasureDialogState extends State<ActionMeasureDialog> {
                   controller: _title,
                   enabled: !_awaiting,
                   onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'What will be done',
+                  decoration: InputDecoration(
+                    labelText: l10n.actionMeasureWhatWillBeDone,
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -168,8 +170,8 @@ class _ActionMeasureDialogState extends State<ActionMeasureDialog> {
                   enabled: !_awaiting,
                   minLines: 2,
                   maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Detail (optional)',
+                  decoration: InputDecoration(
+                    labelText: l10n.nonconformanceFormDetailOptional,
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -177,8 +179,8 @@ class _ActionMeasureDialogState extends State<ActionMeasureDialog> {
                 AppSearchField<Employee>(
                   key: ActionMeasureDialog.ownerKey,
                   name: 'action-measure-owner',
-                  label: 'Owner (optional)',
-                  helperText: 'Who will do it.',
+                  label: l10n.commonOwnerOptional,
+                  helperText: l10n.actionMeasureWhoWillDoIt,
                   value: _owner,
                   enabled: !_awaiting,
                   onChanged: (employee) => setState(() => _owner = employee),
@@ -201,7 +203,7 @@ class _ActionMeasureDialogState extends State<ActionMeasureDialog> {
                 AppDateField(
                   key: ActionMeasureDialog.dueDateKey,
                   name: 'action-measure-due',
-                  label: 'Due (optional)',
+                  label: l10n.commonDueOptional,
                   value: _dueDate,
                   optional: true,
                   enabled: !_awaiting,
@@ -212,8 +214,8 @@ class _ActionMeasureDialogState extends State<ActionMeasureDialog> {
                   key: ActionMeasureDialog.priorityKey,
                   initialValue: _priority,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Priority',
+                  decoration: InputDecoration(
+                    labelText: l10n.commonPriority,
                     border: OutlineInputBorder(),
                   ),
                   items: [
@@ -228,10 +230,8 @@ class _ActionMeasureDialogState extends State<ActionMeasureDialog> {
                   selectedId: _orgUnit?.id,
                   enabled: !_awaiting,
                   showSitePicker: false,
-                  title: 'Where this work happens',
-                  description: 'Leave it alone to record the measure at ${widget.concern.orgUnitName}, '
-                      'where the concern sits. A fix that belongs somewhere else — a store, a '
-                      'supplier — can name that instead.',
+                  title: l10n.actionMeasureWhereThisWorkHappens,
+                  description: l10n.actionMeasureLeaveItAloneToRecordTheMeasure(widget.concern.orgUnitName),
                   onSelected: (node) => setState(() => _orgUnit = node),
                 ),
                 if (_failure != null)

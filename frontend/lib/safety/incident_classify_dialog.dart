@@ -40,6 +40,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
@@ -264,6 +265,7 @@ class _SafetyIncidentClassifyDialogState extends State<SafetyIncidentClassifyDia
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final incident = widget.incident;
 
@@ -274,14 +276,14 @@ class _SafetyIncidentClassifyDialogState extends State<SafetyIncidentClassifyDia
       // description and the single action closes it.
       return AppDialog(
         key: SafetyIncidentClassifyDialog.refusedKey,
-        title: 'Classify the injury',
+        title: l10n.commonClassifyTheInjury,
         size: AppDialogSize.decision,
         description:
-            "Classifying the injury needs Safety authority at this Safety incident's Org Unit.",
+            l10n.incidentClassifyClassifyingTheInjuryNeedsSafetyAuthorityAt,
         actions: [
           AppDialogAction(
             id: SafetyIncidentClassifyDialog._closeId,
-            label: 'Close',
+            label: l10n.downtimeClose,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -296,14 +298,13 @@ class _SafetyIncidentClassifyDialogState extends State<SafetyIncidentClassifyDia
     if (!incident.hasInjurySection) {
       return AppDialog(
         key: SafetyIncidentClassifyDialog.refusedKey,
-        title: 'Classify the injury',
+        title: l10n.commonClassifyTheInjury,
         size: AppDialogSize.decision,
-        description: '${incident.incidentNo} sits on the no-injury rung. Nobody was hurt, so '
-            'there is nothing to classify — correct the severity first if that is wrong.',
+        description: l10n.incidentClassifySitsOnTheNoInjuryRungNobody(incident.incidentNo),
         actions: [
           AppDialogAction(
             id: SafetyIncidentClassifyDialog._closeId,
-            label: 'Close',
+            label: l10n.downtimeClose,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -316,21 +317,19 @@ class _SafetyIncidentClassifyDialogState extends State<SafetyIncidentClassifyDia
       // The widest size (640): three pickers, each with its own clear row, and
       // a catalogue failure state inside it (§11).
       child: AppDialog(
-        title: 'Classify the injury',
+        title: l10n.commonClassifyTheInjury,
         size: AppDialogSize.wide,
-        description: 'Who was hurt, what the injury was and where on the body. These three '
-            'are read only by a holder of Safety authority for this area and by the '
-            "injured person's own Account.",
+        description: l10n.incidentClassifyWhoWasHurtWhatTheInjuryWas,
         actions: [
           AppDialogAction(
             id: SafetyIncidentClassifyDialog._dismissId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: SafetyIncidentClassifyDialog._submitId,
-            label: _awaiting ? 'Saving…' : 'Save the classification',
+            label: _awaiting ? l10n.commonSaving : l10n.incidentClassifySaveTheClassification,
             onPressed: _asksForSomething && !_awaiting ? _submit : null,
           ),
         ],
@@ -340,8 +339,8 @@ class _SafetyIncidentClassifyDialogState extends State<SafetyIncidentClassifyDia
               children: [
                 AppSearchField<Employee>(
                   name: SafetyIncidentClassifyDialog.employeeFieldName,
-                  label: 'Injured Employee',
-                  helperText: 'Who was hurt.',
+                  label: l10n.commonInjuredEmployee,
+                  helperText: l10n.incidentClassifyWhoWasHurt,
                   value: _employee,
                   enabled: !_awaiting,
                   onChanged: (employee) => setState(() => _employee = employee),
@@ -368,7 +367,7 @@ class _SafetyIncidentClassifyDialogState extends State<SafetyIncidentClassifyDia
                 ),
                 _ClearRow(
                   clearKey: SafetyIncidentClassifyDialog.clearEmployeeKey,
-                  label: 'Clear the injured Employee',
+                  label: l10n.incidentClassifyClearTheInjuredEmployee,
                   value: _clearEmployee,
                   enabled: !_awaiting,
                   onChanged: (value) => setState(() {
@@ -387,7 +386,7 @@ class _SafetyIncidentClassifyDialogState extends State<SafetyIncidentClassifyDia
                 else if (_catalogues == _CatalogueStatus.failed)
                   PlatformFailureState(
                     key: SafetyIncidentClassifyDialog.cataloguesFailedKey,
-                    title: 'The Injury type and Body part catalogues could not be read',
+                    title: l10n.incidentClassifyTheInjuryTypeAndBodyPartCatalogues,
                     message: _cataloguesFailure!,
                     retryKey: SafetyIncidentClassifyDialog.cataloguesRetryKey,
                     onRetry: _loadCatalogues,
@@ -395,8 +394,8 @@ class _SafetyIncidentClassifyDialogState extends State<SafetyIncidentClassifyDia
                 else ...[
                   AppSearchField<InjuryType>(
                     name: SafetyIncidentClassifyDialog.injuryTypeFieldName,
-                    label: 'Injury type',
-                    helperText: 'What the injury was.',
+                    label: l10n.commonInjuryType,
+                    helperText: l10n.incidentClassifyWhatTheInjuryWas,
                     value: _injuryType,
                     enabled: !_awaiting,
                     onChanged: (type) => setState(() => _injuryType = type),
@@ -424,7 +423,7 @@ class _SafetyIncidentClassifyDialogState extends State<SafetyIncidentClassifyDia
                   ),
                   _ClearRow(
                     clearKey: SafetyIncidentClassifyDialog.clearInjuryTypeKey,
-                    label: 'Clear the Injury type',
+                    label: l10n.incidentClassifyClearTheInjuryType,
                     value: _clearInjuryType,
                     enabled: !_awaiting,
                     onChanged: (value) => setState(() {
@@ -436,8 +435,8 @@ class _SafetyIncidentClassifyDialogState extends State<SafetyIncidentClassifyDia
                   const SizedBox(height: Spacing.md),
                   AppSearchField<BodyPart>(
                     name: SafetyIncidentClassifyDialog.bodyPartFieldName,
-                    label: 'Body part',
-                    helperText: 'Where on the body.',
+                    label: l10n.commonBodyPart,
+                    helperText: l10n.incidentClassifyWhereOnTheBody,
                     value: _bodyPart,
                     enabled: !_awaiting,
                     onChanged: (part) => setState(() => _bodyPart = part),
@@ -462,7 +461,7 @@ class _SafetyIncidentClassifyDialogState extends State<SafetyIncidentClassifyDia
                   ),
                   _ClearRow(
                     clearKey: SafetyIncidentClassifyDialog.clearBodyPartKey,
-                    label: 'Clear the Body part',
+                    label: l10n.incidentClassifyClearTheBodyPart,
                     value: _clearBodyPart,
                     enabled: !_awaiting,
                     onChanged: (value) => setState(() {

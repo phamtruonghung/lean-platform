@@ -38,6 +38,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:lean_platform/l10n/app_localizations.dart';
 import 'package:lean_platform/people/job_roles_screen.dart';
 import 'package:lean_platform/people/skill_coverage_screen.dart';
 import 'package:lean_platform/people/skills_screen.dart';
@@ -244,8 +245,9 @@ void main() {
 
       // The band's first label and the first cell of every row start at the same
       // x, because both are laid out from the one stated column list.
+      final l10n = AppLocalizations.of(tester.element(find.byType(AppTableHeader)));
       final label = tester.getRect(
-        find.byKey(AppTableHeader.labelKey(SkillCoverageScreen.columns.first.label)),
+        find.byKey(AppTableHeader.labelKey(SkillCoverageScreen.columns(l10n).first.label)),
       );
       final cell = tester.getRect(
         find.descendant(
@@ -258,7 +260,7 @@ void main() {
       // The two count columns end at the same x as their own labels.
       for (final index in const [2, 3]) {
         final columnLabel = tester.getRect(
-          find.byKey(AppTableHeader.labelKey(SkillCoverageScreen.columns[index].label)),
+          find.byKey(AppTableHeader.labelKey(SkillCoverageScreen.columns(l10n)[index].label)),
         );
         final countCell = tester.getRect(
           find.descendant(
@@ -342,7 +344,8 @@ void main() {
 
       // `Answers` is the register's one end-aligned count: its cell ends where
       // its label does.
-      final answers = TrainingScreen.columns.indexWhere((column) => column.label == 'Answers');
+      final l10n = AppLocalizations.of(tester.element(find.byType(AppTableHeader)));
+      final answers = TrainingScreen.columns(l10n).indexWhere((column) => column.label == 'Answers');
       final label = tester.getRect(find.byKey(AppTableHeader.labelKey('Answers')));
       final cell = tester.getRect(
         find.descendant(of: row, matching: find.byKey(AppTableRow.cellKey(answers))),

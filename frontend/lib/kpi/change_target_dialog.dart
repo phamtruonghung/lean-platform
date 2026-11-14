@@ -25,6 +25,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_dialog.dart';
@@ -135,13 +136,14 @@ class _ChangeTargetDialogState extends State<ChangeTargetDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final refusal = _validFromRefusal;
     final today = DateTime.tryParse(widget.siteToday);
     return BlocListener<KpiTargetsBloc, KpiTargetsState>(
       listener: _onTargetsChanged,
       child: AppDialog(
-        title: 'Change Target',
+        title: l10n.commonChangeTarget,
         // The append-only rule is the dialog's own description, under the title
         // where a reader meets it before the fields.
         description: ChangeTargetDialog.rule,
@@ -149,13 +151,13 @@ class _ChangeTargetDialogState extends State<ChangeTargetDialog> {
         actions: [
           AppDialogAction(
             id: ChangeTargetDialog.cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: ChangeTargetDialog.submitId,
-            label: _awaiting ? 'Saving…' : 'Change Target',
+            label: _awaiting ? l10n.commonSaving : l10n.commonChangeTarget,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -166,7 +168,7 @@ class _ChangeTargetDialogState extends State<ChangeTargetDialog> {
             DropdownButtonFormField<String>(
               key: ChangeTargetDialog.grainKey,
               initialValue: _grain,
-              decoration: const InputDecoration(labelText: 'Grain', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.changeTargetGrain, border: OutlineInputBorder()),
               items: [
                 for (final grain in ChangeTargetDialog.grains)
                   DropdownMenuItem<String>(value: grain, child: Text(grain)),
@@ -180,8 +182,8 @@ class _ChangeTargetDialogState extends State<ChangeTargetDialog> {
             const SizedBox(height: Spacing.md),
             AppDateField(
               name: ChangeTargetDialog.validFromName,
-              label: 'Valid from',
-              helperText: 'Today at this Site is ${widget.siteToday}; a Target starts today or later.',
+              label: l10n.changeTargetValidFrom,
+              helperText: l10n.changeTargetTodayAtThisSiteIsATarget(widget.siteToday),
               value: _validFrom,
               firstDate: today,
               enabled: !_awaiting,
@@ -202,9 +204,9 @@ class _ChangeTargetDialogState extends State<ChangeTargetDialog> {
               keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                labelText: 'Target',
-                helperText: 'Leave blank for no target from that date on.',
-                errorText: _targetInvalid ? 'The Target must be a number, or blank for no target' : null,
+                labelText: l10n.changeTargetTarget,
+                helperText: l10n.changeTargetLeaveBlankForNoTargetFromThat,
+                errorText: _targetInvalid ? l10n.changeTargetTheTargetMustBeANumberOr : null,
                 border: const OutlineInputBorder(),
               ),
             ),
@@ -215,7 +217,7 @@ class _ChangeTargetDialogState extends State<ChangeTargetDialog> {
               enabled: !_awaiting,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(labelText: 'Note (optional)', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.commonNoteOptional, border: OutlineInputBorder()),
             ),
             if (_failure != null)
               Padding(

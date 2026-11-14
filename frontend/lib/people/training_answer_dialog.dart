@@ -21,6 +21,7 @@
 /// (`AppDialog.actionKey` of this dialog's own id), the rename #398 established.
 library;
 
+import '../l10n/app_localizations.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -92,17 +93,18 @@ class _TrainingAnswerDialogState extends State<TrainingAnswerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final muted = AppTypography.dense(context)?.copyWith(color: palette.textMuted);
     final storedImage = widget.storedImage;
     return AppDialog(
       key: TrainingAnswerDialog.dialogKey,
-      title: 'Sign your confirmation',
+      title: l10n.trainingAnswerSignYourConfirmation,
       size: AppDialogSize.picker,
       actions: [
         AppDialogAction(
           id: TrainingAnswerDialog._cancelId,
-          label: 'Cancel',
+          label: l10n.commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -113,13 +115,13 @@ class _TrainingAnswerDialogState extends State<TrainingAnswerDialog> {
         children: [
           Text(
             widget.offersStored
-                ? 'Choose what your answer is signed with. You can also confirm without a Signature.'
-                : 'You keep no Signature. Draw one now for this answer, or confirm without a Signature.',
+                ? l10n.trainingAnswerChooseWhatYourAnswerIsSignedWith
+                : l10n.trainingAnswerYouKeepNoSignatureDrawOneNow,
             style: muted,
           ),
           const SizedBox(height: Spacing.md),
           if (widget.offersStored && storedImage != null) ...[
-            Text('Your Signature, which "Use my Signature" applies:', style: AppTypography.dense(context)),
+            Text(l10n.trainingAnswerYourSignatureWhichUseMySignatureApplies, style: AppTypography.dense(context)),
             const SizedBox(height: Spacing.sm),
             Container(
               height: 90,
@@ -133,7 +135,7 @@ class _TrainingAnswerDialogState extends State<TrainingAnswerDialog> {
                   key: TrainingAnswerDialog.storedImageKey,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) => Text(
-                    'This Signature could not be shown.',
+                    l10n.commonThisSignatureCouldNotBeShown,
                     style: AppTypography.dense(context)?.copyWith(color: palette.onSignatureBackdrop),
                   ),
                 ),
@@ -149,17 +151,17 @@ class _TrainingAnswerDialogState extends State<TrainingAnswerDialog> {
                 FilledButton(
                   key: TrainingAnswerDialog.useStoredKey,
                   onPressed: () => Navigator.of(context).pop(const StoredAnswerSignature()),
-                  child: const Text('Use my Signature'),
+                  child: Text(l10n.trainingAnswerUseMySignature),
                 ),
               OutlinedButton(
                 key: TrainingAnswerDialog.drawKey,
                 onPressed: _drawing ? null : () => setState(() => _drawing = true),
-                child: const Text('Draw one now'),
+                child: Text(l10n.trainingAnswerDrawOneNow),
               ),
               OutlinedButton(
                 key: TrainingAnswerDialog.noneKey,
                 onPressed: () => Navigator.of(context).pop(const NoAnswerSignature()),
-                child: const Text('No Signature'),
+                child: Text(l10n.trainingAnswerNoSignature),
               ),
             ],
           ),
@@ -176,12 +178,12 @@ class _TrainingAnswerDialogState extends State<TrainingAnswerDialog> {
                   FilledButton(
                     key: TrainingAnswerDialog.submitDrawnKey,
                     onPressed: _pad.isEmpty ? null : _submitDrawn,
-                    child: const Text('Confirm with this Signature'),
+                    child: Text(l10n.trainingAnswerConfirmWithThisSignature),
                   ),
                   OutlinedButton(
                     key: TrainingAnswerDialog.clearDrawnKey,
                     onPressed: _pad.isEmpty ? null : _pad.clear,
-                    child: const Text('Clear'),
+                    child: Text(l10n.commonClear),
                   ),
                 ],
               ),

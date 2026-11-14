@@ -325,6 +325,8 @@ void main() {
     var dismissed = 0;
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: buildAppTheme(Brightness.light),
         home: Scaffold(
           body: Builder(
@@ -573,6 +575,8 @@ void main() {
       RepositoryProvider<AuthGateway>.value(
         value: FakeAuthGateway(),
         child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           theme: buildAppTheme(Brightness.light),
           home: SignInScreen(darkPalette: false, onToggleDarkPalette: () {}),
         ),

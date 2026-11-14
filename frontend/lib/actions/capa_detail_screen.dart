@@ -31,6 +31,7 @@ import 'package:flutter/material.dart' hide Action;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -177,6 +178,7 @@ class CapaDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<CapaDetailBloc>().state;
     final loaded = state is CapaDetailLoaded ? state.capa : null;
 
@@ -190,7 +192,7 @@ class CapaDetailScreen extends StatelessWidget {
               CapaDetailLoading() => const SkeletonList(rows: 5, maxWidth: maxWidth),
               CapaDetailUnavailable(message: final message) => PlatformFailureState(
                   key: failedKey,
-                  title: 'That CAPA could not be read',
+                  title: l10n.commonThatCapaCouldNotBeRead,
                   message: message,
                   retryKey: retryKey,
                   onRetry: () => context.read<CapaDetailBloc>().add(CapaDetailStarted(capaId)),
@@ -222,6 +224,7 @@ class _Head extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final loaded = capa;
     final concern = loaded?.concern;
     // A CAPA whose Concern could not be read (a row written outside the
@@ -247,13 +250,13 @@ class _Head extends StatelessWidget {
                   ),
                   icon: const Icon(Icons.arrow_back),
                   label: Text(
-                    concern == null ? 'Back to the action log' : 'Back to ${concern.actionNo}',
+                    concern == null ? l10n.commonBackToTheActionLog : l10n.capaDetailBackTo(concern.actionNo),
                   ),
                 ),
               ),
               const SizedBox(height: Spacing.sm),
               AppPageHeader(
-                title: 'CAPA',
+                title: l10n.commonCapa,
                 actions: [
                   // The report, offered to every reader rather than gated: the
                   // record itself is a Site-wide read (ADR-0009), and a reader
@@ -264,7 +267,7 @@ class _Head extends StatelessWidget {
                       key: CapaDetailScreen.reportKey,
                       onPressed: () => context.go(Routes.capaReport(loaded.id)),
                       icon: const Icon(Icons.description_outlined),
-                      label: const Text('The report'),
+                      label: Text(l10n.capaDetailTheReport),
                     ),
                 ],
               ),
@@ -355,6 +358,7 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final palette = AppColors.of(context);
 
@@ -384,9 +388,9 @@ class _SummaryCard extends StatelessWidget {
                 // The method is a chip rather than a field: every CAPA this
                 // slice opens is an 8D, and a reader wants to know which
                 // discipline they are reading rather than to change it.
-                Chip(label: Text('${capa.methodLabel} investigation')),
+                Chip(label: Text(l10n.capaDetailInvestigation(capa.methodLabel))),
                 Chip(label: Text(capa.orgUnitName)),
-                if (capa.dueDate != null) Chip(label: Text('due ${capa.dueDate}')),
+                if (capa.dueDate != null) Chip(label: Text(l10n.actionDetailDue((capa.dueDate ?? '')))),
                 StatusChip(label: capa.statusLabel, tone: capa.statusTone),
               ],
             ),
@@ -438,6 +442,7 @@ class _Effectiveness extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final verifiedAt = capa.effectivenessVerifiedAt;
     final dueAt = capa.effectivenessCheckDueAt;
@@ -445,12 +450,10 @@ class _Effectiveness extends StatelessWidget {
     return KeyedSubtree(
       key: CapaDetailScreen.effectivenessKey,
       child: AppDetailSection(
-        title: 'Effectiveness',
+        title: l10n.capaDetailEffectiveness,
         children: [
         Text(
-          'A CAPA closes only when both chains have a confirmed root cause, its Concern is '
-          'closed, and somebody holding Quality authority other than its team lead has '
-          'verified, some time later, that the problem has not come back.',
+          l10n.commonACapaClosesOnlyWhenBothChains,
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: Spacing.sm),
@@ -467,8 +470,7 @@ class _Effectiveness extends StatelessWidget {
               ),
               Text(
                 key: CapaDetailScreen.effectivenessVerifiedByKey,
-                'recorded by ${capa.effectivenessVerifiedBy?.name ?? 'an Account'} on '
-                '${verifiedAt.toLocal().toIso8601String().substring(0, 10)}',
+                l10n.capaDetailRecordedByOn(capa.effectivenessVerifiedBy?.name ?? 'an Account', verifiedAt.toLocal().toIso8601String().substring(0, 10)),
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
@@ -485,8 +487,7 @@ class _Effectiveness extends StatelessWidget {
               key: CapaDetailScreen.effectivenessReopenedKey,
               padding: const EdgeInsets.only(top: Spacing.sm),
               child: Text(
-                'The check did not hold, so the Concern is open again in its next cycle: the '
-                'work is on its Screen, in the Concern this investigation answers.',
+                l10n.capaDetailTheCheckDidNotHoldSoThe,
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
@@ -499,13 +500,13 @@ class _Effectiveness extends StatelessWidget {
             children: [
               Text(
                 key: CapaDetailScreen.effectivenessDueKey,
-                'The Concern has closed, so the effectiveness check is due on $dueAt.',
+                l10n.commonTheConcernHasClosedSoTheEffectiveness(dueAt),
                 style: theme.textTheme.bodyMedium,
               ),
               if (capa.effectivenessCheckOverdue)
                 StatusChip(
                   key: CapaDetailScreen.effectivenessOverdueKey,
-                  label: 'Overdue',
+                  label: l10n.commonOverdue,
                   tone: StatusTone.warning,
                 ),
             ],
@@ -517,28 +518,26 @@ class _Effectiveness extends StatelessWidget {
               onPressed: () =>
                   context.go('${Routes.actions}/capas/${capa.id}/effectiveness'),
               icon: const Icon(Icons.verified_outlined),
-              label: const Text('Record the effectiveness check'),
+              label: Text(l10n.commonRecordTheEffectivenessCheck),
             )
           else if (isCapaTeamLeadAccount(context, capa))
             Text(
               key: CapaDetailScreen.effectivenessTeamLeadKey,
-              'You lead this investigation, so somebody else records the check: a holder of '
-              'Quality authority who is not on the team lead\'s Account.',
+              l10n.capaDetailYouLeadThisInvestigationSoSomebodyElse,
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             )
           else
             Text(
               key: CapaDetailScreen.effectivenessNotYoursKey,
-              'Recording the check needs Quality authority at this Org Unit.',
+              l10n.capaDetailRecordingTheCheckNeedsQualityAuthorityAt,
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
         ] else
           Text(
             key: CapaDetailScreen.effectivenessNotYetKey,
-            'The check falls due ${capa.effectivenessCheckDelayDays} days after the Concern '
-            'closes, and the Concern has not closed yet.',
+            l10n.capaDetailTheCheckFallsDueDaysAfterThe(capa.effectivenessCheckDelayDays),
             style: theme.textTheme.bodyMedium
                 ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
@@ -561,16 +560,17 @@ class _Team extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final team = capa.team;
     return KeyedSubtree(
       key: CapaDetailScreen.teamKey,
       child: AppDetailSection(
-        title: 'Team',
+        title: l10n.capaDetailTeam,
         children: [
         if (team.isEmpty)
           Text(
             key: CapaDetailScreen.noTeamKey,
-            'Nobody is on this investigation yet.',
+            l10n.commonNobodyIsOnThisInvestigationYet,
             style: AppTypography.dense(context)
                 ?.copyWith(color: AppColors.of(context).textMuted),
           ),
@@ -579,7 +579,7 @@ class _Team extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: Spacing.xxs),
             child: Text(
               member.employeeId == capa.teamLead?.employeeId
-                  ? '${member.name} · team lead'
+                  ? l10n.commonTeamLead(member.name)
                   : member.name,
               style: AppTypography.dense(context),
             ),
@@ -600,16 +600,17 @@ class _Problem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final problem = capa.problemStatement;
     return KeyedSubtree(
       key: CapaDetailScreen.problemKey,
       child: AppDetailSection(
-        title: 'The problem',
+        title: l10n.capaDetailTheProblem,
         children: [
           Text(
             key: problem == null ? CapaDetailScreen.noProblemKey : null,
-            problem ?? 'Nobody has written the problem description yet.',
+            problem ?? l10n.commonNobodyHasWrittenTheProblemDescriptionYet,
             style: AppTypography.dense(context)?.copyWith(
               color: problem == null ? theme.colorScheme.onSurfaceVariant : null,
             ),
@@ -654,17 +655,17 @@ class _Fishbone extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final mayWrite = capa.isOpen && mayEditCapaChains(context, capa);
 
     return KeyedSubtree(
       key: CapaDetailScreen.fishboneKey,
       child: AppDetailSection(
-        title: 'Candidate causes',
+        title: l10n.capaDetailCandidateCauses,
         children: [
         Text(
-          'The fishbone: what the team suspected, by 6M category, and what the evidence said '
-          'about each one. The chain that follows begins with the cause it confirmed.',
+          l10n.capaDetailTheFishboneWhatTheTeamSuspectedBy,
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
         if (!capa.isOpen)
@@ -672,7 +673,7 @@ class _Fishbone extends StatelessWidget {
             key: CapaDetailScreen.fishboneClosedKey,
             padding: const EdgeInsets.only(top: Spacing.sm),
             child: Text(
-              'This investigation is over, so its fishbone is a record rather than a worklist.',
+              l10n.capaDetailThisInvestigationIsOverSoItsFishbone,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           )
@@ -681,8 +682,7 @@ class _Fishbone extends StatelessWidget {
             key: CapaDetailScreen.fishboneReadOnlyKey,
             padding: const EdgeInsets.only(top: Spacing.sm),
             child: Text(
-              "Writing a CAPA's root causes needs edit access at its Org Unit, or a place on "
-              'its team.',
+              l10n.commonWritingACapaSRootCausesNeeds,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           ),
@@ -708,6 +708,7 @@ class _Bone extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final causes = capa.causesIn(category);
 
@@ -737,7 +738,7 @@ class _Bone extends StatelessWidget {
                   '${Routes.actions}/capas/${capa.id}/causes/$category/new',
                 ),
                 icon: const Icon(Icons.add),
-                label: const Text('Record a cause'),
+                label: Text(l10n.capaDetailRecordACause),
               ),
           ],
         ),
@@ -746,7 +747,7 @@ class _Bone extends StatelessWidget {
             key: CapaDetailScreen.causeCategoryEmptyKey(category),
             padding: const EdgeInsets.only(top: Spacing.xs),
             child: Text(
-              'Nothing is recorded under ${capaCauseCategoryLabel(category)}.',
+              l10n.capaDetailNothingIsRecordedUnder(capaCauseCategoryLabel(category)),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -780,6 +781,7 @@ class _CauseRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final base = '${Routes.actions}/capas/${capa.id}/causes/${cause.category}/${cause.id}';
 
@@ -797,7 +799,7 @@ class _CauseRow extends StatelessWidget {
               spacing: Spacing.sm,
               runSpacing: Spacing.sm,
               children: [
-                Text('Cause ${cause.sequence}', style: theme.textTheme.titleSmall),
+                Text(l10n.capaDetailCause(cause.sequence), style: theme.textTheme.titleSmall),
                 StatusChip(
                   key: CapaDetailScreen.causeVerdictKey(cause.id),
                   label: cause.verdictLabel,
@@ -815,7 +817,7 @@ class _CauseRow extends StatelessWidget {
               key: CapaDetailScreen.causeEvidenceKey(cause.id),
               padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xs, Spacing.lg, 0),
               child: Text(
-                'Evidence: ${cause.evidenceNote}',
+                l10n.commonEvidence((cause.evidenceNote ?? '')),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -832,23 +834,23 @@ class _CauseRow extends StatelessWidget {
                   TextButton(
                     key: CapaDetailScreen.causeDecideKey(cause.id),
                     onPressed: () => context.go('$base/verdict'),
-                    child: Text(cause.isDecided ? 'Change the verdict' : 'Decide it'),
+                    child: Text(cause.isDecided ? l10n.capaDetailChangeTheVerdict : l10n.capaDetailDecideIt),
                   ),
                   TextButton(
                     key: CapaDetailScreen.causeEditKey(cause.id),
                     onPressed: () => context.go('$base/edit'),
-                    child: const Text('Revise'),
+                    child: Text(l10n.commonRevise),
                   ),
                   if (_canStartChain)
                     TextButton(
                       key: CapaDetailScreen.causeStartWhyKey(cause.id),
                       onPressed: () => context.go('$base/why'),
-                      child: const Text('Start a chain from it'),
+                      child: Text(l10n.capaDetailStartAChainFromIt),
                     ),
                   TextButton(
                     key: CapaDetailScreen.causeRemoveKey(cause.id),
                     onPressed: () => context.go('$base/remove'),
-                    child: const Text('Remove'),
+                    child: Text(l10n.commonRemove),
                   ),
                 ],
               ),
@@ -881,17 +883,17 @@ class _Chains extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final mayWrite = capa.isOpen && mayEditCapaChains(context, capa);
 
     return KeyedSubtree(
       key: CapaDetailScreen.chainsKey,
       child: AppDetailSection(
-        title: 'Root cause',
+        title: l10n.capaDetailRootCause,
         children: [
         Text(
-          'Two chains, each ending at one confirmed root cause: why the problem happened, '
-          'and why it was not detected.',
+          l10n.capaDetailTwoChainsEachEndingAtOneConfirmed,
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
         if (!capa.isOpen)
@@ -899,7 +901,7 @@ class _Chains extends StatelessWidget {
             key: CapaDetailScreen.chainsClosedKey,
             padding: const EdgeInsets.only(top: Spacing.sm),
             child: Text(
-              'This investigation is over, so its chains are a record rather than a worklist.',
+              l10n.capaDetailThisInvestigationIsOverSoItsChains,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           )
@@ -908,8 +910,7 @@ class _Chains extends StatelessWidget {
             key: CapaDetailScreen.chainsReadOnlyKey,
             padding: const EdgeInsets.only(top: Spacing.sm),
             child: Text(
-              "Writing a CAPA's root causes needs edit access at its Org Unit, or a place on "
-              'its team.',
+              l10n.commonWritingACapaSRootCausesNeeds,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           ),
@@ -935,6 +936,7 @@ class _Chain extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final whys = capa.whysIn(chain);
     final root = capa.rootCauseOf(chain);
@@ -964,22 +966,22 @@ class _Chain extends StatelessWidget {
                 onPressed: () =>
                     context.go('${Routes.actions}/capas/${capa.id}/whys/$chain/new'),
                 icon: const Icon(Icons.add),
-                label: const Text('Add a Why'),
+                label: Text(l10n.commonAddAWhy),
               ),
           ],
         ),
         const SizedBox(height: Spacing.xs),
         Text(
-          chain == 'occurrence'
-              ? 'Why the problem happened, one step at a time.'
-              : 'Why it was not detected, one step at a time.',
+          chain == l10n.capaDetailOccurrence
+              ? l10n.capaDetailWhyTheProblemHappenedOneStepAt
+              : l10n.capaDetailWhyItWasNotDetectedOneStep,
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: Spacing.sm),
         if (whys.isEmpty)
           Text(
             key: CapaDetailScreen.noWhysKey(chain),
-            'Nobody has started this chain yet.',
+            l10n.commonNobodyHasStartedThisChainYet,
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         for (final why in whys)
@@ -995,8 +997,8 @@ class _Chain extends StatelessWidget {
           padding: const EdgeInsets.only(top: Spacing.xs),
           child: Text(
             root == null
-                ? 'This chain has no confirmed root cause yet.'
-                : 'Confirmed root cause: ${root.statement}',
+                ? l10n.commonThisChainHasNoConfirmedRootCause
+                : l10n.commonConfirmedRootCause(root.statement),
             style: theme.textTheme.bodySmall?.copyWith(
               color: root == null
                   ? theme.colorScheme.onSurfaceVariant
@@ -1040,6 +1042,7 @@ class _WhyRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     return Card(
@@ -1056,11 +1059,11 @@ class _WhyRow extends StatelessWidget {
               spacing: Spacing.sm,
               runSpacing: Spacing.sm,
               children: [
-                Text('Why ${why.sequence}', style: theme.textTheme.titleSmall),
+                Text(l10n.capaDetailWhy(why.sequence), style: theme.textTheme.titleSmall),
                 if (why.isRoot)
                   StatusChip(
                     key: CapaDetailScreen.whyRootChipKey(why.id),
-                    label: 'Confirmed root cause',
+                    label: l10n.capaDetailConfirmedRootCause,
                     tone: StatusTone.success,
                   ),
               ],
@@ -1085,32 +1088,32 @@ class _WhyRow extends StatelessWidget {
                   TextButton(
                     key: CapaDetailScreen.whyMarkRootKey(why.id),
                     onPressed: () => _change(context, isRoot: !why.isRoot),
-                    child: Text(why.isRoot ? 'Clear the root cause' : 'This is the root cause'),
+                    child: Text(why.isRoot ? l10n.capaDetailClearTheRootCause : l10n.capaDetailThisIsTheRootCause),
                   ),
                   TextButton(
                     key: CapaDetailScreen.whyEditKey(why.id),
                     onPressed: () => context.go(
                       '${Routes.actions}/capas/${capa.id}/whys/$chain/${why.id}/edit',
                     ),
-                    child: const Text('Revise'),
+                    child: Text(l10n.commonRevise),
                   ),
                   TextButton(
                     key: CapaDetailScreen.whyRemoveKey(why.id),
                     onPressed: () => context.go(
                       '${Routes.actions}/capas/${capa.id}/whys/$chain/${why.id}/remove',
                     ),
-                    child: const Text('Remove'),
+                    child: Text(l10n.commonRemove),
                   ),
                   IconButton(
                     key: CapaDetailScreen.whyEarlierKey(why.id),
-                    tooltip: 'Move it earlier in the chain',
+                    tooltip: l10n.capaDetailMoveItEarlierInTheChain,
                     onPressed:
                         why.sequence > 1 ? () => _change(context, sequence: why.sequence - 1) : null,
                     icon: const Icon(Icons.arrow_upward),
                   ),
                   IconButton(
                     key: CapaDetailScreen.whyLaterKey(why.id),
-                    tooltip: 'Move it later in the chain',
+                    tooltip: l10n.capaDetailMoveItLaterInTheChain,
                     onPressed: isLast ? null : () => _change(context, sequence: why.sequence + 1),
                     icon: const Icon(Icons.arrow_downward),
                   ),
@@ -1132,10 +1135,11 @@ class _ConcernCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return KeyedSubtree(
       key: CapaDetailScreen.concernKey,
       child: AppDetailSection(
-        title: 'The Concern',
+        title: l10n.capaDetailTheConcern,
         children: [
           InkWell(
             onTap: () => context.go('${Routes.actions}/${concern.id}'),
@@ -1149,7 +1153,7 @@ class _ConcernCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'The Concern: ${concern.actionNo}',
+                          l10n.capaDetailTheConcern2(concern.actionNo),
                           style: AppTypography.dense(context)
                               ?.copyWith(fontWeight: FontWeight.w600),
                         ),
@@ -1189,26 +1193,25 @@ class _ConcernMeasures extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final measures = concern.measures;
     return KeyedSubtree(
       key: CapaDetailScreen.measuresKey,
       child: AppDetailSection(
         title: measures.isEmpty
-            ? 'What the Concern has done'
-            : 'What the Concern has done (${measures.length})',
+            ? l10n.capaDetailWhatTheConcernHasDone
+            : l10n.capaDetailWhatTheConcernHasDone2(measures.length),
         children: [
         Text(
-          'The containment (D3), the countermeasures (D5-D6) and the preventive actions (D7) are '
-          "the Concern's own, recorded once in the action log — this is where they are read, not "
-          'where they are recorded again.',
+          l10n.capaDetailTheContainmentD3TheCountermeasuresD5D6,
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: Spacing.sm),
         if (measures.isEmpty)
           Text(
             key: CapaDetailScreen.noMeasuresKey,
-            'Nothing answers this Concern yet, so there is no work to show.',
+            l10n.capaDetailNothingAnswersThisConcernYetSoThere,
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         for (final measure in measures)
@@ -1225,9 +1228,9 @@ class _ConcernMeasures extends StatelessWidget {
                     [
                       measure.typeLabel,
                       measure.statusLabel,
-                      measure.ownerName ?? 'Nobody yet',
+                      measure.ownerName ?? l10n.commonNobodyYet,
                       if (measure.openPhase != null)
-                        'waiting on its ${measure.openPhase!.phaseLabel.toLowerCase()}',
+                        l10n.commonWaitingOnIts(measure.openPhase!.phaseLabel.toLowerCase()),
                     ].join(' · '),
                   ),
                   trailing: const Icon(Icons.chevron_right),
@@ -1241,8 +1244,8 @@ class _ConcernMeasures extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xs),
                     child: Text(
                       [
-                        'Cycle ${phase.cycle} · ${phase.phaseLabel}',
-                        if (phase.completedAt != null) 'done' else 'open',
+                        l10n.commonCycle(phase.cycle, phase.phaseLabel),
+                        if (phase.completedAt != null) l10n.commonDone else l10n.commonOpen2,
                         if (phase.outcomeLabel != null) phase.outcomeLabel!,
                         if (phase.note != null) phase.note!,
                       ].join(' · '),

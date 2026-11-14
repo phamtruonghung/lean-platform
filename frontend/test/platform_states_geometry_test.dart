@@ -15,6 +15,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'package:lean_platform/l10n/app_localizations.dart';
 import 'package:lean_platform/auth/awaiting_approval_screen.dart';
 import 'package:lean_platform/platform/access_denied_screen.dart';
 import 'package:lean_platform/platform/change_password_screen.dart';
@@ -74,7 +76,12 @@ Future<void> _pumpScreen(
   tester.platformDispatcher.textScaleFactorTestValue = textScale;
   addTearDown(tester.view.reset);
   addTearDown(tester.platformDispatcher.clearAllTestValues);
-  await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: screen));
+  await tester.pumpWidget(MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    theme: buildAppTheme(),
+    home: screen,
+  ));
   await tester.pumpAndSettle();
 }
 

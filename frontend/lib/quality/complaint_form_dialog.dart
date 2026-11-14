@@ -19,6 +19,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../theme.dart';
@@ -117,6 +118,7 @@ class _ComplaintFormDialogState extends State<ComplaintFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final state = context.watch<ComplaintsBloc>().state;
     final loaded = state is ComplaintsLoaded ? state : null;
@@ -124,18 +126,18 @@ class _ComplaintFormDialogState extends State<ComplaintFormDialog> {
     return BlocListener<ComplaintsBloc, ComplaintsState>(
       listener: _onComplaintsChanged,
       child: AppDialog(
-        title: 'Record a customer complaint',
+        title: l10n.complaintFormRecordACustomerComplaint,
         size: AppDialogSize.picker,
         actions: [
           AppDialogAction(
             id: 'complaint-form-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'complaint-form-submit',
-            label: _awaiting ? 'Saving…' : 'Record it',
+            label: _awaiting ? l10n.commonSaving : l10n.nonconformanceFormRecord,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -147,8 +149,8 @@ class _ComplaintFormDialogState extends State<ComplaintFormDialog> {
               key: ComplaintFormDialog.customerKey,
               initialValue: _customerId,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Customer',
+              decoration: InputDecoration(
+                labelText: l10n.complaintFormCustomer,
                 border: OutlineInputBorder(),
               ),
               items: [
@@ -165,8 +167,8 @@ class _ComplaintFormDialogState extends State<ComplaintFormDialog> {
               key: ComplaintFormDialog.productKey,
               initialValue: _productId,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Product',
+              decoration: InputDecoration(
+                labelText: l10n.commonProduct,
                 border: OutlineInputBorder(),
               ),
               items: [
@@ -184,14 +186,13 @@ class _ComplaintFormDialogState extends State<ComplaintFormDialog> {
               key: ComplaintFormDialog.defectCodeKey,
               initialValue: _defectCodeId,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Defect code (optional)',
-                helperText: 'What the customer says is wrong. A Non-conformance recorded '
-                    'from this complaint carries it.',
+              decoration: InputDecoration(
+                labelText: l10n.commonDefectCodeOptional,
+                helperText: l10n.complaintFormWhatTheCustomerSaysIsWrongA,
                 border: OutlineInputBorder(),
               ),
               items: [
-                const DropdownMenuItem<String?>(value: null, child: Text('Not known yet')),
+                DropdownMenuItem<String?>(value: null, child: Text(l10n.commonNotKnownYet)),
                 for (final code in loaded?.defectCodes ?? const [])
                   DropdownMenuItem<String?>(
                     value: code.id,
@@ -206,9 +207,9 @@ class _ComplaintFormDialogState extends State<ComplaintFormDialog> {
               controller: _quantity,
               enabled: !_awaiting,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Quantity (optional)',
-                helperText: 'In the Product\'s own unit of measure.',
+              decoration: InputDecoration(
+                labelText: l10n.complaintFormQuantityOptional,
+                helperText: l10n.complaintFormInTheProductSOwnUnitOf,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -216,8 +217,8 @@ class _ComplaintFormDialogState extends State<ComplaintFormDialog> {
             AppDateField(
               key: ComplaintFormDialog.responseDueKey,
               name: 'complaint-response-due',
-              label: 'Response due (optional)',
-              helperText: 'The day the customer was promised an answer.',
+              label: l10n.complaintFormResponseDueOptional,
+              helperText: l10n.complaintFormTheDayTheCustomerWasPromisedAn,
               value: _responseDueDate,
               optional: true,
               enabled: !_awaiting,
@@ -231,8 +232,8 @@ class _ComplaintFormDialogState extends State<ComplaintFormDialog> {
               minLines: 2,
               maxLines: 4,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'What the customer said',
+              decoration: InputDecoration(
+                labelText: l10n.complaintFormWhatTheCustomerSaid,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -240,7 +241,7 @@ class _ComplaintFormDialogState extends State<ComplaintFormDialog> {
             SwitchListTile(
               key: ComplaintFormDialog.warrantyKey,
               contentPadding: EdgeInsets.zero,
-              title: const Text('Warranty claim'),
+              title: Text(l10n.commonWarrantyClaim),
               value: _isWarranty,
               onChanged: _awaiting ? null : (value) => setState(() => _isWarranty = value),
             ),
@@ -249,9 +250,8 @@ class _ComplaintFormDialogState extends State<ComplaintFormDialog> {
               selectedId: _orgUnit?.id,
               enabled: !_awaiting,
               showSitePicker: false,
-              title: 'Who answers it',
-              description: 'Choose the Org Unit that will answer this complaint. This is '
-                  'what decides who may act on it.',
+              title: l10n.complaintFormWhoAnswersIt,
+              description: l10n.complaintFormChooseTheOrgUnitThatWillAnswer,
               onSelected: (node) => setState(() => _orgUnit = node),
             ),
             if (_orgUnit != null)
@@ -259,7 +259,7 @@ class _ComplaintFormDialogState extends State<ComplaintFormDialog> {
                 key: ComplaintFormDialog.chosenOrgUnitKey,
                 padding: const EdgeInsets.only(top: Spacing.sm),
                 child: Text(
-                  'This complaint will be filed at ${_orgUnit!.name}.',
+                  l10n.complaintFormThisComplaintWillBeFiledAt(_orgUnit!.name),
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),

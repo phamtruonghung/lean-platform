@@ -17,6 +17,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'supplier_ncr.dart';
@@ -107,24 +108,25 @@ class _SupplierNcrDispositionDialogState extends State<SupplierNcrDispositionDia
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocListener<SupplierNcrDetailBloc, SupplierNcrDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Decide the material',
+        title: l10n.supplierNcrDispositionDecideTheMaterial,
         size: AppDialogSize.picker,
         actions: [
           // `DialogPage` is not barrier-dismissible, so a dialog that refuses
           // its own request still needs a way out of its own.
           AppDialogAction(
             id: 'supplier-ncr-disposition-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'supplier-ncr-disposition-submit',
-            label: _awaiting ? 'Saving…' : 'Record the disposition',
+            label: _awaiting ? l10n.commonSaving : l10n.commonRecordTheDisposition,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -133,8 +135,7 @@ class _SupplierNcrDispositionDialogState extends State<SupplierNcrDispositionDia
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'What happens to ${widget.supplierNcr.quantityLabel} that came from '
-              '${widget.supplierNcr.supplierName} on ${widget.supplierNcr.ncrNo}.',
+              l10n.supplierNcrDispositionWhatHappensToThatCameFromOn(widget.supplierNcr.quantityLabel, widget.supplierNcr.supplierName, widget.supplierNcr.ncrNo),
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
@@ -143,9 +144,9 @@ class _SupplierNcrDispositionDialogState extends State<SupplierNcrDispositionDia
               key: SupplierNcrDispositionDialog.dispositionKey,
               initialValue: _disposition,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Disposition',
-                helperText: 'What the plant decided happens to the received material.',
+              decoration: InputDecoration(
+                labelText: l10n.commonDisposition,
+                helperText: l10n.supplierNcrDispositionWhatThePlantDecidedHappensToThe,
                 border: OutlineInputBorder(),
               ),
               items: [
@@ -167,10 +168,9 @@ class _SupplierNcrDispositionDialogState extends State<SupplierNcrDispositionDia
               controller: _cost,
               enabled: !_awaiting,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Cost recovered (optional)',
-                helperText: 'What was clawed back from the Supplier. Leave it blank when '
-                    'nothing was claimed.',
+              decoration: InputDecoration(
+                labelText: l10n.supplierNcrDispositionCostRecoveredOptional,
+                helperText: l10n.supplierNcrDispositionWhatWasClawedBackFromTheSupplier,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -181,9 +181,9 @@ class _SupplierNcrDispositionDialogState extends State<SupplierNcrDispositionDia
               enabled: !_awaiting,
               maxLength: 3,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Currency',
-                helperText: 'Three letters, the currency the cost recovered is in.',
+              decoration: InputDecoration(
+                labelText: l10n.commonCurrency,
+                helperText: l10n.supplierNcrDispositionThreeLettersTheCurrencyTheCostRecovered,
                 border: OutlineInputBorder(),
               ),
             ),

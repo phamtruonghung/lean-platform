@@ -14,6 +14,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -95,6 +96,7 @@ class _NonconformanceLowerSeverityDialogState extends State<NonconformanceLowerS
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final record = widget.nonconformance;
     final offerable = _offerableSeverities;
@@ -104,14 +106,14 @@ class _NonconformanceLowerSeverityDialogState extends State<NonconformanceLowerS
     if (!holdsQualityAuthority(context, record.orgUnitId)) {
       return AppDialog(
         key: NonconformanceLowerSeverityDialog.refusedKey,
-        title: 'Cannot lower it',
+        title: l10n.nonconformanceLowerSeverityCannotLowerIt,
         size: AppDialogSize.decision,
         description:
-            'Lowering a severity needs Quality authority at this Non-conformance\'s Org Unit.',
+            l10n.nonconformanceLowerSeverityLoweringASeverityNeedsQualityAuthorityAt,
         actions: [
           AppDialogAction(
             id: 'nonconformance-lower-severity-refused-close',
-            label: 'Close',
+            label: l10n.downtimeClose,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -122,18 +124,18 @@ class _NonconformanceLowerSeverityDialogState extends State<NonconformanceLowerS
     return BlocListener<NonconformanceDetailBloc, NonconformanceDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Lower the severity',
+        title: l10n.nonconformanceLowerSeverity,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: 'nonconformance-lower-severity-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'nonconformance-lower-severity-submit',
-            label: 'Lower it',
+            label: l10n.nonconformanceLowerSeverityLowerIt,
             onPressed: _complete ? _submit : null,
           ),
         ],
@@ -142,14 +144,13 @@ class _NonconformanceLowerSeverityDialogState extends State<NonconformanceLowerS
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '${record.issueNo} is ${record.severityLabel.toLowerCase()} severity, and its '
-              'Defect code starts at ${DefectSeverity.label(record.defectCodeDefaultSeverity).toLowerCase()}.',
+              l10n.nonconformanceLowerSeverityIsSeverityAndItsDefectCodeStarts(record.issueNo, record.severityLabel.toLowerCase(), DefectSeverity.label(record.defectCodeDefaultSeverity).toLowerCase()),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: Spacing.md),
             if (offerable.isEmpty)
               Text(
-                'This Non-conformance is already at the lightest severity.',
+                l10n.nonconformanceLowerSeverityThisNonConformanceIsAlreadyAtThe,
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               )
@@ -158,15 +159,15 @@ class _NonconformanceLowerSeverityDialogState extends State<NonconformanceLowerS
                 key: NonconformanceLowerSeverityDialog.severityKey,
                 initialValue: _severity,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Lower the severity to',
-                  helperText: 'Lowering what the Defect code says needs Quality authority.',
+                decoration: InputDecoration(
+                  labelText: l10n.nonconformanceLowerSeverityLowerTheSeverityTo,
+                  helperText: l10n.nonconformanceLowerSeverityLoweringWhatTheDefectCodeSaysNeeds,
                   border: OutlineInputBorder(),
                 ),
                 items: [
-                  const DropdownMenuItem<String?>(
+                  DropdownMenuItem<String?>(
                     value: null,
-                    child: Text('Leave the severity alone'),
+                    child: Text(l10n.commonLeaveTheSeverityAlone),
                   ),
                   for (final severity in offerable)
                     DropdownMenuItem<String?>(
@@ -184,9 +185,9 @@ class _NonconformanceLowerSeverityDialogState extends State<NonconformanceLowerS
               minLines: 2,
               maxLines: 3,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Note',
-                helperText: 'Why it is less bad than the Defect code says.',
+              decoration: InputDecoration(
+                labelText: l10n.commonNote,
+                helperText: l10n.nonconformanceLowerSeverityWhyItIsLessBadThanThe,
                 border: OutlineInputBorder(),
               ),
             ),

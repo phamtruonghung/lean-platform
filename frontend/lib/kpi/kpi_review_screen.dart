@@ -61,6 +61,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_dialog.dart';
@@ -162,13 +163,14 @@ class KpiReviewScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<KpiReviewBloc>().state;
     return Scaffold(
       body: switch (state) {
         KpiReviewLoading() => const SkeletonList(maxWidth: KpiReviewScreen.maxWidth),
         KpiReviewUnavailable(message: final message) => PlatformFailureState(
             key: KpiReviewScreen.failedKey,
-            title: 'The KPI Review could not be read',
+            title: l10n.kpiReviewTheKpiReviewCouldNotBeRead,
             message: message,
             retryKey: KpiReviewScreen.retryKey,
             onRetry: () => context.read<KpiReviewBloc>().add(const KpiReviewStarted()),
@@ -290,6 +292,7 @@ class _LoadedState extends State<_Loaded> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final state = widget.state;
     final review = state.review;
@@ -321,9 +324,9 @@ class _LoadedState extends State<_Loaded> {
           children: [
             AppPageHeader(
               key: KpiReviewScreen.headingKey,
-              title: reviewDate == null ? 'KPI Review' : 'KPI Review for $reviewDate',
+              title: reviewDate == null ? l10n.kpiReviewKpiReview : l10n.kpiReviewKpiReviewFor(reviewDate),
               description:
-                  'Judge each KPI of the MTU line against its Daily Target: met, missed or not measured.',
+                  l10n.kpiReviewJudgeEachKpiOfTheMtuLine,
               // The title names the day; this line names the Site the day belongs
               // to, which the Screen never said when the person has one Site and
               // so never saw the selector (issue #395).
@@ -358,7 +361,7 @@ class _LoadedState extends State<_Loaded> {
                             initialValue: state.siteId,
                             isDense: true,
                             decoration:
-                                const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+                                InputDecoration(labelText: l10n.commonSite, border: OutlineInputBorder()),
                             items: [
                               for (final site in state.sites)
                                 DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -374,7 +377,7 @@ class _LoadedState extends State<_Loaded> {
                           width: 220,
                           child: AppDateField(
                             name: KpiReviewScreen.dateName,
-                            label: 'Day',
+                            label: l10n.workedHoursDay,
                             value: reviewDate,
                             firstDate: KpiReviewScreen.firstReviewDate,
                             lastDate: lastDate,
@@ -394,17 +397,17 @@ class _LoadedState extends State<_Loaded> {
             if (state.isLoadingReview || review == null)
               const SkeletonList(rows: 3, maxWidth: KpiReviewScreen.maxWidth)
             else if (review.rows.isEmpty)
-              const PlatformEmptyState.noneExist(
+              PlatformEmptyState.noneExist(
                 key: KpiReviewScreen.emptyKey,
-                title: 'No KPIs to review',
-                message: 'The KPI catalogue has no KPI yet.',
+                title: l10n.kpiReviewNoKpisToReview,
+                message: l10n.kpiReviewTheKpiCatalogueHasNoKpiYet,
                 icon: Icons.fact_check_outlined,
               )
             else ...[
               AppFilterField(
                 name: KpiReviewScreen.filterFieldName,
-                label: 'Filter KPIs',
-                helperText: 'By title.',
+                label: l10n.commonFilterKpis,
+                helperText: l10n.kpiReviewByTitle,
                 term: _term,
                 onChanged: (term) => setState(() => _term = term),
                 shown: matches.length,
@@ -416,9 +419,8 @@ class _LoadedState extends State<_Loaded> {
               if (matches.isEmpty)
                 PlatformEmptyState.noneMatched(
                   key: KpiReviewScreen.noMatchKey,
-                  title: 'No KPIs match',
-                  message: 'No KPI of the review matches "${_term.trim()}". Try a '
-                      'different title, or clear the filter.',
+                  title: l10n.commonNoKpisMatch,
+                  message: l10n.kpiReviewNoKpiOfTheReviewMatchesTry(_term.trim()),
                 )
               else
                 _ReviewGrid(
@@ -442,15 +444,15 @@ class _LoadedState extends State<_Loaded> {
                     onPressed: canSave
                         ? () => context.read<KpiReviewBloc>().add(ReviewSaveRequested(changes))
                         : null,
-                    child: Text(state.isMutating ? 'Saving…' : 'Save'),
+                    child: Text(state.isMutating ? l10n.commonSaving : l10n.commonSave),
                   ),
                   const SizedBox(width: Spacing.md),
                   if (hiddenChanges > 0) ...[
                     Flexible(
                       child: Text(
                         hiddenChanges == 1
-                            ? '1 changed KPI is hidden by the search.'
-                            : '$hiddenChanges changed KPIs are hidden by the search.',
+                            ? l10n.kpiReview1ChangedKpiIsHiddenByThe
+                            : l10n.kpiReviewChangedKpisAreHiddenByTheSearch(hiddenChanges),
                         key: KpiReviewScreen.hiddenChangesKey,
                         style: theme.textTheme.bodyMedium,
                       ),
@@ -460,8 +462,7 @@ class _LoadedState extends State<_Loaded> {
                   if (state.savedCount != null)
                     Flexible(
                       child: Text(
-                        'Saved ${state.savedCount} ${state.savedCount == 1 ? 'KPI Review' : 'KPI Reviews'} '
-                        'for ${review.reviewDate}.',
+                        l10n.kpiReviewSavedFor((state.savedCount ?? 0), state.savedCount == 1 ? 'KPI Review' : 'KPI Reviews', review.reviewDate),
                         key: KpiReviewScreen.savedKey,
                         style: theme.textTheme.bodyMedium,
                       ),
@@ -628,6 +629,7 @@ class _ReviewCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final palette = AppColors.of(context);
     final targetText = _targetText(row);
@@ -656,7 +658,7 @@ class _ReviewCell extends StatelessWidget {
               style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: Spacing.xs),
-            Text(targetText == null ? 'No target' : 'Daily target: $targetText', style: floor),
+            Text(targetText == null ? l10n.kpiReviewNoTarget : l10n.kpiReviewDailyTarget(targetText), style: floor),
             if (targetText == null)
               Text(
                 KpiReviewScreen.noTargetHint,
@@ -671,7 +673,7 @@ class _ReviewCell extends StatelessWidget {
                 if (note.trim().isNotEmpty)
                   IconButton(
                     key: KpiReviewScreen.notePopupKey(row.kpiId),
-                    tooltip: 'Read the note',
+                    tooltip: l10n.kpiReviewReadTheNote,
                     icon: const Icon(Icons.sticky_note_2_outlined),
                     onPressed: onReadNote,
                   ),
@@ -724,6 +726,7 @@ class _NoteDialogState extends State<_NoteDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final kpiId = widget.row.kpiId;
     final targetText = _targetText(widget.row);
     final note = _note.text.trim();
@@ -737,13 +740,13 @@ class _NoteDialogState extends State<_NoteDialog> {
       actions: [
         AppDialogAction(
           id: KpiReviewScreen.noteCancelId(kpiId),
-          label: 'Cancel',
+          label: l10n.commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(),
         ),
         AppDialogAction(
           id: KpiReviewScreen.noteSaveId(kpiId),
-          label: 'Confirm',
+          label: l10n.commonConfirm,
           onPressed: tooShort ? null : () => Navigator.of(context).pop(note),
         ),
       ],
@@ -755,10 +758,9 @@ class _NoteDialogState extends State<_NoteDialog> {
         maxLines: 6,
         onChanged: (_) => setState(() {}),
         decoration: InputDecoration(
-          labelText: targetText == null ? 'Why was it missed?' : 'Why was the Target ($targetText) missed?',
+          labelText: targetText == null ? l10n.kpiReviewWhyWasItMissed : l10n.kpiReviewWhyWasTheTargetMissed(targetText),
           errorText: tooShort
-              ? 'A note of at least ${KpiReviewScreen.minNoteLength} characters is required '
-                  'when a KPI is missed (${note.length} so far).'
+              ? l10n.kpiReviewANoteOfAtLeastCharactersIs(KpiReviewScreen.minNoteLength, note.length)
               : null,
           errorMaxLines: 3,
           border: const OutlineInputBorder(),
@@ -781,6 +783,7 @@ class _ReadNoteDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final targetText = _targetText(row);
     // A draft the person typed is not the server's, so it names nobody.
     final isSaved = row.note != null && row.note!.trim() == note;
@@ -797,14 +800,14 @@ class _ReadNoteDialog extends StatelessWidget {
       actions: [
         AppDialogAction(
           id: KpiReviewScreen.noteCloseId(row.kpiId),
-          label: 'Close',
+          label: l10n.downtimeClose,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(false),
         ),
         if (canEdit)
           AppDialogAction(
             id: KpiReviewScreen.noteEditId(row.kpiId),
-            label: 'Edit',
+            label: l10n.kpiReviewEdit,
             onPressed: () => Navigator.of(context).pop(true),
           ),
       ],
@@ -812,7 +815,7 @@ class _ReadNoteDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(targetText == null ? 'No target' : 'Daily target: $targetText', style: floor),
+          Text(targetText == null ? l10n.kpiReviewNoTarget : l10n.kpiReviewDailyTarget(targetText), style: floor),
           const SizedBox(height: Spacing.sm),
           Text(note, style: AppTypography.dense(context)),
           if (author.isNotEmpty) ...[

@@ -26,6 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../actions/actions.dart';
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'incident_detail_bloc.dart';
@@ -113,6 +114,7 @@ class _SafetyIncidentRaiseConcernDialogState extends State<SafetyIncidentRaiseCo
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final record = widget.incident;
 
@@ -120,20 +122,19 @@ class _SafetyIncidentRaiseConcernDialogState extends State<SafetyIncidentRaiseCo
       listener: _onDetailChanged,
       // A form (520): three fields (§11).
       child: AppDialog(
-        title: 'Raise a Concern',
+        title: l10n.nonconformanceRaiseConcern,
         size: AppDialogSize.form,
-        description: '${record.incidentNo} is recorded at ${record.orgUnitName}, and the Concern '
-            'is raised there — a problem is solved where it happened.',
+        description: l10n.incidentRaiseConcernIsRecordedAtAndTheConcernIs(record.incidentNo, record.orgUnitName),
         actions: [
           AppDialogAction(
             id: SafetyIncidentRaiseConcernDialog._dismissId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: SafetyIncidentRaiseConcernDialog._submitId,
-            label: 'Raise it',
+            label: l10n.actionFormRaiseIt,
             onPressed: _complete ? _submit : null,
           ),
         ],
@@ -147,10 +148,9 @@ class _SafetyIncidentRaiseConcernDialogState extends State<SafetyIncidentRaiseCo
               enabled: !_awaiting,
               maxLines: 1,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'What is the cause to solve?',
-                helperText: 'The Concern is read in the action log, so say the problem, not the '
-                    'injury.',
+              decoration: InputDecoration(
+                labelText: l10n.incidentRaiseConcernWhatIsTheCauseToSolve,
+                helperText: l10n.incidentRaiseConcernTheConcernIsReadInTheAction,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -161,9 +161,9 @@ class _SafetyIncidentRaiseConcernDialogState extends State<SafetyIncidentRaiseCo
               enabled: !_awaiting,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Anything known yet',
-                helperText: 'Optional. The Safety incident itself is already linked as evidence.',
+              decoration: InputDecoration(
+                labelText: l10n.commonAnythingKnownYet,
+                helperText: l10n.incidentRaiseConcernOptionalTheSafetyIncidentItselfIsAlready,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -172,9 +172,9 @@ class _SafetyIncidentRaiseConcernDialogState extends State<SafetyIncidentRaiseCo
               key: SafetyIncidentRaiseConcernDialog.priorityKey,
               initialValue: _priority,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Priority',
-                helperText: '1 is worst.',
+              decoration: InputDecoration(
+                labelText: l10n.commonPriority,
+                helperText: l10n.common1IsWorst,
                 border: OutlineInputBorder(),
               ),
               items: [

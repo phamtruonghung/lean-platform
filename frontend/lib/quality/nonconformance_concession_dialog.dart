@@ -17,6 +17,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -112,6 +113,7 @@ class _NonconformanceConcessionDialogState extends State<NonconformanceConcessio
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final record = widget.nonconformance;
     final unit = record.uomCode;
@@ -123,14 +125,14 @@ class _NonconformanceConcessionDialogState extends State<NonconformanceConcessio
     if (!holdsQualityAuthority(context, record.orgUnitId)) {
       return AppDialog(
         key: NonconformanceConcessionDialog.refusedKey,
-        title: 'Cannot grant it',
+        title: l10n.nonconformanceConcessionCannotGrantIt,
         size: AppDialogSize.decision,
         description:
-            'Granting a Concession needs Quality authority at this Non-conformance\'s Org Unit.',
+            l10n.nonconformanceConcessionGrantingAConcessionNeedsQualityAuthorityAt,
         actions: [
           AppDialogAction(
             id: 'nonconformance-concession-refused-close',
-            label: 'Close',
+            label: l10n.downtimeClose,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -141,18 +143,18 @@ class _NonconformanceConcessionDialogState extends State<NonconformanceConcessio
     return BlocListener<NonconformanceDetailBloc, NonconformanceDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Grant a Concession',
+        title: l10n.nonconformanceConcession,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: 'nonconformance-concession-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'nonconformance-concession-submit',
-            label: 'Grant it',
+            label: l10n.nonconformanceConcessionGrantIt,
             onPressed: _complete ? _submit : null,
           ),
         ],
@@ -161,8 +163,7 @@ class _NonconformanceConcessionDialogState extends State<NonconformanceConcessio
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Accepting the product as it is needs Quality authority, and your name stays '
-              'on ${record.issueNo}.',
+              l10n.nonconformanceConcessionAcceptingTheProductAsItIsNeeds(record.issueNo),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: Spacing.md),
@@ -173,8 +174,8 @@ class _NonconformanceConcessionDialogState extends State<NonconformanceConcessio
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                labelText: 'Quantity accepted as it is',
-                helperText: 'At most ${_number(record.undispositionedQuantity)} $unit.',
+                labelText: l10n.nonconformanceConcessionQuantityAcceptedAsItIs,
+                helperText: l10n.nonconformanceConcessionAtMost(_number(record.undispositionedQuantity), unit),
                 border: const OutlineInputBorder(),
               ),
             ),
@@ -184,9 +185,9 @@ class _NonconformanceConcessionDialogState extends State<NonconformanceConcessio
               controller: _reference,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Reference',
-                helperText: 'The deviation or approval number it is granted under.',
+              decoration: InputDecoration(
+                labelText: l10n.nonconformanceConcessionReference,
+                helperText: l10n.nonconformanceConcessionTheDeviationOrApprovalNumberItIs,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -198,9 +199,9 @@ class _NonconformanceConcessionDialogState extends State<NonconformanceConcessio
               minLines: 2,
               maxLines: 3,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Note',
-                helperText: 'Why the product is acceptable as it is.',
+              decoration: InputDecoration(
+                labelText: l10n.commonNote,
+                helperText: l10n.nonconformanceConcessionWhyTheProductIsAcceptableAsIt,
                 border: OutlineInputBorder(),
               ),
             ),

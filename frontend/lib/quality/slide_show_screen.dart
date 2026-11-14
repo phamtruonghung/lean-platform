@@ -30,6 +30,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -81,6 +82,7 @@ class SlideShowScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<SlideShowBloc>().state;
 
     return Scaffold(
@@ -96,7 +98,7 @@ class SlideShowScreen extends StatelessWidget {
             SlideShowUnavailable(message: final message) => Center(
                 child: PlatformFailureState(
                   key: failedKey,
-                  title: 'The slide show could not be read',
+                  title: l10n.slideShowTheSlideShowCouldNotBeRead,
                   message: message,
                   retryKey: retryKey,
                   onRetry: () => context.read<SlideShowBloc>().add(const SlideShowStarted()),
@@ -142,6 +144,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final loaded = state is SlideShowLoaded ? state as SlideShowLoaded : null;
     return Center(
       child: AppPageFrame(
@@ -149,15 +152,14 @@ class _Header extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
-            title: 'Quality slide show',
+            title: l10n.titleQualitySlideShow,
             description:
-                'The Quality issues chosen for this Site, one picture at a time. '
-                'Choose an issue from its register or its own Screen, and set the order here.',
+                l10n.slideShowTheQualityIssuesChosenForThisSite,
             actions: [
               if (loaded != null && loaded.slides.length > 1)
                 IconButton.filledTonal(
                   key: SlideShowScreen.playKey,
-                  tooltip: loaded.playing ? 'Pause the show' : 'Play the show',
+                  tooltip: loaded.playing ? l10n.slideShowPauseTheShow : l10n.slideShowPlayTheShow,
                   onPressed: () =>
                       context.read<SlideShowBloc>().add(const SlideShowPlayToggled()),
                   icon: Icon(loaded.playing ? Icons.pause : Icons.play_arrow),
@@ -170,7 +172,7 @@ class _Header extends StatelessWidget {
                   key: SlideShowScreen.orderKey,
                   onPressed: loaded.isSaving ? null : () => _openOrder(context, loaded),
                   icon: const Icon(Icons.format_list_numbered),
-                  label: const Text('Choose the order'),
+                  label: Text(l10n.slideShowChooseTheOrder),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
@@ -187,8 +189,8 @@ class _Header extends StatelessWidget {
                           initialValue: loaded.siteId,
                           isDense: true,
                           isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Site',
+                          decoration: InputDecoration(
+                            labelText: l10n.commonSite,
                             border: OutlineInputBorder(),
                           ),
                           items: [
@@ -238,6 +240,7 @@ class _Show extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final slides = state.slides;
     if (slides.isEmpty) {
       final chosen = state.withoutPicture;
@@ -247,18 +250,16 @@ class _Show extends StatelessWidget {
           child: chosen.isEmpty
                 ? PlatformEmptyState.noneExist(
                     key: SlideShowScreen.emptyKey,
-                    title: 'Nothing is on the wall yet',
+                    title: l10n.slideShowNothingIsOnTheWallYet,
                     message:
-                        'Choose a Customer complaint or a Non-conformance in its register, '
-                        'and add at least one picture to it. The chosen issues appear here.',
+                        l10n.slideShowChooseACustomerComplaintOrANon,
                     icon: Icons.slideshow_outlined,
                   )
                 : PlatformEmptyState.noneExist(
                     key: SlideShowScreen.noPictureKey,
-                    title: '${chosen.length} chosen, none with a picture',
+                    title: l10n.slideShowChosenNoneWithAPicture(chosen.length),
                     message:
-                        'A slide needs a picture. Open ${chosen.length == 1 ? 'that issue' : 'those issues'} '
-                        'and add one, and ${chosen.length == 1 ? 'it' : 'they'} will appear here.',
+                        l10n.slideShowASlideNeedsAPictureOpenAnd(chosen.length == 1 ? 'that issue' : 'those issues', chosen.length == 1 ? 'it' : 'they'),
                     icon: Icons.image_not_supported_outlined,
                   ),
         ),
@@ -355,6 +356,7 @@ class _Picture extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     if (slide == null) return const SizedBox.shrink();
 
@@ -365,7 +367,7 @@ class _Picture extends StatelessWidget {
               child: Icon(
                 Icons.broken_image_outlined,
                 color: palette.textMuted,
-                semanticLabel: 'The picture could not be loaded',
+                semanticLabel: l10n.commonThePictureCouldNotBeLoaded,
               ),
             ),
           )
@@ -373,7 +375,7 @@ class _Picture extends StatelessWidget {
             bytes!,
             fit: BoxFit.contain,
             gaplessPlayback: true,
-            semanticLabel: slide!.image.caption ?? 'A picture of ${slide!.issue.number}',
+            semanticLabel: slide!.image.caption ?? l10n.slideShowAPictureOf(slide!.issue.number),
           );
 
     void onNext() => context.read<SlideShowBloc>().add(const SlideShowNextRequested());
@@ -475,6 +477,7 @@ class _Controls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final slides = state.slides;
     return Padding(
@@ -487,7 +490,7 @@ class _Controls extends StatelessWidget {
           children: [
             IconButton(
               key: SlideShowScreen.previousKey,
-              tooltip: 'Previous slide',
+              tooltip: l10n.slideShowPreviousSlide,
               onPressed: slides.isEmpty
                   ? null
                   : () => context
@@ -499,12 +502,12 @@ class _Controls extends StatelessWidget {
               ),
             ),
             Text(
-              slides.isEmpty ? 'No slides' : '${state.index + 1} of ${slides.length}',
+              slides.isEmpty ? l10n.slideShowNoSlides : '${state.index + 1} of ${slides.length}',
               style: theme.textTheme.bodyMedium,
             ),
             IconButton(
               key: SlideShowScreen.nextKey,
-              tooltip: 'Next slide',
+              tooltip: l10n.slideShowNextSlide,
               onPressed: slides.isEmpty
                   ? null
                   : () => context.read<SlideShowBloc>().add(const SlideShowNextRequested()),
@@ -515,7 +518,7 @@ class _Controls extends StatelessWidget {
             ),
             if (state.withoutPicture.isNotEmpty)
               Text(
-                '${state.withoutPicture.length} chosen without a picture',
+                l10n.slideShowChosenWithoutAPicture(state.withoutPicture.length),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: AppColors.of(context).textMuted,
                 ),
@@ -533,17 +536,18 @@ class _OrderDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return BlocBuilder<SlideShowBloc, SlideShowState>(
       builder: (context, state) {
         if (state is! SlideShowLoaded) {
           return AppDialog(
             key: SlideShowScreen.orderDialogKey,
-            title: 'The order the show plays in',
+            title: l10n.slideShowTheOrderTheShowPlaysIn,
             size: AppDialogSize.form,
             actions: [
               AppDialogAction(
                 id: 'quality-slide-order-close',
-                label: 'Done',
+                label: l10n.floorTrainingDone,
                 kind: AppDialogActionKind.dismiss,
                 onPressed: () => Navigator.of(context).pop(),
               ),
@@ -554,12 +558,12 @@ class _OrderDialog extends StatelessWidget {
         final issues = state.issues;
         return AppDialog(
           key: SlideShowScreen.orderDialogKey,
-          title: 'The order the show plays in',
+          title: l10n.slideShowTheOrderTheShowPlaysIn,
           size: AppDialogSize.form,
           actions: [
             AppDialogAction(
               id: 'quality-slide-order-done',
-              label: 'Done',
+              label: l10n.floorTrainingDone,
               kind: AppDialogActionKind.dismiss,
               onPressed: () => Navigator.of(context).pop(),
             ),
@@ -569,7 +573,7 @@ class _OrderDialog extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (issues.isEmpty)
-                const Text('Nothing is chosen yet.')
+                Text(l10n.slideShowNothingIsChosenYet)
               else
                 for (var index = 0; index < issues.length; index++)
                   ListTile(
@@ -581,8 +585,8 @@ class _OrderDialog extends StatelessWidget {
                     ),
                     subtitle: Text(
                       issues[index].hasPicture
-                          ? '${issues[index].images.length} picture${issues[index].images.length == 1 ? '' : 's'}'
-                          : 'No picture yet — it will not appear until one is added',
+                          ? l10n.slideShowPicture(issues[index].images.length, issues[index].images.length == 1 ? '' : 's')
+                          : l10n.slideShowNoPictureYetItWillNotAppear,
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -590,7 +594,7 @@ class _OrderDialog extends StatelessWidget {
                         IconButton(
                           key: SlideShowScreen.orderUpKey(
                               issues[index].kind, issues[index].id),
-                          tooltip: 'Move earlier',
+                          tooltip: l10n.slideShowMoveEarlier,
                           onPressed: index == 0 || state.isSaving
                               ? null
                               : () => context.read<SlideShowBloc>().add(
@@ -605,7 +609,7 @@ class _OrderDialog extends StatelessWidget {
                         IconButton(
                           key: SlideShowScreen.orderDownKey(
                               issues[index].kind, issues[index].id),
-                          tooltip: 'Move later',
+                          tooltip: l10n.slideShowMoveLater,
                           onPressed: index == issues.length - 1 || state.isSaving
                               ? null
                               : () => context.read<SlideShowBloc>().add(
@@ -620,7 +624,7 @@ class _OrderDialog extends StatelessWidget {
                         IconButton(
                           key: SlideShowScreen.orderRemoveKey(
                               issues[index].kind, issues[index].id),
-                          tooltip: 'Take off the wall',
+                          tooltip: l10n.slideShowTakeOffTheWall,
                           onPressed: state.isSaving
                               ? null
                               : () => context.read<SlideShowBloc>().add(

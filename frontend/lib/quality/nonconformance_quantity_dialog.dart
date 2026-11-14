@@ -18,6 +18,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'nonconformance.dart';
@@ -104,24 +105,25 @@ class _NonconformanceQuantityDialogState extends State<NonconformanceQuantityDia
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final unit = widget.nonconformance.uomCode;
 
     return BlocListener<NonconformanceDetailBloc, NonconformanceDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Increase the affected quantity',
+        title: l10n.nonconformanceQuantityIncreaseTheAffectedQuantity,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: 'nonconformance-quantity-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'nonconformance-quantity-submit',
-            label: 'Increase it',
+            label: l10n.nonconformanceQuantityIncreaseIt,
             onPressed: _complete ? _submit : null,
           ),
         ],
@@ -130,8 +132,7 @@ class _NonconformanceQuantityDialogState extends State<NonconformanceQuantityDia
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '${widget.nonconformance.issueNo} currently covers '
-              '${_number(widget.nonconformance.quantityAffected)} $unit. It can only grow.',
+              l10n.nonconformanceQuantityCurrentlyCoversItCanOnlyGrow(widget.nonconformance.issueNo, _number(widget.nonconformance.quantityAffected), unit),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: Spacing.md),
@@ -142,9 +143,8 @@ class _NonconformanceQuantityDialogState extends State<NonconformanceQuantityDia
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                labelText: 'New affected quantity',
-                helperText: 'More than ${_number(widget.nonconformance.quantityAffected)} '
-                    '$unit, or nothing at all.',
+                labelText: l10n.nonconformanceQuantityNewAffectedQuantity,
+                helperText: l10n.nonconformanceQuantityMoreThanOrNothingAtAll(_number(widget.nonconformance.quantityAffected), unit),
                 border: const OutlineInputBorder(),
               ),
             ),
@@ -155,9 +155,9 @@ class _NonconformanceQuantityDialogState extends State<NonconformanceQuantityDia
               enabled: !_awaiting,
               minLines: 2,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Note (optional)',
-                helperText: 'Why it changed — "sorting the bin found eight more".',
+              decoration: InputDecoration(
+                labelText: l10n.commonNoteOptional,
+                helperText: l10n.nonconformanceQuantityWhyItChangedSortingTheBinFound,
                 border: OutlineInputBorder(),
               ),
             ),

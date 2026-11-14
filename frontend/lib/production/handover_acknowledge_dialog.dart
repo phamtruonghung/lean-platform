@@ -24,6 +24,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -143,6 +144,7 @@ class _HandoverAcknowledgeDialogState extends State<HandoverAcknowledgeDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final handover = _handover;
 
@@ -166,20 +168,19 @@ class _HandoverAcknowledgeDialogState extends State<HandoverAcknowledgeDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'You are accepting ${handover.sectionName ?? 'the Section'} and the shift'
-            '${handover.authorDisplayName != null ? ' from ${handover.authorDisplayName}' : ''}.',
+            l10n.handoverAcknowledgeYouAreAcceptingAndTheShift(handover.sectionName ?? 'the Section', handover.authorDisplayName != null ? ' from ${handover.authorDisplayName}' : ''),
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: Spacing.md),
           if (points.isEmpty)
             Text(
               handover.changePointsNone
-                  ? 'The outgoing shift declared no change points.'
-                  : 'There are no change points to watch.',
+                  ? l10n.handoverAcknowledgeTheOutgoingShiftDeclaredNoChangePoints
+                  : l10n.handoverAcknowledgeThereAreNoChangePointsToWatch,
               style: theme.textTheme.bodyMedium,
             )
           else ...[
-            Text('What each watch showed', style: theme.textTheme.titleSmall),
+            Text(l10n.handoverAcknowledgeWhatEachWatchShowed, style: theme.textTheme.titleSmall),
             for (final point in points)
               Padding(
                 padding: const EdgeInsets.only(top: Spacing.sm),
@@ -191,7 +192,7 @@ class _HandoverAcknowledgeDialogState extends State<HandoverAcknowledgeDialog> {
                       style: theme.textTheme.bodyMedium,
                     ),
                     Text(
-                      'Watch: ${point.watchNote}',
+                      l10n.handoverAcknowledgeWatch(point.watchNote),
                       style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
                     const SizedBox(height: Spacing.xs),
@@ -199,9 +200,9 @@ class _HandoverAcknowledgeDialogState extends State<HandoverAcknowledgeDialog> {
                       key: HandoverAcknowledgeDialog.resultKey(point.id),
                       initialValue: _results[point.id],
                       isDense: true,
-                      decoration: const InputDecoration(labelText: 'Found'),
+                      decoration: InputDecoration(labelText: l10n.handoverAcknowledgeFound),
                       items: [
-                        const DropdownMenuItem<String?>(value: null, child: Text('Not answered')),
+                        DropdownMenuItem<String?>(value: null, child: Text(l10n.handoverAcknowledgeNotAnswered)),
                         for (final choice in HandoverVocabulary.watchResults)
                           DropdownMenuItem<String?>(value: choice.wire, child: Text(choice.label)),
                       ],
@@ -211,7 +212,7 @@ class _HandoverAcknowledgeDialogState extends State<HandoverAcknowledgeDialog> {
                       key: HandoverAcknowledgeDialog.resultNoteKey(point.id),
                       controller: _resultNotes[point.id],
                       enabled: !_awaiting,
-                      decoration: const InputDecoration(labelText: 'Note (optional)'),
+                      decoration: InputDecoration(labelText: l10n.commonNoteOptional),
                     ),
                   ],
                 ),
@@ -224,7 +225,7 @@ class _HandoverAcknowledgeDialogState extends State<HandoverAcknowledgeDialog> {
             enabled: !_awaiting,
             minLines: 2,
             maxLines: 4,
-            decoration: const InputDecoration(labelText: 'Note on the handover (optional)', border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: l10n.handoverAcknowledgeNoteOnTheHandoverOptional, border: OutlineInputBorder()),
           ),
           if (_failure != null)
             Padding(
@@ -239,20 +240,20 @@ class _HandoverAcknowledgeDialogState extends State<HandoverAcknowledgeDialog> {
     return BlocListener<SectionBoardBloc, SectionBoardState>(
       listener: _onBoardChanged,
       child: AppDialog(
-        title: 'Acknowledge the handover',
+        title: l10n.handoverAcknowledgeAcknowledgeTheHandover,
         // A watch block per Change point, each with two fields, plus the note:
         // content with its own shape rather than a six-field form (§11).
         size: AppDialogSize.wide,
         actions: [
           AppDialogAction(
             id: 'handover-acknowledge-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'handover-acknowledge-submit',
-            label: _awaiting ? 'Acknowledging…' : 'Acknowledge',
+            label: _awaiting ? l10n.handoverAcknowledgeAcknowledging : l10n.commonAcknowledge,
             onPressed: handover == null || _awaiting ? null : _submit,
           ),
         ],

@@ -12,6 +12,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../people_api.dart';
@@ -58,11 +59,12 @@ class SafetyOrgUnitFilterDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<SafetyIncidentsBloc>().state;
     final selectedId = state is SafetyIncidentsLoaded ? state.filters.orgUnitId : null;
 
     return AppDialog(
-      title: 'Filter by Org Unit',
+      title: l10n.commonFilterByOrgUnit,
       // One tree of names, at the width this dialog has always been: `decision`
       // is 420, the box the hand-sized `AlertDialog` used, so moving the shell
       // onto [AppDialog] changes nothing a reader feels. `picker` (460) is for
@@ -73,13 +75,13 @@ class SafetyOrgUnitFilterDialog extends StatelessWidget {
       actions: [
         AppDialogAction(
           id: 'safety-incidents-filter-cancel',
-          label: 'Cancel',
+          label: l10n.commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(),
         ),
         AppDialogAction(
           id: 'safety-incidents-filter-all',
-          label: 'All Org Units',
+          label: l10n.commonAllOrgUnits,
           onPressed: () {
             context.read<SafetyIncidentsBloc>().add(const SafetyIncidentsFiltersCleared());
             Navigator.of(context).pop();
@@ -93,9 +95,8 @@ class SafetyOrgUnitFilterDialog extends StatelessWidget {
         child: OrgUnitChooser(
           selectedId: selectedId,
           showSitePicker: false,
-          title: 'Narrow the register',
-          description: 'Choose the Org Unit whose Safety incidents and everything beneath it '
-              'you want to read, or clear back to the whole Site.',
+          title: l10n.commonNarrowTheRegister,
+          description: l10n.safetyOrgUnitFilterChooseTheOrgUnitWhoseSafetyIncidents,
           onSelected: (node) {
             context.read<SafetyIncidentsBloc>().add(
                   SafetyIncidentsOrgUnitFilterSet(orgUnitId: node.id, name: node.name),

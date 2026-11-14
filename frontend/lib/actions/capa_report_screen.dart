@@ -50,6 +50,7 @@ import 'package:flutter/material.dart' hide Action;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -221,6 +222,7 @@ class CapaReportScreen extends StatelessWidget {
   /// print produce the report rather than the navigation around it.
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<CapaDetailBloc>().state;
 
     return Scaffold(
@@ -228,7 +230,7 @@ class CapaReportScreen extends StatelessWidget {
         CapaDetailLoading() => const SkeletonList(rows: 5, maxWidth: maxWidth),
         CapaDetailUnavailable(message: final message) => PlatformFailureState(
             key: failedKey,
-            title: 'That CAPA report could not be read',
+            title: l10n.capaReportThatCapaReportCouldNotBeRead,
             message: message,
             retryKey: retryKey,
             onRetry: () => context.read<CapaDetailBloc>().add(CapaDetailStarted(capaId)),
@@ -278,6 +280,7 @@ class _Report extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final palette = AppColors.of(context);
     final concern = capa.concern;
@@ -324,11 +327,11 @@ class _Report extends StatelessWidget {
                     minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
                   icon: const Icon(Icons.arrow_back),
-                  label: const Text('Back to the CAPA'),
+                  label: Text(l10n.commonBackToTheCapa),
                 ),
               ),
               const SizedBox(height: Spacing.sm),
-              const AppPageHeader(title: 'CAPA report'),
+              AppPageHeader(title: l10n.titleCapaReport),
               const SizedBox(height: Spacing.lg),
               Text(
                 capa.capaNo,
@@ -341,14 +344,13 @@ class _Report extends StatelessWidget {
               ),
               const SizedBox(height: Spacing.sm),
               Text(
-                'The 8D record of this investigation: its team, the problem it answers, what was '
-                'done about it, and whether the fix held.',
+                l10n.capaReportThe8dRecordOfThisInvestigationIts,
                 style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
               ),
               if (concern != null) ...[
                 const SizedBox(height: Spacing.sm),
                 Text(
-                  'Answers the Concern ${concern.actionNo} · ${concern.title}',
+                  l10n.capaReportAnswersTheConcern(concern.actionNo, concern.title),
                   style: AppTypography.dense(context),
                 ),
               ],
@@ -363,8 +365,8 @@ class _Report extends StatelessWidget {
               if (outstanding.isNotEmpty)
                 _Section(
                   key: CapaReportScreen.outstandingKey,
-                  heading: 'Not yet done',
-                  summary: 'What this report is still waiting for.',
+                  heading: l10n.capaReportNotYetDone,
+                  summary: l10n.capaReportWhatThisReportIsStillWaitingFor,
                   children: [
                     for (final item in outstanding)
                       Padding(
@@ -383,6 +385,7 @@ class _Report extends StatelessWidget {
 
   /// The 8D's own order, one section per step, with the evidence last.
   List<Widget> _sections(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final concern = capa.concern;
     final measures = concern?.measures ?? const <Action>[];
@@ -392,13 +395,13 @@ class _Report extends StatelessWidget {
     return [
       _Section(
         key: CapaReportScreen.teamKey,
-        heading: 'D1 · Team',
-        summary: 'Who investigated this problem, and who led it.',
+        heading: l10n.capaReportD1Team,
+        summary: l10n.capaReportWhoInvestigatedThisProblemAndWhoLed,
         children: [
           if (capa.team.isEmpty)
             Text(
               key: CapaReportScreen.noTeamKey,
-              'Nobody is on this investigation yet.',
+              l10n.commonNobodyIsOnThisInvestigationYet,
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
@@ -407,7 +410,7 @@ class _Report extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: Spacing.xxs),
               child: Text(
                 member.employeeId == capa.teamLead?.employeeId
-                    ? '${member.name} · team lead'
+                    ? l10n.commonTeamLead(member.name)
                     : member.name,
                 style: theme.textTheme.bodyMedium,
               ),
@@ -416,12 +419,12 @@ class _Report extends StatelessWidget {
       ),
       _Section(
         key: CapaReportScreen.problemKey,
-        heading: 'D2 · The problem',
-        summary: 'What the team is investigating, in the investigation\'s own words.',
+        heading: l10n.capaReportD2TheProblem,
+        summary: l10n.capaReportWhatTheTeamIsInvestigatingInThe,
         children: [
           Text(
             key: capa.problemStatement == null ? CapaReportScreen.noProblemKey : null,
-            capa.problemStatement ?? 'Nobody has written the problem description yet.',
+            capa.problemStatement ?? l10n.commonNobodyHasWrittenTheProblemDescriptionYet,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: capa.problemStatement == null ? theme.colorScheme.onSurfaceVariant : null,
             ),
@@ -430,18 +433,16 @@ class _Report extends StatelessWidget {
       ),
       _Section(
         key: CapaReportScreen.containmentKey,
-        heading: 'D3 · Containment',
-        summary: 'What was done to stop the bad product going any further.',
+        heading: l10n.capaReportD3Containment,
+        summary: l10n.capaReportWhatWasDoneToStopTheBad,
         emptyKey: CapaReportScreen.noContainmentKey,
         emptySentence: 'No containment action is recorded on the Concern yet.',
         measures: ofType('containment'),
       ),
       _Section(
         key: CapaReportScreen.rootCauseKey,
-        heading: 'D4 · Root cause',
-        summary: 'The candidate causes the team considered and the verdict on each, then two '
-            'chains ending at one confirmed root cause: why the problem happened, and why it '
-            'was not detected.',
+        heading: l10n.capaReportD4RootCause,
+        summary: l10n.capaReportTheCandidateCausesTheTeamConsideredAnd,
         children: [
           _ReportFishbone(capa: capa),
           const SizedBox(height: Spacing.md),
@@ -453,16 +454,16 @@ class _Report extends StatelessWidget {
       ),
       _Section(
         key: CapaReportScreen.countermeasuresKey,
-        heading: 'D5–D6 · Countermeasures',
-        summary: 'What was done about the cause, and whether its Check held.',
+        heading: l10n.capaReportD5D6Countermeasures,
+        summary: l10n.capaReportWhatWasDoneAboutTheCauseAnd,
         emptyKey: CapaReportScreen.noCountermeasuresKey,
         emptySentence: 'No countermeasure is recorded on the Concern yet.',
         measures: ofType('countermeasure'),
       ),
       _Section(
         key: CapaReportScreen.preventiveKey,
-        heading: 'D7 · Preventive actions',
-        summary: 'What stops it happening on this line again, with the outcome of every round.',
+        heading: l10n.capaReportD7PreventiveActions,
+        summary: l10n.capaReportWhatStopsItHappeningOnThisLine,
         emptyKey: CapaReportScreen.noPreventiveKey,
         emptySentence: 'No preventive action is recorded on the Concern yet.',
         measures: ofType('preventive'),
@@ -477,9 +478,8 @@ class _Report extends StatelessWidget {
       if (concern?.safetyIncident != null)
         _Section(
           key: CapaReportScreen.safetyIncidentKey,
-          heading: 'The Safety incident this investigation answers',
-          summary: 'The incident the Concern was raised from, with its number and severity — '
-              'never the injury details, which the incident\'s own record restricts.',
+          heading: l10n.capaReportTheSafetyIncidentThisInvestigationAnswers,
+          summary: l10n.capaReportTheIncidentTheConcernWasRaisedFrom,
           children: [
             Text(
               '${concern!.safetyIncident!.incidentNo} · '
@@ -491,15 +491,13 @@ class _Report extends StatelessWidget {
       else
         _Section(
           key: CapaReportScreen.nonconformancesKey,
-          heading: 'The Non-conformances this investigation answers',
-          summary: 'The occurrences the Concern answers, with the number, the Product, the '
-              'Defect code, the quantity and what was decided about the product.',
+          heading: l10n.capaReportTheNonConformancesThisInvestigationAnswers,
+          summary: l10n.capaReportTheOccurrencesTheConcernAnswersWithThe,
           children: [
             if (concern == null || concern.nonconformances.isEmpty)
               Text(
                 key: CapaReportScreen.noNonconformancesKey,
-                'No Non-conformance is linked to this Concern, so the report has no evidence to '
-                'list.',
+                l10n.capaReportNoNonConformanceIsLinkedToThis,
                 style: theme.textTheme.bodyMedium
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
@@ -604,6 +602,7 @@ class _Measure extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     return Padding(
@@ -622,7 +621,7 @@ class _Measure extends StatelessWidget {
               measure.actionNo,
               measure.typeLabel,
               measure.statusLabel,
-              measure.ownerName ?? 'Nobody yet',
+              measure.ownerName ?? l10n.commonNobodyYet,
             ].join(' · '),
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
@@ -632,8 +631,8 @@ class _Measure extends StatelessWidget {
               padding: const EdgeInsets.only(top: Spacing.xxs),
               child: Text(
                 [
-                  'Cycle ${phase.cycle} · ${phase.phaseLabel}',
-                  if (phase.completedAt != null) 'done' else 'open',
+                  l10n.commonCycle(phase.cycle, phase.phaseLabel),
+                  if (phase.completedAt != null) l10n.commonDone else l10n.commonOpen2,
                   if (phase.outcomeLabel != null) phase.outcomeLabel!,
                   if (phase.note != null) phase.note!,
                 ].join(' · '),
@@ -644,7 +643,7 @@ class _Measure extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: Spacing.xxs),
               child: Text(
-                'No phase of this Action has been completed yet.',
+                l10n.capaReportNoPhaseOfThisActionHasBeen,
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
@@ -673,6 +672,7 @@ class _ReportFishbone extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final categories = [
       for (final category in capaCauseCategoryOrder)
@@ -683,12 +683,12 @@ class _ReportFishbone extends StatelessWidget {
       key: CapaReportScreen.fishboneKey,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('The candidate causes considered', style: theme.textTheme.titleSmall),
+        Text(l10n.capaReportTheCandidateCausesConsidered, style: theme.textTheme.titleSmall),
         const SizedBox(height: Spacing.xs),
         if (categories.isEmpty)
           Text(
             key: CapaReportScreen.noCausesKey,
-            'No candidate cause is recorded, so no fishbone was worked.',
+            l10n.capaReportNoCandidateCauseIsRecordedSoNo,
             style: theme.textTheme.bodyMedium
                 ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
@@ -726,7 +726,7 @@ class _ReportFishbone extends StatelessWidget {
                               if (cause.evidenceNote != null)
                                 Text(
                                   key: CapaReportScreen.causeEvidenceKey(cause.id),
-                                  'Evidence: ${cause.evidenceNote}',
+                                  l10n.commonEvidence((cause.evidenceNote ?? '')),
                                   style: theme.textTheme.bodySmall,
                                 ),
                             ],
@@ -753,6 +753,7 @@ class _Chain extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final whys = capa.whysIn(chain);
     final root = capa.rootCauseOf(chain);
@@ -766,7 +767,7 @@ class _Chain extends StatelessWidget {
         if (whys.isEmpty)
           Text(
             key: CapaReportScreen.chainEmptyKey(chain),
-            'Nobody has started this chain yet.',
+            l10n.commonNobodyHasStartedThisChainYet,
             style: theme.textTheme.bodyMedium
                 ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
@@ -775,7 +776,7 @@ class _Chain extends StatelessWidget {
             key: CapaReportScreen.whyKey(why.id),
             padding: const EdgeInsets.only(bottom: Spacing.xxs),
             child: Text(
-              'Why ${why.sequence} · ${why.statement}',
+              l10n.capaReportWhy(why.sequence, why.statement),
               style: theme.textTheme.bodyMedium,
             ),
           ),
@@ -784,8 +785,8 @@ class _Chain extends StatelessWidget {
           child: Text(
             key: CapaReportScreen.chainRootKey(chain),
             root == null
-                ? 'This chain has no confirmed root cause yet.'
-                : 'Confirmed root cause: ${root.statement}',
+                ? l10n.commonThisChainHasNoConfirmedRootCause
+                : l10n.commonConfirmedRootCause(root.statement),
             style: theme.textTheme.bodyMedium?.copyWith(
               color: root == null ? theme.colorScheme.onSurfaceVariant : theme.colorScheme.onSurface,
               fontWeight: root == null ? null : FontWeight.w500,
@@ -807,16 +808,15 @@ class _Effectiveness extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final verifiedAt = capa.effectivenessVerifiedAt;
     final dueAt = capa.effectivenessCheckDueAt;
 
     return _Section(
       key: CapaReportScreen.effectivenessKey,
-      heading: 'D8 · Effectiveness',
-      summary: 'A CAPA closes only when both chains have a confirmed root cause, its Concern is '
-          'closed, and somebody holding Quality authority other than its team lead has verified, '
-          'some time later, that the problem has not come back.',
+      heading: l10n.capaReportD8Effectiveness,
+      summary: l10n.commonACapaClosesOnlyWhenBothChains,
       children: [
         if (verifiedAt != null)
           Column(
@@ -833,8 +833,7 @@ class _Effectiveness extends StatelessWidget {
                     tone: capaEffectivenessOutcomeTone(capa.effectivenessOutcome!),
                   ),
                   Text(
-                    'verified by ${capa.effectivenessVerifiedBy?.name ?? 'an Account'} on '
-                    '${verifiedAt.toLocal().toIso8601String().substring(0, 10)}',
+                    l10n.capaReportVerifiedByOn(capa.effectivenessVerifiedBy?.name ?? 'an Account', verifiedAt.toLocal().toIso8601String().substring(0, 10)),
                     style: theme.textTheme.bodyMedium,
                   ),
                 ],
@@ -854,13 +853,13 @@ class _Effectiveness extends StatelessWidget {
             children: [
               Text(
                 key: CapaReportScreen.effectivenessDueKey,
-                'The Concern has closed, so the effectiveness check is due on $dueAt.',
+                l10n.commonTheConcernHasClosedSoTheEffectiveness(dueAt),
                 style: theme.textTheme.bodyMedium,
               ),
               if (capa.effectivenessCheckOverdue)
                 StatusChip(
                   key: CapaReportScreen.effectivenessOverdueKey,
-                  label: 'Overdue',
+                  label: l10n.commonOverdue,
                   tone: StatusTone.warning,
                 ),
             ],
@@ -868,8 +867,7 @@ class _Effectiveness extends StatelessWidget {
         else
           Text(
             key: CapaReportScreen.effectivenessNotRecordedKey,
-            'The check falls due ${capa.effectivenessCheckDelayDays} days after the Concern '
-            'closes, and the Concern has not closed yet, so nothing has been verified.',
+            l10n.capaReportTheCheckFallsDueDaysAfterThe(capa.effectivenessCheckDelayDays),
             style: theme.textTheme.bodyMedium
                 ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
@@ -888,6 +886,7 @@ class _Occurrence extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final dispositions = occurrence.dispositions;
 
@@ -907,7 +906,7 @@ class _Occurrence extends StatelessWidget {
               occurrence.productLabel,
               occurrence.defectCodeLabel,
               occurrence.quantityLabel,
-              occurrence.isSource ? 'raised from this' : 'linked to this Concern',
+              occurrence.isSource ? l10n.capaReportRaisedFromThis : l10n.capaReportLinkedToThisConcern,
             ].join(' · '),
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
@@ -915,7 +914,7 @@ class _Occurrence extends StatelessWidget {
           if (dispositions.isEmpty)
             Text(
               key: CapaReportScreen.noDispositionsKey(occurrence.id),
-              'No product from this occurrence has a Disposition yet.',
+              l10n.capaReportNoProductFromThisOccurrenceHasA,
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             )
@@ -930,8 +929,8 @@ class _Occurrence extends StatelessWidget {
                       _dispositionLabel(disposition),
                       disposition.quantityLabel,
                       if (disposition.reworkMinutes != null && disposition.reworkMinutes != 0)
-                        '${disposition.reworkMinutes!.toStringAsFixed(0)} min rework',
-                      'decided by ${disposition.decidedBy}',
+                        l10n.capaReportMinRework(disposition.reworkMinutes!.toStringAsFixed(0)),
+                      l10n.capaReportDecidedBy(disposition.decidedBy),
                       if (disposition.decidedOn != null) disposition.decidedOn!,
                       if (disposition.reference != null) disposition.reference!,
                     ].join(' · '),

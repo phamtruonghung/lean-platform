@@ -22,6 +22,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -199,6 +200,7 @@ class _SupplierNcrNonconformanceDialogState extends State<SupplierNcrNonconforma
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final ncr = widget.supplierNcr;
     final productName = ncr.productName;
@@ -206,18 +208,18 @@ class _SupplierNcrNonconformanceDialogState extends State<SupplierNcrNonconforma
     return BlocListener<SupplierNcrDetailBloc, SupplierNcrDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Control the material',
+        title: l10n.supplierNcrNonconformanceControlTheMaterial,
         size: AppDialogSize.picker,
         actions: [
           AppDialogAction(
             id: 'supplier-ncr-nc-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'supplier-ncr-nc-submit',
-            label: _awaiting ? 'Recording…' : 'Record it',
+            label: _awaiting ? l10n.employeeDepartureRecording : l10n.nonconformanceFormRecord,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -226,8 +228,7 @@ class _SupplierNcrNonconformanceDialogState extends State<SupplierNcrNonconforma
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'A Non-conformance is recorded at ${ncr.orgUnitName}'
-              '${productName == null ? '' : ' for $productName'}, found at goods-in.',
+              l10n.supplierNcrNonconformanceANonConformanceIsRecordedAtFound(ncr.orgUnitName, productName == null ? '' : ' for $productName'),
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
@@ -238,9 +239,9 @@ class _SupplierNcrNonconformanceDialogState extends State<SupplierNcrNonconforma
               enabled: !_awaiting,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Quantity affected',
-                helperText: 'How much material is in question, in the unit it came in.',
+              decoration: InputDecoration(
+                labelText: l10n.nonconformanceDetailQuantityAffected,
+                helperText: l10n.supplierNcrNonconformanceHowMuchMaterialIsInQuestionIn,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -250,9 +251,9 @@ class _SupplierNcrNonconformanceDialogState extends State<SupplierNcrNonconforma
                 key: SupplierNcrNonconformanceDialog.productKey,
                 initialValue: '$productName · ${ncr.productCode}',
                 enabled: false,
-                decoration: const InputDecoration(
-                  labelText: 'Product',
-                  helperText: "The supplier NCR's own Product is carried onto the record.",
+                decoration: InputDecoration(
+                  labelText: l10n.commonProduct,
+                  helperText: l10n.supplierNcrNonconformanceTheSupplierNcrSOwnProductIs,
                   border: OutlineInputBorder(),
                 ),
               )
@@ -264,7 +265,7 @@ class _SupplierNcrNonconformanceDialogState extends State<SupplierNcrNonconforma
             else if (_productsFailure != null)
               PlatformFailureState(
                 key: SupplierNcrNonconformanceDialog.productsFailedKey,
-                title: 'The Products could not be read',
+                title: l10n.supplierNcrNonconformanceTheProductsCouldNotBeRead,
                 message: _productsFailure!,
                 retryKey: SupplierNcrNonconformanceDialog.productsRetryKey,
                 onRetry: _loadProducts,
@@ -274,9 +275,9 @@ class _SupplierNcrNonconformanceDialogState extends State<SupplierNcrNonconforma
                 key: SupplierNcrNonconformanceDialog.productKey,
                 initialValue: _productId,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Product',
-                  helperText: 'This supplier NCR names none, so choose what the lot was for.',
+                decoration: InputDecoration(
+                  labelText: l10n.commonProduct,
+                  helperText: l10n.supplierNcrNonconformanceThisSupplierNcrNamesNoneSoChoose,
                   border: OutlineInputBorder(),
                 ),
                 items: [
@@ -295,9 +296,9 @@ class _SupplierNcrNonconformanceDialogState extends State<SupplierNcrNonconforma
                 key: SupplierNcrNonconformanceDialog.defectCodeKey,
                 initialValue: '${ncr.defectCodeName} · ${ncr.defectCodeCode}',
                 enabled: false,
-                decoration: const InputDecoration(
-                  labelText: 'Defect code',
-                  helperText: "The supplier NCR's own Defect code is carried onto the record.",
+                decoration: InputDecoration(
+                  labelText: l10n.commonDefectCode,
+                  helperText: l10n.supplierNcrNonconformanceTheSupplierNcrSOwnDefectCode,
                   border: OutlineInputBorder(),
                 ),
               )
@@ -309,7 +310,7 @@ class _SupplierNcrNonconformanceDialogState extends State<SupplierNcrNonconforma
             else if (_codesFailure != null)
               PlatformFailureState(
                 key: SupplierNcrNonconformanceDialog.codesFailedKey,
-                title: 'The Defect codes could not be read',
+                title: l10n.commonTheDefectCodesCouldNotBeRead,
                 message: _codesFailure!,
                 retryKey: SupplierNcrNonconformanceDialog.codesRetryKey,
                 onRetry: _loadCodes,
@@ -319,10 +320,9 @@ class _SupplierNcrNonconformanceDialogState extends State<SupplierNcrNonconforma
                 key: SupplierNcrNonconformanceDialog.defectCodeKey,
                 initialValue: _defectCodeId,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Defect code',
-                  helperText: 'This supplier NCR carries none, so choose the one to record '
-                      'it against.',
+                decoration: InputDecoration(
+                  labelText: l10n.commonDefectCode,
+                  helperText: l10n.supplierNcrNonconformanceThisSupplierNcrCarriesNoneSoChoose,
                   border: OutlineInputBorder(),
                 ),
                 items: [
@@ -342,9 +342,9 @@ class _SupplierNcrNonconformanceDialogState extends State<SupplierNcrNonconforma
               enabled: !_awaiting,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Immediate containment (optional)',
-                helperText: 'What was done at once. Recording it makes the record contained.',
+              decoration: InputDecoration(
+                labelText: l10n.nonconformanceFormContainment,
+                helperText: l10n.commonWhatWasDoneAtOnceRecordingIt,
                 border: OutlineInputBorder(),
               ),
             ),

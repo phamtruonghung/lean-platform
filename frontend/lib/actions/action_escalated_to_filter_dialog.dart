@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../people_api.dart';
@@ -54,11 +55,12 @@ class ActionEscalatedToFilterDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<ActionsBloc>().state;
     final selectedId = state is ActionsLoaded ? state.escalatedToOrgUnitFilterId : null;
 
     return AppDialog(
-      title: 'Filter by what was handed up',
+      title: l10n.actionEscalatedToFilterFilterByWhatWasHandedUp,
       // A picker, at the same width as the Org Unit filter beside it: the two
       // are the same question about different columns (issue #398).
       size: AppDialogSize.picker,
@@ -67,7 +69,7 @@ class ActionEscalatedToFilterDialog extends StatelessWidget {
         // `Cancel` is the dismiss action `Esc` runs.
         AppDialogAction(
           id: 'anyone',
-          label: 'Anyone',
+          label: l10n.actionEscalatedToFilterAnyone,
           onPressed: () {
             context.read<ActionsBloc>().add(const ActionsEscalatedToFilterCleared());
             Navigator.of(context).pop();
@@ -75,7 +77,7 @@ class ActionEscalatedToFilterDialog extends StatelessWidget {
         ),
         AppDialogAction(
           id: 'cancel',
-          label: 'Cancel',
+          label: l10n.commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -85,9 +87,8 @@ class ActionEscalatedToFilterDialog extends StatelessWidget {
         child: OrgUnitChooser(
           selectedId: selectedId,
           showSitePicker: false,
-          title: 'Whose queue',
-          description: 'Choose the Org Unit that concerns were handed up to — what is waiting on '
-              'the area, not what sits at the line — or clear back to everything.',
+          title: l10n.actionEscalatedToFilterWhoseQueue,
+          description: l10n.actionEscalatedToFilterChooseTheOrgUnitThatConcernsWere,
           onSelected: (node) {
             context.read<ActionsBloc>().add(
                   ActionsEscalatedToFilterSelected(

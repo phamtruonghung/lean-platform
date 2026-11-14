@@ -10,6 +10,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../people_api.dart';
@@ -53,11 +54,12 @@ class ActionOrgUnitFilterDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<ActionsBloc>().state;
     final selectedId = state is ActionsLoaded ? state.orgUnitFilterId : null;
 
     return AppDialog(
-      title: 'Filter by Org Unit',
+      title: l10n.commonFilterByOrgUnit,
       // A picker: one thing chosen from a list, and the two buttons a *filter*
       // needs rather than a form's (issue #398's four widths).
       size: AppDialogSize.picker,
@@ -67,7 +69,7 @@ class ActionOrgUnitFilterDialog extends StatelessWidget {
         // actions would leave which one ambiguous.
         AppDialogAction(
           id: 'all-org-units',
-          label: 'All Org Units',
+          label: l10n.commonAllOrgUnits,
           onPressed: () {
             context.read<ActionsBloc>().add(const ActionsOrgUnitFilterCleared());
             Navigator.of(context).pop();
@@ -75,7 +77,7 @@ class ActionOrgUnitFilterDialog extends StatelessWidget {
         ),
         AppDialogAction(
           id: 'cancel',
-          label: 'Cancel',
+          label: l10n.commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -87,9 +89,8 @@ class ActionOrgUnitFilterDialog extends StatelessWidget {
           // The register is one Site's, so the chooser may not name an Org Unit
           // in another one.
           showSitePicker: false,
-          title: 'Narrow the log',
-          description: 'Choose the Org Unit whose Actions and everything beneath it you want to '
-              'read, or clear back to the whole Site.',
+          title: l10n.actionOrgUnitFilterNarrowTheLog,
+          description: l10n.actionOrgUnitFilterChooseTheOrgUnitWhoseActionsAnd,
           onSelected: (node) {
             context.read<ActionsBloc>().add(
                   ActionsOrgUnitFilterSelected(orgUnitId: node.id, orgUnitName: node.name),

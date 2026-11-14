@@ -25,6 +25,7 @@ import 'package:flutter/material.dart' hide Action;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -108,6 +109,7 @@ class ActionDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<ActionDetailBloc>().state;
     final loaded = state is ActionDetailLoaded ? state.action : null;
 
@@ -121,7 +123,7 @@ class ActionDetailScreen extends StatelessWidget {
               ActionDetailLoading() => const SkeletonList(rows: 5, maxWidth: maxWidth),
               ActionDetailUnavailable(message: final message) => PlatformFailureState(
                   key: failedKey,
-                  title: 'That Action could not be read',
+                  title: l10n.commonThatActionCouldNotBeRead,
                   message: message,
                   retryKey: retryKey,
                   onRetry: () =>
@@ -152,6 +154,7 @@ class _Head extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final loaded = action;
     // Both offered while the Action is still live, and neither for one that has
     // ended: a closed or cancelled record has nothing left to hand up or call
@@ -179,24 +182,24 @@ class _Head extends StatelessWidget {
                     minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
                   icon: const Icon(Icons.arrow_back),
-                  label: const Text('Back to the action log'),
+                  label: Text(l10n.commonBackToTheActionLog),
                 ),
               ),
               const SizedBox(height: Spacing.sm),
               AppPageHeader(
-                title: 'Action',
+                title: l10n.titleAction,
                 actions: [
                   if (live)
                     TextButton(
                       key: ActionDetailScreen.escalateKey,
                       onPressed: () => context.go('${Routes.actions}/$id/escalate'),
-                      child: const Text('Hand it up…'),
+                      child: Text(l10n.actionDetailHandItUp),
                     ),
                   if (live)
                     TextButton(
                       key: ActionDetailScreen.cancelKey,
                       onPressed: () => context.go('${Routes.actions}/$id/cancel'),
-                      child: const Text('Call it off…'),
+                      child: Text(l10n.actionDetailCallItOff),
                     ),
                 ],
               ),
@@ -224,6 +227,7 @@ class _ActionDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: ActionDetailScreen.maxWidth,
@@ -245,19 +249,19 @@ class _ActionDetail extends StatelessWidget {
               _SummaryCard(action: action, notice: notice),
               const SizedBox(height: Spacing.md),
             AppDetailSection(
-              title: 'Where it stands',
+              title: l10n.actionDetailWhereItStands,
               children: [
-                _Fact(label: 'Org Unit', value: action.orgUnitName),
-                _Fact(label: 'Owner', value: action.ownerName ?? 'Nobody yet'),
+                _Fact(label: l10n.commonOrgUnit, value: action.orgUnitName),
+                _Fact(label: l10n.commonOwner, value: action.ownerName ?? 'Nobody yet'),
                 _Fact(
-                  label: 'Raised by',
+                  label: l10n.requestsRaisedBy,
                   value: action.raisedByName ?? 'An Account with no Employee record',
                 ),
-                _Fact(label: 'Due', value: action.dueDate ?? 'No due date'),
+                _Fact(label: l10n.pmSchedulesDue, value: action.dueDate ?? 'No due date'),
                 if (action.escalatedToOrgUnitName != null)
-                  _Fact(label: 'Escalated to', value: action.escalatedToOrgUnitName!),
+                  _Fact(label: l10n.actionDetailEscalatedTo, value: action.escalatedToOrgUnitName!),
                 if (action.closureNote != null)
-                  _Fact(label: 'Closing note', value: action.closureNote!),
+                  _Fact(label: l10n.actionDetailClosingNote, value: action.closureNote!),
               ],
             ),
             const SizedBox(height: Spacing.md),
@@ -306,6 +310,7 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final palette = AppColors.of(context);
 
@@ -335,10 +340,10 @@ class _SummaryCard extends StatelessWidget {
               children: [
                 StatusChip(label: action.typeLabel, tone: action.statusTone),
                 StatusChip(label: action.statusLabel, tone: action.statusTone),
-                if (action.pillarCode != null) Chip(label: Text('Pillar ${action.pillarCode}')),
+                if (action.pillarCode != null) Chip(label: Text(l10n.actionDetailPillar((action.pillarCode ?? '')))),
                 Chip(label: Text(action.priorityLabel)),
                 if (action.isOverdue)
-                  StatusChip(label: 'Overdue by ${action.daysOverdue} days', tone: StatusTone.danger),
+                  StatusChip(label: l10n.commonOverdueByDays((action.daysOverdue ?? 0)), tone: StatusTone.danger),
               ],
             ),
             if (action.description != null) ...[
@@ -375,6 +380,7 @@ class _Cycle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final muted = AppColors.of(context).textMuted;
     final current = action.currentCyclePhases;
@@ -385,7 +391,7 @@ class _Cycle extends StatelessWidget {
     final openPhase = action.openPhase;
 
     return AppDetailSection(
-      title: 'Cycle ${action.currentCycle}',
+      title: l10n.actionDetailCycle(action.currentCycle),
       trailing: openPhase == null
           ? null
           : FilledButton.tonalIcon(
@@ -394,12 +400,12 @@ class _Cycle extends StatelessWidget {
                 '${Routes.actions}/${action.id}/phases/${openPhase.phase}/complete',
               ),
               icon: const Icon(Icons.check_circle_outline),
-              label: Text('Complete the ${openPhase.phaseLabel}'),
+              label: Text(l10n.actionDetailCompleteThe(openPhase.phaseLabel)),
             ),
       children: [
         if (current.isEmpty)
           Text(
-            'This Action has no phases left.',
+            l10n.actionDetailThisActionHasNoPhasesLeft,
             style: AppTypography.dense(context)?.copyWith(color: muted),
           ),
         for (final phase in current) _PhaseRow(phase: phase),
@@ -407,7 +413,7 @@ class _Cycle extends StatelessWidget {
           const SizedBox(height: Spacing.md),
           Text(
             key: ActionDetailScreen.cycleHistoryKey,
-            'Earlier rounds',
+            l10n.actionDetailEarlierRounds,
             style: theme.textTheme.titleSmall,
           ),
           const SizedBox(height: Spacing.sm),
@@ -426,6 +432,7 @@ class _PhaseRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final muted = AppColors.of(context).textMuted;
     return Padding(
@@ -448,16 +455,16 @@ class _PhaseRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  phase.note ?? (phase.isOpen ? 'Open — waiting on this' : 'No note recorded'),
+                  phase.note ?? (phase.isOpen ? l10n.actionDetailOpenWaitingOnThis : l10n.actionDetailNoNoteRecorded),
                   style:
                       AppTypography.dense(context)?.copyWith(color: phase.isOpen ? null : muted),
                 ),
                 Text(
                   [
                     if (phase.ownerName != null) phase.ownerName!,
-                    if (phase.dueDate != null) 'due ${phase.dueDate}',
+                    if (phase.dueDate != null) l10n.actionDetailDue((phase.dueDate ?? '')),
                     if (phase.completedAt != null)
-                      'done ${phase.completedAt!.toLocal().toIso8601String().substring(0, 10)}',
+                      l10n.actionDetailDone(phase.completedAt!.toLocal().toIso8601String().substring(0, 10)),
                     if (phase.outcomeLabel != null) phase.outcomeLabel!,
                   ].join(' · '),
                   style: theme.textTheme.bodySmall?.copyWith(color: muted),
@@ -506,6 +513,7 @@ class _Parent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final muted = AppColors.of(context).textMuted;
     return InkWell(
       key: ActionDetailScreen.parentKey,
@@ -520,7 +528,7 @@ class _Parent extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Answers ${parent.actionNo}',
+                    l10n.actionDetailAnswers(parent.actionNo),
                     style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: Spacing.xxs),
@@ -552,6 +560,7 @@ class _Capa extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final muted = AppColors.of(context).textMuted;
     final capa = action.capa;
     // Read here, in a build, rather than passed in from the route: a value
@@ -563,12 +572,10 @@ class _Capa extends StatelessWidget {
     return KeyedSubtree(
       key: ActionDetailScreen.capaKey,
       child: AppDetailSection(
-        title: 'CAPA',
+        title: l10n.commonCapa,
         children: [
           Text(
-            'A formal 8D investigation opened on this Concern: its team, its problem description '
-            'and — as those slices land — its root causes and its effectiveness check. Its actions '
-            'are the ones below, recorded once in the action log and read there.',
+            l10n.actionDetailAFormal8dInvestigationOpenedOnThis,
             style: AppTypography.floor(context)?.copyWith(color: muted),
           ),
           if (capa != null)
@@ -585,7 +592,7 @@ class _Capa extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Under investigation: ${capa.capaNo}',
+                            l10n.actionDetailUnderInvestigation(capa.capaNo),
                             style: AppTypography.dense(context)
                                 ?.copyWith(fontWeight: FontWeight.w600),
                           ),
@@ -609,14 +616,13 @@ class _Capa extends StatelessWidget {
               child: FilledButton.tonal(
                 key: ActionDetailScreen.openCapaKey,
                 onPressed: () => context.go('${Routes.actions}/${action.id}/capa'),
-                child: const Text('Open a CAPA…'),
+                child: Text(l10n.actionDetailOpenACapa),
               ),
             )
           else
             Text(
               key: ActionDetailScreen.noCapaKey,
-              "Nobody has opened a CAPA on this Concern. Opening one needs Quality authority at "
-              "this Concern's Org Unit.",
+              l10n.actionDetailNobodyHasOpenedACapaOnThis,
               style: AppTypography.dense(context)?.copyWith(color: muted),
             ),
         ],
@@ -637,6 +643,7 @@ class _Measures extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final muted = AppColors.of(context).textMuted;
     final measures = action.measures;
 
@@ -644,16 +651,15 @@ class _Measures extends StatelessWidget {
       key: ActionDetailScreen.measuresHeadingKey,
       child: AppDetailSection(
         title: measures.isEmpty
-            ? 'Measures'
-            : 'Measures (${measures.length}, '
-                '${action.countermeasureCount} of them countermeasures)',
+            ? l10n.actionDetailMeasures
+            : l10n.actionDetailMeasuresOfThemCountermeasures(measures.length, action.countermeasureCount),
         // The kind is chosen by name rather than by a picker inside the form:
         // the three words mean three different pieces of work, and a dropdown in
         // the middle of a form invites the wrong one.
         trailing: PopupMenuButton<String>(
           key: ActionDetailScreen.addMeasureKey,
           enabled: !action.isMeasure,
-          tooltip: 'Add a measure',
+          tooltip: l10n.actionDetailAddAMeasure,
           onSelected: (measureType) => context.go(
             '${Routes.actions}/${action.id}/measures/$measureType/new',
           ),
@@ -662,17 +668,17 @@ class _Measures extends StatelessWidget {
               PopupMenuItem<String>(
                 key: ActionDetailScreen.addMeasureKindKey(measureType),
                 value: measureType,
-                child: Text('Add a ${actionTypeLabel(measureType).toLowerCase()}…'),
+                child: Text(l10n.actionDetailAddA(actionTypeLabel(measureType).toLowerCase())),
               ),
           ],
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: Spacing.sm, vertical: Spacing.xs),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: const [
+              children: [
                 Icon(Icons.add),
                 SizedBox(width: Spacing.xs),
-                Text('Add a measure'),
+                Text(l10n.actionDetailAddAMeasure),
               ],
             ),
           ),
@@ -684,17 +690,15 @@ class _Measures extends StatelessWidget {
             // a measure, and that it is something they can go and do.
             Text(
               key: ActionDetailScreen.measuresHintKey,
-              'Each measure is an Action of its own: open one and run its own cycle to its Act, and '
-              'it counts as closed.',
+              l10n.actionDetailEachMeasureIsAnActionOfIts,
               style: AppTypography.floor(context)?.copyWith(color: muted),
             ),
           if (measures.isEmpty)
             Text(
               key: ActionDetailScreen.measuresEmptyKey,
               action.isMeasure
-                  ? 'This Action answers no Concern of its own.'
-                  : 'Nothing answers this yet. A containment stops the effect now; a '
-                      'countermeasure removes the cause.',
+                  ? l10n.actionDetailThisActionAnswersNoConcernOfIts
+                  : l10n.actionDetailNothingAnswersThisYetAContainmentStops,
               style: AppTypography.dense(context)?.copyWith(color: muted),
             ),
           for (final measure in measures) _MeasureRow(measure: measure),
@@ -714,6 +718,7 @@ class _MeasureRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final muted = AppColors.of(context).textMuted;
     return InkWell(
       key: ActionDetailScreen.measureKey(measure.id),
@@ -736,14 +741,14 @@ class _MeasureRow extends StatelessWidget {
                     [
                       measure.typeLabel,
                       measure.statusLabel,
-                      measure.ownerName ?? 'Nobody yet',
+                      measure.ownerName ?? l10n.commonNobodyYet,
                       // Two different facts, so both: when it is due and what
                       // it is waiting on. (They used to be exclusive, which hid
                       // the phase of exactly the measures a reader is most
                       // likely to be looking for.)
-                      if (measure.isOverdue) 'overdue by ${measure.daysOverdue} days',
+                      if (measure.isOverdue) l10n.actionDetailOverdueByDays((measure.daysOverdue ?? 0)),
                       if (measure.openPhase != null)
-                        'waiting on its ${measure.openPhase!.phaseLabel.toLowerCase()}',
+                        l10n.commonWaitingOnIts(measure.openPhase!.phaseLabel.toLowerCase()),
                     ].join(' · '),
                     style: AppTypography.floor(context)?.copyWith(color: muted),
                   ),
@@ -763,7 +768,7 @@ class _MeasureRow extends StatelessWidget {
                 onPressed: () => context.go(
                   '${Routes.actions}/${measure.id}/phases/${measure.openPhase!.phase}/complete',
                 ),
-                child: Text('Complete the ${measure.openPhase!.phaseLabel}…'),
+                child: Text(l10n.actionDetailCompleteThe2(measure.openPhase!.phaseLabel)),
               ),
           ],
         ),
@@ -790,6 +795,7 @@ class _Nonconformances extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final muted = AppColors.of(context).textMuted;
     final occurrences = action.nonconformances;
 
@@ -797,17 +803,16 @@ class _Nonconformances extends StatelessWidget {
       key: ActionDetailScreen.nonconformancesKey,
       child: AppDetailSection(
         title:
-            occurrences.isEmpty ? 'Non-conformances' : 'Non-conformances (${occurrences.length})',
+            occurrences.isEmpty ? l10n.navNonConformances : l10n.actionDetailNonConformances(occurrences.length),
         children: [
           Text(
-            'The occurrences this Concern answers. One problem that shows up several times stays '
-            'one Concern, so a further occurrence is linked here rather than raised as another.',
+            l10n.actionDetailTheOccurrencesThisConcernAnswersOneProblem,
             style: AppTypography.floor(context)?.copyWith(color: muted),
           ),
           if (occurrences.isEmpty)
             Text(
               key: ActionDetailScreen.noNonconformancesKey,
-              'No Non-conformance is linked to this Concern.',
+              l10n.actionDetailNoNonConformanceIsLinkedToThis,
               style: AppTypography.dense(context)?.copyWith(color: muted),
             ),
           for (final occurrence in occurrences)
@@ -826,6 +831,7 @@ class _NonconformanceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final muted = AppColors.of(context).textMuted;
     final live = !const {'done', 'cancelled'}.contains(action.status);
 
@@ -862,7 +868,7 @@ class _NonconformanceRow extends StatelessWidget {
               TextButton(
                 key: ActionDetailScreen.raisedFromKey,
                 onPressed: () => context.go('${Routes.nonConformances}/${occurrence.id}'),
-                child: const Text('Raised from this'),
+                child: Text(l10n.actionDetailRaisedFromThis),
               )
             // Offered only while the Concern is still live: a link on a closed
             // problem is history, and an ended Action is not offered its own
@@ -873,7 +879,7 @@ class _NonconformanceRow extends StatelessWidget {
                 onPressed: () => context.go(
                   '${Routes.actions}/${action.id}/nonconformances/${occurrence.id}/unlink',
                 ),
-                child: const Text('Unlink…'),
+                child: Text(l10n.actionDetailUnlink),
               )
             else
               Icon(Icons.chevron_right, color: muted),
@@ -942,17 +948,17 @@ class _SafetyObservationSource extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final muted = AppColors.of(context).textMuted;
     final observation = action.safetyObservation!;
 
     return KeyedSubtree(
       key: ActionDetailScreen.safetyObservationKey,
       child: AppDetailSection(
-        title: 'Safety observation',
+        title: l10n.titleSafetyObservation,
         children: [
           Text(
-            'The observation this Action was raised from — what was seen, and how bad it could '
-            'have been.',
+            l10n.actionDetailTheObservationThisActionWasRaisedFrom,
             style: AppTypography.floor(context)?.copyWith(color: muted),
           ),
           _SourceRow(
@@ -981,17 +987,17 @@ class _SafetyIncidentSource extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final muted = AppColors.of(context).textMuted;
     final incident = action.safetyIncident!;
 
     return KeyedSubtree(
       key: ActionDetailScreen.safetyIncidentKey,
       child: AppDetailSection(
-        title: 'Safety incident',
+        title: l10n.titleSafetyIncident,
         children: [
           Text(
-            'The incident this Concern was raised from — its number and its severity, never who '
-            'was hurt or their diagnosis.',
+            l10n.actionDetailTheIncidentThisConcernWasRaisedFrom,
             style: AppTypography.floor(context)?.copyWith(color: muted),
           ),
           _SourceRow(

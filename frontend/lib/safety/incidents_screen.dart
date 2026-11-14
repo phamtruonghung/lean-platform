@@ -392,8 +392,8 @@ class _Filters extends StatelessWidget {
       ],
       count: Text(
         loaded.incidents.length == 1
-            ? '1 Safety incident'
-            : '${loaded.incidents.length} Safety incidents',
+            ? l10n.incidents1SafetyIncident
+            : l10n.incidentsSafetyIncidents(loaded.incidents.length),
         key: SafetyIncidentsScreen.countKey,
         style: AppTypography.dense(context)?.copyWith(
           color: AppColors.of(context).textMuted,
@@ -494,9 +494,10 @@ List<AppTableColumn> _columns(BuildContext context) {
 /// reader's text scale, plus the slot's gutter. The cell renders it `dense` and
 /// semi-bold, so that is what is measured, never a default style.
 double _incidentNumberColumnWidth(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
   final painter = TextPainter(
     text: TextSpan(
-      text: 'SI-HCM-2026-00001',
+      text: l10n.incidentsSiHcm202600001,
       style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w600),
     ),
     textDirection: Directionality.of(context),

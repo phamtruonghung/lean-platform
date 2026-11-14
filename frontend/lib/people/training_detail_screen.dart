@@ -57,6 +57,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -153,6 +154,7 @@ class TrainingDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<TrainingDetailBloc>().state;
     return BlocListener<TrainingDetailBloc, TrainingDetailState>(
       listenWhen: (previous, current) => current is TrainingDetailDiscarded,
@@ -163,17 +165,16 @@ class TrainingDetailScreen extends StatelessWidget {
           TrainingDetailLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
           TrainingDetailUnavailable(isMissing: true) => PlatformEmptyState.noneExist(
               key: missingKey,
-              title: 'No such Training record',
-              message: 'Nothing is recorded at this address. It may have been removed, or '
-                  'the address may be wrong.',
+              title: l10n.commonNoSuchTrainingRecord,
+              message: l10n.nonconformanceDetailMissingMessage,
               icon: Icons.search_off_outlined,
-              actionLabel: 'Back to Training records',
+              actionLabel: l10n.commonBackToTrainingRecords,
               actionKey: backKey,
               onAction: () => context.go(Routes.training),
             ),
           TrainingDetailUnavailable(message: final message) => PlatformFailureState(
               key: failedKey,
-              title: 'The Training record could not be read',
+              title: l10n.trainingDetailTheTrainingRecordCouldNotBeRead,
               message: message,
               retryKey: retryKey,
               onRetry: () => context.read<TrainingDetailBloc>().add(TrainingDetailRequested(trainingRecordId)),
@@ -220,6 +221,7 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     // A draft is only ever shown to a caller who could send it; a sent record
     // is shown to everybody, so its Trainee list is changed only by one who can
@@ -245,13 +247,13 @@ class _Loaded extends StatelessWidget {
                     key: TrainingDetailScreen.backKey,
                     onPressed: () => context.go(Routes.training),
                     icon: const Icon(Icons.arrow_back),
-                    label: const Text('Back to Training records'),
+                    label: Text(l10n.commonBackToTrainingRecords),
                   ),
                   TextButton.icon(
                     key: TrainingDetailScreen.formKey,
                     onPressed: () => context.go(Routes.trainingForm(record.id)),
                     icon: const Icon(Icons.description_outlined),
-                    label: const Text('The form'),
+                    label: Text(l10n.trainingDetailTheForm),
                   ),
                 ],
               ),
@@ -315,30 +317,30 @@ class _Loaded extends StatelessWidget {
             ),
             const SizedBox(height: Spacing.md),
             AppDetailSection(
-              title: 'The training',
+              title: l10n.trainingDetailTheTraining,
               children: [
                 TrainingFact(
-                  label: 'Trained on',
+                  label: l10n.commonTrainedOn,
                   value: record.trainedOn,
                   valueKey: TrainingDetailScreen.trainedOnKey,
                 ),
                 TrainingFact(
-                  label: 'Org Unit',
+                  label: l10n.commonOrgUnit,
                   value: record.orgUnitName,
                   valueKey: TrainingDetailScreen.orgUnitKey,
                 ),
                 TrainingFact(
-                  label: 'Duration',
+                  label: l10n.trainingDetailDuration,
                   value: formatTrainingHours(record.durationHours),
                   valueKey: TrainingDetailScreen.durationKey,
                 ),
                 TrainingFact(
-                  label: 'Trainer',
+                  label: l10n.trainingDetailTrainer,
                   value: trainerName ?? 'Not recorded',
                   valueKey: TrainingDetailScreen.trainerKey,
                 ),
                 TrainingFact(
-                  label: 'Objective',
+                  label: l10n.trainingDetailObjective,
                   value: objective == null || objective.isEmpty ? 'Not recorded' : objective,
                   valueKey: TrainingDetailScreen.objectiveKey,
                 ),
@@ -347,7 +349,7 @@ class _Loaded extends StatelessWidget {
             const SizedBox(height: Spacing.md),
             AppDetailSection(
               key: TrainingDetailScreen.traineesHeadingKey,
-              title: 'Trainees (${record.traineeCount})',
+              title: l10n.trainingDetailTrainees(record.traineeCount),
               trailing: canChangeTrainees
                   ? OutlinedButton.icon(
                       key: TrainingDetailScreen.addTraineeKey,
@@ -359,13 +361,13 @@ class _Loaded extends StatelessWidget {
                                 orgUnitName: record.orgUnitName,
                               ),
                       icon: const Icon(Icons.person_add_alt_1_outlined),
-                      label: const Text('Add Trainee'),
+                      label: Text(l10n.commonAddTrainee),
                     )
                   : null,
               children: [
                 if (record.trainees.isEmpty)
                   Text(
-                    'No Trainees are on this Training record yet.',
+                    l10n.trainingDetailNoTraineesAreOnThisTrainingRecord,
                     key: TrainingDetailScreen.noTraineesKey,
                     style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
                   )
@@ -405,6 +407,7 @@ class _Loaded extends StatelessWidget {
   /// The record's own acts, under a hairline so they read as the card's footer
   /// rather than as one more fact above them.
   Widget _summaryActions(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -429,20 +432,20 @@ class _Loaded extends StatelessWidget {
                           ? null
                           : () => context.read<TrainingDetailBloc>().add(const TrainingRecordSent()),
                       icon: const Icon(Icons.send_outlined),
-                      label: const Text('Send to Trainees'),
+                      label: Text(l10n.trainingDetailSendToTrainees),
                     ),
                   OutlinedButton.icon(
                     key: TrainingDetailScreen.correctKey,
                     onPressed: isWriting ? null : () => TrainingRaiseDialog.openCorrection(context, record),
                     icon: const Icon(Icons.rule_outlined),
-                    label: const Text('Correct record'),
+                    label: Text(l10n.commonCorrectRecord),
                   ),
                   if (record.isDraft)
                     OutlinedButton.icon(
                       key: TrainingDetailScreen.discardKey,
                       onPressed: isWriting ? null : () => _discard(context),
                       icon: const Icon(Icons.delete_outline),
-                      label: const Text('Discard draft'),
+                      label: Text(l10n.trainingDetailDiscardDraft),
                     ),
                 ],
               );
@@ -536,6 +539,7 @@ class _TraineeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final muted = AppTypography.floor(context)?.copyWith(color: palette.textMuted);
     return Padding(
@@ -574,7 +578,7 @@ class _TraineeRow extends StatelessWidget {
                   _EvaluationPicker(trainee: trainee, isWriting: isWriting)
                 else if (trainee.evaluation != null)
                   Text(
-                    'Evaluated: ${trainingEvaluationLabel(trainee.evaluation!)}',
+                    l10n.trainingDetailEvaluated(trainingEvaluationLabel(trainee.evaluation!)),
                     key: TrainingDetailScreen.evaluationKey(trainee.id),
                     style: muted,
                   ),
@@ -594,7 +598,7 @@ class _TraineeRow extends StatelessWidget {
                                   if (signature == null) return;
                                   bloc.add(TrainingTraineeAnswered(trainee.id, 'confirmed', signature: signature));
                                 },
-                          child: const Text('Confirm'),
+                          child: Text(l10n.commonConfirm),
                         ),
                         OutlinedButton(
                           key: TrainingDetailScreen.declineKey(trainee.id),
@@ -603,7 +607,7 @@ class _TraineeRow extends StatelessWidget {
                               : () => context
                                   .read<TrainingDetailBloc>()
                                   .add(TrainingTraineeAnswered(trainee.id, 'declined')),
-                          child: const Text('Decline'),
+                          child: Text(l10n.commonDecline),
                         ),
                       ],
                     ),
@@ -614,7 +618,7 @@ class _TraineeRow extends StatelessWidget {
           if (canChangeTrainees)
             IconButton(
               key: TrainingDetailScreen.removeTraineeKey(trainee.id),
-              tooltip: 'Remove ${trainee.employeeName}',
+              tooltip: l10n.trainingDetailRemove(trainee.employeeName),
               icon: const Icon(Icons.close),
               onPressed: isWriting
                   ? null
@@ -649,24 +653,24 @@ class _FailureText extends StatelessWidget {
 /// Asks before discarding: a draft that goes takes its Trainees with it, and
 /// it cannot be brought back. Cancel issues nothing.
 Future<void> _discard(BuildContext context) async {
+  final l10n = AppLocalizations.of(context);
   final bloc = context.read<TrainingDetailBloc>();
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AppDialog(
-      title: 'Discard this draft?',
-      description: 'The draft and the Trainees listed on it will be deleted, and it cannot be '
-          'brought back. Nobody has been asked about it yet.',
+      title: l10n.trainingDetailDiscardThisDraft,
+      description: l10n.trainingDetailTheDraftAndTheTraineesListedOn,
       size: AppDialogSize.decision,
       actions: [
         AppDialogAction(
           id: 'training-discard-cancel',
-          label: 'Cancel',
+          label: l10n.commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(dialogContext).pop(false),
         ),
         AppDialogAction(
           id: 'training-discard-confirm',
-          label: 'Discard',
+          label: l10n.trainingDetailDiscard,
           kind: AppDialogActionKind.destructive,
           onPressed: () => Navigator.of(dialogContext).pop(true),
         ),
@@ -716,6 +720,7 @@ class _EvaluationPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final current = trainee.evaluation;
     return Padding(
       padding: const EdgeInsets.only(top: Spacing.xs),
@@ -724,7 +729,7 @@ class _EvaluationPicker extends StatelessWidget {
         spacing: Spacing.sm,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          const Text('Evaluation'),
+          Text(l10n.commonEvaluation),
           for (final evaluation in trainingEvaluations)
             ChoiceChip(
               key: TrainingDetailScreen.evaluationChoiceKey(trainee.id, evaluation),
@@ -740,7 +745,7 @@ class _EvaluationPicker extends StatelessWidget {
               onPressed: isWriting
                   ? null
                   : () => context.read<TrainingDetailBloc>().add(TrainingTraineeEvaluated(trainee.id, null)),
-              child: const Text('Clear'),
+              child: Text(l10n.commonClear),
             ),
         ],
       ),

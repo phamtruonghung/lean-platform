@@ -19,6 +19,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_page_header.dart';
 import 'router.dart';
@@ -37,9 +38,10 @@ class NotFoundScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Platform')),
+      appBar: AppBar(title: Text(l10n.shellBrand)),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),
@@ -70,8 +72,8 @@ class NotFoundScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: Spacing.md),
                     AppPageHeader(
-                      title: 'Screen not found',
-                      description: 'There is nothing at $location.',
+                      title: l10n.notFoundScreenNotFound,
+                      description: l10n.notFoundThereIsNothingAt(location),
                     ),
                     const SizedBox(height: Spacing.lg),
                     Align(
@@ -80,7 +82,7 @@ class NotFoundScreen extends StatelessWidget {
                         key: homeKey,
                         onPressed: () => context.go(Routes.home),
                         icon: const Icon(Icons.home_outlined),
-                        label: const Text('Back to Home'),
+                        label: Text(l10n.commonBackToHome),
                       ),
                     ),
                   ],

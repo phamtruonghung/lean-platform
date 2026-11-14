@@ -32,6 +32,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
@@ -88,6 +89,7 @@ class ComplaintDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<ComplaintDetailBloc>().state;
 
     return Scaffold(
@@ -100,7 +102,7 @@ class ComplaintDetailScreen extends StatelessWidget {
               ComplaintDetailLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
               ComplaintDetailUnavailable(message: final message) => PlatformFailureState(
                   key: failedKey,
-                  title: 'That complaint could not be read',
+                  title: l10n.complaintDetailThatComplaintCouldNotBeRead,
                   message: message,
                   retryKey: retryKey,
                   onRetry: () => context
@@ -125,6 +127,7 @@ class ComplaintDetailScreen extends StatelessWidget {
 class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: ComplaintDetailScreen.maxWidth,
@@ -140,13 +143,13 @@ class _Header extends StatelessWidget {
                 key: ComplaintDetailScreen.backKey,
                 onPressed: () => context.go(Routes.complaints),
                 icon: const Icon(Icons.arrow_back),
-                label: const Text('Back to Customer complaints'),
+                label: Text(l10n.complaintDetailBackToCustomerComplaints),
                 style: TextButton.styleFrom(
                   minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                 ),
               ),
               const SizedBox(height: Spacing.sm),
-              const AppPageHeader(title: 'Customer complaint'),
+              AppPageHeader(title: l10n.titleCustomerComplaint),
             ],
           ),
         ),
@@ -280,6 +283,7 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final row = complaint;
 
@@ -324,11 +328,11 @@ class _SummaryCard extends StatelessWidget {
                       if (row.isOverdue)
                         StatusChip(
                           key: ComplaintDetailScreen.overdueKey,
-                          label: 'Past due',
+                          label: l10n.commonPastDue,
                           tone: StatusTone.danger,
                         ),
                       if (row.isWarranty)
-                        const StatusChip(label: 'Warranty claim', tone: StatusTone.info),
+                        StatusChip(label: l10n.commonWarrantyClaim, tone: StatusTone.info),
                     ],
                   ),
                 ),
@@ -393,17 +397,16 @@ class _ControlSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final record = complaint.nonconformance;
 
     return AppDetailSection(
-      title: 'The product this is about',
+      title: l10n.complaintDetailTheProductThisIsAbout,
       children: [
         if (record == null) ...[
           Text(
-            'Nothing controls the product this customer complained about yet. Record a '
-            'Non-conformance from this complaint, or link one that already exists for the '
-            'same Product.',
+            l10n.complaintDetailNothingControlsTheProductThisCustomerComplained,
             key: ComplaintDetailScreen.noControlKey,
             style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
           ),
@@ -418,7 +421,7 @@ class _ControlSection extends StatelessWidget {
                     ? null
                     : () => context.go('${Routes.complaints}/${complaint.id}/nonconformance'),
                 icon: const Icon(Icons.fact_check_outlined),
-                label: const Text('Record a Non-conformance'),
+                label: Text(l10n.nonconformanceRecord),
                 style: ComplaintDetailScreen.actionStyle,
               ),
               OutlinedButton.icon(
@@ -427,7 +430,7 @@ class _ControlSection extends StatelessWidget {
                     ? null
                     : () => context.go('${Routes.complaints}/${complaint.id}/link'),
                 icon: const Icon(Icons.link_outlined),
-                label: const Text('Link one that exists'),
+                label: Text(l10n.commonLinkOneThatExists),
                 style: ComplaintDetailScreen.secondaryStyle,
               ),
             ],
@@ -444,22 +447,21 @@ class _ControlSection extends StatelessWidget {
                 style: AppTypography.dense(context)
                     ?.copyWith(color: palette.textPrimary, fontWeight: FontWeight.w500),
               ),
-              const StatusChip(label: 'Open record', tone: StatusTone.info),
+              StatusChip(label: l10n.commonOpenRecord, tone: StatusTone.info),
             ],
           ),
           const SizedBox(height: Spacing.xxs),
           Text(
-            record.detectionPoint == 'customer'
-                ? 'Found by the customer, so this complaint is where it started.'
-                : 'Recorded at ${record.detectionPoint ?? 'another detection point'}, and '
-                    'linked to this complaint.',
+            record.detectionPoint == l10n.complaintDetailCustomer
+                ? l10n.complaintDetailFoundByTheCustomerSoThisComplaint
+                : l10n.complaintDetailRecordedAtAndLinkedToThisComplaint(record.detectionPoint ?? 'another detection point'),
             style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
           ),
           const SizedBox(height: Spacing.md),
           OutlinedButton.icon(
             onPressed: () => context.go('${Routes.nonConformances}/${record.id}'),
             icon: const Icon(Icons.open_in_new),
-            label: const Text('Open the Non-conformance'),
+            label: Text(l10n.commonOpenTheNonConformance),
             style: ComplaintDetailScreen.secondaryStyle,
           ),
         ],
@@ -477,10 +479,11 @@ class _ResponseSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
 
     return AppDetailSection(
-      title: 'The response',
+      title: l10n.commonTheResponse,
       children: [
         if (complaint.responseNote != null) ...[
           Text(
@@ -491,13 +494,13 @@ class _ResponseSection extends StatelessWidget {
           if (complaint.closedAt != null) ...[
             const SizedBox(height: Spacing.xxs),
             Text(
-              'Closed ${complaint.closedAt}',
+              l10n.complaintDetailClosed((complaint.closedAt ?? '')),
               style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
             ),
           ],
         ] else ...[
           Text(
-            'Nothing has been said back to this customer yet.',
+            l10n.complaintDetailNothingHasBeenSaidBackToThis,
             style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
           ),
           const SizedBox(height: Spacing.md),
@@ -507,7 +510,7 @@ class _ResponseSection extends StatelessWidget {
                 ? null
                 : () => context.go('${Routes.complaints}/${complaint.id}/respond'),
             icon: const Icon(Icons.reply_outlined),
-            label: const Text('Close with the response'),
+            label: Text(l10n.complaintDetailCloseWithTheResponse),
             style: ComplaintDetailScreen.actionStyle,
           ),
         ],

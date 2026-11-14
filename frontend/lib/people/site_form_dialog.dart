@@ -20,6 +20,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/app_scan_field.dart';
@@ -178,8 +179,8 @@ class _SiteFormDialogState extends State<SiteFormDialog> {
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: Spacing.md),
           child: PlatformFailureState(
-            title: 'Timezones unavailable',
-            message: state.timezoneFailure ?? 'The timezone list could not be loaded.',
+            title: AppLocalizations.of(context).siteFormTimezonesUnavailable,
+            message: state.timezoneFailure ?? AppLocalizations.of(context).siteFormTheTimezoneListCouldNotBeLoaded,
             retryKey: SiteFormDialog.timezoneRetryKey,
             onRetry: () =>
                 context.read<OrgUnitAdminBloc>().add(const OrgUnitAdminTimezonesRequested()),
@@ -189,7 +190,7 @@ class _SiteFormDialogState extends State<SiteFormDialog> {
         final zones = state.timezones;
         return AppSearchField<String>(
           name: SiteFormDialog._timezoneFieldName,
-          label: 'Timezone',
+          label: AppLocalizations.of(context).siteFormTimezone,
           value: _timezone,
           enabled: !_awaiting,
           onChanged: (value) => setState(() => _timezone = value),
@@ -232,24 +233,25 @@ class _SiteFormDialogState extends State<SiteFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocListener<OrgUnitAdminBloc, OrgUnitAdminState>(
       listener: _onAdminChanged,
       child: BlocBuilder<OrgUnitAdminBloc, OrgUnitAdminState>(
         builder: (context, state) => AppDialog(
-          title: widget.site == null ? 'Add Site' : 'Edit Site',
+          title: widget.site == null ? l10n.commonAddSite : l10n.commonEditSite,
           size: AppDialogSize.picker,
           // `child` last, as `sort_child_properties_last` requires.
           actions: [
             AppDialogAction(
               id: 'site-form-cancel',
-              label: 'Cancel',
+              label: l10n.commonCancel,
               kind: AppDialogActionKind.dismiss,
               onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
             ),
             AppDialogAction(
               id: 'site-form-submit',
-              label: _awaiting ? 'Saving…' : (widget.site == null ? 'Add Site' : 'Save'),
+              label: _awaiting ? l10n.commonSaving : (widget.site == null ? l10n.commonAddSite : l10n.commonSave),
               onPressed: _complete(state) && !_awaiting ? () => _submit(state) : null,
             ),
           ],
@@ -262,7 +264,7 @@ class _SiteFormDialogState extends State<SiteFormDialog> {
                   AppScanField(
                     key: SiteFormDialog.codeKey,
                     controller: _code,
-                    label: 'Code',
+                    label: l10n.commonCode,
                     enabled: !_awaiting,
                     autofocus: true,
                     onChanged: (_) => setState(() {}),
@@ -273,7 +275,7 @@ class _SiteFormDialogState extends State<SiteFormDialog> {
                     controller: _name,
                     enabled: !_awaiting,
                     onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+                    decoration: InputDecoration(labelText: l10n.commonName, border: OutlineInputBorder()),
                   ),
                   const SizedBox(height: Spacing.md),
                   _buildTimezoneField(state),
@@ -282,8 +284,8 @@ class _SiteFormDialogState extends State<SiteFormDialog> {
                     key: SiteFormDialog.countryCodeKey,
                     controller: _countryCode,
                     enabled: !_awaiting,
-                    decoration: const InputDecoration(
-                      labelText: 'Country code (optional)',
+                    decoration: InputDecoration(
+                      labelText: l10n.siteFormCountryCodeOptional,
                       border: OutlineInputBorder(),
                     ),
                   ),

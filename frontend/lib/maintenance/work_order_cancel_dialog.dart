@@ -12,6 +12,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'work_order.dart';
@@ -79,6 +80,7 @@ class _WorkOrderCancelDialogState extends State<WorkOrderCancelDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return BlocListener<WorkOrdersBloc, WorkOrdersState>(
       listener: _onWorkOrdersChanged,
@@ -87,18 +89,18 @@ class _WorkOrderCancelDialogState extends State<WorkOrderCancelDialog> {
       // separated from the dismiss; the optional reason is the answer, not a
       // form (§11).
       child: AppDialog(
-        title: 'Cancel this Work order?',
+        title: l10n.workOrderCancelCancelThisWorkOrder,
         size: AppDialogSize.decision,
         actions: [
           AppDialogAction(
             id: WorkOrderCancelDialog._dismissId,
-            label: 'Keep it open',
+            label: l10n.commonKeepItOpen,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: WorkOrderCancelDialog._submitId,
-            label: 'Cancel this Work order',
+            label: l10n.workOrderCancelCancelThisWorkOrder2,
             kind: AppDialogActionKind.destructive,
             onPressed: _awaiting ? null : _submit,
           ),
@@ -112,8 +114,8 @@ class _WorkOrderCancelDialogState extends State<WorkOrderCancelDialog> {
               controller: _reason,
               enabled: !_awaiting,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Why is this being cancelled? (optional)',
+              decoration: InputDecoration(
+                labelText: l10n.workOrderCancelWhyIsThisBeingCancelledOptional,
                 border: OutlineInputBorder(),
               ),
             ),
