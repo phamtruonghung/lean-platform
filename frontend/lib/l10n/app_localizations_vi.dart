@@ -8179,6 +8179,12 @@ class AppLocalizationsVi extends AppLocalizations {
       'Sửa sau khi xác nhận';
 
   @override
+  String get handoverStatusSubmitted => 'Đã gửi';
+
+  @override
+  String get handoverStatusAcknowledged => 'Đã xác nhận';
+
+  @override
   String get skillCoverageNobodyQualified => 'Chưa ai đủ năng lực';
 
   @override

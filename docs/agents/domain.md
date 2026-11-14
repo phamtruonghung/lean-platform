@@ -66,12 +66,16 @@ arm of the lookup — the `_ => code` arm is what makes a forgotten one visible.
 These still render as their own English/code value in every language, in the
 vocabulary's own fallback. They are the residue of the sweep, not a decision
 that they need no translation. The **status / type / role / severity words are
-all converted** (ADR-0062's round 2 closed the model-level tables: complaints,
-supplier NCRs, downtime, assets, defect categories, the KPI board and Review,
-the slide show's kinds, the skill coverage legend, the Shift handover's seven
-sets, and — round 3, the last three model-level labels — an Account's standing,
-a Grant's level and the board's period). What follows is prose, measured by grep
-at the end of that round:
+all converted**: ADR-0062's rounds 2 and 3 closed the model-level tables
+(complaints, supplier NCRs, downtime, assets, defect categories, the KPI board
+and Review, the slide show's kinds, the skill coverage legend, the Shift
+handover's seven sets, and — round 3, the last three model-level labels — an
+Account's standing, a Grant's level and the board's period), and the set the
+review of round 3 found had escaped them is closed too: the Shift handover's own
+status chip (`submitted` / `acknowledged`, `handoverStatusLabel`), on the board
+and in the record's header. What is left is the one status-shaped answer word in
+the table below (a Trainee's `declined`) and prose, measured by grep at the end
+of that round:
 
 | Code set / prose | Where | What is still English |
 | --- | --- | --- |
@@ -82,8 +86,12 @@ at the end of that round:
 | Register column headings kept as constants | `lib/kpi/kpi_targets_screen.dart`, `lib/people/attendance_sheet_screen.dart` | "Valid from", "Grain", "Entered by", … |
 | Widget tooltips kept as constants | `lib/widgets/palette_toggle.dart`, `lib/quality/slide_show_toggle.dart` | the palette and slide-show tooltips |
 | The KPI Review's two hints | `lib/kpi/kpi_review_screen.dart` | "No target — set one first", the clears-note sentence |
+| A form's never-edited rule | `lib/kpi/change_target_dialog.dart` | `rule`'s English sentence |
+| A Signature's provenance sentence | `lib/people/training_detail_screen.dart` | "Signed with their kept Signature", … |
+| The board's handover button | `lib/production/section_board_screen.dart` | "Write the handover" / "Continue the handover" / "Open the handover" |
 | Model prose getters | `lib/quality/{customer_complaint,supplier_ncr}.dart` | `quantityLabel`, `dueLabel` — "No quantity given" |
 | A failed read's retry label | `lib/widgets/failure_state.dart` | `retryLabel`'s English default ("Try again") |
+| A failed suggestion read | `lib/widgets/app_search_field.dart` | "Couldn't load suggestions…" |
 
 A **Bloc's interpolated notices** (`'${action.actionNo} was called off.'`) are
 the other half: `notices.dart` covers the constant messages and the parameterised

@@ -13745,6 +13745,18 @@ abstract class AppLocalizations {
   /// **'Amended after acknowledgement'**
   String get handoverExceptionAmendedAfterAcknowledgement;
 
+  /// A Shift handover's own status chip: signed off by the outgoing Team Leader, waiting to be acknowledged.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted'**
+  String get handoverStatusSubmitted;
+
+  /// A Shift handover's own status chip: read and acknowledged by the incoming shift.
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledged'**
+  String get handoverStatusAcknowledged;
+
   /// The skill coverage register's legend: no Employee is qualified for this requirement.
   ///
   /// In en, this message translates to:

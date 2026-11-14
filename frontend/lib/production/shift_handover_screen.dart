@@ -311,7 +311,7 @@ class _LoadedState extends State<_Loaded> {
                               Text(handover.handoverNo!, style: theme.textTheme.labelMedium),
                             StatusChip(
                               key: ShiftHandoverScreen.statusKey,
-                              label: _statusLabel(handover.status),
+                              label: handoverStatusLabel(l10n, handover.status),
                               tone: _statusTone(handover.status),
                             ),
                             if (handover.late == true) StatusChip(label: l10n.commonLate, tone: StatusTone.warning),
@@ -500,13 +500,6 @@ class _SubmitBar extends StatelessWidget {
     );
   }
 }
-
-String _statusLabel(String status) => switch (status) {
-      'draft' => 'Draft',
-      'submitted' => 'Submitted',
-      'acknowledged' => 'Acknowledged',
-      _ => status,
-    };
 
 StatusTone _statusTone(String status) => switch (status) {
       'draft' => StatusTone.neutral,

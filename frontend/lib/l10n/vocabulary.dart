@@ -1036,6 +1036,19 @@ String handoverDeviationReasonLabel(AppLocalizations l10n, String? wire) => wire
         _ => wire,
       };
 
+/// The state a Shift handover itself stands in — the chip on the board and in
+/// the record's header — in words.
+///
+/// A draft is the Work-order catalogue's own `Draft` (`Bản nháp`), reused rather
+/// than added a third time: one concept, one word. `submitted` and
+/// `acknowledged` are this record's own, because no other register has them.
+String handoverStatusLabel(AppLocalizations l10n, String wire) => switch (wire) {
+      'draft' => l10n.workOrderStatusDraft,
+      'submitted' => l10n.handoverStatusSubmitted,
+      'acknowledged' => l10n.handoverStatusAcknowledged,
+      _ => wire,
+    };
+
 /// A shift boundary's exception on the Section's day, in words.
 String handoverExceptionLabel(AppLocalizations l10n, String? wire) => wire == null
     ? '—'

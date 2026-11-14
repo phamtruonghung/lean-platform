@@ -339,12 +339,7 @@ class _ShiftRow extends StatelessWidget {
                 if (handover != null)
                   StatusChip(
                     key: SectionBoardScreen.handoverStatusKey(id),
-                    label: switch (handover.status) {
-                      'draft' => 'Draft',
-                      'submitted' => 'Submitted',
-                      'acknowledged' => 'Acknowledged',
-                      _ => handover.status,
-                    },
+                    label: handoverStatusLabel(AppLocalizations.of(context), handover.status),
                     tone: switch (handover.status) {
                       'acknowledged' => StatusTone.success,
                       'submitted' => StatusTone.info,

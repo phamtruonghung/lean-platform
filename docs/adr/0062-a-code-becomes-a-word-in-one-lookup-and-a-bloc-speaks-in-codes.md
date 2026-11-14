@@ -171,9 +171,13 @@ reader:
 - Not converted by this ADR, and still English. The list is bounded and measured
   (grep, not a census) rather than "everything else", and
   `docs/agents/domain.md` carries it so the next slice starts from a list:
-  - **21 English `static const String`s in 6 files** outside `l10n/` — the KPI
-    targets table's own column headings, the palette toggle's tooltips, the slide
-    show's tooltip, the KPI Review's two hints, one attendance sheet label;
+  - **15 English `static const String`s holding copy, in 7 files** outside
+    `l10n/` — the KPI targets table's own column headings, the palette toggle's
+    two tooltips, the slide show's two tooltips, the KPI Review's two hints, one
+    attendance sheet heading, the never-edited rule in `change_target_dialog`
+    and the search field's failure sentence. (The `DestinationGroupNames`
+    constants are lookup keys, not copy: `destination_labels.dart` resolves
+    them.)
   - **33 notices a Bloc still composes inline** (`notice: '${…} was called off.'`)
     — the parameterised registry covers the ones the sweep converted, not these;
   - **3 sentence-shaped model getters** (`CustomerComplaint.quantityLabel` /
@@ -182,7 +186,8 @@ reader:
   - **one filter count line** (`AppFilterField.countLabel`) and **two form-mode
     title sets** (`product_cost_form_dialog`, `cost_rate_form_dialog`).
 
-  Every *status, type, role, severity and code* word is converted. What is left
-  is prose the tree composes from several values at once, which is a different
-  mechanism (a parameterised message, not a code → word lookup) and is why it is
-  named here rather than quietly included.
+  Every *status, type, role, severity and code* word is converted, with one
+  named exception: a Trainee's answer word (`declined`, listed in
+  `docs/agents/domain.md`). What is left is prose the tree composes from several
+  values at once, which is a different mechanism (a parameterised message, not a
+  code → word lookup) and is why it is named here rather than quietly included.

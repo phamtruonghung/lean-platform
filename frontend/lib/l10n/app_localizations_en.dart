@@ -8203,6 +8203,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'Amended after acknowledgement';
 
   @override
+  String get handoverStatusSubmitted => 'Submitted';
+
+  @override
+  String get handoverStatusAcknowledged => 'Acknowledged';
+
+  @override
   String get skillCoverageNobodyQualified => 'Nobody qualified';
 
   @override
