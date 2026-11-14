@@ -117,10 +117,11 @@ Phân loại có thể phát hiện nhiều hơn con số ban đầu, nên chỉ
 > hành đứng cạnh 100 cái hàng lỗi không tự ghi được "40 cái này phế" — và con số
 > trên sổ chất lượng sẽ do người không nhìn thấy hàng ghi.
 
-> **Một chỗ lệch đáng biết.** Nhãn của `QLT_NONCONFORMANCES_DISPOSE` trong danh mục
-> quyền đọc là "Concede, rework or scrap nonconforming product" — rộng hơn việc mà
-> mã này thật sự chặn. Theo đúng mã nguồn thì **làm lại / phế** đi qua quyền ghi
-> thường, còn **nhượng bộ** mới là quyết định. Tài liệu này ghi theo mã nguồn.
+> **Một chỗ lệch đáng biết.** Phần mô tả của `QLT_NONCONFORMANCES_DISPOSE` trong danh
+> mục quyền đọc là "Concede, rework or scrap nonconforming product" — rộng hơn việc mà
+> mã này thật sự chặn (tên của mã ghi "Dispose of nonconforming product"). Theo đúng mã
+> nguồn thì **làm lại / phế** đi qua quyền ghi thường, còn **nhượng bộ** mới là
+> quyết định. Tài liệu này ghi theo mã nguồn.
 
 **Điểm then chốt về nguyên nhân.** Bản ghi này xử lý **sản phẩm**. Vấn đề **phía
 sau** được giải quyết trong **Nhật ký hành động**, dưới dạng **Concern** — và một

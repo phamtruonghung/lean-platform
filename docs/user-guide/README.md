@@ -154,9 +154,9 @@ của chức năng mẹ, và — với mọi thao tác ghi — phạm vi Đơn v
 | Phân công / Phân công lại | `/work-orders/:id/assign` | Mang `MTN_WORK_ORDERS_CHANGE` | [03](03-bao-tri.md#phân-công-lệnh-công-việc) |
 | Hoàn thành Lệnh công việc | `/work-orders/:id/complete` | Mang `MTN_WORK_ORDERS_CHANGE` | [03](03-bao-tri.md#hoàn-thành-lệnh-công-việc) |
 | Huỷ Lệnh công việc | `/work-orders/:id/cancel` | Mang `MTN_WORK_ORDERS_CHANGE` | [03](03-bao-tri.md#huỷ-lệnh-công-việc) |
-| Chấp nhận một Yêu cầu | `/requests/:id/accept` | Mang `MTN_REQUESTS_TRIAGE` | [03](03-bao-tri.md#hàng-chờ-phân-loại) |
-| Từ chối một Yêu cầu | `/requests/:id/decline` | Mang `MTN_REQUESTS_TRIAGE` | [03](03-bao-tri.md#hàng-chờ-phân-loại) |
-| Đánh dấu Yêu cầu trùng lặp | `/requests/:id/duplicate` | Mang `MTN_REQUESTS_TRIAGE` | [03](03-bao-tri.md#hàng-chờ-phân-loại) |
+| Chấp nhận một Yêu cầu | hộp thoại trên `/requests` — nút **Chấp nhận** trên dòng | Mang `MTN_REQUESTS_TRIAGE` | [03](03-bao-tri.md#hàng-chờ-phân-loại) |
+| Từ chối một Yêu cầu | hộp thoại trên `/requests` — menu ⋮ của dòng | Mang `MTN_REQUESTS_TRIAGE` | [03](03-bao-tri.md#hàng-chờ-phân-loại) |
+| Đánh dấu Yêu cầu trùng lặp | hộp thoại trên `/requests` — menu ⋮ của dòng | Mang `MTN_REQUESTS_TRIAGE` | [03](03-bao-tri.md#hàng-chờ-phân-loại) |
 | Nêu một Concern | `/actions/new` | Mang `ACT_RAISE` | [04](04-hanh-dong.md#nêu-một-concern) |
 | Chi tiết Hành động | `/actions/:id` | Mang `ACT_LOG_DISPLAY` | [04](04-hanh-dong.md#chi-tiết-hành-động) |
 | Hoàn thành một giai đoạn | `/actions/:id/phases/:phase/complete` | Mang `ACT_MEASURE` / `ACT_VERIFY` theo giai đoạn | [04](04-hanh-dong.md#hoàn-thành-một-giai-đoạn) |
