@@ -254,7 +254,7 @@ void main() {
     await _pump(tester, wire);
     await tapIn(tester, find.byKey(SupplierNcrsScreen.recordKey));
 
-    // Every choice is a dropdown over a catalogue the register already read, so
+    // Every choice is drawn from a catalogue the register already read, so
     // opening the form issued no request for them.
     await _choose(
       tester,
@@ -262,10 +262,11 @@ void main() {
       'Northwind Fasteners · SUP-1',
     );
     await _choose(tester, SupplierNcrFormDialog.productKey, 'Gearbox · PRD-1');
-    await _choose(
+    await pickSuggestion(
       tester,
-      SupplierNcrFormDialog.defectCodeKey,
-      'Out of tolerance · DIM-OOT',
+      fieldKey: SupplierNcrFormDialog.defectCodeFieldKey(),
+      term: 'DIM-OOT',
+      suggestionKey: SupplierNcrFormDialog.defectCodeSuggestionKey('41'),
     );
     await tester.enterText(find.byKey(SupplierNcrFormDialog.quantityKey), '250');
     await tester.enterText(find.byKey(SupplierNcrFormDialog.lotKey), 'LOT-4771');

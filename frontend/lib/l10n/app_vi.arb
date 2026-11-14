@@ -1632,10 +1632,6 @@
   "@nonconformanceFormDefectCodeHelp": {
     "description": "Help text under the Defect code field of the Non-conformance form."
   },
-  "nonconformanceFormChooseCode": "Chọn một mã",
-  "@nonconformanceFormChooseCode": {
-    "description": "The Defect code picker's option that has nothing chosen yet."
-  },
   "nonconformanceFormDetectionPoint": "Điểm phát hiện",
   "@nonconformanceFormDetectionPoint": {
     "description": "Label over the detection point of a Non-conformance."
@@ -3038,7 +3034,6 @@
   "complaintFormCustomer": "Khách hàng",
   "commonDefectCodeOptional": "Mã lỗi (không bắt buộc)",
   "complaintFormWhatTheCustomerSaysIsWrongA": "Điều khách hàng nói là sai. Sản phẩm không phù hợp ghi nhận từ khiếu nại này sẽ mang theo nội dung đó.",
-  "commonNotKnownYet": "Chưa biết",
   "complaintFormQuantityOptional": "Số lượng (không bắt buộc)",
   "complaintFormInTheProductSOwnUnitOf": "Theo đơn vị đo của chính Sản phẩm.",
   "complaintFormResponseDueOptional": "Hạn phản hồi (không bắt buộc)",

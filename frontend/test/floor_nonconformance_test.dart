@@ -9,6 +9,8 @@
 /// `FloorNonconformanceBloc`'s state directly.
 library;
 
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/maintenance/floor_screen.dart';
 import 'package:lean_platform/maintenance/floor_technician_dialog.dart';
@@ -33,12 +35,14 @@ FakeWire _wire() => FakeWire(
     );
 
 /// Fills the form in the way an operator at the machine does: choose the
-/// Product, choose the Defect code, choose the detection point, type how much
-/// and who they are. Leaves the dialog ready to submit.
+/// Product, type the Defect code and pick the row it names, choose the
+/// detection point, type how much and who they are. Leaves the dialog ready to
+/// submit.
 Future<void> fillForm(
   WidgetTester tester, {
   String product = 'PRD-1 · Gearbox',
-  String defectCode = 'DIM-OOT · Out of tolerance',
+  String defectCode = 'DIM-OOT',
+  String defectCodeId = '50',
   String detectionPoint = 'In process',
   String quantity = '12',
 }) async {
@@ -47,9 +51,11 @@ Future<void> fillForm(
   await tester.tap(find.text(product).last);
   await tester.pumpAndSettle();
 
-  await tester.tap(find.byKey(FloorNonconformanceDialog.defectCodeKey));
+  // The Defect code is a search field over the catalogue the device read, so
+  // its own code is typed (or scanned) and the row it names is picked.
+  await tester.enterText(find.byKey(FloorNonconformanceDialog.defectCodeFieldKey()), defectCode);
   await tester.pumpAndSettle();
-  await tester.tap(find.text(defectCode).last);
+  await tester.tap(find.byKey(FloorNonconformanceDialog.defectCodeSuggestionKey(defectCodeId)));
   await tester.pumpAndSettle();
 
   await tester.tap(find.byKey(FloorNonconformanceDialog.detectionPointKey));
@@ -88,7 +94,7 @@ void main() {
 
     expect(find.text('Record a Non-conformance'), findsOneWidget);
     expect(find.byKey(FloorNonconformanceDialog.productKey), findsOneWidget);
-    expect(find.byKey(FloorNonconformanceDialog.defectCodeKey), findsOneWidget);
+    expect(find.byKey(FloorNonconformanceDialog.defectCodeFieldKey()), findsOneWidget);
     expect(find.byKey(FloorNonconformanceDialog.detectionPointKey), findsOneWidget);
 
     // Both catalogues were read through the device's own door, and both
@@ -97,7 +103,8 @@ void main() {
     expect(wire.floorCatalogueReads, everyElement('device-credential'));
 
     // Every value with a known set is a choice drawn from what was read, not
-    // something typed (ADR-0023).
+    // something typed (ADR-0023) — the Defect code through a search field that
+    // narrows the catalogue the device read, the rest through a menu.
     await tester.tap(find.byKey(FloorNonconformanceDialog.productKey));
     await tester.pumpAndSettle();
     expect(find.text('PRD-1 · Gearbox'), findsWidgets);
@@ -105,10 +112,12 @@ void main() {
     await tester.tap(find.text('PRD-1 · Gearbox').last);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(FloorNonconformanceDialog.defectCodeKey));
+    await tester.enterText(find.byKey(FloorNonconformanceDialog.defectCodeFieldKey()), 'DIM');
     await tester.pumpAndSettle();
     expect(find.text('DIM-OOT · Out of tolerance'), findsWidgets);
-    await tester.tap(find.text('DIM-OOT · Out of tolerance').last);
+    // The term narrowed the list to the one code it names.
+    expect(find.text('SCR · Scratch'), findsNothing);
+    await tester.tap(find.byKey(FloorNonconformanceDialog.defectCodeSuggestionKey('50')));
     await tester.pumpAndSettle();
 
     // The Defect code's own severity is stated rather than asked for: a
@@ -169,6 +178,62 @@ void main() {
     // operator is left with.
     expect(find.byKey(FloorNonconformanceDialog.submitKey), findsNothing);
     expect(find.textContaining('NC-HCM-2026-'), findsOneWidget);
+  });
+
+  testWidgets("a reader's burst into the Defect code picks the code it names, and the record carries "
+      'its id', (tester) async {
+    final wire = _wire();
+
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(),
+      client: wire.client,
+      initialLocation: '/floor',
+    );
+
+    await openFlow(tester);
+
+    // A keyboard-wedge reader's two events: the whole code in one text-input
+    // event — byte-order mark and carriage return included, and in the case the
+    // reader happens to send — then `Enter` as a hardware key.
+    await tester.tap(find.byKey(FloorNonconformanceDialog.defectCodeFieldKey()));
+    await tester.enterText(
+      find.byKey(FloorNonconformanceDialog.defectCodeFieldKey()),
+      '\uFEFFdim-oot\r\n',
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    // The scan was a pick, not text left sitting in a box: the field now shows
+    // the record the code names, and the form reads that record — the severity
+    // line is the code's own, and the submit gate is open without a tap on any
+    // suggestion row.
+    expect(
+      tester
+          .widget<TextField>(find.byKey(FloorNonconformanceDialog.defectCodeFieldKey()))
+          .controller!
+          .text,
+      'DIM-OOT · Out of tolerance',
+    );
+    expect(find.textContaining('Starts at Major'), findsOneWidget);
+
+    // The rest of the form, and the record posted carries the scanned code's id.
+    await tester.tap(find.byKey(FloorNonconformanceDialog.productKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('PRD-1 · Gearbox').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(FloorNonconformanceDialog.detectionPointKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('In process').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(FloorNonconformanceDialog.quantityKey), '3');
+    await tester.enterText(find.byKey(FloorNonconformanceDialog.employeeNoKey), 'EMP-20');
+    await tester.enterText(find.byKey(FloorNonconformanceDialog.pinKey), '4321');
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(FloorNonconformanceDialog.submitKey));
+
+    final body = wire.floorNonconformancePosts.single['body'] as Map<String, dynamic>;
+    expect(body['defectCodeId'], '50');
   });
 
   testWidgets('a refused record is reported on the form and nothing is written twice', (tester) async {

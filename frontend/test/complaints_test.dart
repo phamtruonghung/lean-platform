@@ -14,6 +14,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/maintenance/org_unit_chooser.dart';
@@ -205,11 +206,16 @@ void main() {
     await _pump(tester, wire);
     await tapIn(tester, find.byKey(ComplaintsScreen.recordKey));
 
-    // Every choice is a dropdown over a catalogue the register already read, so
+    // Every choice is drawn from a catalogue the register already read, so
     // opening the form issued no request for them.
     await _choose(tester, ComplaintFormDialog.customerKey, 'Acme Bearings · CUST-1');
     await _choose(tester, ComplaintFormDialog.productKey, 'Gearbox · PRD-1');
-    await _choose(tester, ComplaintFormDialog.defectCodeKey, 'Out of tolerance · DIM-OOT');
+    await pickSuggestion(
+      tester,
+      fieldKey: ComplaintFormDialog.defectCodeFieldKey(),
+      term: 'DIM-OOT',
+      suggestionKey: ComplaintFormDialog.defectCodeSuggestionKey('41'),
+    );
     await tester.enterText(find.byKey(ComplaintFormDialog.quantityKey), '20');
     await tester.enterText(
       find.byKey(ComplaintFormDialog.descriptionKey),
@@ -233,6 +239,46 @@ void main() {
       'defectCodeId': '41',
       'quantity': 20,
     });
+  });
+
+  testWidgets("a reader's burst into the complaint's Defect code picks the code it names, and the "
+      'form posts its id', (tester) async {
+    final wire = _wire();
+    await _pump(tester, wire);
+    await tapIn(tester, find.byKey(ComplaintsScreen.recordKey));
+
+    // The Defect code is optional on a complaint and it is the field a person
+    // reads off the returned part, so it takes the reader's burst: the whole
+    // code in one text-input event, byte-order mark and carriage return
+    // included and in whatever case the reader sends, then `Enter` as a
+    // hardware key rather than a person's keystroke.
+    await tester.enterText(
+      find.byKey(ComplaintFormDialog.defectCodeFieldKey()),
+      '\uFEFFdim-oot\r\n',
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    // The scan was a pick: the field shows the record the code names, with no
+    // suggestion row tapped.
+    expect(
+      searchFieldText(tester, ComplaintFormDialog.defectCodeFieldKey()),
+      'Out of tolerance · DIM-OOT',
+    );
+
+    // The rest of what a complaint is, and what the wire receives names the
+    // scanned code.
+    await _choose(tester, ComplaintFormDialog.customerKey, 'Acme Bearings · CUST-1');
+    await _choose(tester, ComplaintFormDialog.productKey, 'Gearbox · PRD-1');
+    await tester.enterText(
+      find.byKey(ComplaintFormDialog.descriptionKey),
+      'Twenty will not seat on the shaft.',
+    );
+    await tapIn(tester, find.byKey(OrgUnitChooser.chooseKey('10')));
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(ComplaintFormDialog.submitKey));
+
+    expect(wire.complaintPosts.single['defectCodeId'], '41');
   });
 
   testWidgets('the record form refuses to submit without a Customer, a Product, a description and '

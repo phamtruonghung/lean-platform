@@ -15,10 +15,16 @@
 /// the device's own door**, which is why the flow reads before it can be
 /// filled in: ADR-0023's rule is that a value with a known set is chosen,
 /// never typed, and a device standing at a machine cannot choose without
-/// knowing the set. They are dropdowns rather than an `AppSearchField` — the
-/// desktop form's own Product picker — because this form is filled in with a
-/// finger at arm's length, where a search box means typing on a tablet; the
-/// catalogues are short, and the device already holds the whole list.
+/// knowing the set. The Product and the detection point stay
+/// `DropdownButtonFormField`s — a menu is the better control for a finger at
+/// arm's length, and the device holds the whole list. **The Defect code is an
+/// `AppSearchField`**, because it is the one field here a person reads off the
+/// part in their hand: a dropdown has no text buffer, so a reader's burst
+/// cannot reach it at all, while a search field over the same list commits an
+/// exact code (equal, case-insensitive, reader noise stripped) as a pick
+/// (`app_search_field.dart`). Its suggestion list filters the catalogue the
+/// device's own door already read, in memory, so nothing here issues a request
+/// per term.
 ///
 /// **The severity is not offered**: the record starts at the chosen Defect
 /// code's own default, which the form states rather than leaving the operator
@@ -34,6 +40,8 @@ import 'package:flutter/services.dart';
 
 import '../l10n/app_localizations.dart';
 import '../theme.dart';
+import '../widgets/app_search_field.dart';
+import 'defect_code.dart';
 import 'floor_nonconformance_bloc.dart';
 import 'nonconformance.dart';
 import '../l10n/vocabulary.dart';
@@ -42,7 +50,6 @@ class FloorNonconformanceDialog extends StatefulWidget {
   const FloorNonconformanceDialog({super.key});
 
   static const ValueKey<String> productKey = ValueKey<String>('floor-nc-product');
-  static const ValueKey<String> defectCodeKey = ValueKey<String>('floor-nc-defect-code');
   static const ValueKey<String> detectionPointKey = ValueKey<String>('floor-nc-detection-point');
   static const ValueKey<String> quantityKey = ValueKey<String>('floor-nc-quantity');
   static const ValueKey<String> lotRefKey = ValueKey<String>('floor-nc-lot');
@@ -52,6 +59,17 @@ class FloorNonconformanceDialog extends StatefulWidget {
   static const ValueKey<String> submitKey = ValueKey<String>('floor-nc-submit');
   static const ValueKey<String> dismissKey = ValueKey<String>('floor-nc-dismiss');
   static const ValueKey<String> failureKey = ValueKey<String>('floor-nc-failure');
+
+  /// The Defect code picker's own name, and the two `Key`s an `AppSearchField`
+  /// derives from it — the field itself and each suggestion row. A test types
+  /// or scans into the field and taps a suggestion through these (AGENTS.md §7:
+  /// the widget exposes its own accessors rather than a test building a `Key`).
+  static const String defectCodeFieldName = 'floor-nc-defect-code';
+
+  static ValueKey<String> defectCodeFieldKey() => AppSearchField.fieldKey(defectCodeFieldName);
+
+  static ValueKey<String> defectCodeSuggestionKey(String id) =>
+      AppSearchField.suggestionKey(defectCodeFieldName, id);
 
   @override
   State<FloorNonconformanceDialog> createState() => _FloorNonconformanceDialogState();
@@ -65,7 +83,10 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
   final TextEditingController _pin = TextEditingController();
 
   String? _productId;
-  String? _defectCodeId;
+
+  /// The chosen Defect code itself, not just its id: the picker reports the
+  /// record it stands for, and the record is what the severity line reads.
+  DefectCode? _defectCode;
   String? _detectionPoint;
   bool _awaiting = false;
 
@@ -80,19 +101,14 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
   }
 
   /// What the chosen Defect code's own severity is, for the line that says
-  /// where the record starts. Read off the list the Bloc already holds rather
-  /// than off a second read.
-  String? _chosenDefaultSeverity(FloorNonconformanceReady ready) {
-    for (final code in ready.defectCodes) {
-      if (code.id == _defectCodeId) return code.defaultSeverity;
-    }
-    return null;
-  }
+  /// where the record starts. The record the picker reported, not a second
+  /// lookup in the list the Bloc already holds.
+  String? _chosenDefaultSeverity() => _defectCode?.defaultSeverity;
 
   bool _ready() {
     final quantity = num.tryParse(_quantity.text.trim());
     return _productId != null &&
-        _defectCodeId != null &&
+        _defectCode != null &&
         _detectionPoint != null &&
         quantity != null &&
         quantity > 0 &&
@@ -106,7 +122,7 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
     context.read<FloorNonconformanceBloc>().add(
           FloorNonconformanceSubmitted(
             productId: _productId!,
-            defectCodeId: _defectCodeId!,
+            defectCodeId: _defectCode!.id,
             detectionPoint: _detectionPoint!,
             quantity: _quantity.text.trim(),
             lotRef: _lotRef.text.trim(),
@@ -181,7 +197,7 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
   Widget _form({required FloorNonconformanceReady state, required bool busy}) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final defaultSeverity = _chosenDefaultSeverity(state);
+    final defaultSeverity = _chosenDefaultSeverity();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -213,26 +229,37 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
           onChanged: busy ? null : (id) => setState(() => _productId = id),
         ),
         const SizedBox(height: Spacing.md),
-        DropdownButtonFormField<String?>(
-          key: FloorNonconformanceDialog.defectCodeKey,
-          initialValue: _defectCodeId,
-          isExpanded: true,
-          decoration: InputDecoration(
-            labelText: l10n.commonDefectCode,
-            border: const OutlineInputBorder(),
+        AppSearchField<DefectCode>(
+          name: FloorNonconformanceDialog.defectCodeFieldName,
+          label: l10n.commonDefectCode,
+          enabled: !busy,
+          // The field reports the record it now stands for, picked or cleared —
+          // a pick and a scan land on the same handler.
+          value: _defectCode,
+          onChanged: (code) => setState(() => _defectCode = code),
+          onSelected: (code) => setState(() => _defectCode = code),
+          // A dumb in-memory filter over the catalogue this device's own door
+          // already read — no request of its own, so the field's per-term
+          // debounce never reaches the wire (ADR-0023). Matched on the two
+          // fields that identify a Defect code: its code and its name.
+          fetchSuggestions: (term) async {
+            final lower = term.toLowerCase();
+            return [
+              for (final code in state.defectCodes)
+                if (code.code.toLowerCase().contains(lower) ||
+                    code.name.toLowerCase().contains(lower))
+                  code,
+            ];
+          },
+          suggestionBuilder: (context, code) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+            child: Text('${code.code} · ${code.name}', overflow: TextOverflow.ellipsis),
           ),
-          items: [
-            DropdownMenuItem<String?>(
-              value: null,
-              child: Text(l10n.nonconformanceFormChooseCode),
-            ),
-            for (final code in state.defectCodes)
-              DropdownMenuItem<String?>(
-                value: code.id,
-                child: Text('${code.code} · ${code.name}', overflow: TextOverflow.ellipsis),
-              ),
-          ],
-          onChanged: busy ? null : (id) => setState(() => _defectCodeId = id),
+          idOf: (code) => code.id,
+          displayStringFor: (code) => '${code.code} · ${code.name}',
+          // A reader sends the code alone, never the `CODE · Name` the field
+          // shows — this is what makes a scan of `DIM-OOT` pick that code.
+          codeOf: (code) => code.code,
         ),
         const SizedBox(height: Spacing.md),
         DropdownButtonFormField<String?>(

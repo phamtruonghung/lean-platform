@@ -1632,10 +1632,6 @@
   "@nonconformanceFormDefectCodeHelp": {
     "description": "Help text under the Defect code field of the Non-conformance form."
   },
-  "nonconformanceFormChooseCode": "Choose a code",
-  "@nonconformanceFormChooseCode": {
-    "description": "The Defect code picker's option that has nothing chosen yet."
-  },
   "nonconformanceFormDetectionPoint": "Detection point",
   "@nonconformanceFormDetectionPoint": {
     "description": "Label over the detection point of a Non-conformance."
@@ -3841,7 +3837,6 @@
   "complaintFormCustomer": "Customer",
   "commonDefectCodeOptional": "Defect code (optional)",
   "complaintFormWhatTheCustomerSaysIsWrongA": "What the customer says is wrong. A Non-conformance recorded from this complaint carries it.",
-  "commonNotKnownYet": "Not known yet",
   "complaintFormQuantityOptional": "Quantity (optional)",
   "complaintFormInTheProductSOwnUnitOf": "In the Product's own unit of measure.",
   "complaintFormResponseDueOptional": "Response due (optional)",

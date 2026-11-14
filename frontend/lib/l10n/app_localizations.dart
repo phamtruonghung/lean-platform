@@ -2504,12 +2504,6 @@ abstract class AppLocalizations {
   /// **'What is wrong with it. The severity starts at this code own default.'**
   String get nonconformanceFormDefectCodeHelp;
 
-  /// The Defect code picker's option that has nothing chosen yet.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose a code'**
-  String get nonconformanceFormChooseCode;
-
   /// Label over the detection point of a Non-conformance.
   ///
   /// In en, this message translates to:
@@ -8155,12 +8149,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'What the customer says is wrong. A Non-conformance recorded from this complaint carries it.'**
   String get complaintFormWhatTheCustomerSaysIsWrongA;
-
-  /// No description provided for @commonNotKnownYet.
-  ///
-  /// In en, this message translates to:
-  /// **'Not known yet'**
-  String get commonNotKnownYet;
 
   /// No description provided for @complaintFormQuantityOptional.
   ///

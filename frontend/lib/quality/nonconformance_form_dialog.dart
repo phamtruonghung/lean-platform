@@ -8,12 +8,16 @@
 /// dialogs.
 ///
 /// **Every value with a known set is chosen, never typed** (ADR-0023). The
-/// Product and the optional Asset are `AppSearchField`s that suggest records —
-/// and filter the list the dialog already holds, in memory, so typing issues
-/// no request — while the Defect code, the detection point and the severity
-/// are dropdowns over closed sets. The Org Unit is People's own chooser, the
-/// same one the Asset form and the raise-a-concern form use. The quantity is
-/// the one genuinely free value on this page, because it is a count.
+/// Product, the optional Asset and the Defect code are `AppSearchField`s that
+/// suggest records — and filter the list the dialog already holds, in memory,
+/// so typing issues no request — while the detection point and the severity are
+/// dropdowns over closed sets. The Defect code is a search box rather than a
+/// menu because it is the one field here a person reads off a part: a dropdown
+/// has no text buffer, so a reader's burst cannot reach it, while a search
+/// field commits an exact code as a pick (`app_search_field.dart`). The Org
+/// Unit is People's own chooser, the same one the Asset form and the
+/// raise-a-concern form use. The quantity is the one genuinely free value on
+/// this page, because it is a count.
 ///
 /// The severity offered is deliberately only the chosen Defect code's default
 /// and anything worse than it: the API refuses a lower one with a 403 in this
@@ -59,7 +63,6 @@ class NonconformanceFormDialog extends StatefulWidget {
   final String siteId;
 
   static const ValueKey<String> productKey = ValueKey<String>('nonconformance-form-product');
-  static const ValueKey<String> defectCodeKey = ValueKey<String>('nonconformance-form-defect-code');
   static const ValueKey<String> detectionPointKey =
       ValueKey<String>('nonconformance-form-detection-point');
   static const ValueKey<String> quantityKey = ValueKey<String>('nonconformance-form-quantity');
@@ -90,6 +93,15 @@ class NonconformanceFormDialog extends StatefulWidget {
   static ValueKey<String> productSuggestionKey(String id) =>
       AppSearchField.suggestionKey(productFieldName, id);
 
+  /// The Defect code picker's own name and the two `Key`s it seeds — the field
+  /// a test types or scans into, and each suggestion row it taps.
+  static const String defectCodeFieldName = 'nonconformance-form-defect-code';
+
+  static ValueKey<String> defectCodeFieldKey() => AppSearchField.fieldKey(defectCodeFieldName);
+
+  static ValueKey<String> defectCodeSuggestionKey(String id) =>
+      AppSearchField.suggestionKey(defectCodeFieldName, id);
+
   /// The optional Asset picker's own two accessors, the same shape.
   static ValueKey<String> assetFieldKey() => AppSearchField.fieldKey(assetFieldName);
 
@@ -107,7 +119,10 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
   final TextEditingController _containment = TextEditingController();
 
   Product? _product;
-  String? _defectCodeId;
+
+  /// The chosen Defect code itself, not just its id: the picker reports the
+  /// record it stands for, and the record is what the severity floor reads.
+  DefectCode? _defectCode;
   String? _detectionPoint;
   String? _severity;
   String? _assetId;
@@ -169,15 +184,6 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
     }
   }
 
-  DefectCode? get _defectCode {
-    final state = context.read<NonconformancesBloc>().state;
-    if (state is! NonconformancesLoaded) return null;
-    for (final code in state.defectCodes) {
-      if (code.id == _defectCodeId) return code;
-    }
-    return null;
-  }
-
   /// The severities this form may send: the chosen Defect code's own default
   /// and anything worse. Empty until a Defect code is chosen, because until
   /// then there is no floor to compare against.
@@ -201,7 +207,7 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
   bool get _complete =>
       _orgUnit != null &&
       _product != null &&
-      _defectCodeId != null &&
+      _defectCode != null &&
       _detectionPoint != null &&
       _parsedQuantity != null;
 
@@ -222,7 +228,7 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
           NonconformanceRecordConfirmed(
             orgUnitId: _orgUnit!.id,
             productId: _product!.id,
-            defectCodeId: _defectCodeId!,
+            defectCodeId: _defectCode!.id,
             detectionPoint: _detectionPoint!,
             quantity: quantity,
             // Sent only when it was actually raised above the Defect code's
@@ -334,35 +340,44 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                     codeOf: (product) => product.code,
                   ),
                   const SizedBox(height: Spacing.md),
-                  DropdownButtonFormField<String?>(
-                    key: NonconformanceFormDialog.defectCodeKey,
-                    initialValue: _defectCodeId,
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      labelText: l10n.commonDefectCode,
-                      helperText: l10n.nonconformanceFormDefectCodeHelp,
-                      border: const OutlineInputBorder(),
-                    ),
-                    items: [
-                      DropdownMenuItem<String?>(
-                        value: null,
-                        child: Text(l10n.nonconformanceFormChooseCode),
+                  AppSearchField<DefectCode>(
+                    name: NonconformanceFormDialog.defectCodeFieldName,
+                    label: l10n.commonDefectCode,
+                    helperText: l10n.nonconformanceFormDefectCodeHelp,
+                    value: _defectCode,
+                    enabled: !_awaiting,
+                    onChanged: (code) => setState(() {
+                      _defectCode = code;
+                      // The severity follows the code: a new code (or a
+                      // cleared one) means a new floor, and keeping the old
+                      // choice would let the form offer one the API refuses.
+                      _severity = null;
+                    }),
+                    onSelected: (code) => setState(() {
+                      _defectCode = code;
+                      _severity = null;
+                    }),
+                    // A dumb in-memory filter over the catalogue the register
+                    // already read: typing issues no request (ADR-0023).
+                    fetchSuggestions: (term) async {
+                      final lower = term.toLowerCase();
+                      return [
+                        for (final code in defectCodes)
+                          if (code.code.toLowerCase().contains(lower) ||
+                              code.name.toLowerCase().contains(lower))
+                            code,
+                      ];
+                    },
+                    suggestionBuilder: (context, code) => Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Spacing.md,
+                        vertical: Spacing.sm,
                       ),
-                      for (final code in defectCodes)
-                        DropdownMenuItem<String?>(
-                          value: code.id,
-                          child: Text('${code.name} · ${code.code}'),
-                        ),
-                    ],
-                    onChanged: _awaiting
-                        ? null
-                        : (id) => setState(() {
-                              _defectCodeId = id;
-                              // The severity follows the code: a new code means
-                              // a new floor, and keeping the old choice would
-                              // let the form offer one the API refuses.
-                              _severity = null;
-                            }),
+                      child: Text('${code.name} · ${code.code}'),
+                    ),
+                    idOf: (code) => code.id,
+                    displayStringFor: (code) => '${code.name} · ${code.code}',
+                    codeOf: (code) => code.code,
                   ),
                   const SizedBox(height: Spacing.md),
                   Wrap(
