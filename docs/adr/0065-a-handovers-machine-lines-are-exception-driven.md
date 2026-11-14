@@ -12,7 +12,7 @@ The Platform ships the shift handover (ADR-0054) and it is not lean.
 anti-join over the Section's active Assets and refuses with `409
 INCOMPLETE_HANDOVER`, naming every Asset that has no line (`:439-447`, `:502-503`).
 The Screen renders one `_MachineRow` per active Asset with no skip affordance
-(`frontend/lib/production/shift_handover_screen.dart:210-221`), and the client turns
+(`frontend/lib/production/shift_handover_screen.dart:370-379`), and the client turns
 the refusal into "No machine status line for …" (`:567`, from
 `HandoverRefusal.missingAssets` at `frontend/lib/production/handover.dart:390-397`).
 For Self-Closing's Cutting MTU that is **17 machine picks every shift even when

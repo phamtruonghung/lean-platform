@@ -119,7 +119,7 @@ rhythm rather than as a truncated label.
 
 ## Amended by ADR-0064
 
-The table above records the thirteen destinations that existed when grouping was
+The table above records the ten destinations that existed when grouping was
 decided. The list has since grown to **44** (`platformDestinations` in
 `frontend/lib/platform/destinations.dart`), and ADR-0064 records what that growth
 changed: nothing in this ADR. The grouping stays, and so does the prohibition this

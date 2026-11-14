@@ -13,7 +13,7 @@ was filed at 42, so the count drifted up by two while the question sat open —
 Settings among them, the personal-choices Destination added for the language
 switch.
 
-ADR-0020's table still lists the thirteen destinations it was written about; its
+ADR-0020's table still lists the ten destinations it was written about; its
 actual decision — a Module heading is a label and nothing more, it carries no
 address and opens nothing — has not changed, and this ADR leaves it standing.
 
