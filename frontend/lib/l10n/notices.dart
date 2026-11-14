@@ -19,6 +19,8 @@
 /// and an asset code read the same in both languages.
 library;
 
+import 'package:flutter/widgets.dart';
+
 import 'app_localizations.dart';
 import 'vocabulary.dart';
 
@@ -103,6 +105,20 @@ abstract final class BlocNotice {
   /// An Action is waiting on a phase.
   static String actionAwaitingPhase(String actionNo, String phaseCode) =>
       '${blocNoticePrefix}action-awaiting-phase|$actionNo|$phaseCode';
+}
+
+/// [message] in the language of the tree [context] sits in, or unchanged when
+/// that tree carries no catalogue at all.
+///
+/// The second case is a widget test that pumps one shared widget on its own:
+/// `AppLocalizations.of` asserts when the delegates are absent (the app declares
+/// `nullable-getter: false`), and a banner or a dialog is worth testing without
+/// the whole application behind it. In the app the delegates are always there,
+/// so the rule — a code is resolved before it is printed — still holds where it
+/// matters.
+String noticeTextFor(BuildContext context, String message) {
+  final l10n = Localizations.of<AppLocalizations>(context, AppLocalizations);
+  return l10n == null ? message : noticeText(l10n, message);
 }
 
 /// [message] in [l10n]'s language: a Bloc-held code becomes a catalogue word,

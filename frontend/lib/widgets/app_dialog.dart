@@ -69,7 +69,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../l10n/app_localizations.dart';
 import '../l10n/notices.dart';
 import '../theme.dart';
 
@@ -346,7 +345,7 @@ class _AppDialogState extends State<AppDialog> {
               // A dialog's description is a render boundary like any other: a
               // Bloc-held code (`BlocNotice.sessionEnded`, `notices.dart`) is
               // resolved here, and prose passes through untouched (ADR-0062).
-              noticeText(AppLocalizations.of(context), description),
+              noticeTextFor(context, description),
               key: AppDialog.descriptionKey,
               style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
             ),

@@ -32,7 +32,6 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../l10n/app_localizations.dart';
 import '../l10n/notices.dart';
 import '../theme.dart';
 
@@ -95,7 +94,7 @@ class AppPageHeader extends StatelessWidget {
               // A page header's description is a render boundary too: a
               // Bloc-held code is resolved here, prose passes through
               // unchanged (ADR-0062).
-              noticeText(AppLocalizations.of(context), description!),
+              noticeTextFor(context, description!),
               key: descriptionKey,
               style: theme.textTheme.bodyMedium?.copyWith(color: palette.textMuted),
             ),

@@ -15,7 +15,6 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../l10n/app_localizations.dart';
 import '../l10n/notices.dart';
 
 class NoticeText extends StatelessWidget {
@@ -42,7 +41,7 @@ class NoticeText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        noticeText(AppLocalizations.of(context), message),
+        noticeTextFor(context, message),
         style: style,
         textAlign: textAlign,
         maxLines: maxLines,

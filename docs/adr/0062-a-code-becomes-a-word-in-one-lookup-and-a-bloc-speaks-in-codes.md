@@ -81,6 +81,10 @@ each site:
 `noticeText` returns prose unchanged, so `NoticeText` is safe everywhere, not
 only where a code is expected — that is why the rule can be stated as "no
 `notice:` value reaches a `Text`" rather than a list of call sites to remember.
+Shared widgets resolve through `noticeTextFor(context, message)`, which leaves
+the message alone when the tree carries no catalogue at all — that is a widget
+test pumping one banner or one dialog on its own, not the app, where the
+delegates are unconditional.
 
 **Where the boundary of the rule is.** What this ADR forbids is a *word living
 where no language exists*: on a model, on a Bloc, or in a static that cannot see
