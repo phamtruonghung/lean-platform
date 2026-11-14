@@ -516,8 +516,8 @@ List<AppTableColumn> _columns(BuildContext context) => [
 /// still waiting on an administrator reads as a decision owed, one turned away
 /// reads as wrong, and a deactivated one as deliberately out of the way
 /// (`status_tone.dart`'s five meanings). Written against the three fields rather
-/// than against [ManagedAccount.standing]'s wording, so a copy change cannot
-/// silently re-tone the column.
+/// than against the standing's own wording, so a copy change cannot silently
+/// re-tone the column.
 StatusTone _standingTone(ManagedAccount account) {
   if (account.isPending) return StatusTone.warning;
   if (account.approvalStatus == ApprovalStatuses.rejected) return StatusTone.danger;
@@ -613,7 +613,10 @@ class _AccountTableRow extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.centerLeft,
-            child: StatusChip(label: account.standing, tone: _standingTone(account)),
+            child: StatusChip(
+              label: accountStandingLabel(l10n, account.approvalStatus, account.isActive),
+              tone: _standingTone(account),
+            ),
           ),
           DisclosingText(
             waitingFor(account.createdAt),
@@ -694,7 +697,10 @@ class _AccountCard extends StatelessWidget {
               runSpacing: Spacing.xs,
               children: [
                 StatusChip(label: admissionRoleLabel(l10n, account.role), tone: StatusTone.neutral),
-                StatusChip(label: account.standing, tone: _standingTone(account)),
+                StatusChip(
+                  label: accountStandingLabel(l10n, account.approvalStatus, account.isActive),
+                  tone: _standingTone(account),
+                ),
               ],
             ),
             const SizedBox(height: Spacing.sm),
@@ -945,10 +951,15 @@ class _RowOverflowButton extends StatelessWidget {
 /// (issue #225, ADR-0035 applied a second time) — a phrase shared by
 /// [_GrantsCell]'s tooltip and [_Grants]' chips so the two layouts cannot say
 /// different things about the same Grant.
-String _grantLabel(AccountGrant grant) =>
-    '${grant.siteName} › ${grant.name} · ${grant.level.label}'
-    '${grant.qualityAuthority ? ' · Quality authority' : ''}'
-    '${grant.safetyAuthority ? ' · Safety authority' : ''}';
+///
+/// Every word comes from the catalogue through [l10n]: the level through
+/// [grantLevelLabel], and the two authorities through the picker's own entries
+/// rather than a second translation of the same two words — a Grant's authority
+/// is one concept whichever surface names it.
+String _grantLabel(AppLocalizations l10n, AccountGrant grant) =>
+    '${grant.siteName} › ${grant.name} · ${grantLevelLabel(l10n, grant.level)}'
+    '${grant.qualityAuthority ? ' · ${l10n.orgUnitPickerQualityAuthority}' : ''}'
+    '${grant.safetyAuthority ? ' · ${l10n.orgUnitPickerSafetyAuthority}' : ''}';
 
 /// The Grants cell in the wide table (issue #112, Decision D): a count, not
 /// a wall of chips — "Everywhere" for an admin, "None" for an Account with
@@ -973,7 +984,7 @@ class _GrantsCell extends StatelessWidget {
     return Tooltip(
       key: AccountsScreen.grantsKey(account.id),
       message: [
-        for (final grant in account.grants) _grantLabel(grant),
+        for (final grant in account.grants) _grantLabel(l10n, grant),
       ].join('\n'),
       child: Text(l10n.accountsOrgUnit(count), overflow: TextOverflow.ellipsis),
     );
@@ -1020,7 +1031,7 @@ class _Grants extends StatelessWidget {
             // the wide table's tooltip: an administrator auditing "who may
             // accept bad product" or "who may close an incident" on a narrow
             // window must be able to read it without hovering.
-            label: Text(_grantLabel(grant)),
+            label: Text(_grantLabel(l10n, grant)),
             labelStyle: theme.textTheme.labelMedium,
           ),
       ],

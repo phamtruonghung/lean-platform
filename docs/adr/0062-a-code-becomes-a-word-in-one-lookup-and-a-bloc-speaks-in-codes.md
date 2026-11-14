@@ -68,8 +68,8 @@ each site:
 
 - `frontend/lib/widgets/notice_text.dart` holds `NoticeText`, a drop-in for
   `Text` whose first argument is the Bloc-held message. Every surface that prints
-  one uses it: 147 sites across 128 files, including the standard "the write was
-  refused" block every `*dialog*.dart` keeps in its own `child:` (93 of them), the
+  one uses it: 179 sites across 140 files, including the standard "the write was
+  refused" block every `*dialog*.dart` keeps in its own `child:` (102 of them), the
   per-Screen `_Notice` banners, and the four Maintenance Screens that used to
   print `state.notice` / `state.failure` raw.
 - `AppDialog`'s own `description` resolves the same way, so a dialog's refusal

@@ -144,13 +144,16 @@ class OrgUnitSearchResult {
 }
 
 /// The two levels a Grant can hold, and nothing else — CONTEXT.md's Grant.
+///
+/// The level's *words* are the catalogue's (`grantLevelLabel`,
+/// `l10n/vocabulary.dart`): the enum carries the one thing that is not a
+/// language, whether the Grant may write.
 enum GrantLevel {
-  view('View', false),
-  viewAndEdit('View and edit', true);
+  view(false),
+  viewAndEdit(true);
 
-  const GrantLevel(this.label, this.canWrite);
+  const GrantLevel(this.canWrite);
 
-  final String label;
   final bool canWrite;
 }
 

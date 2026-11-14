@@ -68,8 +68,10 @@ vocabulary's own fallback. They are the residue of the sweep, not a decision
 that they need no translation. The **status / type / role / severity words are
 all converted** (ADR-0062's round 2 closed the model-level tables: complaints,
 supplier NCRs, downtime, assets, defect categories, the KPI board and Review,
-the slide show's kinds, the skill coverage legend and the Shift handover's seven
-sets). What follows is prose, measured by grep at the end of that round:
+the slide show's kinds, the skill coverage legend, the Shift handover's seven
+sets, and — round 3, the last three model-level labels — an Account's standing,
+a Grant's level and the board's period). What follows is prose, measured by grep
+at the end of that round:
 
 | Code set / prose | Where | What is still English |
 | --- | --- | --- |

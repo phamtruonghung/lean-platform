@@ -26,16 +26,18 @@ import 'package:flutter/foundation.dart';
 /// in this slice, so it is parsed and carried but not chosen from the UI (the
 /// request shape and this model still accept it, so a later ticket can wire a
 /// picker without a wire or model change).
+///
+/// The period's *word* is the catalogue's (`boardPeriodTypeLabel`,
+/// `l10n/vocabulary.dart`): the model carries the wire the request sends.
 enum BoardPeriodType {
-  shift('shift', 'Shift'),
-  day('day', 'Day'),
-  week('week', 'Week'),
-  month('month', 'Month');
+  shift('shift'),
+  day('day'),
+  week('week'),
+  month('month');
 
-  const BoardPeriodType(this.wire, this.label);
+  const BoardPeriodType(this.wire);
 
   final String wire;
-  final String label;
 
   /// The period types the Screen's own selector offers, in render order.
   static const List<BoardPeriodType> selectable = [day, week, month];

@@ -144,12 +144,4 @@ class ManagedAccount {
         employeeId: employeeId,
         linkedEmployee: linkedEmployee,
       );
-
-  /// What this Account's standing is, in one phrase.
-  String get standing => switch (approvalStatus) {
-        ApprovalStatuses.rejected => 'Rejected',
-        ApprovalStatuses.approved when isActive => 'Active',
-        ApprovalStatuses.approved => 'Deactivated',
-        _ => 'Awaiting Approval',
-      };
 }

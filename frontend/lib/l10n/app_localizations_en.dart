@@ -8210,4 +8210,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get skillCoverageLegendShort => 'Short';
+
+  @override
+  String get accountsStandingRejected => 'Rejected';
+
+  @override
+  String get accountsStandingActive => 'Active';
+
+  @override
+  String get accountsStandingDeactivated => 'Deactivated';
+
+  @override
+  String get accountsStandingAwaitingApproval => 'Awaiting Approval';
+
+  @override
+  String get grantLevelView => 'View';
+
+  @override
+  String get grantLevelViewAndEdit => 'View and edit';
+
+  @override
+  String get boardPeriodShift => 'Shift';
+
+  @override
+  String get boardPeriodDay => 'Day';
+
+  @override
+  String get boardPeriodWeek => 'Week';
+
+  @override
+  String get boardPeriodMonth => 'Month';
 }

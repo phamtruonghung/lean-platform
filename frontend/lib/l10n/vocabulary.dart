@@ -50,6 +50,8 @@ import '../safety/safety_observation.dart';
 import '../maintenance/asset.dart';
 import '../maintenance/downtime_event.dart';
 import '../maintenance/tier_board.dart';
+import '../people/managed_account.dart';
+import '../people/org_unit.dart';
 import '../quality/customer_complaint.dart';
 import '../quality/issue_image.dart';
 import '../quality/supplier_ncr.dart';
@@ -442,6 +444,30 @@ String admissionRoleDescription(AppLocalizations l10n, String role) => switch (r
       'manager' => l10n.roleManagerDescription,
       'admin' => l10n.roleAdministratorDescription,
       _ => '',
+    };
+
+/// What an Account's standing reads as — the chip the Accounts register prints
+/// in both of its layouts (wide table row and narrow card).
+///
+/// The two fields the server sends decide it, in this precedence: a rejected
+/// Account is rejected whatever `isActive` says, an approved-and-active one is
+/// Active, an approved-and-inactive one is Deactivated, and anything still
+/// unsettled is awaiting Approval. The wording lived on `ManagedAccount` itself
+/// until this lookup existed, which is why a Vietnamese register could render a
+/// Vietnamese role chip beside an English standing chip.
+String accountStandingLabel(AppLocalizations l10n, String approvalStatus, bool isActive) =>
+    switch (approvalStatus) {
+      ApprovalStatuses.rejected => l10n.accountsStandingRejected,
+      ApprovalStatuses.approved when isActive => l10n.accountsStandingActive,
+      ApprovalStatuses.approved => l10n.accountsStandingDeactivated,
+      _ => l10n.accountsStandingAwaitingApproval,
+    };
+
+/// What a Grant's level reads as — the Grant row in the Org Unit picker and the
+/// grants the Accounts register draws in a tooltip and in chips.
+String grantLevelLabel(AppLocalizations l10n, GrantLevel level) => switch (level) {
+      GrantLevel.view => l10n.grantLevelView,
+      GrantLevel.viewAndEdit => l10n.grantLevelViewAndEdit,
     };
 
 /// An Employee's employment type, in words.
@@ -899,6 +925,18 @@ String boardKpiStatusLabel(AppLocalizations l10n, String status) => switch (stat
       'no_target' => l10n.boardKpiStatusNoTarget,
       'no_data' => l10n.boardKpiStatusNoData,
       _ => status,
+    };
+
+/// The period the Tier board is bounded to, in words — the four wires the
+/// server's `period_type` carries. The selector offers three of them
+/// (`BoardPeriodType.selectable`); `shift` is parsed and carried but has no
+/// picker yet, so it is named here for the day it gets one.
+String boardPeriodTypeLabel(AppLocalizations l10n, String wire) => switch (wire) {
+      'shift' => l10n.boardPeriodShift,
+      'day' => l10n.boardPeriodDay,
+      'week' => l10n.boardPeriodWeek,
+      'month' => l10n.boardPeriodMonth,
+      _ => wire,
     };
 
 /// A day's judgement in the KPI Review, in words.

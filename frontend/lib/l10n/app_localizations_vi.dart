@@ -8186,4 +8186,34 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get skillCoverageLegendShort => 'Còn thiếu';
+
+  @override
+  String get accountsStandingRejected => 'Bị từ chối';
+
+  @override
+  String get accountsStandingActive => 'Đang hoạt động';
+
+  @override
+  String get accountsStandingDeactivated => 'Đã vô hiệu';
+
+  @override
+  String get accountsStandingAwaitingApproval => 'Chờ phê duyệt';
+
+  @override
+  String get grantLevelView => 'Xem';
+
+  @override
+  String get grantLevelViewAndEdit => 'Xem và sửa';
+
+  @override
+  String get boardPeriodShift => 'Ca';
+
+  @override
+  String get boardPeriodDay => 'Ngày';
+
+  @override
+  String get boardPeriodWeek => 'Tuần';
+
+  @override
+  String get boardPeriodMonth => 'Tháng';
 }

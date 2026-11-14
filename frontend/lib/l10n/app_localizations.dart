@@ -13762,6 +13762,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Short'**
   String get skillCoverageLegendShort;
+
+  /// An Account's standing chip: an administrator turned the request away.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get accountsStandingRejected;
+
+  /// An Account's standing chip: approved and able to sign in.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get accountsStandingActive;
+
+  /// An Account's standing chip: approved, but an administrator has switched it off.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivated'**
+  String get accountsStandingDeactivated;
+
+  /// An Account's standing chip: signed up, waiting for an administrator's decision.
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting Approval'**
+  String get accountsStandingAwaitingApproval;
+
+  /// A Grant's level: may read the Org Unit, may not change it.
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get grantLevelView;
+
+  /// A Grant's level: may read and change the Org Unit.
+  ///
+  /// In en, this message translates to:
+  /// **'View and edit'**
+  String get grantLevelViewAndEdit;
+
+  /// The Tier board's period selector: one shift.
+  ///
+  /// In en, this message translates to:
+  /// **'Shift'**
+  String get boardPeriodShift;
+
+  /// The Tier board's period selector: one day.
+  ///
+  /// In en, this message translates to:
+  /// **'Day'**
+  String get boardPeriodDay;
+
+  /// The Tier board's period selector: one week.
+  ///
+  /// In en, this message translates to:
+  /// **'Week'**
+  String get boardPeriodWeek;
+
+  /// The Tier board's period selector: one month.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get boardPeriodMonth;
 }
 
 class _AppLocalizationsDelegate

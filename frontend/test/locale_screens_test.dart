@@ -31,6 +31,8 @@ import 'package:lean_platform/maintenance/work_orders_screen.dart';
 import 'package:lean_platform/people/accounts_screen.dart';
 import 'package:lean_platform/people/account_correction_dialog.dart';
 import 'package:lean_platform/people/directory_screen.dart';
+import 'package:lean_platform/people/managed_account.dart' show ApprovalStatuses;
+import 'package:lean_platform/maintenance/tier_board_screen.dart';
 import 'package:lean_platform/platform/change_password_dialog.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/locale_cubit.dart';
@@ -332,6 +334,84 @@ void main() {
     );
     expect(find.text('Giám sát'), findsWidgets);
     expect(find.text('Supervisor'), findsNothing);
+
+    // 3. The standing chip beside that role chip. `ManagedAccount.standing` used
+    // to return the English words themselves, so a Vietnamese register said
+    // "Supervisor" and "Active" on the same row.
+    expect(find.text('Đang hoạt động'), findsOneWidget);
+    expect(find.text('Active'), findsNothing);
+  });
+
+  testWidgets('every Account standing is a catalogue word under Vietnamese, and the English is '
+      'gone', (tester) async {
+    // The four standings the chip can show, one row each — the account is
+    // approved (and so Active), approved but switched off, still waiting, and
+    // turned away. `accountStandingLabel` is the one lookup behind all four.
+    await _pump(
+      tester,
+      at: Routes.accounts,
+      language: 'vi',
+      accounts: [
+        accountJson('7', 'active@b.c'),
+        accountJson('8', 'gone@b.c', isActive: false),
+        accountJson('9', 'waiting@b.c', approvalStatus: ApprovalStatuses.pending),
+        accountJson('10', 'refused@b.c', approvalStatus: ApprovalStatuses.rejected),
+      ],
+    );
+
+    expect(find.text('Đang hoạt động'), findsOneWidget);
+    expect(find.text('Đã vô hiệu'), findsOneWidget);
+    expect(find.text('Chờ phê duyệt'), findsOneWidget);
+    expect(find.text('Bị từ chối'), findsOneWidget);
+    for (final english in const ['Active', 'Deactivated', 'Awaiting Approval', 'Rejected']) {
+      expect(find.text(english), findsNothing, reason: 'English standing $english');
+    }
+
+    // The Grants a row carries, where the wide table puts them: the tooltip's
+    // sentence names the level and the authority in the reader's language too.
+    await tester.pumpWidget(const SizedBox.shrink());
+    await _pump(
+      tester,
+      at: Routes.accounts,
+      language: 'vi',
+      accounts: [
+        accountJson(
+          '7',
+          'holder@b.c',
+          grants: [
+            grantJson('10', name: 'Assembly', canWrite: true, qualityAuthority: true),
+          ],
+        ),
+      ],
+    );
+    expect(
+      find.byTooltip('Ho Chi Minh › Assembly · Xem và sửa · Thẩm quyền Chất lượng'),
+      findsOneWidget,
+    );
+    expect(find.byTooltip('Ho Chi Minh › Assembly · View and edit · Quality authority'), findsNothing);
+  });
+
+  testWidgets('the Tier board period selector reads Vietnamese, and offers no English',
+      (tester) async {
+    // `BoardPeriodType.label` used to be the enum's own English word, so the
+    // selector on a reachable Destination said Day / Week / Month under
+    // Vietnamese (ADR-0062's "the board's fixed sets").
+    await _pump(tester, at: Routes.tierBoard, language: 'vi');
+
+    // The Bloc starts on `day`, so that is the item the closed selector draws.
+    // (`Ngày` is also the date field's label — the same word, as Vietnamese has
+    // it; the sentinel below is what proves the period word is the catalogue's.)
+    expect(find.text('Ngày'), findsWidgets);
+    expect(find.text('Day'), findsNothing);
+
+    await tapIn(tester, find.byKey(TierBoardScreen.periodTypeKey));
+    await tester.pumpAndSettle();
+    for (final vietnamese in const ['Tuần', 'Tháng']) {
+      expect(find.text(vietnamese), findsWidgets, reason: 'period $vietnamese');
+    }
+    for (final english in const ['Day', 'Week', 'Month']) {
+      expect(find.text(english), findsNothing, reason: 'period $english');
+    }
   });
 
   testWidgets('the signed-out sentence renders in the chosen language from the Bloc code it '

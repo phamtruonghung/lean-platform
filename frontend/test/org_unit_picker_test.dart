@@ -3,11 +3,13 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lean_platform/people/admission_dialog.dart';
 import 'package:lean_platform/people/org_unit.dart';
 import 'package:lean_platform/people/org_unit_picker.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/platform/locale_cubit.dart';
 
 import 'approval_queue_test.dart' show openApprovals;
 import 'harness.dart' show FakeWire, orgUnitJson, pendingJson, siteJson, tapIn;
@@ -402,5 +404,28 @@ void main() {
     expect(find.text('Assembly'), findsOneWidget);
     // Retried the same Site's root level, not a different request shape.
     expect(wire.orgUnitRequests, [('1', null), ('1', null)]);
+  });
+
+  testWidgets('a Grant level is Vietnamese in the menu that offers it and on the row that holds it',
+      (tester) async {
+    // `GrantLevel.label` used to be the enum's own English word, so a
+    // Vietnamese picker offered "View" / "View and edit" and then printed the
+    // chosen one in English on the Grant row (`grantLevelLabel`).
+    SharedPreferences.setMockInitialValues({LocaleCubit.storageKey: 'vi'});
+    final wire = _plant();
+    await openDecision(tester, wire);
+
+    await tapIn(tester, find.byKey(OrgUnitPicker.addKey('10')));
+    expect(find.text('Xem'), findsWidgets);
+    expect(find.text('Xem và sửa'), findsWidgets);
+    expect(find.text('View'), findsNothing);
+    expect(find.text('View and edit'), findsNothing);
+
+    await tester.tap(find.byKey(OrgUnitPicker.levelKey('10', GrantLevel.viewAndEdit)).last);
+    await tester.pumpAndSettle();
+
+    // The Granted row names the level it was added at, in the same words.
+    expect(find.text('Xem và sửa'), findsWidgets);
+    expect(find.text('View and edit'), findsNothing);
   });
 }
