@@ -27,6 +27,7 @@ import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/app_scan_field.dart';
 import '../widgets/app_search_field.dart';
 import 'job_plan.dart';
 import 'job_plans_bloc.dart';
@@ -294,15 +295,13 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            AppScanField(
               key: JobPlanFormDialog.codeKey,
               controller: _code,
+              label: l10n.commonCode,
               enabled: !_awaiting,
+              autofocus: true,
               onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                labelText: l10n.commonCode,
-                border: const OutlineInputBorder(),
-              ),
             ),
             const SizedBox(height: Spacing.md),
             TextField(

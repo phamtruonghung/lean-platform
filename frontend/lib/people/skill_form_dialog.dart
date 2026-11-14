@@ -28,6 +28,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/app_scan_field.dart';
 import 'skill.dart';
 import 'skills_bloc.dart';
 
@@ -194,12 +195,13 @@ class _SkillFormDialogState extends State<SkillFormDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            AppScanField(
               key: SkillFormDialog.codeKey,
               controller: _code,
+              label: 'Code',
               enabled: !_awaiting,
+              autofocus: true,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Code', border: OutlineInputBorder()),
             ),
             const SizedBox(height: Spacing.md),
             TextField(

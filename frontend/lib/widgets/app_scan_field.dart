@@ -60,6 +60,7 @@ class AppScanField extends StatelessWidget {
     this.helperText,
     this.enabled = true,
     this.autofocus = false,
+    this.textCapitalization = TextCapitalization.none,
     this.onChanged,
     this.onScanned,
     this.advanceFocusOnScan = false,
@@ -74,6 +75,7 @@ class AppScanField extends StatelessWidget {
     String? helperText,
     bool enabled = true,
     bool autofocus = false,
+    TextCapitalization textCapitalization = TextCapitalization.none,
     ValueChanged<String>? onChanged,
     ValueChanged<String>? onScanned,
     bool advanceFocusOnScan = false,
@@ -85,6 +87,7 @@ class AppScanField extends StatelessWidget {
       helperText: helperText,
       enabled: enabled,
       autofocus: autofocus,
+      textCapitalization: textCapitalization,
       onChanged: onChanged,
       onScanned: onScanned,
       advanceFocusOnScan: advanceFocusOnScan,
@@ -103,6 +106,11 @@ class AppScanField extends StatelessWidget {
   /// land without the reader first tapping into the field. Set on the first
   /// field of a dialog, never on all of them: two focused fields is no focus.
   final bool autofocus;
+
+  /// A soft keyboard's own shift state for a field whose codes are written in
+  /// one case (`RoleFormDialog`'s `ROLE_STORE_ROOM`). A hint, not a rule: what
+  /// a code may contain is the API's, and a reader ignores this entirely.
+  final TextCapitalization textCapitalization;
 
   final ValueChanged<String>? onChanged;
 
@@ -227,6 +235,7 @@ class AppScanField extends StatelessWidget {
         onChanged: onChanged,
         onSubmitted: enabled ? (_) => _commit(context) : null,
         textInputAction: TextInputAction.done,
+        textCapitalization: textCapitalization,
         decoration: InputDecoration(
           labelText: label,
           helperText: helperText,

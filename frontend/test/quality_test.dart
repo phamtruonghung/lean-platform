@@ -11,6 +11,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/platform/destinations.dart';
@@ -277,6 +278,39 @@ void main() {
       }
     ]);
     expect(find.text('Ovality · DIM-OVL'), findsOneWidget);
+  });
+
+  testWidgets("a reader's burst fills a new Defect code's field, and the form posts the code it read",
+      (tester) async {
+    final wire = _plant();
+    await _open(tester, wire, Routes.defectCodes);
+
+    await tapIn(tester, find.byKey(DefectCodesScreen.addKey));
+
+    // Focus is in the code field as the dialog opens: the reader's burst lands
+    // with no tap, which is what makes a code field worth one at the machine.
+    expect(
+      tester.widget<TextField>(find.byKey(DefectCodeFormDialog.codeKey)).autofocus,
+      isTrue,
+    );
+
+    // The burst, then the reader's closing `Enter` as a key event.
+    await tester.enterText(find.byKey(DefectCodeFormDialog.codeKey), 'DIM-OVL\r\n');
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(find.byKey(DefectCodeFormDialog.codeKey)).controller!.text,
+      'DIM-OVL',
+    );
+
+    await tester.enterText(find.byKey(DefectCodeFormDialog.nameKey), 'Ovality');
+    await _choose(tester, DefectCodeFormDialog.categoryKey, 'Process');
+    await _choose(tester, DefectCodeFormDialog.severityKey, 'Critical');
+    // The gate the form submits on reads the field's text, and the scan had to
+    // leave it open: pressing the action below is what proves it did.
+    await tapIn(tester, find.byKey(DefectCodeFormDialog.submitKey));
+
+    expect(wire.defectCodePosts.single['code'], 'DIM-OVL');
   });
 
   testWidgets('correcting a Defect code cannot rewrite its code, and never offers one of its own codes as its parent',

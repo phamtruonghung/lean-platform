@@ -18,6 +18,7 @@ import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/app_scan_field.dart';
 import '../widgets/app_search_field.dart';
 import 'asset.dart';
 import 'maintenance_api.dart';
@@ -241,16 +242,16 @@ class _MeterFormDialogState extends State<MeterFormDialog> {
               onChanged: (id) => setState(() => _assetId = id),
             ),
             const SizedBox(height: Spacing.md),
-            TextField(
+            AppScanField(
               key: MeterFormDialog.codeKey,
               controller: _code,
+              label: l10n.commonCode,
+              helperText: l10n.meterFormCodeHelp,
               enabled: !_awaiting,
+              // No autofocus: the Asset picker above this field is the dialog's
+              // first control, and a scan reaches a field the reader is
+              // pointed at, not one the dialog guessed.
               onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                labelText: l10n.commonCode,
-                helperText: l10n.meterFormCodeHelp,
-                border: const OutlineInputBorder(),
-              ),
             ),
             const SizedBox(height: Spacing.md),
             TextField(

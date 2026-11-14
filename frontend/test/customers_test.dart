@@ -11,11 +11,13 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/quality/customer_form_dialog.dart';
 import 'package:lean_platform/quality/customers_screen.dart';
+import 'package:lean_platform/widgets/app_camera_scan.dart';
 
 import 'harness.dart';
 
@@ -165,5 +167,48 @@ void main() {
       tester.widget<TextField>(find.byKey(CustomerFormDialog.codeKey)).controller!.text,
       'CUST-1',
     );
+  });
+
+  testWidgets("a reader's burst into a new Customer's code fills it, and the camera beside it "
+      'writes into the same field', (tester) async {
+    final wire = _wire();
+    await _pump(tester, wire);
+
+    await tapIn(tester, find.byKey(CustomersScreen.addKey));
+
+    // The dialog's first code field takes focus as it opens, so the reader's
+    // burst lands without anyone tapping into it first.
+    expect(
+      tester.widget<TextField>(find.byKey(CustomerFormDialog.codeKey)).autofocus,
+      isTrue,
+    );
+
+    // A keyboard-wedge reader's two events: the whole code in one text-input
+    // event, terminator and byte-order mark included, then `Enter` as a hardware
+    // key — not a second keystroke of a person typing.
+    await tester.enterText(find.byKey(CustomerFormDialog.codeKey), '\uFEFFCUST-9\r\n');
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    // What the field holds is the code, with nothing the reader added around it.
+    expect(
+      tester.widget<TextField>(find.byKey(CustomerFormDialog.codeKey)).controller!.text,
+      'CUST-9',
+    );
+
+    // The same field carries the phone's camera, and what it reads is committed
+    // exactly as a burst is: the seam below is what a test has instead of a
+    // camera.
+    AppCameraScan.reader = (_) async => 'CUST-9\u200B';
+    addTearDown(() => AppCameraScan.reader = AppCameraScan.readWithCamera);
+    await tapIn(tester, find.byKey(AppCameraScanButton.keyOf('customer-form-code')));
+
+    await tester.enterText(find.byKey(CustomerFormDialog.nameKey), 'Delta Fasteners');
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(CustomerFormDialog.submitKey));
+
+    // The scanned code reached the form's own gate and the wire, cleaned.
+    expect(wire.customerPosts.single['code'], 'CUST-9');
+    expect(wire.customerPosts.single['name'], 'Delta Fasteners');
   });
 }
