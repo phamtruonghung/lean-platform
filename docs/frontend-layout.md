@@ -60,7 +60,8 @@ narrowed by the server, or the client says it is bounded (ADR-0026).
 **A picker reaches for `AppSearchField` or for a dropdown by the size of the set,
 not by taste** (issue #190, #191's counterpart). A set a person cannot scan —
 every Asset at a Site, the whole parts catalogue, every Employee in the plant,
-the Skills or Job plans catalogue, a Site's Stores — is a search box whose
+the Skills or Job plans catalogue, a Site's Stores, the Defect code catalogue —
+is a search box whose
 `fetchSuggestions` filters the list the caller already read, in memory, with no
 `search` parameter added to any endpoint. A fixed, enumerated set of under a
 dozen values — a work type, a priority, a meter type, a criticality, an urgency,

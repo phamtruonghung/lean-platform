@@ -1372,9 +1372,6 @@ class AppLocalizationsVi extends AppLocalizations {
       'Sai ở chỗ nào. Mức độ bắt đầu từ giá trị mặc định của mã lỗi này.';
 
   @override
-  String get nonconformanceFormChooseCode => 'Chọn một mã';
-
-  @override
   String get nonconformanceFormDetectionPoint => 'Điểm phát hiện';
 
   @override
@@ -4872,9 +4869,6 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get complaintFormWhatTheCustomerSaysIsWrongA =>
       'Điều khách hàng nói là sai. Sản phẩm không phù hợp ghi nhận từ khiếu nại này sẽ mang theo nội dung đó.';
-
-  @override
-  String get commonNotKnownYet => 'Chưa biết';
 
   @override
   String get complaintFormQuantityOptional => 'Số lượng (không bắt buộc)';

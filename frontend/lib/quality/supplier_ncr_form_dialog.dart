@@ -6,7 +6,11 @@
 /// `SupplierNcrsBloc` read with the register, so this dialog issues no request
 /// for them at all; the unit of measure comes from Maintenance's own list
 /// (`fetchUnitsOfMeasure`); the Org Unit comes from the shared tree chooser; and
-/// the day the Supplier is given is a date, not free text.
+/// the day the Supplier is given is a date, not free text. The Defect code is a
+/// search box over that catalogue rather than a menu, because it is the field a
+/// person reads off the arriving pallet: a dropdown has no text buffer, so a
+/// reader's burst cannot reach it, while a search field commits an exact code
+/// as a pick (`app_search_field.dart`).
 ///
 /// **The Supplier and the quantity are what an NCR is**, so the submit button
 /// stays shut until both are there — and so is the unit of measure, because the
@@ -26,6 +30,8 @@ import '../people/people.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/app_search_field.dart';
+import 'defect_code.dart';
 import 'supplier_ncrs_bloc.dart';
 
 class SupplierNcrFormDialog extends StatefulWidget {
@@ -37,7 +43,6 @@ class SupplierNcrFormDialog extends StatefulWidget {
 
   static const ValueKey<String> supplierKey = ValueKey<String>('supplier-ncr-form-supplier');
   static const ValueKey<String> productKey = ValueKey<String>('supplier-ncr-form-product');
-  static const ValueKey<String> defectCodeKey = ValueKey<String>('supplier-ncr-form-defect-code');
   static const ValueKey<String> quantityKey = ValueKey<String>('supplier-ncr-form-quantity');
   static const ValueKey<String> uomKey = ValueKey<String>('supplier-ncr-form-uom');
   static const ValueKey<String> lotKey = ValueKey<String>('supplier-ncr-form-lot');
@@ -48,6 +53,15 @@ class SupplierNcrFormDialog extends StatefulWidget {
   static final ValueKey<String> submitKey = AppDialog.actionKey('supplier-ncr-form-submit');
   static final ValueKey<String> cancelKey = AppDialog.actionKey('supplier-ncr-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('supplier-ncr-form-failure');
+
+  /// The Defect code picker's own name and the two `Key`s it seeds — the field
+  /// a test types or scans into, and each suggestion row it taps.
+  static const String defectCodeFieldName = 'supplier-ncr-form-defect-code';
+
+  static ValueKey<String> defectCodeFieldKey() => AppSearchField.fieldKey(defectCodeFieldName);
+
+  static ValueKey<String> defectCodeSuggestionKey(String id) =>
+      AppSearchField.suggestionKey(defectCodeFieldName, id);
 
   @override
   State<SupplierNcrFormDialog> createState() => _SupplierNcrFormDialogState();
@@ -61,7 +75,12 @@ class _SupplierNcrFormDialogState extends State<SupplierNcrFormDialog> {
 
   String? _supplierId;
   String? _productId;
-  String? _defectCodeId;
+
+  /// The Defect code this NCR names, or `null` — optional here, as it was when
+  /// the field was a menu: an inspector has a pallet in front of them, and what
+  /// is wrong with it may not be coded yet. Clearing the field's own text clears
+  /// it back to nothing named.
+  DefectCode? _defectCode;
   String? _uomCode;
   String? _responseDueDate;
 
@@ -124,7 +143,7 @@ class _SupplierNcrFormDialogState extends State<SupplierNcrFormDialog> {
             quantity: _quantityValue!,
             uomCode: _uomCode!,
             productId: _productId,
-            defectCodeId: _defectCodeId,
+            defectCodeId: _defectCode?.id,
             incomingLotRef: _lot.text.trim(),
             purchaseRef: _purchase.text.trim(),
             description: _description.text.trim(),
@@ -213,24 +232,33 @@ class _SupplierNcrFormDialogState extends State<SupplierNcrFormDialog> {
               onChanged: _awaiting ? null : (value) => _chooseProduct(context, value),
             ),
             const SizedBox(height: Spacing.md),
-            DropdownButtonFormField<String?>(
-              key: SupplierNcrFormDialog.defectCodeKey,
-              initialValue: _defectCodeId,
-              isExpanded: true,
-              decoration: InputDecoration(
-                labelText: l10n.commonDefectCodeOptional,
-                helperText: l10n.supplierNcrFormWhatIsWrongWithItANon,
-                border: OutlineInputBorder(),
+            AppSearchField<DefectCode>(
+              name: SupplierNcrFormDialog.defectCodeFieldName,
+              label: l10n.commonDefectCodeOptional,
+              helperText: l10n.supplierNcrFormWhatIsWrongWithItANon,
+              value: _defectCode,
+              enabled: !_awaiting,
+              onChanged: (code) => setState(() => _defectCode = code),
+              onSelected: (code) => setState(() => _defectCode = code),
+              // A dumb in-memory filter over the catalogue the register already
+              // read: typing issues no request (ADR-0023). Matched on the two
+              // fields that identify a Defect code: its code and its name.
+              fetchSuggestions: (term) async {
+                final lower = term.toLowerCase();
+                return [
+                  for (final code in loaded?.defectCodes ?? const <DefectCode>[])
+                    if (code.code.toLowerCase().contains(lower) ||
+                        code.name.toLowerCase().contains(lower))
+                      code,
+                ];
+              },
+              suggestionBuilder: (context, code) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+                child: Text('${code.name} · ${code.code}', overflow: TextOverflow.ellipsis),
               ),
-              items: [
-                DropdownMenuItem<String?>(value: null, child: Text(l10n.commonNotKnownYet)),
-                for (final code in loaded?.defectCodes ?? const [])
-                  DropdownMenuItem<String?>(
-                    value: code.id,
-                    child: Text('${code.name} · ${code.code}', overflow: TextOverflow.ellipsis),
-                  ),
-              ],
-              onChanged: _awaiting ? null : (value) => setState(() => _defectCodeId = value),
+              idOf: (code) => code.id,
+              displayStringFor: (code) => '${code.name} · ${code.code}',
+              codeOf: (code) => code.code,
             ),
             const SizedBox(height: Spacing.md),
             TextField(
