@@ -23,6 +23,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'kpi_catalogue.dart';
@@ -130,24 +131,25 @@ class _AddKpiDialogState extends State<AddKpiDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final decimalsText = _decimals.text.trim();
     return BlocListener<KpiCatalogueBloc, KpiCatalogueState>(
       listener: _onCatalogueChanged,
       child: AppDialog(
-        title: 'Add KPI',
+        title: l10n.commonAddKpi,
         // A short form of six fields, by the document's own table.
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: AddKpiDialog.cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: AddKpiDialog.submitId,
-            label: _awaiting ? 'Adding…' : 'Add',
+            label: _awaiting ? l10n.commonAdding : l10n.addKpiAdd,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -162,9 +164,9 @@ class _AddKpiDialogState extends State<AddKpiDialog> {
               controller: _name,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                  labelText: 'KPI',
-                  helperText: 'The code, e.g. OEE',
+              decoration: InputDecoration(
+                  labelText: l10n.addKpiKpi,
+                  helperText: l10n.addKpiTheCodeEGOee,
                   border: OutlineInputBorder()),
             ),
             const SizedBox(height: Spacing.md),
@@ -173,7 +175,7 @@ class _AddKpiDialogState extends State<AddKpiDialog> {
               controller: _title,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.trainingRaiseTitle, border: OutlineInputBorder()),
             ),
             const SizedBox(height: Spacing.md),
             TextField(
@@ -181,16 +183,16 @@ class _AddKpiDialogState extends State<AddKpiDialog> {
               controller: _unit,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                  labelText: 'Unit (optional)', border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                  labelText: l10n.addKpiUnitOptional, border: OutlineInputBorder()),
             ),
             const SizedBox(height: Spacing.md),
             DropdownButtonFormField<String>(
               key: AddKpiDialog.directionKey,
               initialValue: _direction,
-              decoration: const InputDecoration(
-                labelText: 'Direction',
-                helperText: '>= is met at or above the Target, <= at or below it',
+              decoration: InputDecoration(
+                labelText: l10n.addKpiDirection,
+                helperText: l10n.addKpiIsMetAtOrAboveTheTarget,
                 border: OutlineInputBorder(),
               ),
               items: [
@@ -211,10 +213,10 @@ class _AddKpiDialogState extends State<AddKpiDialog> {
               keyboardType: TextInputType.number,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                labelText: 'Decimals',
-                helperText: 'A whole number from 0 to 6',
+                labelText: l10n.addKpiDecimals,
+                helperText: l10n.addKpiAWholeNumberFrom0To6,
                 errorText: decimalsText.isNotEmpty && _decimalsValue == null
-                    ? 'Decimals must be a whole number from 0 to 6'
+                    ? l10n.addKpiDecimalsMustBeAWholeNumberFrom
                     : null,
                 border: const OutlineInputBorder(),
               ),
@@ -225,8 +227,8 @@ class _AddKpiDialogState extends State<AddKpiDialog> {
               controller: _valueMeasure,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Value measure (optional)',
+              decoration: InputDecoration(
+                labelText: l10n.addKpiValueMeasureOptional,
                 border: OutlineInputBorder(),
               ),
             ),

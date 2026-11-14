@@ -46,6 +46,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
@@ -165,6 +166,7 @@ class ShiftHandoverScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<ShiftHandoverBloc>().state;
 
     return Scaffold(
@@ -172,7 +174,7 @@ class ShiftHandoverScreen extends StatelessWidget {
         ShiftHandoverLoading() => const SkeletonList(maxWidth: maxWidth),
         ShiftHandoverUnavailable(message: final message) => PlatformFailureState(
             key: failedKey,
-            title: 'That handover could not be opened',
+            title: l10n.shiftHandoverThatHandoverCouldNotBeOpened,
             message: message,
             retryKey: retryKey,
             onRetry: () => context.read<ShiftHandoverBloc>().add(
@@ -227,6 +229,7 @@ class _LoadedState extends State<_Loaded> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final palette = AppColors.of(context);
     final handover = widget.state.handover;
@@ -260,7 +263,7 @@ class _LoadedState extends State<_Loaded> {
                           ? null
                           : () => context.read<ShiftHandoverBloc>().add(const HandoverSubmitted()),
                       icon: const Icon(Icons.send_outlined),
-                      label: const Text('Submit the handover'),
+                      label: Text(l10n.shiftHandoverSubmitTheHandover),
                     ),
                   )
                 : null;
@@ -286,13 +289,13 @@ class _LoadedState extends State<_Loaded> {
                                     date: widget.date ?? handover.productionDate),
                               ),
                               icon: const Icon(Icons.arrow_back),
-                              label: const Text('Back to the Section board'),
+                              label: Text(l10n.shiftHandoverBackToTheSectionBoard),
                             ),
                           ),
                         ),
                         const SizedBox(height: Spacing.sm),
                         AppPageHeader(
-                          title: 'Shift handover · ${handover.sectionName ?? 'Section'}',
+                          title: l10n.shiftHandoverShiftHandover(handover.sectionName ?? 'Section'),
                           description: '${handover.productionDate ?? ''} · '
                               '${formatClock(handover.shiftStartsAt)}–${formatClock(handover.shiftEndsAt)}'
                               '${handover.authorDisplayName != null ? ' · handed over by ${handover.authorDisplayName}' : ''}',
@@ -307,9 +310,9 @@ class _LoadedState extends State<_Loaded> {
                               label: _statusLabel(handover.status),
                               tone: _statusTone(handover.status),
                             ),
-                            if (handover.late == true) const StatusChip(label: 'Late', tone: StatusTone.warning),
+                            if (handover.late == true) StatusChip(label: l10n.commonLate, tone: StatusTone.warning),
                             if (handover.version > 1)
-                              StatusChip(label: 'Version ${handover.version}', tone: StatusTone.info),
+                              StatusChip(label: l10n.shiftHandoverVersion(handover.version), tone: StatusTone.info),
                           ],
                           below: narrow ? _Anchors(onJump: _jumpTo) : null,
                         ),
@@ -332,12 +335,12 @@ class _LoadedState extends State<_Loaded> {
                         KeyedSubtree(
                           key: _sectionKeys['numbers']!,
                           child: AppDetailSection(
-                            title: 'The numbers the shift closed on',
+                            title: l10n.shiftHandoverTheNumbersTheShiftClosedOn,
                             children: [
                               Text(
                                 handover.isDraft
-                                    ? 'Frozen when the handover is submitted.'
-                                    : 'Frozen at submit.',
+                                    ? l10n.shiftHandoverFrozenWhenTheHandoverIsSubmitted
+                                    : l10n.shiftHandoverFrozenAtSubmit,
                                 style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
                               ),
                               _SnapshotCells(handover: handover),
@@ -348,14 +351,14 @@ class _LoadedState extends State<_Loaded> {
                         KeyedSubtree(
                           key: _sectionKeys['machines']!,
                           child: AppDetailSection(
-                            title: 'Machines',
+                            title: l10n.shiftHandoverMachines,
                             children: [
                               Text(
-                                'One line per Asset in the Section.',
+                                l10n.shiftHandoverOneLinePerAssetInTheSection,
                                 style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
                               ),
                               if (state.assets.isEmpty)
-                                Text('This Section has no active Assets.', style: AppTypography.dense(context))
+                                Text(l10n.shiftHandoverThisSectionHasNoActiveAssets, style: AppTypography.dense(context))
                               else
                                 for (var i = 0; i < state.assets.length; i++) ...[
                                   if (i > 0)
@@ -375,10 +378,10 @@ class _LoadedState extends State<_Loaded> {
                         KeyedSubtree(
                           key: _sectionKeys['change-points']!,
                           child: AppDetailSection(
-                            title: 'Change points',
+                            title: l10n.shiftHandoverChangePoints,
                             children: [
                               Text(
-                                'What the incoming shift will meet that differs, and what to watch.',
+                                l10n.shiftHandoverWhatTheIncomingShiftWillMeetThat,
                                 style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
                               ),
                               _ChangePoints(handover: handover, enabled: editable),
@@ -389,10 +392,10 @@ class _LoadedState extends State<_Loaded> {
                         KeyedSubtree(
                           key: _sectionKeys['actions']!,
                           child: AppDetailSection(
-                            title: 'Carried actions',
+                            title: l10n.shiftHandoverCarriedActions,
                             children: [
                               Text(
-                                'Every open Action of the Section is carried, reassigned or closed.',
+                                l10n.shiftHandoverEveryOpenActionOfTheSectionIs,
                                 style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
                               ),
                               _Actions(handover: handover, enabled: editable),
@@ -403,7 +406,7 @@ class _LoadedState extends State<_Loaded> {
                         KeyedSubtree(
                           key: _sectionKeys['evidence']!,
                           child: AppDetailSection(
-                            title: 'Handover evidence',
+                            title: l10n.shiftHandoverHandoverEvidence,
                             children: [_Evidence(handover: handover, enabled: editable)],
                           ),
                         ),
@@ -414,8 +417,7 @@ class _LoadedState extends State<_Loaded> {
                         if (!handover.isDraft && handover.acknowledgedAt != null) ...[
                           const SizedBox(height: Spacing.xl),
                           Text(
-                            'Acknowledged ${formatClock(handover.acknowledgedAt)}'
-                            '${handover.acknowledgementNote != null ? ' — ${handover.acknowledgementNote}' : ''}',
+                            l10n.shiftHandoverAcknowledged(formatClock(handover.acknowledgedAt), handover.acknowledgementNote != null ? ' — ${handover.acknowledgementNote}' : ''),
                             style: AppTypography.dense(context),
                           ),
                         ],
@@ -561,6 +563,7 @@ class _RefusalPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final lines = [
@@ -584,7 +587,7 @@ class _RefusalPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'This handover cannot be submitted yet',
+            l10n.shiftHandoverThisHandoverCannotBeSubmittedYet,
             style: theme.textTheme.titleSmall?.copyWith(color: colors.onErrorContainer),
           ),
           const SizedBox(height: Spacing.xs),
@@ -769,6 +772,7 @@ class _MachineRowState extends State<_MachineRow> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final id = widget.asset.id;
     final recorded = widget.line != null;
@@ -782,7 +786,7 @@ class _MachineRowState extends State<_MachineRow> {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text('${widget.asset.code} · ${widget.asset.name}', style: theme.textTheme.titleSmall),
-              if (!recorded) const StatusChip(label: 'No line yet', tone: StatusTone.warning),
+              if (!recorded) StatusChip(label: l10n.shiftHandoverNoLineYet, tone: StatusTone.warning),
             ],
           ),
           const SizedBox(height: Spacing.sm),
@@ -794,7 +798,7 @@ class _MachineRowState extends State<_MachineRow> {
                   initialValue: _state,
                   isDense: true,
                   isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'State'),
+                  decoration: InputDecoration(labelText: l10n.commonState),
                   items: [
                     for (final choice in HandoverVocabulary.machineStates)
                       DropdownMenuItem<String>(value: choice.wire, child: Text(choice.label)),
@@ -809,9 +813,9 @@ class _MachineRowState extends State<_MachineRow> {
                   initialValue: _abnormality,
                   isDense: true,
                   isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Abnormality'),
+                  decoration: InputDecoration(labelText: l10n.shiftHandoverAbnormality),
                   items: [
-                    const DropdownMenuItem<String?>(value: null, child: Text('None found')),
+                    DropdownMenuItem<String?>(value: null, child: Text(l10n.shiftHandoverNoneFound)),
                     for (final choice in HandoverVocabulary.abnormalityTypes)
                       DropdownMenuItem<String?>(value: choice.wire, child: Text(choice.label)),
                   ],
@@ -827,9 +831,9 @@ class _MachineRowState extends State<_MachineRow> {
             controller: _note,
             enabled: widget.enabled,
             decoration: InputDecoration(
-              labelText: 'Note',
+              labelText: l10n.commonNote,
               helperText: _state != null && !HandoverVocabulary.normalRunningStates.contains(_state)
-                  ? 'Required: say why it is not running normally'
+                  ? l10n.shiftHandoverRequiredSayWhyItIsNotRunning
                   : null,
             ),
           ),
@@ -841,13 +845,13 @@ class _MachineRowState extends State<_MachineRow> {
           // note); the sweep in `test/palette_text_scale_sweep_test.dart` is
           // what found it.
           Tooltip(
-            message: 'What the incoming shift must watch',
+            message: l10n.shiftHandoverWhatTheIncomingShiftMustWatch,
             child: TextField(
               key: ShiftHandoverScreen.machineWatchKey(id),
               controller: _watch,
               enabled: widget.enabled,
-              decoration: const InputDecoration(
-                labelText: 'What the incoming shift must watch',
+              decoration: InputDecoration(
+                labelText: l10n.shiftHandoverWhatTheIncomingShiftMustWatch,
               ),
             ),
           ),
@@ -859,7 +863,7 @@ class _MachineRowState extends State<_MachineRow> {
                 value: _walked,
                 onChanged: widget.enabled ? (value) => setState(() => _walked = value ?? false) : null,
               ),
-              const Text('Walked'),
+              Text(l10n.shiftHandoverWalked),
               const Spacer(),
               if (widget.showSave)
                 ConstrainedBox(
@@ -867,7 +871,7 @@ class _MachineRowState extends State<_MachineRow> {
                   child: OutlinedButton(
                     key: ShiftHandoverScreen.machineSaveKey(id),
                     onPressed: widget.enabled && _state != null ? _save : null,
-                    child: Text(recorded ? 'Save line' : 'Record line'),
+                    child: Text(recorded ? l10n.shiftHandoverSaveLine : l10n.shiftHandoverRecordLine),
                   ),
                 ),
             ],
@@ -920,6 +924,7 @@ class _ChangePointsState extends State<_ChangePoints> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final handover = widget.handover;
     return Column(
@@ -930,7 +935,7 @@ class _ChangePointsState extends State<_ChangePoints> {
           contentPadding: EdgeInsets.zero,
           controlAffinity: ListTileControlAffinity.leading,
           value: handover.changePointsNone,
-          title: const Text('No change points this shift'),
+          title: Text(l10n.shiftHandoverNoChangePointsThisShift),
           onChanged: widget.enabled
               ? (value) => context
                   .read<ShiftHandoverBloc>()
@@ -947,7 +952,7 @@ class _ChangePointsState extends State<_ChangePoints> {
                 Text(dimension.label, style: theme.textTheme.titleSmall),
                 if ((handover.changePoints[dimension.wire] ?? const []).isEmpty)
                   Text(
-                    'None recorded',
+                    l10n.shiftHandoverNoneRecorded,
                     style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
                 for (final point in handover.changePoints[dimension.wire] ?? const <ChangePoint>[])
@@ -960,8 +965,7 @@ class _ChangePointsState extends State<_ChangePoints> {
                           children: [
                             Text(point.description, style: theme.textTheme.bodyMedium),
                             Text(
-                              'Watch: ${point.watchNote}'
-                              '${point.watchResult != null ? ' · found ${HandoverVocabulary.watchResultLabel(point.watchResult)}' : ''}',
+                              l10n.shiftHandoverWatch(point.watchNote, point.watchResult != null ? ' · found ${HandoverVocabulary.watchResultLabel(point.watchResult)}' : ''),
                               style: theme.textTheme.bodySmall
                                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                             ),
@@ -971,7 +975,7 @@ class _ChangePointsState extends State<_ChangePoints> {
                       if (handover.isDraft)
                         IconButton(
                           key: ShiftHandoverScreen.changePointRemoveKey(point.id),
-                          tooltip: 'Remove',
+                          tooltip: l10n.commonRemove,
                           onPressed: widget.enabled
                               ? () => context.read<ShiftHandoverBloc>().add(ChangePointRemoved(point.id))
                               : null,
@@ -984,7 +988,7 @@ class _ChangePointsState extends State<_ChangePoints> {
           ),
         if (handover.isDraft) ...[
           const Divider(height: Spacing.xl),
-          Text('Add a change point', style: theme.textTheme.titleSmall),
+          Text(l10n.shiftHandoverAddAChangePoint, style: theme.textTheme.titleSmall),
           const SizedBox(height: Spacing.sm),
           _FieldRow(
             fields: [
@@ -994,7 +998,7 @@ class _ChangePointsState extends State<_ChangePoints> {
                   initialValue: _dimension,
                   isDense: true,
                   isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Dimension'),
+                  decoration: InputDecoration(labelText: l10n.shiftHandoverDimension),
                   items: [
                     for (final choice in HandoverVocabulary.changePointDimensions)
                       DropdownMenuItem<String>(value: choice.wire, child: Text(choice.label)),
@@ -1009,20 +1013,20 @@ class _ChangePointsState extends State<_ChangePoints> {
                   controller: _description,
                   enabled: widget.enabled,
                   onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(labelText: 'What is different'),
+                  decoration: InputDecoration(labelText: l10n.shiftHandoverWhatIsDifferent),
                 ),
                 3,
               ),
               (
                 Tooltip(
-                  message: 'What the incoming shift must watch for',
+                  message: l10n.shiftHandoverWhatTheIncomingShiftMustWatchFor,
                   child: TextField(
                     key: ShiftHandoverScreen.changePointWatchKey,
                     controller: _watch,
                     enabled: widget.enabled,
                     onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
-                      labelText: 'What the incoming shift must watch for',
+                    decoration: InputDecoration(
+                      labelText: l10n.shiftHandoverWhatTheIncomingShiftMustWatchFor,
                     ),
                   ),
                 ),
@@ -1039,7 +1043,7 @@ class _ChangePointsState extends State<_ChangePoints> {
                 key: ShiftHandoverScreen.changePointAddKey,
                 onPressed: widget.enabled && _complete ? _add : null,
                 icon: const Icon(Icons.add),
-                label: const Text('Add change point'),
+                label: Text(l10n.shiftHandoverAddChangePoint),
               ),
             ),
           ),
@@ -1059,11 +1063,12 @@ class _Actions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final palette = AppColors.of(context);
     if (handover.actions.isEmpty && handover.openActions.isEmpty) {
       return Text(
-        'The Section has no open Actions to hand over.',
+        l10n.shiftHandoverTheSectionHasNoOpenActionsTo,
         style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
       );
     }
@@ -1091,8 +1096,7 @@ class _Actions extends StatelessWidget {
                           if (handover.actions[i].ownerName != null) 'to ${handover.actions[i].ownerName}',
                           if (handover.actions[i].closureNote != null) handover.actions[i].closureNote!,
                           if (handover.actions[i].ageShifts != null && handover.actions[i].ageShifts! > 0)
-                            '${handover.actions[i].ageShifts} '
-                                '${handover.actions[i].ageShifts == 1 ? 'shift' : 'shifts'} old',
+                            l10n.shiftHandoverOld((handover.actions[i].ageShifts ?? 0), handover.actions[i].ageShifts == 1 ? 'shift' : 'shifts'),
                         ].join(' · '),
                         style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       ),
@@ -1102,7 +1106,7 @@ class _Actions extends StatelessWidget {
                 if (handover.isDraft)
                   IconButton(
                     key: ShiftHandoverScreen.actionLinkRemoveKey(handover.actions[i].id),
-                    tooltip: 'Remove',
+                    tooltip: l10n.commonRemove,
                     onPressed: enabled
                         ? () => context.read<ShiftHandoverBloc>().add(ActionLinkRemoved(handover.actions[i].id))
                         : null,
@@ -1178,6 +1182,7 @@ class _OpenActionRowState extends State<_OpenActionRow> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final action = widget.action;
     final id = action.id;
@@ -1189,9 +1194,9 @@ class _OpenActionRowState extends State<_OpenActionRow> {
           Text('${action.actionNo} · ${action.title}', style: theme.textTheme.titleSmall),
           Text(
             [
-              if (action.ownerName != null) 'Owner ${action.ownerName}',
-              if (action.dueDate != null) 'due ${action.dueDate}',
-              'no disposition yet',
+              if (action.ownerName != null) l10n.shiftHandoverOwner((action.ownerName ?? '')),
+              if (action.dueDate != null) l10n.actionDetailDue((action.dueDate ?? '')),
+              l10n.shiftHandoverNoDispositionYet,
             ].join(' · '),
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
@@ -1204,7 +1209,7 @@ class _OpenActionRowState extends State<_OpenActionRow> {
                   initialValue: _disposition,
                   isDense: true,
                   isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Disposition'),
+                  decoration: InputDecoration(labelText: l10n.commonDisposition),
                   items: [
                     for (final choice in HandoverVocabulary.dispositions)
                       DropdownMenuItem<String>(value: choice.wire, child: Text(choice.label)),
@@ -1225,7 +1230,7 @@ class _OpenActionRowState extends State<_OpenActionRow> {
             AppSearchField<Employee>(
               key: ShiftHandoverScreen.actionOwnerKey(id),
               name: 'handover-action-$id-owner',
-              label: 'New owner',
+              label: l10n.shiftHandoverNewOwner,
               value: _owner,
               enabled: widget.enabled,
               onChanged: (employee) => setState(() => _owner = employee),
@@ -1249,7 +1254,7 @@ class _OpenActionRowState extends State<_OpenActionRow> {
               key: ShiftHandoverScreen.actionClosureNoteKey(id),
               controller: _closureNote,
               enabled: widget.enabled,
-              decoration: const InputDecoration(labelText: 'What closed it'),
+              decoration: InputDecoration(labelText: l10n.shiftHandoverWhatClosedIt),
             ),
           ],
           if (_error != null)
@@ -1266,7 +1271,7 @@ class _OpenActionRowState extends State<_OpenActionRow> {
               child: OutlinedButton(
                 key: ShiftHandoverScreen.actionRecordKey(id),
                 onPressed: widget.enabled ? _record : null,
-                child: const Text('Record disposition'),
+                child: Text(l10n.shiftHandoverRecordDisposition),
               ),
             ),
           ),
@@ -1313,6 +1318,7 @@ class _EvidenceState extends State<_Evidence> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1321,7 +1327,7 @@ class _EvidenceState extends State<_Evidence> {
           contentPadding: EdgeInsets.zero,
           controlAffinity: ListTileControlAffinity.leading,
           value: _jointWalk,
-          title: const Text('Joint walk done'),
+          title: Text(l10n.shiftHandoverJointWalkDone),
           onChanged: widget.enabled ? (value) => setState(() => _jointWalk = value ?? false) : null,
         ),
         TextField(
@@ -1331,21 +1337,21 @@ class _EvidenceState extends State<_Evidence> {
           minLines: 2,
           maxLines: 5,
           maxLength: 2000,
-          decoration: const InputDecoration(labelText: 'Critical items'),
+          decoration: InputDecoration(labelText: l10n.shiftHandoverCriticalItems),
         ),
         const SizedBox(height: Spacing.sm),
         _FieldRow(
           fields: [
             (
               Tooltip(
-                message: 'Deviation from the standard handover',
+                message: l10n.shiftHandoverDeviationFromTheStandardHandover,
                 child: DropdownButtonFormField<String>(
                   key: ShiftHandoverScreen.deviationReasonKey,
                   initialValue: _deviation,
                   isDense: true,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Deviation from the standard handover',
+                  decoration: InputDecoration(
+                    labelText: l10n.shiftHandoverDeviationFromTheStandardHandover,
                   ),
                   items: [
                     for (final choice in HandoverVocabulary.deviationReasons)
@@ -1369,7 +1375,7 @@ class _EvidenceState extends State<_Evidence> {
               child: OutlinedButton(
                 key: ShiftHandoverScreen.evidenceSaveKey,
                 onPressed: widget.enabled ? _save : null,
-                child: const Text('Save evidence'),
+                child: Text(l10n.shiftHandoverSaveEvidence),
               ),
             ),
           ),

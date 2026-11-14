@@ -6178,4 +6178,469 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get safetyOrgUnitFilterChooseTheOrgUnitWhoseSafetyIncidents =>
       'Choose the Org Unit whose Safety incidents and everything beneath it you want to read, or clear back to the whole Site.';
+
+  @override
+  String handoverAcknowledgeYouAreAcceptingAndTheShift(
+    Object value,
+    Object value2,
+  ) {
+    return 'You are accepting $value and the shift$value2.';
+  }
+
+  @override
+  String get handoverAcknowledgeTheOutgoingShiftDeclaredNoChangePoints =>
+      'The outgoing shift declared no change points.';
+
+  @override
+  String get handoverAcknowledgeThereAreNoChangePointsToWatch =>
+      'There are no change points to watch.';
+
+  @override
+  String get handoverAcknowledgeWhatEachWatchShowed => 'What each watch showed';
+
+  @override
+  String handoverAcknowledgeWatch(Object watchNote) {
+    return 'Watch: $watchNote';
+  }
+
+  @override
+  String get handoverAcknowledgeFound => 'Found';
+
+  @override
+  String get handoverAcknowledgeNotAnswered => 'Not answered';
+
+  @override
+  String get handoverAcknowledgeNoteOnTheHandoverOptional =>
+      'Note on the handover (optional)';
+
+  @override
+  String get handoverAcknowledgeAcknowledgeTheHandover =>
+      'Acknowledge the handover';
+
+  @override
+  String get handoverAcknowledgeAcknowledging => 'Acknowledging…';
+
+  @override
+  String get commonAcknowledge => 'Acknowledge';
+
+  @override
+  String get sectionThatSectionSDayCouldNotBe =>
+      'That Section\'s day could not be read';
+
+  @override
+  String get sectionChooseAnotherSection => 'Choose another Section';
+
+  @override
+  String get sectionEveryShiftOfTheProductionDayWith =>
+      'Every shift of the production day, with its handover and what is still open at each shift boundary.';
+
+  @override
+  String get sectionNoShiftsScheduled => 'No shifts scheduled';
+
+  @override
+  String get sectionNoShiftsAreScheduledAtThisSection =>
+      'No shifts are scheduled at this Section on that day.';
+
+  @override
+  String sectionShift(Object value, Object value2) {
+    return 'Shift $value–$value2';
+  }
+
+  @override
+  String get commonLate => 'Late';
+
+  @override
+  String sectionHandedOverBy(Object value) {
+    return 'Handed over by $value';
+  }
+
+  @override
+  String sectionAcknowledgedAfterTheShiftBegan(Object value) {
+    return 'acknowledged $value after the shift began';
+  }
+
+  @override
+  String get sectionThatSectionTreeCouldNotBeRead =>
+      'That Section tree could not be read';
+
+  @override
+  String get sectionNothingToOpenHere => 'Nothing to open here';
+
+  @override
+  String get sectionChooseASectionToOpenItsBoard =>
+      'Choose a Section to open its board: the day\'s shifts and the handover at each.';
+
+  @override
+  String get shiftHandoverThatHandoverCouldNotBeOpened =>
+      'That handover could not be opened';
+
+  @override
+  String get shiftHandoverSubmitTheHandover => 'Submit the handover';
+
+  @override
+  String get shiftHandoverBackToTheSectionBoard => 'Back to the Section board';
+
+  @override
+  String shiftHandoverShiftHandover(Object value) {
+    return 'Shift handover · $value';
+  }
+
+  @override
+  String shiftHandoverVersion(Object version) {
+    return 'Version $version';
+  }
+
+  @override
+  String get shiftHandoverTheNumbersTheShiftClosedOn =>
+      'The numbers the shift closed on';
+
+  @override
+  String get shiftHandoverFrozenWhenTheHandoverIsSubmitted =>
+      'Frozen when the handover is submitted.';
+
+  @override
+  String get shiftHandoverFrozenAtSubmit => 'Frozen at submit.';
+
+  @override
+  String get shiftHandoverMachines => 'Machines';
+
+  @override
+  String get shiftHandoverOneLinePerAssetInTheSection =>
+      'One line per Asset in the Section.';
+
+  @override
+  String get shiftHandoverThisSectionHasNoActiveAssets =>
+      'This Section has no active Assets.';
+
+  @override
+  String get shiftHandoverChangePoints => 'Change points';
+
+  @override
+  String get shiftHandoverWhatTheIncomingShiftWillMeetThat =>
+      'What the incoming shift will meet that differs, and what to watch.';
+
+  @override
+  String get shiftHandoverCarriedActions => 'Carried actions';
+
+  @override
+  String get shiftHandoverEveryOpenActionOfTheSectionIs =>
+      'Every open Action of the Section is carried, reassigned or closed.';
+
+  @override
+  String get shiftHandoverHandoverEvidence => 'Handover evidence';
+
+  @override
+  String shiftHandoverAcknowledged(Object value, Object value2) {
+    return 'Acknowledged $value$value2';
+  }
+
+  @override
+  String get shiftHandoverThisHandoverCannotBeSubmittedYet =>
+      'This handover cannot be submitted yet';
+
+  @override
+  String get shiftHandoverNoLineYet => 'No line yet';
+
+  @override
+  String get shiftHandoverAbnormality => 'Abnormality';
+
+  @override
+  String get shiftHandoverNoneFound => 'None found';
+
+  @override
+  String get shiftHandoverRequiredSayWhyItIsNotRunning =>
+      'Required: say why it is not running normally';
+
+  @override
+  String get shiftHandoverWhatTheIncomingShiftMustWatch =>
+      'What the incoming shift must watch';
+
+  @override
+  String get shiftHandoverWalked => 'Walked';
+
+  @override
+  String get shiftHandoverSaveLine => 'Save line';
+
+  @override
+  String get shiftHandoverRecordLine => 'Record line';
+
+  @override
+  String get shiftHandoverNoChangePointsThisShift =>
+      'No change points this shift';
+
+  @override
+  String get shiftHandoverNoneRecorded => 'None recorded';
+
+  @override
+  String shiftHandoverWatch(Object watchNote, Object value) {
+    return 'Watch: $watchNote$value';
+  }
+
+  @override
+  String get shiftHandoverAddAChangePoint => 'Add a change point';
+
+  @override
+  String get shiftHandoverDimension => 'Dimension';
+
+  @override
+  String get shiftHandoverWhatIsDifferent => 'What is different';
+
+  @override
+  String get shiftHandoverWhatTheIncomingShiftMustWatchFor =>
+      'What the incoming shift must watch for';
+
+  @override
+  String get shiftHandoverAddChangePoint => 'Add change point';
+
+  @override
+  String get shiftHandoverTheSectionHasNoOpenActionsTo =>
+      'The Section has no open Actions to hand over.';
+
+  @override
+  String shiftHandoverOld(Object value, Object value2) {
+    return '$value $value2 old';
+  }
+
+  @override
+  String shiftHandoverOwner(Object ownerName) {
+    return 'Owner $ownerName';
+  }
+
+  @override
+  String get shiftHandoverNoDispositionYet => 'no disposition yet';
+
+  @override
+  String get shiftHandoverNewOwner => 'New owner';
+
+  @override
+  String get shiftHandoverWhatClosedIt => 'What closed it';
+
+  @override
+  String get shiftHandoverRecordDisposition => 'Record disposition';
+
+  @override
+  String get shiftHandoverJointWalkDone => 'Joint walk done';
+
+  @override
+  String get shiftHandoverCriticalItems => 'Critical items';
+
+  @override
+  String get shiftHandoverDeviationFromTheStandardHandover =>
+      'Deviation from the standard handover';
+
+  @override
+  String get shiftHandoverSaveEvidence => 'Save evidence';
+
+  @override
+  String get commonAddKpi => 'Add KPI';
+
+  @override
+  String get addKpiAdd => 'Add';
+
+  @override
+  String get addKpiKpi => 'KPI';
+
+  @override
+  String get addKpiTheCodeEGOee => 'The code, e.g. OEE';
+
+  @override
+  String get addKpiUnitOptional => 'Unit (optional)';
+
+  @override
+  String get addKpiDirection => 'Direction';
+
+  @override
+  String get addKpiIsMetAtOrAboveTheTarget =>
+      '>= is met at or above the Target, <= at or below it';
+
+  @override
+  String get addKpiDecimals => 'Decimals';
+
+  @override
+  String get addKpiAWholeNumberFrom0To6 => 'A whole number from 0 to 6';
+
+  @override
+  String get addKpiDecimalsMustBeAWholeNumberFrom =>
+      'Decimals must be a whole number from 0 to 6';
+
+  @override
+  String get addKpiValueMeasureOptional => 'Value measure (optional)';
+
+  @override
+  String get commonChangeTarget => 'Change Target';
+
+  @override
+  String get changeTargetGrain => 'Grain';
+
+  @override
+  String get changeTargetValidFrom => 'Valid from';
+
+  @override
+  String changeTargetTodayAtThisSiteIsATarget(Object siteToday) {
+    return 'Today at this Site is $siteToday; a Target starts today or later.';
+  }
+
+  @override
+  String get changeTargetTarget => 'Target';
+
+  @override
+  String get changeTargetLeaveBlankForNoTargetFromThat =>
+      'Leave blank for no target from that date on.';
+
+  @override
+  String get changeTargetTheTargetMustBeANumberOr =>
+      'The Target must be a number, or blank for no target';
+
+  @override
+  String get kpiCatalogueTheKpiCatalogueCouldNotBeRead =>
+      'The KPI catalogue could not be read';
+
+  @override
+  String get kpiCatalogueTheKpisOfTheMtuLineWith =>
+      'The KPIs of the MTU line, with the Target in force per grain.';
+
+  @override
+  String kpiCatalogueTheKpisOfTheMtuLineWith2(Object reviewDate) {
+    return 'The KPIs of the MTU line, with the Target in force per grain and the review state for today, $reviewDate.';
+  }
+
+  @override
+  String get kpiCatalogueNoKpisInTheCatalogueYet =>
+      'No KPIs in the catalogue yet';
+
+  @override
+  String get kpiCatalogueNothingHasBeenAddedToTheKpi =>
+      'Nothing has been added to the KPI catalogue.';
+
+  @override
+  String get commonFilterKpis => 'Filter KPIs';
+
+  @override
+  String get kpiCatalogueByCodeOrTitle => 'By code or title.';
+
+  @override
+  String get commonNoKpisMatch => 'No KPIs match';
+
+  @override
+  String kpiCatalogueNothingInTheCatalogueMatchesTryA(Object term) {
+    return 'Nothing in the catalogue matches \"$term\". Try a different code or title, or clear the filter.';
+  }
+
+  @override
+  String kpiCatalogueValueMeasure(Object measure) {
+    return 'Value measure: $measure';
+  }
+
+  @override
+  String get kpiReviewTheKpiReviewCouldNotBeRead =>
+      'The KPI Review could not be read';
+
+  @override
+  String get kpiReviewKpiReview => 'KPI Review';
+
+  @override
+  String kpiReviewKpiReviewFor(Object reviewDate) {
+    return 'KPI Review for $reviewDate';
+  }
+
+  @override
+  String get kpiReviewJudgeEachKpiOfTheMtuLine =>
+      'Judge each KPI of the MTU line against its Daily Target: met, missed or not measured.';
+
+  @override
+  String get kpiReviewNoKpisToReview => 'No KPIs to review';
+
+  @override
+  String get kpiReviewTheKpiCatalogueHasNoKpiYet =>
+      'The KPI catalogue has no KPI yet.';
+
+  @override
+  String get kpiReviewByTitle => 'By title.';
+
+  @override
+  String kpiReviewNoKpiOfTheReviewMatchesTry(Object term) {
+    return 'No KPI of the review matches \"$term\". Try a different title, or clear the filter.';
+  }
+
+  @override
+  String get kpiReview1ChangedKpiIsHiddenByThe =>
+      '1 changed KPI is hidden by the search.';
+
+  @override
+  String kpiReviewChangedKpisAreHiddenByTheSearch(Object hiddenChanges) {
+    return '$hiddenChanges changed KPIs are hidden by the search.';
+  }
+
+  @override
+  String kpiReviewSavedFor(Object savedCount, Object value, Object reviewDate) {
+    return 'Saved $savedCount $value for $reviewDate.';
+  }
+
+  @override
+  String get kpiReviewNoTarget => 'No target';
+
+  @override
+  String kpiReviewDailyTarget(Object targetText) {
+    return 'Daily target: $targetText';
+  }
+
+  @override
+  String get kpiReviewReadTheNote => 'Read the note';
+
+  @override
+  String get kpiReviewWhyWasItMissed => 'Why was it missed?';
+
+  @override
+  String kpiReviewWhyWasTheTargetMissed(Object targetText) {
+    return 'Why was the Target ($targetText) missed?';
+  }
+
+  @override
+  String kpiReviewANoteOfAtLeastCharactersIs(
+    Object minNoteLength,
+    Object length,
+  ) {
+    return 'A note of at least $minNoteLength characters is required when a KPI is missed ($length so far).';
+  }
+
+  @override
+  String get kpiReviewEdit => 'Edit';
+
+  @override
+  String get kpiTargetsTheTargetsCouldNotBeRead =>
+      'The Targets could not be read';
+
+  @override
+  String kpiTargetsKpiTargets(Object direction, Object unit) {
+    return 'KPI Targets, $direction $unit';
+  }
+
+  @override
+  String get kpiTargetsCurrentlyInForce => 'Currently in force';
+
+  @override
+  String get kpiTargetsWhatEachGrainIsJudgedAgainstToday =>
+      'What each grain is judged against today, and from when.';
+
+  @override
+  String get kpiTargetsNoTargetIsInForceToday => 'No Target is in force today.';
+
+  @override
+  String kpiTargetsFrom(Object grain, Object value, Object validFrom) {
+    return '$grain: $value (from $validFrom)';
+  }
+
+  @override
+  String get kpiTargetsHistory => 'History';
+
+  @override
+  String get kpiTargetsNewestFirstAnEntryIsNeverEdited =>
+      'Newest first. An entry is never edited — a later one supersedes it.';
+
+  @override
+  String get kpiTargetsNoTargetHasBeenSet => 'No Target has been set';
+
+  @override
+  String get kpiTargetsEveryEntryMadeForThisKpiWill =>
+      'Every entry made for this KPI will be listed here.';
 }

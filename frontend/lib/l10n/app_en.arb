@@ -4306,5 +4306,260 @@
     }
   },
   "safetyObservationOrgUnitFilterChooseTheOrgUnitWhoseSafetyObservations": "Choose the Org Unit whose Safety observations and everything beneath it you want to read, or clear back to the whole Site.",
-  "safetyOrgUnitFilterChooseTheOrgUnitWhoseSafetyIncidents": "Choose the Org Unit whose Safety incidents and everything beneath it you want to read, or clear back to the whole Site."
+  "safetyOrgUnitFilterChooseTheOrgUnitWhoseSafetyIncidents": "Choose the Org Unit whose Safety incidents and everything beneath it you want to read, or clear back to the whole Site.",
+  "handoverAcknowledgeYouAreAcceptingAndTheShift": "You are accepting {value} and the shift{value2}.",
+  "@handoverAcknowledgeYouAreAcceptingAndTheShift": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "handoverAcknowledgeTheOutgoingShiftDeclaredNoChangePoints": "The outgoing shift declared no change points.",
+  "handoverAcknowledgeThereAreNoChangePointsToWatch": "There are no change points to watch.",
+  "handoverAcknowledgeWhatEachWatchShowed": "What each watch showed",
+  "handoverAcknowledgeWatch": "Watch: {watchNote}",
+  "@handoverAcknowledgeWatch": {
+    "placeholders": {
+      "watchNote": {"type": "Object"}
+    }
+  },
+  "handoverAcknowledgeFound": "Found",
+  "handoverAcknowledgeNotAnswered": "Not answered",
+  "handoverAcknowledgeNoteOnTheHandoverOptional": "Note on the handover (optional)",
+  "handoverAcknowledgeAcknowledgeTheHandover": "Acknowledge the handover",
+  "handoverAcknowledgeAcknowledging": "Acknowledging…",
+  "commonAcknowledge": "Acknowledge",
+  "sectionThatSectionSDayCouldNotBe": "That Section's day could not be read",
+  "sectionChooseAnotherSection": "Choose another Section",
+  "sectionEveryShiftOfTheProductionDayWith": "Every shift of the production day, with its handover and what is still open at each shift boundary.",
+  "sectionNoShiftsScheduled": "No shifts scheduled",
+  "sectionNoShiftsAreScheduledAtThisSection": "No shifts are scheduled at this Section on that day.",
+  "sectionShift": "Shift {value}–{value2}",
+  "@sectionShift": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "commonLate": "Late",
+  "sectionHandedOverBy": "Handed over by {value}",
+  "@sectionHandedOverBy": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "sectionAcknowledgedAfterTheShiftBegan": "acknowledged {value} after the shift began",
+  "@sectionAcknowledgedAfterTheShiftBegan": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "sectionThatSectionTreeCouldNotBeRead": "That Section tree could not be read",
+  "sectionNothingToOpenHere": "Nothing to open here",
+  "sectionChooseASectionToOpenItsBoard": "Choose a Section to open its board: the day's shifts and the handover at each.",
+  "shiftHandoverThatHandoverCouldNotBeOpened": "That handover could not be opened",
+  "shiftHandoverSubmitTheHandover": "Submit the handover",
+  "shiftHandoverBackToTheSectionBoard": "Back to the Section board",
+  "shiftHandoverShiftHandover": "Shift handover · {value}",
+  "@shiftHandoverShiftHandover": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "shiftHandoverVersion": "Version {version}",
+  "@shiftHandoverVersion": {
+    "placeholders": {
+      "version": {"type": "Object"}
+    }
+  },
+  "shiftHandoverTheNumbersTheShiftClosedOn": "The numbers the shift closed on",
+  "shiftHandoverFrozenWhenTheHandoverIsSubmitted": "Frozen when the handover is submitted.",
+  "shiftHandoverFrozenAtSubmit": "Frozen at submit.",
+  "shiftHandoverMachines": "Machines",
+  "shiftHandoverOneLinePerAssetInTheSection": "One line per Asset in the Section.",
+  "shiftHandoverThisSectionHasNoActiveAssets": "This Section has no active Assets.",
+  "shiftHandoverChangePoints": "Change points",
+  "shiftHandoverWhatTheIncomingShiftWillMeetThat": "What the incoming shift will meet that differs, and what to watch.",
+  "shiftHandoverCarriedActions": "Carried actions",
+  "shiftHandoverEveryOpenActionOfTheSectionIs": "Every open Action of the Section is carried, reassigned or closed.",
+  "shiftHandoverHandoverEvidence": "Handover evidence",
+  "shiftHandoverAcknowledged": "Acknowledged {value}{value2}",
+  "@shiftHandoverAcknowledged": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "shiftHandoverThisHandoverCannotBeSubmittedYet": "This handover cannot be submitted yet",
+  "shiftHandoverNoLineYet": "No line yet",
+  "shiftHandoverAbnormality": "Abnormality",
+  "shiftHandoverNoneFound": "None found",
+  "shiftHandoverRequiredSayWhyItIsNotRunning": "Required: say why it is not running normally",
+  "shiftHandoverWhatTheIncomingShiftMustWatch": "What the incoming shift must watch",
+  "shiftHandoverWalked": "Walked",
+  "shiftHandoverSaveLine": "Save line",
+  "shiftHandoverRecordLine": "Record line",
+  "shiftHandoverNoChangePointsThisShift": "No change points this shift",
+  "shiftHandoverNoneRecorded": "None recorded",
+  "shiftHandoverWatch": "Watch: {watchNote}{value}",
+  "@shiftHandoverWatch": {
+    "placeholders": {
+      "watchNote": {"type": "Object"},
+      "value": {"type": "Object"}
+    }
+  },
+  "shiftHandoverAddAChangePoint": "Add a change point",
+  "shiftHandoverDimension": "Dimension",
+  "shiftHandoverWhatIsDifferent": "What is different",
+  "shiftHandoverWhatTheIncomingShiftMustWatchFor": "What the incoming shift must watch for",
+  "shiftHandoverAddChangePoint": "Add change point",
+  "shiftHandoverTheSectionHasNoOpenActionsTo": "The Section has no open Actions to hand over.",
+  "shiftHandoverOld": "{value} {value2} old",
+  "@shiftHandoverOld": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "shiftHandoverOwner": "Owner {ownerName}",
+  "@shiftHandoverOwner": {
+    "placeholders": {
+      "ownerName": {"type": "Object"}
+    }
+  },
+  "shiftHandoverNoDispositionYet": "no disposition yet",
+  "shiftHandoverNewOwner": "New owner",
+  "shiftHandoverWhatClosedIt": "What closed it",
+  "shiftHandoverRecordDisposition": "Record disposition",
+  "shiftHandoverJointWalkDone": "Joint walk done",
+  "shiftHandoverCriticalItems": "Critical items",
+  "shiftHandoverDeviationFromTheStandardHandover": "Deviation from the standard handover",
+  "shiftHandoverSaveEvidence": "Save evidence",
+  "commonAddKpi": "Add KPI",
+  "addKpiAdd": "Add",
+  "addKpiKpi": "KPI",
+  "addKpiTheCodeEGOee": "The code, e.g. OEE",
+  "addKpiUnitOptional": "Unit (optional)",
+  "addKpiDirection": "Direction",
+  "addKpiIsMetAtOrAboveTheTarget": ">= is met at or above the Target, <= at or below it",
+  "addKpiDecimals": "Decimals",
+  "addKpiAWholeNumberFrom0To6": "A whole number from 0 to 6",
+  "addKpiDecimalsMustBeAWholeNumberFrom": "Decimals must be a whole number from 0 to 6",
+  "addKpiValueMeasureOptional": "Value measure (optional)",
+  "commonChangeTarget": "Change Target",
+  "changeTargetGrain": "Grain",
+  "changeTargetValidFrom": "Valid from",
+  "changeTargetTodayAtThisSiteIsATarget": "Today at this Site is {siteToday}; a Target starts today or later.",
+  "@changeTargetTodayAtThisSiteIsATarget": {
+    "placeholders": {
+      "siteToday": {"type": "Object"}
+    }
+  },
+  "changeTargetTarget": "Target",
+  "changeTargetLeaveBlankForNoTargetFromThat": "Leave blank for no target from that date on.",
+  "changeTargetTheTargetMustBeANumberOr": "The Target must be a number, or blank for no target",
+  "kpiCatalogueTheKpiCatalogueCouldNotBeRead": "The KPI catalogue could not be read",
+  "kpiCatalogueTheKpisOfTheMtuLineWith": "The KPIs of the MTU line, with the Target in force per grain.",
+  "kpiCatalogueTheKpisOfTheMtuLineWith2": "The KPIs of the MTU line, with the Target in force per grain and the review state for today, {reviewDate}.",
+  "@kpiCatalogueTheKpisOfTheMtuLineWith2": {
+    "placeholders": {
+      "reviewDate": {"type": "Object"}
+    }
+  },
+  "kpiCatalogueNoKpisInTheCatalogueYet": "No KPIs in the catalogue yet",
+  "kpiCatalogueNothingHasBeenAddedToTheKpi": "Nothing has been added to the KPI catalogue.",
+  "commonFilterKpis": "Filter KPIs",
+  "kpiCatalogueByCodeOrTitle": "By code or title.",
+  "commonNoKpisMatch": "No KPIs match",
+  "kpiCatalogueNothingInTheCatalogueMatchesTryA": "Nothing in the catalogue matches \"{term}\". Try a different code or title, or clear the filter.",
+  "@kpiCatalogueNothingInTheCatalogueMatchesTryA": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "kpiCatalogueValueMeasure": "Value measure: {measure}",
+  "@kpiCatalogueValueMeasure": {
+    "placeholders": {
+      "measure": {"type": "Object"}
+    }
+  },
+  "kpiReviewTheKpiReviewCouldNotBeRead": "The KPI Review could not be read",
+  "kpiReviewKpiReview": "KPI Review",
+  "kpiReviewKpiReviewFor": "KPI Review for {reviewDate}",
+  "@kpiReviewKpiReviewFor": {
+    "placeholders": {
+      "reviewDate": {"type": "Object"}
+    }
+  },
+  "kpiReviewJudgeEachKpiOfTheMtuLine": "Judge each KPI of the MTU line against its Daily Target: met, missed or not measured.",
+  "kpiReviewNoKpisToReview": "No KPIs to review",
+  "kpiReviewTheKpiCatalogueHasNoKpiYet": "The KPI catalogue has no KPI yet.",
+  "kpiReviewByTitle": "By title.",
+  "kpiReviewNoKpiOfTheReviewMatchesTry": "No KPI of the review matches \"{term}\". Try a different title, or clear the filter.",
+  "@kpiReviewNoKpiOfTheReviewMatchesTry": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "kpiReview1ChangedKpiIsHiddenByThe": "1 changed KPI is hidden by the search.",
+  "kpiReviewChangedKpisAreHiddenByTheSearch": "{hiddenChanges} changed KPIs are hidden by the search.",
+  "@kpiReviewChangedKpisAreHiddenByTheSearch": {
+    "placeholders": {
+      "hiddenChanges": {"type": "Object"}
+    }
+  },
+  "kpiReviewSavedFor": "Saved {savedCount} {value} for {reviewDate}.",
+  "@kpiReviewSavedFor": {
+    "placeholders": {
+      "savedCount": {"type": "Object"},
+      "value": {"type": "Object"},
+      "reviewDate": {"type": "Object"}
+    }
+  },
+  "kpiReviewNoTarget": "No target",
+  "kpiReviewDailyTarget": "Daily target: {targetText}",
+  "@kpiReviewDailyTarget": {
+    "placeholders": {
+      "targetText": {"type": "Object"}
+    }
+  },
+  "kpiReviewReadTheNote": "Read the note",
+  "kpiReviewWhyWasItMissed": "Why was it missed?",
+  "kpiReviewWhyWasTheTargetMissed": "Why was the Target ({targetText}) missed?",
+  "@kpiReviewWhyWasTheTargetMissed": {
+    "placeholders": {
+      "targetText": {"type": "Object"}
+    }
+  },
+  "kpiReviewANoteOfAtLeastCharactersIs": "A note of at least {minNoteLength} characters is required when a KPI is missed ({length} so far).",
+  "@kpiReviewANoteOfAtLeastCharactersIs": {
+    "placeholders": {
+      "minNoteLength": {"type": "Object"},
+      "length": {"type": "Object"}
+    }
+  },
+  "kpiReviewEdit": "Edit",
+  "kpiTargetsTheTargetsCouldNotBeRead": "The Targets could not be read",
+  "kpiTargetsKpiTargets": "KPI Targets, {direction} {unit}",
+  "@kpiTargetsKpiTargets": {
+    "placeholders": {
+      "direction": {"type": "Object"},
+      "unit": {"type": "Object"}
+    }
+  },
+  "kpiTargetsCurrentlyInForce": "Currently in force",
+  "kpiTargetsWhatEachGrainIsJudgedAgainstToday": "What each grain is judged against today, and from when.",
+  "kpiTargetsNoTargetIsInForceToday": "No Target is in force today.",
+  "kpiTargetsFrom": "{grain}: {value} (from {validFrom})",
+  "@kpiTargetsFrom": {
+    "placeholders": {
+      "grain": {"type": "Object"},
+      "value": {"type": "Object"},
+      "validFrom": {"type": "Object"}
+    }
+  },
+  "kpiTargetsHistory": "History",
+  "kpiTargetsNewestFirstAnEntryIsNeverEdited": "Newest first. An entry is never edited — a later one supersedes it.",
+  "kpiTargetsNoTargetHasBeenSet": "No Target has been set",
+  "kpiTargetsEveryEntryMadeForThisKpiWill": "Every entry made for this KPI will be listed here."
 }

@@ -6155,4 +6155,469 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get safetyOrgUnitFilterChooseTheOrgUnitWhoseSafetyIncidents =>
       'Chọn Đơn vị tổ chức mà bạn muốn đọc Sự cố an toàn cùng mọi thứ bên dưới nó, hoặc xoá về toàn bộ Nhà máy.';
+
+  @override
+  String handoverAcknowledgeYouAreAcceptingAndTheShift(
+    Object value,
+    Object value2,
+  ) {
+    return 'Bạn đang nhận $value và ca$value2.';
+  }
+
+  @override
+  String get handoverAcknowledgeTheOutgoingShiftDeclaredNoChangePoints =>
+      'Ca trước khai không có điểm thay đổi nào.';
+
+  @override
+  String get handoverAcknowledgeThereAreNoChangePointsToWatch =>
+      'Không có điểm thay đổi nào cần theo dõi.';
+
+  @override
+  String get handoverAcknowledgeWhatEachWatchShowed =>
+      'Mỗi lượt theo dõi cho thấy gì';
+
+  @override
+  String handoverAcknowledgeWatch(Object watchNote) {
+    return 'Theo dõi: $watchNote';
+  }
+
+  @override
+  String get handoverAcknowledgeFound => 'Đã thấy';
+
+  @override
+  String get handoverAcknowledgeNotAnswered => 'Chưa trả lời';
+
+  @override
+  String get handoverAcknowledgeNoteOnTheHandoverOptional =>
+      'Ghi chú về bàn giao (không bắt buộc)';
+
+  @override
+  String get handoverAcknowledgeAcknowledgeTheHandover => 'Xác nhận bàn giao';
+
+  @override
+  String get handoverAcknowledgeAcknowledging => 'Đang xác nhận…';
+
+  @override
+  String get commonAcknowledge => 'Xác nhận';
+
+  @override
+  String get sectionThatSectionSDayCouldNotBe =>
+      'Không đọc được ngày của Bộ phận đó';
+
+  @override
+  String get sectionChooseAnotherSection => 'Chọn Bộ phận khác';
+
+  @override
+  String get sectionEveryShiftOfTheProductionDayWith =>
+      'Mọi ca của ngày sản xuất, kèm bàn giao và những gì còn mở tại mỗi mốc chuyển ca.';
+
+  @override
+  String get sectionNoShiftsScheduled => 'Không có ca nào được xếp';
+
+  @override
+  String get sectionNoShiftsAreScheduledAtThisSection =>
+      'Ngày đó Bộ phận này không có ca nào được xếp.';
+
+  @override
+  String sectionShift(Object value, Object value2) {
+    return 'Ca $value–$value2';
+  }
+
+  @override
+  String get commonLate => 'Trễ';
+
+  @override
+  String sectionHandedOverBy(Object value) {
+    return 'Bàn giao bởi $value';
+  }
+
+  @override
+  String sectionAcknowledgedAfterTheShiftBegan(Object value) {
+    return 'xác nhận $value sau khi ca bắt đầu';
+  }
+
+  @override
+  String get sectionThatSectionTreeCouldNotBeRead =>
+      'Không đọc được cây Bộ phận';
+
+  @override
+  String get sectionNothingToOpenHere => 'Ở đây không có gì để mở';
+
+  @override
+  String get sectionChooseASectionToOpenItsBoard =>
+      'Chọn một Bộ phận để mở bảng của nó: các ca trong ngày và bàn giao của mỗi ca.';
+
+  @override
+  String get shiftHandoverThatHandoverCouldNotBeOpened =>
+      'Không mở được bản bàn giao đó';
+
+  @override
+  String get shiftHandoverSubmitTheHandover => 'Gửi bàn giao';
+
+  @override
+  String get shiftHandoverBackToTheSectionBoard => 'Về bảng Bộ phận';
+
+  @override
+  String shiftHandoverShiftHandover(Object value) {
+    return 'Bàn giao ca · $value';
+  }
+
+  @override
+  String shiftHandoverVersion(Object version) {
+    return 'Phiên bản $version';
+  }
+
+  @override
+  String get shiftHandoverTheNumbersTheShiftClosedOn =>
+      'Các số liệu ca đã chốt';
+
+  @override
+  String get shiftHandoverFrozenWhenTheHandoverIsSubmitted =>
+      'Chốt lại khi gửi bàn giao.';
+
+  @override
+  String get shiftHandoverFrozenAtSubmit => 'Chốt tại thời điểm gửi.';
+
+  @override
+  String get shiftHandoverMachines => 'Máy';
+
+  @override
+  String get shiftHandoverOneLinePerAssetInTheSection =>
+      'Mỗi Tài sản trong Bộ phận một dòng.';
+
+  @override
+  String get shiftHandoverThisSectionHasNoActiveAssets =>
+      'Bộ phận này không có Tài sản nào đang hoạt động.';
+
+  @override
+  String get shiftHandoverChangePoints => 'Điểm thay đổi';
+
+  @override
+  String get shiftHandoverWhatTheIncomingShiftWillMeetThat =>
+      'Điều ca sau sẽ gặp mà khác trước, và những gì cần theo dõi.';
+
+  @override
+  String get shiftHandoverCarriedActions => 'Hành động chuyển tiếp';
+
+  @override
+  String get shiftHandoverEveryOpenActionOfTheSectionIs =>
+      'Mọi Hành động đang mở của Bộ phận đều được chuyển tiếp, giao lại hoặc đóng.';
+
+  @override
+  String get shiftHandoverHandoverEvidence => 'Bằng chứng bàn giao';
+
+  @override
+  String shiftHandoverAcknowledged(Object value, Object value2) {
+    return 'Đã xác nhận $value$value2';
+  }
+
+  @override
+  String get shiftHandoverThisHandoverCannotBeSubmittedYet =>
+      'Chưa gửi được bản bàn giao này';
+
+  @override
+  String get shiftHandoverNoLineYet => 'Chưa có dòng nào';
+
+  @override
+  String get shiftHandoverAbnormality => 'Bất thường';
+
+  @override
+  String get shiftHandoverNoneFound => 'Không thấy gì';
+
+  @override
+  String get shiftHandoverRequiredSayWhyItIsNotRunning =>
+      'Bắt buộc: nêu vì sao máy không chạy bình thường';
+
+  @override
+  String get shiftHandoverWhatTheIncomingShiftMustWatch =>
+      'Điều ca sau phải theo dõi';
+
+  @override
+  String get shiftHandoverWalked => 'Đã đi kiểm tra';
+
+  @override
+  String get shiftHandoverSaveLine => 'Lưu dòng';
+
+  @override
+  String get shiftHandoverRecordLine => 'Ghi dòng';
+
+  @override
+  String get shiftHandoverNoChangePointsThisShift =>
+      'Ca này không có điểm thay đổi';
+
+  @override
+  String get shiftHandoverNoneRecorded => 'Chưa ghi nhận gì';
+
+  @override
+  String shiftHandoverWatch(Object watchNote, Object value) {
+    return 'Theo dõi: $watchNote$value';
+  }
+
+  @override
+  String get shiftHandoverAddAChangePoint => 'Thêm điểm thay đổi';
+
+  @override
+  String get shiftHandoverDimension => 'Chiều';
+
+  @override
+  String get shiftHandoverWhatIsDifferent => 'Khác ở chỗ nào';
+
+  @override
+  String get shiftHandoverWhatTheIncomingShiftMustWatchFor =>
+      'Điều ca sau phải để ý';
+
+  @override
+  String get shiftHandoverAddChangePoint => 'Thêm điểm thay đổi';
+
+  @override
+  String get shiftHandoverTheSectionHasNoOpenActionsTo =>
+      'Bộ phận không có Hành động nào đang mở để bàn giao.';
+
+  @override
+  String shiftHandoverOld(Object value, Object value2) {
+    return '$value $value2 tuổi';
+  }
+
+  @override
+  String shiftHandoverOwner(Object ownerName) {
+    return 'Người phụ trách $ownerName';
+  }
+
+  @override
+  String get shiftHandoverNoDispositionYet => 'chưa có phương án xử lý';
+
+  @override
+  String get shiftHandoverNewOwner => 'Người phụ trách mới';
+
+  @override
+  String get shiftHandoverWhatClosedIt => 'Điều gì đã đóng nó';
+
+  @override
+  String get shiftHandoverRecordDisposition => 'Ghi nhận phương án xử lý';
+
+  @override
+  String get shiftHandoverJointWalkDone => 'Đã đi kiểm tra chung';
+
+  @override
+  String get shiftHandoverCriticalItems => 'Hạng mục quan trọng';
+
+  @override
+  String get shiftHandoverDeviationFromTheStandardHandover =>
+      'Sai khác so với bàn giao chuẩn';
+
+  @override
+  String get shiftHandoverSaveEvidence => 'Lưu bằng chứng';
+
+  @override
+  String get commonAddKpi => 'Thêm KPI';
+
+  @override
+  String get addKpiAdd => 'Thêm';
+
+  @override
+  String get addKpiKpi => 'KPI';
+
+  @override
+  String get addKpiTheCodeEGOee => 'Mã, ví dụ OEE';
+
+  @override
+  String get addKpiUnitOptional => 'Đơn vị (không bắt buộc)';
+
+  @override
+  String get addKpiDirection => 'Chiều so sánh';
+
+  @override
+  String get addKpiIsMetAtOrAboveTheTarget =>
+      '>= là đạt khi bằng hoặc trên Mục tiêu, <= là đạt khi bằng hoặc dưới';
+
+  @override
+  String get addKpiDecimals => 'Số chữ số thập phân';
+
+  @override
+  String get addKpiAWholeNumberFrom0To6 => 'Một số nguyên từ 0 đến 6';
+
+  @override
+  String get addKpiDecimalsMustBeAWholeNumberFrom =>
+      'Số chữ số thập phân phải là số nguyên từ 0 đến 6';
+
+  @override
+  String get addKpiValueMeasureOptional => 'Chỉ số giá trị (không bắt buộc)';
+
+  @override
+  String get commonChangeTarget => 'Đổi Mục tiêu';
+
+  @override
+  String get changeTargetGrain => 'Kỳ';
+
+  @override
+  String get changeTargetValidFrom => 'Hiệu lực từ';
+
+  @override
+  String changeTargetTodayAtThisSiteIsATarget(Object siteToday) {
+    return 'Hôm nay tại Nhà máy này là $siteToday; một Mục tiêu bắt đầu từ hôm nay hoặc muộn hơn.';
+  }
+
+  @override
+  String get changeTargetTarget => 'Mục tiêu';
+
+  @override
+  String get changeTargetLeaveBlankForNoTargetFromThat =>
+      'Để trống nghĩa là từ ngày đó không có mục tiêu.';
+
+  @override
+  String get changeTargetTheTargetMustBeANumberOr =>
+      'Mục tiêu phải là một số, hoặc để trống nếu không đặt mục tiêu';
+
+  @override
+  String get kpiCatalogueTheKpiCatalogueCouldNotBeRead =>
+      'Không đọc được danh mục KPI';
+
+  @override
+  String get kpiCatalogueTheKpisOfTheMtuLineWith =>
+      'Các KPI của chuyền MTU, kèm Mục tiêu đang áp dụng theo từng kỳ.';
+
+  @override
+  String kpiCatalogueTheKpisOfTheMtuLineWith2(Object reviewDate) {
+    return 'Các KPI của chuyền MTU, kèm Mục tiêu đang áp dụng theo từng kỳ và trạng thái đánh giá hôm nay, $reviewDate.';
+  }
+
+  @override
+  String get kpiCatalogueNoKpisInTheCatalogueYet => 'Danh mục chưa có KPI nào';
+
+  @override
+  String get kpiCatalogueNothingHasBeenAddedToTheKpi =>
+      'Danh mục KPI chưa có gì.';
+
+  @override
+  String get commonFilterKpis => 'Lọc KPI';
+
+  @override
+  String get kpiCatalogueByCodeOrTitle => 'Theo mã hoặc tiêu đề.';
+
+  @override
+  String get commonNoKpisMatch => 'Không có KPI nào khớp';
+
+  @override
+  String kpiCatalogueNothingInTheCatalogueMatchesTryA(Object term) {
+    return 'Danh mục không có gì khớp “$term”. Hãy thử mã hoặc tiêu đề khác, hoặc xoá bộ lọc.';
+  }
+
+  @override
+  String kpiCatalogueValueMeasure(Object measure) {
+    return 'Chỉ số giá trị: $measure';
+  }
+
+  @override
+  String get kpiReviewTheKpiReviewCouldNotBeRead =>
+      'Không đọc được bản đánh giá KPI';
+
+  @override
+  String get kpiReviewKpiReview => 'Đánh giá KPI';
+
+  @override
+  String kpiReviewKpiReviewFor(Object reviewDate) {
+    return 'Đánh giá KPI ngày $reviewDate';
+  }
+
+  @override
+  String get kpiReviewJudgeEachKpiOfTheMtuLine =>
+      'Đánh giá từng KPI của chuyền MTU theo Mục tiêu ngày của nó: đạt, không đạt hoặc chưa đo.';
+
+  @override
+  String get kpiReviewNoKpisToReview => 'Không có KPI nào để đánh giá';
+
+  @override
+  String get kpiReviewTheKpiCatalogueHasNoKpiYet =>
+      'Danh mục KPI chưa có KPI nào.';
+
+  @override
+  String get kpiReviewByTitle => 'Theo tiêu đề.';
+
+  @override
+  String kpiReviewNoKpiOfTheReviewMatchesTry(Object term) {
+    return 'Không KPI nào của bản đánh giá khớp “$term”. Hãy thử tiêu đề khác, hoặc xoá bộ lọc.';
+  }
+
+  @override
+  String get kpiReview1ChangedKpiIsHiddenByThe =>
+      '1 KPI đã thay đổi đang bị tìm kiếm ẩn đi.';
+
+  @override
+  String kpiReviewChangedKpisAreHiddenByTheSearch(Object hiddenChanges) {
+    return '$hiddenChanges KPI đã thay đổi đang bị tìm kiếm ẩn đi.';
+  }
+
+  @override
+  String kpiReviewSavedFor(Object savedCount, Object value, Object reviewDate) {
+    return 'Đã lưu $savedCount $value cho $reviewDate.';
+  }
+
+  @override
+  String get kpiReviewNoTarget => 'Không có mục tiêu';
+
+  @override
+  String kpiReviewDailyTarget(Object targetText) {
+    return 'Mục tiêu ngày: $targetText';
+  }
+
+  @override
+  String get kpiReviewReadTheNote => 'Đọc ghi chú';
+
+  @override
+  String get kpiReviewWhyWasItMissed => 'Vì sao không đạt?';
+
+  @override
+  String kpiReviewWhyWasTheTargetMissed(Object targetText) {
+    return 'Vì sao không đạt Mục tiêu ($targetText)?';
+  }
+
+  @override
+  String kpiReviewANoteOfAtLeastCharactersIs(
+    Object minNoteLength,
+    Object length,
+  ) {
+    return 'Khi một KPI không đạt phải ghi chú ít nhất $minNoteLength ký tự (hiện có $length).';
+  }
+
+  @override
+  String get kpiReviewEdit => 'Sửa';
+
+  @override
+  String get kpiTargetsTheTargetsCouldNotBeRead =>
+      'Không đọc được các Mục tiêu';
+
+  @override
+  String kpiTargetsKpiTargets(Object direction, Object unit) {
+    return 'Mục tiêu KPI, $direction $unit';
+  }
+
+  @override
+  String get kpiTargetsCurrentlyInForce => 'Đang áp dụng';
+
+  @override
+  String get kpiTargetsWhatEachGrainIsJudgedAgainstToday =>
+      'Mỗi kỳ đang được đánh giá theo mức nào hôm nay, và từ khi nào.';
+
+  @override
+  String get kpiTargetsNoTargetIsInForceToday =>
+      'Hôm nay không có Mục tiêu nào đang áp dụng.';
+
+  @override
+  String kpiTargetsFrom(Object grain, Object value, Object validFrom) {
+    return '$grain: $value (từ $validFrom)';
+  }
+
+  @override
+  String get kpiTargetsHistory => 'Lịch sử';
+
+  @override
+  String get kpiTargetsNewestFirstAnEntryIsNeverEdited =>
+      'Mới nhất trước. Một mục không bao giờ bị sửa — mục sau thay thế mục trước.';
+
+  @override
+  String get kpiTargetsNoTargetHasBeenSet => 'Chưa đặt Mục tiêu nào';
+
+  @override
+  String get kpiTargetsEveryEntryMadeForThisKpiWill =>
+      'Mọi mục đã đặt cho KPI này sẽ được liệt kê ở đây.';
 }

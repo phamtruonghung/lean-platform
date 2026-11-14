@@ -10207,6 +10207,756 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose the Org Unit whose Safety incidents and everything beneath it you want to read, or clear back to the whole Site.'**
   String get safetyOrgUnitFilterChooseTheOrgUnitWhoseSafetyIncidents;
+
+  /// No description provided for @handoverAcknowledgeYouAreAcceptingAndTheShift.
+  ///
+  /// In en, this message translates to:
+  /// **'You are accepting {value} and the shift{value2}.'**
+  String handoverAcknowledgeYouAreAcceptingAndTheShift(
+    Object value,
+    Object value2,
+  );
+
+  /// No description provided for @handoverAcknowledgeTheOutgoingShiftDeclaredNoChangePoints.
+  ///
+  /// In en, this message translates to:
+  /// **'The outgoing shift declared no change points.'**
+  String get handoverAcknowledgeTheOutgoingShiftDeclaredNoChangePoints;
+
+  /// No description provided for @handoverAcknowledgeThereAreNoChangePointsToWatch.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no change points to watch.'**
+  String get handoverAcknowledgeThereAreNoChangePointsToWatch;
+
+  /// No description provided for @handoverAcknowledgeWhatEachWatchShowed.
+  ///
+  /// In en, this message translates to:
+  /// **'What each watch showed'**
+  String get handoverAcknowledgeWhatEachWatchShowed;
+
+  /// No description provided for @handoverAcknowledgeWatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch: {watchNote}'**
+  String handoverAcknowledgeWatch(Object watchNote);
+
+  /// No description provided for @handoverAcknowledgeFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Found'**
+  String get handoverAcknowledgeFound;
+
+  /// No description provided for @handoverAcknowledgeNotAnswered.
+  ///
+  /// In en, this message translates to:
+  /// **'Not answered'**
+  String get handoverAcknowledgeNotAnswered;
+
+  /// No description provided for @handoverAcknowledgeNoteOnTheHandoverOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Note on the handover (optional)'**
+  String get handoverAcknowledgeNoteOnTheHandoverOptional;
+
+  /// No description provided for @handoverAcknowledgeAcknowledgeTheHandover.
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledge the handover'**
+  String get handoverAcknowledgeAcknowledgeTheHandover;
+
+  /// No description provided for @handoverAcknowledgeAcknowledging.
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledging…'**
+  String get handoverAcknowledgeAcknowledging;
+
+  /// No description provided for @commonAcknowledge.
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledge'**
+  String get commonAcknowledge;
+
+  /// No description provided for @sectionThatSectionSDayCouldNotBe.
+  ///
+  /// In en, this message translates to:
+  /// **'That Section\'s day could not be read'**
+  String get sectionThatSectionSDayCouldNotBe;
+
+  /// No description provided for @sectionChooseAnotherSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose another Section'**
+  String get sectionChooseAnotherSection;
+
+  /// No description provided for @sectionEveryShiftOfTheProductionDayWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Every shift of the production day, with its handover and what is still open at each shift boundary.'**
+  String get sectionEveryShiftOfTheProductionDayWith;
+
+  /// No description provided for @sectionNoShiftsScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'No shifts scheduled'**
+  String get sectionNoShiftsScheduled;
+
+  /// No description provided for @sectionNoShiftsAreScheduledAtThisSection.
+  ///
+  /// In en, this message translates to:
+  /// **'No shifts are scheduled at this Section on that day.'**
+  String get sectionNoShiftsAreScheduledAtThisSection;
+
+  /// No description provided for @sectionShift.
+  ///
+  /// In en, this message translates to:
+  /// **'Shift {value}–{value2}'**
+  String sectionShift(Object value, Object value2);
+
+  /// No description provided for @commonLate.
+  ///
+  /// In en, this message translates to:
+  /// **'Late'**
+  String get commonLate;
+
+  /// No description provided for @sectionHandedOverBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Handed over by {value}'**
+  String sectionHandedOverBy(Object value);
+
+  /// No description provided for @sectionAcknowledgedAfterTheShiftBegan.
+  ///
+  /// In en, this message translates to:
+  /// **'acknowledged {value} after the shift began'**
+  String sectionAcknowledgedAfterTheShiftBegan(Object value);
+
+  /// No description provided for @sectionThatSectionTreeCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'That Section tree could not be read'**
+  String get sectionThatSectionTreeCouldNotBeRead;
+
+  /// No description provided for @sectionNothingToOpenHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to open here'**
+  String get sectionNothingToOpenHere;
+
+  /// No description provided for @sectionChooseASectionToOpenItsBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a Section to open its board: the day\'s shifts and the handover at each.'**
+  String get sectionChooseASectionToOpenItsBoard;
+
+  /// No description provided for @shiftHandoverThatHandoverCouldNotBeOpened.
+  ///
+  /// In en, this message translates to:
+  /// **'That handover could not be opened'**
+  String get shiftHandoverThatHandoverCouldNotBeOpened;
+
+  /// No description provided for @shiftHandoverSubmitTheHandover.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit the handover'**
+  String get shiftHandoverSubmitTheHandover;
+
+  /// No description provided for @shiftHandoverBackToTheSectionBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the Section board'**
+  String get shiftHandoverBackToTheSectionBoard;
+
+  /// No description provided for @shiftHandoverShiftHandover.
+  ///
+  /// In en, this message translates to:
+  /// **'Shift handover · {value}'**
+  String shiftHandoverShiftHandover(Object value);
+
+  /// No description provided for @shiftHandoverVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version}'**
+  String shiftHandoverVersion(Object version);
+
+  /// No description provided for @shiftHandoverTheNumbersTheShiftClosedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'The numbers the shift closed on'**
+  String get shiftHandoverTheNumbersTheShiftClosedOn;
+
+  /// No description provided for @shiftHandoverFrozenWhenTheHandoverIsSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Frozen when the handover is submitted.'**
+  String get shiftHandoverFrozenWhenTheHandoverIsSubmitted;
+
+  /// No description provided for @shiftHandoverFrozenAtSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Frozen at submit.'**
+  String get shiftHandoverFrozenAtSubmit;
+
+  /// No description provided for @shiftHandoverMachines.
+  ///
+  /// In en, this message translates to:
+  /// **'Machines'**
+  String get shiftHandoverMachines;
+
+  /// No description provided for @shiftHandoverOneLinePerAssetInTheSection.
+  ///
+  /// In en, this message translates to:
+  /// **'One line per Asset in the Section.'**
+  String get shiftHandoverOneLinePerAssetInTheSection;
+
+  /// No description provided for @shiftHandoverThisSectionHasNoActiveAssets.
+  ///
+  /// In en, this message translates to:
+  /// **'This Section has no active Assets.'**
+  String get shiftHandoverThisSectionHasNoActiveAssets;
+
+  /// No description provided for @shiftHandoverChangePoints.
+  ///
+  /// In en, this message translates to:
+  /// **'Change points'**
+  String get shiftHandoverChangePoints;
+
+  /// No description provided for @shiftHandoverWhatTheIncomingShiftWillMeetThat.
+  ///
+  /// In en, this message translates to:
+  /// **'What the incoming shift will meet that differs, and what to watch.'**
+  String get shiftHandoverWhatTheIncomingShiftWillMeetThat;
+
+  /// No description provided for @shiftHandoverCarriedActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Carried actions'**
+  String get shiftHandoverCarriedActions;
+
+  /// No description provided for @shiftHandoverEveryOpenActionOfTheSectionIs.
+  ///
+  /// In en, this message translates to:
+  /// **'Every open Action of the Section is carried, reassigned or closed.'**
+  String get shiftHandoverEveryOpenActionOfTheSectionIs;
+
+  /// No description provided for @shiftHandoverHandoverEvidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Handover evidence'**
+  String get shiftHandoverHandoverEvidence;
+
+  /// No description provided for @shiftHandoverAcknowledged.
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledged {value}{value2}'**
+  String shiftHandoverAcknowledged(Object value, Object value2);
+
+  /// No description provided for @shiftHandoverThisHandoverCannotBeSubmittedYet.
+  ///
+  /// In en, this message translates to:
+  /// **'This handover cannot be submitted yet'**
+  String get shiftHandoverThisHandoverCannotBeSubmittedYet;
+
+  /// No description provided for @shiftHandoverNoLineYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No line yet'**
+  String get shiftHandoverNoLineYet;
+
+  /// No description provided for @shiftHandoverAbnormality.
+  ///
+  /// In en, this message translates to:
+  /// **'Abnormality'**
+  String get shiftHandoverAbnormality;
+
+  /// No description provided for @shiftHandoverNoneFound.
+  ///
+  /// In en, this message translates to:
+  /// **'None found'**
+  String get shiftHandoverNoneFound;
+
+  /// No description provided for @shiftHandoverRequiredSayWhyItIsNotRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Required: say why it is not running normally'**
+  String get shiftHandoverRequiredSayWhyItIsNotRunning;
+
+  /// No description provided for @shiftHandoverWhatTheIncomingShiftMustWatch.
+  ///
+  /// In en, this message translates to:
+  /// **'What the incoming shift must watch'**
+  String get shiftHandoverWhatTheIncomingShiftMustWatch;
+
+  /// No description provided for @shiftHandoverWalked.
+  ///
+  /// In en, this message translates to:
+  /// **'Walked'**
+  String get shiftHandoverWalked;
+
+  /// No description provided for @shiftHandoverSaveLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Save line'**
+  String get shiftHandoverSaveLine;
+
+  /// No description provided for @shiftHandoverRecordLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Record line'**
+  String get shiftHandoverRecordLine;
+
+  /// No description provided for @shiftHandoverNoChangePointsThisShift.
+  ///
+  /// In en, this message translates to:
+  /// **'No change points this shift'**
+  String get shiftHandoverNoChangePointsThisShift;
+
+  /// No description provided for @shiftHandoverNoneRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'None recorded'**
+  String get shiftHandoverNoneRecorded;
+
+  /// No description provided for @shiftHandoverWatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch: {watchNote}{value}'**
+  String shiftHandoverWatch(Object watchNote, Object value);
+
+  /// No description provided for @shiftHandoverAddAChangePoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a change point'**
+  String get shiftHandoverAddAChangePoint;
+
+  /// No description provided for @shiftHandoverDimension.
+  ///
+  /// In en, this message translates to:
+  /// **'Dimension'**
+  String get shiftHandoverDimension;
+
+  /// No description provided for @shiftHandoverWhatIsDifferent.
+  ///
+  /// In en, this message translates to:
+  /// **'What is different'**
+  String get shiftHandoverWhatIsDifferent;
+
+  /// No description provided for @shiftHandoverWhatTheIncomingShiftMustWatchFor.
+  ///
+  /// In en, this message translates to:
+  /// **'What the incoming shift must watch for'**
+  String get shiftHandoverWhatTheIncomingShiftMustWatchFor;
+
+  /// No description provided for @shiftHandoverAddChangePoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add change point'**
+  String get shiftHandoverAddChangePoint;
+
+  /// No description provided for @shiftHandoverTheSectionHasNoOpenActionsTo.
+  ///
+  /// In en, this message translates to:
+  /// **'The Section has no open Actions to hand over.'**
+  String get shiftHandoverTheSectionHasNoOpenActionsTo;
+
+  /// No description provided for @shiftHandoverOld.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} {value2} old'**
+  String shiftHandoverOld(Object value, Object value2);
+
+  /// No description provided for @shiftHandoverOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner {ownerName}'**
+  String shiftHandoverOwner(Object ownerName);
+
+  /// No description provided for @shiftHandoverNoDispositionYet.
+  ///
+  /// In en, this message translates to:
+  /// **'no disposition yet'**
+  String get shiftHandoverNoDispositionYet;
+
+  /// No description provided for @shiftHandoverNewOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'New owner'**
+  String get shiftHandoverNewOwner;
+
+  /// No description provided for @shiftHandoverWhatClosedIt.
+  ///
+  /// In en, this message translates to:
+  /// **'What closed it'**
+  String get shiftHandoverWhatClosedIt;
+
+  /// No description provided for @shiftHandoverRecordDisposition.
+  ///
+  /// In en, this message translates to:
+  /// **'Record disposition'**
+  String get shiftHandoverRecordDisposition;
+
+  /// No description provided for @shiftHandoverJointWalkDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Joint walk done'**
+  String get shiftHandoverJointWalkDone;
+
+  /// No description provided for @shiftHandoverCriticalItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Critical items'**
+  String get shiftHandoverCriticalItems;
+
+  /// No description provided for @shiftHandoverDeviationFromTheStandardHandover.
+  ///
+  /// In en, this message translates to:
+  /// **'Deviation from the standard handover'**
+  String get shiftHandoverDeviationFromTheStandardHandover;
+
+  /// No description provided for @shiftHandoverSaveEvidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Save evidence'**
+  String get shiftHandoverSaveEvidence;
+
+  /// No description provided for @commonAddKpi.
+  ///
+  /// In en, this message translates to:
+  /// **'Add KPI'**
+  String get commonAddKpi;
+
+  /// No description provided for @addKpiAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get addKpiAdd;
+
+  /// No description provided for @addKpiKpi.
+  ///
+  /// In en, this message translates to:
+  /// **'KPI'**
+  String get addKpiKpi;
+
+  /// No description provided for @addKpiTheCodeEGOee.
+  ///
+  /// In en, this message translates to:
+  /// **'The code, e.g. OEE'**
+  String get addKpiTheCodeEGOee;
+
+  /// No description provided for @addKpiUnitOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit (optional)'**
+  String get addKpiUnitOptional;
+
+  /// No description provided for @addKpiDirection.
+  ///
+  /// In en, this message translates to:
+  /// **'Direction'**
+  String get addKpiDirection;
+
+  /// No description provided for @addKpiIsMetAtOrAboveTheTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'>= is met at or above the Target, <= at or below it'**
+  String get addKpiIsMetAtOrAboveTheTarget;
+
+  /// No description provided for @addKpiDecimals.
+  ///
+  /// In en, this message translates to:
+  /// **'Decimals'**
+  String get addKpiDecimals;
+
+  /// No description provided for @addKpiAWholeNumberFrom0To6.
+  ///
+  /// In en, this message translates to:
+  /// **'A whole number from 0 to 6'**
+  String get addKpiAWholeNumberFrom0To6;
+
+  /// No description provided for @addKpiDecimalsMustBeAWholeNumberFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Decimals must be a whole number from 0 to 6'**
+  String get addKpiDecimalsMustBeAWholeNumberFrom;
+
+  /// No description provided for @addKpiValueMeasureOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Value measure (optional)'**
+  String get addKpiValueMeasureOptional;
+
+  /// No description provided for @commonChangeTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Target'**
+  String get commonChangeTarget;
+
+  /// No description provided for @changeTargetGrain.
+  ///
+  /// In en, this message translates to:
+  /// **'Grain'**
+  String get changeTargetGrain;
+
+  /// No description provided for @changeTargetValidFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid from'**
+  String get changeTargetValidFrom;
+
+  /// No description provided for @changeTargetTodayAtThisSiteIsATarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Today at this Site is {siteToday}; a Target starts today or later.'**
+  String changeTargetTodayAtThisSiteIsATarget(Object siteToday);
+
+  /// No description provided for @changeTargetTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Target'**
+  String get changeTargetTarget;
+
+  /// No description provided for @changeTargetLeaveBlankForNoTargetFromThat.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave blank for no target from that date on.'**
+  String get changeTargetLeaveBlankForNoTargetFromThat;
+
+  /// No description provided for @changeTargetTheTargetMustBeANumberOr.
+  ///
+  /// In en, this message translates to:
+  /// **'The Target must be a number, or blank for no target'**
+  String get changeTargetTheTargetMustBeANumberOr;
+
+  /// No description provided for @kpiCatalogueTheKpiCatalogueCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The KPI catalogue could not be read'**
+  String get kpiCatalogueTheKpiCatalogueCouldNotBeRead;
+
+  /// No description provided for @kpiCatalogueTheKpisOfTheMtuLineWith.
+  ///
+  /// In en, this message translates to:
+  /// **'The KPIs of the MTU line, with the Target in force per grain.'**
+  String get kpiCatalogueTheKpisOfTheMtuLineWith;
+
+  /// No description provided for @kpiCatalogueTheKpisOfTheMtuLineWith2.
+  ///
+  /// In en, this message translates to:
+  /// **'The KPIs of the MTU line, with the Target in force per grain and the review state for today, {reviewDate}.'**
+  String kpiCatalogueTheKpisOfTheMtuLineWith2(Object reviewDate);
+
+  /// No description provided for @kpiCatalogueNoKpisInTheCatalogueYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No KPIs in the catalogue yet'**
+  String get kpiCatalogueNoKpisInTheCatalogueYet;
+
+  /// No description provided for @kpiCatalogueNothingHasBeenAddedToTheKpi.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing has been added to the KPI catalogue.'**
+  String get kpiCatalogueNothingHasBeenAddedToTheKpi;
+
+  /// No description provided for @commonFilterKpis.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter KPIs'**
+  String get commonFilterKpis;
+
+  /// No description provided for @kpiCatalogueByCodeOrTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'By code or title.'**
+  String get kpiCatalogueByCodeOrTitle;
+
+  /// No description provided for @commonNoKpisMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No KPIs match'**
+  String get commonNoKpisMatch;
+
+  /// No description provided for @kpiCatalogueNothingInTheCatalogueMatchesTryA.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing in the catalogue matches \"{term}\". Try a different code or title, or clear the filter.'**
+  String kpiCatalogueNothingInTheCatalogueMatchesTryA(Object term);
+
+  /// No description provided for @kpiCatalogueValueMeasure.
+  ///
+  /// In en, this message translates to:
+  /// **'Value measure: {measure}'**
+  String kpiCatalogueValueMeasure(Object measure);
+
+  /// No description provided for @kpiReviewTheKpiReviewCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The KPI Review could not be read'**
+  String get kpiReviewTheKpiReviewCouldNotBeRead;
+
+  /// No description provided for @kpiReviewKpiReview.
+  ///
+  /// In en, this message translates to:
+  /// **'KPI Review'**
+  String get kpiReviewKpiReview;
+
+  /// No description provided for @kpiReviewKpiReviewFor.
+  ///
+  /// In en, this message translates to:
+  /// **'KPI Review for {reviewDate}'**
+  String kpiReviewKpiReviewFor(Object reviewDate);
+
+  /// No description provided for @kpiReviewJudgeEachKpiOfTheMtuLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Judge each KPI of the MTU line against its Daily Target: met, missed or not measured.'**
+  String get kpiReviewJudgeEachKpiOfTheMtuLine;
+
+  /// No description provided for @kpiReviewNoKpisToReview.
+  ///
+  /// In en, this message translates to:
+  /// **'No KPIs to review'**
+  String get kpiReviewNoKpisToReview;
+
+  /// No description provided for @kpiReviewTheKpiCatalogueHasNoKpiYet.
+  ///
+  /// In en, this message translates to:
+  /// **'The KPI catalogue has no KPI yet.'**
+  String get kpiReviewTheKpiCatalogueHasNoKpiYet;
+
+  /// No description provided for @kpiReviewByTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'By title.'**
+  String get kpiReviewByTitle;
+
+  /// No description provided for @kpiReviewNoKpiOfTheReviewMatchesTry.
+  ///
+  /// In en, this message translates to:
+  /// **'No KPI of the review matches \"{term}\". Try a different title, or clear the filter.'**
+  String kpiReviewNoKpiOfTheReviewMatchesTry(Object term);
+
+  /// No description provided for @kpiReview1ChangedKpiIsHiddenByThe.
+  ///
+  /// In en, this message translates to:
+  /// **'1 changed KPI is hidden by the search.'**
+  String get kpiReview1ChangedKpiIsHiddenByThe;
+
+  /// No description provided for @kpiReviewChangedKpisAreHiddenByTheSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'{hiddenChanges} changed KPIs are hidden by the search.'**
+  String kpiReviewChangedKpisAreHiddenByTheSearch(Object hiddenChanges);
+
+  /// No description provided for @kpiReviewSavedFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved {savedCount} {value} for {reviewDate}.'**
+  String kpiReviewSavedFor(Object savedCount, Object value, Object reviewDate);
+
+  /// No description provided for @kpiReviewNoTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'No target'**
+  String get kpiReviewNoTarget;
+
+  /// No description provided for @kpiReviewDailyTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily target: {targetText}'**
+  String kpiReviewDailyTarget(Object targetText);
+
+  /// No description provided for @kpiReviewReadTheNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Read the note'**
+  String get kpiReviewReadTheNote;
+
+  /// No description provided for @kpiReviewWhyWasItMissed.
+  ///
+  /// In en, this message translates to:
+  /// **'Why was it missed?'**
+  String get kpiReviewWhyWasItMissed;
+
+  /// No description provided for @kpiReviewWhyWasTheTargetMissed.
+  ///
+  /// In en, this message translates to:
+  /// **'Why was the Target ({targetText}) missed?'**
+  String kpiReviewWhyWasTheTargetMissed(Object targetText);
+
+  /// No description provided for @kpiReviewANoteOfAtLeastCharactersIs.
+  ///
+  /// In en, this message translates to:
+  /// **'A note of at least {minNoteLength} characters is required when a KPI is missed ({length} so far).'**
+  String kpiReviewANoteOfAtLeastCharactersIs(
+    Object minNoteLength,
+    Object length,
+  );
+
+  /// No description provided for @kpiReviewEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get kpiReviewEdit;
+
+  /// No description provided for @kpiTargetsTheTargetsCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The Targets could not be read'**
+  String get kpiTargetsTheTargetsCouldNotBeRead;
+
+  /// No description provided for @kpiTargetsKpiTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'KPI Targets, {direction} {unit}'**
+  String kpiTargetsKpiTargets(Object direction, Object unit);
+
+  /// No description provided for @kpiTargetsCurrentlyInForce.
+  ///
+  /// In en, this message translates to:
+  /// **'Currently in force'**
+  String get kpiTargetsCurrentlyInForce;
+
+  /// No description provided for @kpiTargetsWhatEachGrainIsJudgedAgainstToday.
+  ///
+  /// In en, this message translates to:
+  /// **'What each grain is judged against today, and from when.'**
+  String get kpiTargetsWhatEachGrainIsJudgedAgainstToday;
+
+  /// No description provided for @kpiTargetsNoTargetIsInForceToday.
+  ///
+  /// In en, this message translates to:
+  /// **'No Target is in force today.'**
+  String get kpiTargetsNoTargetIsInForceToday;
+
+  /// No description provided for @kpiTargetsFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'{grain}: {value} (from {validFrom})'**
+  String kpiTargetsFrom(Object grain, Object value, Object validFrom);
+
+  /// No description provided for @kpiTargetsHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get kpiTargetsHistory;
+
+  /// No description provided for @kpiTargetsNewestFirstAnEntryIsNeverEdited.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest first. An entry is never edited — a later one supersedes it.'**
+  String get kpiTargetsNewestFirstAnEntryIsNeverEdited;
+
+  /// No description provided for @kpiTargetsNoTargetHasBeenSet.
+  ///
+  /// In en, this message translates to:
+  /// **'No Target has been set'**
+  String get kpiTargetsNoTargetHasBeenSet;
+
+  /// No description provided for @kpiTargetsEveryEntryMadeForThisKpiWill.
+  ///
+  /// In en, this message translates to:
+  /// **'Every entry made for this KPI will be listed here.'**
+  String get kpiTargetsEveryEntryMadeForThisKpiWill;
 }
 
 class _AppLocalizationsDelegate

@@ -36,6 +36,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -87,13 +88,14 @@ class KpiCatalogueScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<KpiCatalogueBloc>().state;
     return Scaffold(
       body: switch (state) {
         KpiCatalogueLoading() => const SkeletonList(maxWidth: KpiCatalogueScreen.maxWidth),
         KpiCatalogueUnavailable(message: final message) => PlatformFailureState(
             key: KpiCatalogueScreen.failedKey,
-            title: 'The KPI catalogue could not be read',
+            title: l10n.kpiCatalogueTheKpiCatalogueCouldNotBeRead,
             message: message,
             retryKey: KpiCatalogueScreen.retryKey,
             onRetry: () => context.read<KpiCatalogueBloc>().add(const KpiCatalogueStarted()),
@@ -129,6 +131,7 @@ class _LoadedState extends State<_Loaded> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = widget.state;
     final canWrite = widget.canWrite;
     final catalogue = state.catalogue;
@@ -146,18 +149,17 @@ class _LoadedState extends State<_Loaded> {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
             AppPageHeader(
-              title: 'KPI catalogue',
+              title: l10n.navKpiCatalogue,
               description: catalogue == null
-                  ? 'The KPIs of the MTU line, with the Target in force per grain.'
-                  : 'The KPIs of the MTU line, with the Target in force per grain and the '
-                      'review state for today, ${catalogue.reviewDate}.',
+                  ? l10n.kpiCatalogueTheKpisOfTheMtuLineWith
+                  : l10n.kpiCatalogueTheKpisOfTheMtuLineWith2(catalogue.reviewDate),
               actions: [
                 if (canWrite)
                   FilledButton.icon(
                     key: KpiCatalogueScreen.addKpiKey,
                     onPressed: () => AddKpiDialog.open(context),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add KPI'),
+                    label: Text(l10n.commonAddKpi),
                   ),
               ],
               below: state.sites.length > 1
@@ -168,7 +170,7 @@ class _LoadedState extends State<_Loaded> {
                         initialValue: state.siteId,
                         isDense: true,
                         decoration:
-                            const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+                            InputDecoration(labelText: l10n.commonSite, border: OutlineInputBorder()),
                         items: [
                           for (final site in state.sites)
                             DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -185,17 +187,17 @@ class _LoadedState extends State<_Loaded> {
             if (state.isLoadingCatalogue || catalogue == null)
               const SkeletonList(rows: 3, maxWidth: KpiCatalogueScreen.maxWidth)
             else if (catalogue.kpis.isEmpty)
-              const PlatformEmptyState.noneExist(
+              PlatformEmptyState.noneExist(
                 key: KpiCatalogueScreen.emptyKey,
-                title: 'No KPIs in the catalogue yet',
-                message: 'Nothing has been added to the KPI catalogue.',
+                title: l10n.kpiCatalogueNoKpisInTheCatalogueYet,
+                message: l10n.kpiCatalogueNothingHasBeenAddedToTheKpi,
                 icon: Icons.insights_outlined,
               )
             else ...[
               AppFilterField(
                 name: KpiCatalogueScreen.filterFieldName,
-                label: 'Filter KPIs',
-                helperText: 'By code or title.',
+                label: l10n.commonFilterKpis,
+                helperText: l10n.kpiCatalogueByCodeOrTitle,
                 term: _term,
                 onChanged: (term) => setState(() => _term = term),
                 shown: matches.length,
@@ -205,9 +207,8 @@ class _LoadedState extends State<_Loaded> {
               if (matches.isEmpty)
                 PlatformEmptyState.noneMatched(
                   key: KpiCatalogueScreen.noMatchKey,
-                  title: 'No KPIs match',
-                  message: 'Nothing in the catalogue matches "${_term.trim()}". Try a '
-                      'different code or title, or clear the filter.',
+                  title: l10n.commonNoKpisMatch,
+                  message: l10n.kpiCatalogueNothingInTheCatalogueMatchesTryA(_term.trim()),
                 )
               else
                 AppListCard(
@@ -283,6 +284,7 @@ class _KpiRowTileState extends State<_KpiRowTile> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final dense = AppTypography.dense(context);
     final floor = AppTypography.floor(context);
@@ -334,7 +336,7 @@ class _KpiRowTileState extends State<_KpiRowTile> {
                     Text(kpi.kpi, style: dense?.copyWith(fontWeight: FontWeight.w600)),
                     Text(kpi.title, style: muted),
                     if (measure != null && measure.isNotEmpty)
-                      Text('Value measure: $measure', style: floor?.copyWith(color: palette.textMuted)),
+                      Text(l10n.kpiCatalogueValueMeasure(measure), style: floor?.copyWith(color: palette.textMuted)),
                   ],
                 ),
               ),
