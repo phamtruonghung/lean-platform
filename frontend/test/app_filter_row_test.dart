@@ -17,6 +17,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:lean_platform/l10n/app_localizations.dart';
+
 import 'package:lean_platform/theme.dart';
 import 'package:lean_platform/widgets/app_dialog.dart';
 import 'package:lean_platform/widgets/app_filter_field.dart';
@@ -84,6 +86,8 @@ Future<double> _pump(
   late double controlHeight;
   await tester.pumpWidget(
     MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       theme: buildAppTheme(),
       home: Scaffold(
         body: Builder(
@@ -173,6 +177,8 @@ Future<double> _pumpInDialog(
   late double controlHeight;
   await tester.pumpWidget(
     MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       theme: buildAppTheme(),
       debugShowCheckedModeBanner: false,
       // The text scale lives on the app's own `builder`, above the Navigator: a

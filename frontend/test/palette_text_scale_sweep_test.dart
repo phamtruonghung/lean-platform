@@ -55,6 +55,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:lean_platform/l10n/app_localizations.dart';
+
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/session_error_screen.dart';
 import 'package:lean_platform/platform/shell.dart';
@@ -508,6 +510,8 @@ Future<void> _mount(WidgetTester tester, _Screen screen) async {
   if (screen.built != null) {
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: buildAppTheme(Brightness.light),
         darkTheme: buildAppTheme(Brightness.dark),
         themeMode: ThemeMode.system,

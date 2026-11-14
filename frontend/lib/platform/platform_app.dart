@@ -169,7 +169,6 @@ class _PlatformAppState extends State<PlatformApp> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider<AuthGateway>.value(value: widget.authGateway),
@@ -210,7 +209,12 @@ class _PlatformAppState extends State<PlatformApp> {
               // word `index.html` and `manifest.json` carry. Every address's own
               // title is written through `DocumentChrome` (see
               // `_applyDocumentTitle`); issue #399.
-              title: l10n.shellBrand,
+              //
+              // `onGenerateTitle`, not `title`: this `build` is above the
+              // `MaterialApp` that installs the localisation delegates, so
+              // `AppLocalizations.of(context)` here would close over a context
+              // with no catalogue under it. The callback runs below them.
+              onGenerateTitle: (context) => AppLocalizations.of(context).shellBrand,
               debugShowCheckedModeBanner: false,
               theme: _lightTheme,
               darkTheme: _darkTheme,

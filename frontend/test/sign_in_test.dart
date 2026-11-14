@@ -23,6 +23,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:lean_platform/l10n/app_localizations.dart';
+
 import 'package:lean_platform/auth/sign_in_screen.dart';
 import 'package:lean_platform/platform/auth_gateway.dart';
 import 'package:lean_platform/theme.dart';
@@ -91,6 +93,8 @@ Future<RecordingAuthGateway> pumpSignIn(
     RepositoryProvider<AuthGateway>.value(
       value: gateway,
       child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: buildAppTheme(brightness),
         home: SignInScreen(
           darkPalette: toggle.darkPalette,
