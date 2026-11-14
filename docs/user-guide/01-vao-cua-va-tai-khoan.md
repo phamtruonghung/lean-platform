@@ -29,12 +29,17 @@ làm việc nào để hỏi.
 > ai đang làm ở nhà máy. Gõ sai, hãy kiểm tra lại cùng quản trị viên; đừng thử
 > nhiều email.
 
-**Hai nút không dùng được — và đây là chủ ý.** Màn hình có **Tiếp tục với
-Google** và **Tạo tài khoản**. Trên bản triển khai của nhà máy, cả hai đều là
-lời từ chối: không có đăng nhập qua Google, và **không ai tự tạo được tài khoản**.
+**Hai nút không dùng được — và đây là chủ ý.** Màn hình có **Tiếp tục với Google**
+và **Tạo tài khoản**. Trên bản triển khai của nhà máy, cả hai đều là lời từ chối: không
+có đăng nhập qua Google, và **không ai tự tạo được tài khoản**.
 
 > **Vì sao.** Tài khoản phải do quản trị viên tạo và chấp nhận (xem **Phê duyệt**),
 > để danh sách người vào được Nền tảng là danh sách do nhà máy quyết định.
+
+Bấm vào hai nút đó, câu hiện ra **bằng tiếng Anh** (chưa dịch): "Accounts on this
+deployment are created by an administrator." và "This deployment has no Google
+sign-in." Đó là câu trả lời đúng — dặn công nhân điều này trước, đừng để họ tưởng máy
+lỗi.
 
 **Góc trên phải** có nút đổi giao diện sáng/tối. Lựa chọn nằm trên trình duyệt
 này, không theo Tài khoản.

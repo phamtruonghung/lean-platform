@@ -159,7 +159,7 @@ Ghi: `PPL_ORG_UNITS_CHANGE` — **chỉ quản trị viên**.
 | 1 | Chọn **Nhà máy** ở đầu trang. | Nền tảng hỗ trợ nhiều Nhà máy; cây bên dưới chỉ là của Nhà máy đang chọn. | Lẫn hai nhà máy là lỗi hay gặp khi nhà máy thứ hai vừa được thêm. |
 | 2 | **Thu gọn / Mở rộng** các nhánh, hoặc gõ vào ô **Tìm Đơn vị tổ chức theo tên**. | Chọn một kết quả tìm kiếm sẽ **mở và chọn** đơn vị đó trong cây. | |
 | 3 | Bấm **Thêm Đơn vị tổ chức ở đây** trên một đơn vị để thêm đơn vị con: **Mã**, **Tên**, **Loại đơn vị**, **Thứ tự sắp xếp**. | **Loại đơn vị** quyết định rất nhiều chỗ khác: bộ phận / tổ / khu vực. | Chọn sai loại là bảng chấm công và bảng Bộ phận không hiện đúng. |
-| 4 | Bấm **Thêm Nhà máy** khi bắt đầu một nhà máy mới: **Mã**, **Tên**, **Mã quốc gia**. | Mọi Đơn vị tổ chức đều nằm dưới một Nhà máy — không có đơn vị nào đứng ngoài. | |
+| 4 | Bấm **Thêm Nhà máy** khi bắt đầu một nhà máy mới: **Mã**, **Tên**, **Mã quốc gia (không bắt buộc)**. | Mọi Đơn vị tổ chức đều nằm dưới một Nhà máy — không có đơn vị nào đứng ngoài. | |
 | 5 | Để ngừng một đơn vị: bấm **Ngừng sử dụng**, xác nhận. | Đơn vị được **ghi là đã ngừng** chứ **không bị xoá**, và **Khôi phục** được bất cứ lúc nào. | Lịch sử công việc và chấm công vẫn trỏ về nó. |
 
 **Điểm then chốt cho người nhập cây lớn.** **Nhập một nhánh** nhận **một mảng
