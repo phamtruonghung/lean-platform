@@ -74,7 +74,7 @@ trong tài liệu vẽ đường đó.
   một người đào tạo sẽ nói với một người vận hành.
 - **Cuối mỗi chương có bảng tóm tắt** quyền theo vai trò. Tra bảng khi không chắc ai bấm
   được nút nào.
-- **Chín sơ đồ** trong tài liệu, đánh số 1–9, mỗi sơ đồ vẽ một luồng hoặc một quan hệ mà
+- **Mười sơ đồ** trong tài liệu, đánh số 1–10, mỗi sơ đồ vẽ một luồng hoặc một quan hệ mà
   chữ khó nói rõ. Trong bản PDF, mỗi sơ đồ nằm trên **một trang ngang** riêng để đọc được
   khi in.
 - **Bản PDF**: `docs/user-guide/pdf/huong-dan-su-dung.pdf`, sinh lại bằng

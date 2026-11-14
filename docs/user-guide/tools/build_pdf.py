@@ -23,6 +23,7 @@ Exit:   0 on success, non-zero when a chapter, an image, or Chrome is missing.
 from __future__ import annotations
 
 import argparse
+import atexit
 import base64
 import datetime
 import os
@@ -319,6 +320,7 @@ def build_html() -> tuple[str, str]:
     if not rendered_images:
         sys.exit(f"no diagram PNGs in {IMAGES}; run: node docs/user-guide/diagrams/render.js")
     workdir = Path(tempfile.mkdtemp(prefix="ug-print-"))
+    atexit.register(shutil.rmtree, workdir, True)   # the downscaled copies are only for this run
     images = {
         name: data_uri(print_copy(IMAGES / name, workdir)) for name in rendered_images
     }
