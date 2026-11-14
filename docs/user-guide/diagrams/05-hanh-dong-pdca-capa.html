@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Sơ đồ 5 — Hành động: từ một vấn đề tới một CAPA đã được chứng minh</title>
+<link rel="stylesheet" href="diagram.css">
+</head>
+<body>
+<main class="sheet" id="sheet">
+  <div class="eyebrow">Nền tảng lean-platform · Sơ đồ 5</div>
+  <h1>Hành động: từ một vấn đề tới một CAPA đã được chứng minh</h1>
+  <p class="lede">Ba cột, đọc từ trái sang phải. Mọi vấn đề vào cùng một chỗ — <strong>Concern</strong> —
+  dù nó được phát hiện ở đâu. Chỉ khi cần nguyên nhân gốc thì Concern mới sinh ra một <strong>CAPA</strong>,
+  và CAPA chỉ đóng khi có người <em>khác</em> chứng minh vấn đề không quay lại.</p>
+
+  <div class="spacer-16"></div>
+
+  <div class="grid-3" style="grid-template-columns:0.85fr 1.15fr 1.2fr">
+
+    <div class="card">
+      <div class="name">① Nguồn — vấn đề được phát hiện ở đâu</div>
+      <ul class="list tight" style="margin-top:6px">
+        <li><strong>Sản phẩm không phù hợp</strong> — phát hiện bên trong nhà máy (05)</li>
+        <li><strong>Khiếu nại khách hàng</strong> — khách báo (05)</li>
+        <li><strong>NCR nhà cung cấp</strong> — hàng về sai (05)</li>
+        <li><strong>Sự cố an toàn</strong> (06)</li>
+        <li><strong>Quan sát an toàn</strong> (06)</li>
+        <li><strong>Sự cố máy</strong> — từ Bảo trì (03)</li>
+        <li><strong>Thiết bị Xưởng</strong> — người không có Tài khoản ghi từ sàn (10)</li>
+      </ul>
+      <div class="note bad" style="margin-top:10px"><strong>Một vấn đề lặp lại vẫn là MỘT Concern.</strong>
+      Lần xuất hiện thứ hai được <em>liên kết</em> vào Concern cũ. Nêu Concern mới mỗi lần thì cùng một
+      nguyên nhân bị điều tra mười lần và báo cáo đếm mười vấn đề.</div>
+    </div>
+
+    <div class="card accent">
+      <div class="name">② Concern — chu kỳ PDCA</div>
+      <div class="row" style="margin-top:8px">
+        <div class="step card" style="margin-right:8px"><div class="name">P · Plan</div><p class="list tight">Nêu vấn đề, chọn Đơn vị tổ chức nơi nó xảy ra, hạn</p></div>
+        <div class="step card" style="margin-right:8px"><div class="name">D · Do</div><p class="list tight">Ghi biện pháp, thực hiện</p></div>
+        <div class="step card" style="margin-right:8px"><div class="name">C · Check</div><p class="list tight">Kiểm tra kết quả</p></div>
+        <div class="step card"><div class="name">A · Act</div><p class="list tight">Chuẩn hoá, đóng</p></div>
+      </div>
+
+      <div class="sub" style="margin-top:10px">Hai loại biện pháp — đừng lẫn</div>
+      <ul class="list tight">
+        <li><span class="badge warn">Ngăn chặn</span> chặn <strong>hậu quả</strong> ngay (containment, D3)</li>
+        <li><span class="badge ok">Khắc phục</span> loại bỏ <strong>nguyên nhân</strong> (countermeasure, D5–D6)</li>
+        <li>Mỗi biện pháp là <strong>một Hành động riêng</strong> và phải chạy hết chu kỳ của nó</li>
+      </ul>
+
+      <div class="sub" style="margin-top:10px">Trong lúc làm</div>
+      <ul class="list tight">
+        <li>Đóng từng giai đoạn bằng một ghi chú — người sau đọc ghi chú, không đọc nút</li>
+        <li>Không giải quyết được ở cấp mình: <strong>Chuyển lên trên</strong> = đổi Đơn vị tổ chức phụ trách sang đơn vị cấp trên</li>
+        <li>Vấn đề không còn đúng: <strong>Huỷ</strong> kèm lý do — Hành động đã huỷ <em>vẫn nằm trong nhật ký</em></li>
+        <li>Hết giai đoạn = Concern đã đóng</li>
+      </ul>
+      <div class="note" style="margin-top:10px"><strong>Quyền:</strong> mọi vai trò đều nêu được Concern và ghi
+      biện pháp. Cái chặn là phạm vi Đơn vị tổ chức — nêu ra một vấn đề không phải là một đặc quyền.</div>
+    </div>
+
+    <div class="card" style="border-left:3px solid #5B21B6">
+      <div class="name" style="color:#5B21B6">③ CAPA — điều tra 8D trên Concern đó</div>
+      <ol class="list tight" style="margin-top:6px;counter-reset:none">
+        <li><strong>Mở CAPA</strong>: phương pháp 8D, mô tả vấn đề, nhóm, trưởng nhóm. Mô tả là thứ cả nhóm đọc thay nhau.</li>
+        <li><strong>Xương cá 6M</strong>: ghi <em>ứng viên</em> nguyên nhân theo hạng mục, kèm bằng chứng. Ứng viên <strong>không phải</strong> nguyên nhân gốc.</li>
+        <li><strong>Kết luận</strong> một nguyên nhân có bằng chứng → “Đây là nguyên nhân gốc”. Đổi ý được.</li>
+        <li><strong>Hai chuỗi Why</strong>: vì sao vấn đề <em>xảy ra</em>, và vì sao nó <em>không được phát hiện</em>. Mỗi chuỗi kết thúc ở một nguyên nhân gốc.</li>
+        <li><strong>Đọc</strong> D3 / D5–D6 / D7 từ Concern — đây là nơi đọc, không phải nơi ghi lại, để không sinh ra hai bộ biện pháp.</li>
+        <li><strong>Chờ Concern đóng</strong>: bước kiểm tra đáo hạn <em>sau khi</em> Concern đóng.</li>
+        <li><strong>Bước kiểm tra hiệu quả</strong>: người ghi <strong>không được là trưởng nhóm</strong> và phải có thẩm quyền Chất lượng ở Đơn vị tổ chức đó — luật của máy chủ.</li>
+      </ol>
+      <div class="note ok" style="margin-top:10px"><strong>Điều kiện đóng CAPA — cả bốn:</strong> hai chuỗi đều
+      có nguyên nhân gốc đã xác nhận · Concern đã đóng · có bước kiểm tra hiệu quả · người kiểm tra không phải
+      trưởng nhóm và có thẩm quyền Chất lượng.</div>
+      <div class="note bad" style="margin-top:8px"><strong>“Không giữ được” là kết quả đúng.</strong> Ghi đúng
+      thì Concern <em>mở lại ở chu kỳ tiếp theo</em> — không phải thất bại của người ghi, mà là vòng lặp học.</div>
+    </div>
+  </div>
+
+  <div class="spacer-12"></div>
+  <div class="note"><strong>Vì sao bước kiểm tra phải là người khác, và phải sau một thời gian.</strong> Đó
+  là điểm khác biệt giữa “đã sửa” và “sửa được”. Nếu trưởng nhóm tự xác nhận ngay hôm sau thì câu trả lời
+  luôn là “ổn rồi”, và vấn đề quay lại sau ba tuần.</div>
+
+  <footer class="legend">Màn hình: Nhật ký hành động · Chi tiết Hành động · CAPA · Chi tiết CAPA ·
+  Báo cáo CAPA (bản 8D để in). Chương 04 giữ các bước bấm nút; sơ đồ này giữ thứ tự và điều kiện.</footer>
+</main>
+</body>
+</html>

@@ -14,6 +14,11 @@ tùng**), và làm phòng ngừa thế nào (**Lịch bảo trì định kỳ**,
    Đơn vị tổ chức của Tài sản; muốn phân công hay đóng nó, bạn cần quyền sửa **ở
    đơn vị đó**. Cùng một vai trò, hai tổ khác nhau, kết quả khác nhau.
 
+![Sơ đồ 4 — Bảo trì: bốn luồng công việc trên một Tài sản](images/04-bao-tri-bon-luong.png)
+
+***Sơ đồ 4.** Bốn luồng chạy song song và gặp nhau ở Lệnh công việc: sự cố từ sàn, lịch
+phòng ngừa, vòng đời của chính lệnh, và dừng máy chỉ để đo thời gian.*
+
 ---
 
 ## Tài sản

@@ -14,6 +14,11 @@ Concern, ghi biện pháp, xác minh và mở CAPA**. Đây là chủ ý: nêu r
 phải là một đặc quyền. Cái chặn là **phạm vi Đơn vị tổ chức**, và với CAPA là
 **thẩm quyền Chất lượng**.
 
+![Sơ đồ 5 — Hành động: từ một vấn đề tới một CAPA đã được chứng minh](images/05-hanh-dong-pdca-capa.png)
+
+***Sơ đồ 5.** Ba cột: vấn đề được phát hiện ở đâu, Concern chạy chu kỳ PDCA thế nào, và
+CAPA 8D đóng khi nào. Điều kiện đóng CAPA có bốn phần — xem cột thứ ba.*
+
 ---
 
 ## Nhật ký hành động

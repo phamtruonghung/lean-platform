@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Sơ đồ 10 — Một thao tác trên thiết bị Xưởng, từ lúc cài đặt tới bản ghi</title>
+<link rel="stylesheet" href="diagram.css">
+</head>
+<body>
+<main class="sheet" id="sheet">
+  <div class="eyebrow">Nền tảng lean-platform · Sơ đồ 10</div>
+  <h1>Một thao tác trên thiết bị Xưởng, từ lúc cài đặt tới bản ghi</h1>
+  <p class="lede">Thiết bị Xưởng là màn hình <strong>duy nhất</strong> không đăng nhập bằng Tài khoản. Nó
+  gắn với <strong>một Đơn vị tổ chức</strong>, và mỗi thao tác tự nhận diện người làm bằng <strong>mã nhân
+  viên + PIN</strong> (ADR-0016). Đọc theo hai tầng: ba bước cài đặt một lần, rồi vòng lặp mỗi lần có người
+  dùng.</p>
+
+  <div class="spacer-16"></div>
+
+  <div class="lane">
+    <div class="lane-label">Cài đặt<br>một lần</div>
+    <div class="row">
+      <div class="step card">
+        <div class="name">Quản trị viên đăng ký thiết bị</div>
+        <ul class="list tight">
+          <li>Thiết bị gắn với <strong>một Đơn vị tổ chức</strong></li>
+          <li>Credential <strong>chỉ hiện một lần</strong>; máy chủ chỉ lưu hash — mất là đăng ký lại</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card">
+        <div class="name">Đặt PIN sàn cho từng Nhân viên</div>
+        <ul class="list tight">
+          <li><span class="badge accent">PPL_DIRECTORY_CHANGE</span> — quản trị viên</li>
+          <li>PIN gắn với <strong>Nhân viên</strong>, không gắn với Tài khoản; không bao giờ hiện lại</li>
+          <li>Vì vậy người không có Tài khoản vẫn ký được việc mình làm</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card">
+        <div class="name">Thiết bị mở màn hình Xưởng</div>
+        <ul class="list tight">
+          <li>Chỉ thấy dữ liệu của <strong>Đơn vị tổ chức nó được đăng ký</strong></li>
+          <li>Việc đang mở của tổ, <strong>Đào tạo của tôi</strong>, các nút ghi nhận</li>
+          <li>Không tự cập nhật: phải bấm <strong>Làm mới</strong></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="lane">
+    <div class="lane-label" style="background:#EDE9FE;border-color:#C4B5FD;color:#5B21B6">Mỗi thao tác<br>một lần</div>
+    <div class="row">
+      <div class="step card">
+        <div class="name">Chọn việc</div>
+        <ul class="list tight">
+          <li>“Bắt đầu {số lệnh}” · “Hoàn thành {số lệnh}”</li>
+          <li>Sản phẩm không phù hợp · Sự cố an toàn · Quan sát</li>
+          <li>Hoặc “Xem đào tạo của tôi”</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card" style="border-color:#5B21B6">
+        <div class="name">Nhận diện</div>
+        <ul class="list tight">
+          <li><strong>Mã nhân viên + PIN</strong>, riêng cho thao tác này</li>
+          <li>Ô số nhận <strong>quét thẻ / máy đọc mã vạch</strong>: ký tự Enter của máy đọc = “nhập xong”</li>
+          <li>Nhận diện có <strong>thời hạn ngắn</strong>: để lâu thì phải nhận diện lại</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card">
+        <div class="name">Ghi nội dung</div>
+        <ul class="list tight">
+          <li>Hoàn thành lệnh: bắt buộc <strong>“Đã phát hiện gì?”</strong></li>
+          <li>Không phù hợp: Sản phẩm · Mã lỗi · Số lượng · Số lô · Bạn đã thấy gì</li>
+          <li>Sự cố: mô tả · loại · mức độ · hành động tức thời</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card" style="border-color:#166534">
+        <div class="name">Bản ghi ra đời</div>
+        <ul class="list tight">
+          <li>Bản ghi mang <strong>tên người vừa nhận diện</strong></li>
+          <li>Quyền là của <strong>thiết bị</strong> (đơn vị nó gắn), không phải của người</li>
+          <li>Đi vào Bảo trì / Chất lượng / An toàn như một bản ghi bình thường</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="spacer-12"></div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="name">Ghi được ở đây</div>
+      <ul class="list tight" style="margin-top:6px">
+        <li>Bắt đầu / hoàn thành Lệnh công việc của tổ</li>
+        <li>Sản phẩm không phù hợp (ngay tại chỗ phát hiện)</li>
+        <li>Sự cố an toàn — <em>không</em> nêu chẩn đoán</li>
+        <li>Quan sát an toàn, kể cả cờ “Đã dùng quyền dừng việc”</li>
+        <li>Xem Đào tạo của tôi (chỉ xem)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="name">Không làm được ở đây</div>
+      <ul class="list tight" style="margin-top:6px">
+        <li><strong>Phân loại thương tích</strong> — dữ liệu y tế, cần Tài khoản có thẩm quyền An toàn</li>
+        <li><strong>Trả lời đào tạo</strong> (xác nhận / từ chối + chữ ký) — làm trên Tài khoản</li>
+        <li>Phân công, sửa lệnh, đổi mức ưu tiên — việc của Tài khoản có quyền</li>
+      </ul>
+      <div class="note bad" style="margin-top:8px"><strong>Sai PIN:</strong> nền tảng khoá <em>Nhân viên
+      đó</em> trong một khoảng chờ, không khoá thiết bị. Người khác vẫn dùng máy bình thường — đừng để ai
+      đứng thử tiếp, thời gian chờ sẽ dài ra (ADR-0047).</div>
+    </div>
+    <div class="card">
+      <div class="name">Hai lỗi hay gặp</div>
+      <ul class="list tight" style="margin-top:6px">
+        <li><strong>Không tìm thấy Sản phẩm trong ô chọn</strong> → thiết bị đăng ký sai Đơn vị tổ chức. Báo quản trị viên, đừng chọn đại.</li>
+        <li><strong>Màn hình đứng yên</strong> → thiết bị không tự cập nhật. Bấm <strong>Làm mới</strong>.</li>
+      </ul>
+      <div class="note" style="margin-top:8px">“Không có việc đang mở” là câu trả lời đúng, kèm tên tổ —
+      không phải màn hình lỗi.</div>
+    </div>
+  </div>
+
+  <footer class="legend">Màn hình: Xưởng (/floor). Cài đặt qua API: <code>POST /api/maintenance/floor-devices</code>
+  (credential một lần), <code>PUT /api/maintenance/floor-technician-credentials/:employeeId</code> (PIN).
+  Chương 10.</footer>
+</main>
+</body>
+</html>

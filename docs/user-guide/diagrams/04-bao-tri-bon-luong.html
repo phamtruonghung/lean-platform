@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Sơ đồ 4 — Bảo trì: bốn luồng công việc trên một Tài sản</title>
+<link rel="stylesheet" href="diagram.css">
+</head>
+<body>
+<main class="sheet" id="sheet">
+  <div class="eyebrow">Nền tảng lean-platform · Sơ đồ 4</div>
+  <h1>Bảo trì: bốn luồng công việc trên một Tài sản</h1>
+  <p class="lede">Bốn luồng chạy song song và gặp nhau ở cùng một chỗ: <strong>Lệnh công việc</strong>. Một
+  luồng bắt đầu từ sàn (ai cũng nêu được), một luồng do lịch sinh ra, một luồng là chính công việc, và một
+  luồng chỉ đo thời gian máy đứng.</p>
+
+  <div class="spacer-16"></div>
+
+  <div class="lane">
+    <div class="lane-label">Sự cố máy<br>từ sàn lên</div>
+    <div class="row">
+      <div class="step card">
+        <div class="name">Nêu Yêu cầu</div>
+        <ul class="list tight">
+          <li><span class="badge ok">mọi vai trò</span> kể cả người vận hành</li>
+          <li>Tài sản · Nội dung · Mức khẩn</li>
+          <li>Bật “Sản xuất đang dừng ngay lúc này” nếu máy đang chặn sản xuất</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card">
+        <div class="name">Hàng chờ phân loại</div>
+        <ul class="list tight">
+          <li><span class="badge accent">supervisor trở lên</span></li>
+          <li>Dòng “Sản xuất đang dừng” xử lý trước</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card" style="border-color:#166534">
+        <div class="name">Chấp nhận</div>
+        <ul class="list tight">
+          <li>Người phân loại chọn <strong>Mức ưu tiên</strong> của lệnh — không phải mức khẩn người báo chọn</li>
+          <li>Chấp nhận <strong>là tạo</strong> Lệnh công việc, không có bước trung gian, không hoàn tác</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card" style="border-color:#B91C1C">
+        <div class="name">Từ chối · Trùng</div>
+        <ul class="list tight">
+          <li>Từ chối: lý do đi về người đã nêu — viết câu người đó hiểu</li>
+          <li>Trùng: chọn bản được giữ lại; bản trùng rời hàng chờ</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="lane">
+    <div class="lane-label">Phòng ngừa<br>lịch sinh ra lệnh</div>
+    <div class="row">
+      <div class="step card">
+        <div class="name">Kế hoạch công việc</div>
+        <ul class="list tight">
+          <li>Các bước, số giờ, kỹ năng yêu cầu, ghi chú an toàn</li>
+          <li><span class="badge plain">chỉ quản trị viên</span></li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card">
+        <div class="name">Lịch bảo trì định kỳ</div>
+        <ul class="list tight">
+          <li>Chu kỳ theo <strong>thời gian</strong> hoặc theo <strong>đồng hồ tích luỹ</strong></li>
+          <li>“Tạo lệnh sớm bao nhiêu ngày” là thời gian chuẩn bị, không phải chu kỳ</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card" style="border-color:#166534">
+        <div class="name">Lệnh công việc tự sinh</div>
+        <ul class="list tight">
+          <li>Xuất hiện trước hạn N ngày</li>
+          <li>Các bước <strong>sao</strong> từ Kế hoạch, không sửa được trên lệnh</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card">
+        <div class="name">Đồng hồ đo</div>
+        <ul class="list tight">
+          <li>Ghi đúng số trên mặt đồng hồ, không tự cộng</li>
+          <li>Chỉ số <strong>luôn tăng</strong>; đặt lại / thay mới phải bật ô đặt lại</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="lane">
+    <div class="lane-label" style="background:#1E40AF;color:#fff;border-color:#1E40AF">Lệnh công việc<br>vòng đời</div>
+    <div class="row">
+      <div class="step card accent">
+        <div class="name">Tạo</div>
+        <ul class="list tight">
+          <li>Tài sản · Nội dung · Loại · <strong>Mức ưu tiên 1…5</strong> (1 khẩn nhất)</li>
+          <li>Lệnh thuộc Đơn vị tổ chức của Tài sản</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card accent">
+        <div class="name">Phân công</div>
+        <ul class="list tight">
+          <li>Ứng viên: đủ phạm vi <strong>và</strong> đủ chứng nhận</li>
+          <li>Danh sách rỗng = không có ai để giao, không phải lỗi</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card accent">
+        <div class="name">Bắt đầu</div>
+        <ul class="list tight">
+          <li>Người được phân công bấm khi bắt tay vào việc</li>
+          <li>Từ thiết bị Xưởng: mã nhân viên + PIN</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card accent">
+        <div class="name">Ghi trong lúc làm</div>
+        <ul class="list tight">
+          <li>Giờ công: đã nằm trong chi phí nhân công</li>
+          <li>Xuất phụ tùng: <strong>chi phí mới duy nhất</strong></li>
+          <li>Chỉ số đồng hồ nếu Tài sản có</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card" style="border-color:#166534">
+        <div class="name">Hoàn thành</div>
+        <ul class="list tight">
+          <li><strong>Bắt buộc ghi “Đã phát hiện gì”</strong></li>
+          <li>Lệnh rời danh sách đang mở</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card" style="border-color:#B91C1C">
+        <div class="name">Huỷ</div>
+        <ul class="list tight">
+          <li>Ghi lý do; lệnh <strong>không bị xoá</strong></li>
+          <li>Hiện lại khi bật lịch sử</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="lane">
+    <div class="lane-label">Dừng máy<br>chỉ đo thời gian</div>
+    <div class="row">
+      <div class="step card">
+        <div class="name">Báo máy hỏng</div>
+        <ul class="list tight">
+          <li>Tài sản · Bắt đầu lúc (trống = bây giờ) · Mô tả</li>
+          <li>Ghi lùi giờ khi sự cố đã xảy ra trước khi bạn tới</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card">
+        <div class="name">Phân loại lý do</div>
+        <ul class="list tight">
+          <li>Lý do + mô tả bắt buộc</li>
+          <li>Được để chưa phân loại, nhưng đừng để lâu</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card">
+        <div class="name">Đóng lần dừng</div>
+        <ul class="list tight">
+          <li>Máy chủ tự tính thời lượng</li>
+          <li>Đóng mà chưa phân loại: lần dừng <strong>không vào thống kê theo lý do</strong></li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step card" style="border-color:#5B21B6">
+        <div class="name">MTBF · MTTR</div>
+        <ul class="list tight">
+          <li>Tính ở Phân tích, từ chính các lần dừng này</li>
+          <li>Số liệu chỉ đúng khi lần dừng được đóng</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="spacer-12"></div>
+
+  <div class="grid-3">
+    <div class="note bad"><strong>Xuất phụ tùng không làm ở màn hình Kho.</strong> Nó làm trên
+    Chi tiết Lệnh công việc, vì mỗi lần lấy hàng phải gắn với một công việc — nếu không, chi phí công việc
+    thiếu vài món mà không ai thấy.</div>
+    <div class="note"><strong>Hai giám sát, hai kết quả khác nhau.</strong> Một Lệnh công việc thuộc Đơn vị
+    tổ chức của Tài sản: muốn phân công hay đóng nó, cần quyền sửa <em>ở đơn vị đó</em> — cùng vai trò, khác
+    tổ là khác quyền.</div>
+    <div class="note"><strong>Thiết bị Xưởng (/floor).</strong> Người không có Tài khoản vẫn bắt đầu và hoàn
+    thành lệnh được: quyền là của thiết bị, còn <em>ai đã làm</em> là mã nhân viên vừa nhận diện (ADR-0016).</div>
+  </div>
+
+  <footer class="legend">Ngoại lệ đáng nhớ: <strong>Thêm / sửa Phụ tùng</strong> cần engineer trở lên — giám
+  sát bị chặn ở đúng một chỗ này trong cả nhóm Bảo trì. <strong>Kế hoạch công việc</strong> chỉ quản trị
+  viên. Xem bảng tóm tắt cuối chương 03.</footer>
+</main>
+</body>
+</html>

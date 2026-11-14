@@ -10,6 +10,11 @@ và mọi thao tác ghi đều cần phạm vi **Đơn vị tổ chức**.
 
 ---
 
+![Sơ đồ 3 — Nhân sự là nguồn dữ liệu nền của mọi Phân hệ](images/03-nhan-su-nguon-du-lieu.png)
+
+***Sơ đồ 3.** Bốn thứ Nhân sự sở hữu được bốn Phân hệ dùng lại. Một sai sót ở đây hỏng
+phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng lúc.*
+
 ## Danh bạ
 
 **Việc này để làm gì.** Tìm một Nhân viên, xem hồ sơ của họ, và — nếu bạn là quản

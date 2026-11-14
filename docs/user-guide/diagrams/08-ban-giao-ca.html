@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Sơ đồ 8 — Bàn giao ca: một bản cho mỗi Bộ phận, mỗi ca</title>
+<link rel="stylesheet" href="diagram.css">
+</head>
+<body>
+<main class="sheet" id="sheet">
+  <div class="eyebrow">Nền tảng lean-platform · Sơ đồ 8</div>
+  <h1>Bàn giao ca: một bản cho mỗi Bộ phận, mỗi ca</h1>
+  <p class="lede">Ca trước nói điều gì khác so với bình thường, ca sau <strong>xác nhận là đã nghe</strong>.
+  Ba cột dưới đây là ba thời điểm: viết, gửi (chốt), xác nhận. Bản đã gửi là một lời tuyên bố tại một thời
+  điểm — số liệu trong đó không đổi nữa.</p>
+
+  <div class="spacer-16"></div>
+
+  <div class="grid-3" style="grid-template-columns:1.15fr 0.85fr 1.15fr">
+    <div class="card">
+      <div class="sub">① Ca trước — viết</div>
+      <div class="name">Bảy phần, đúng thứ tự trên màn hình</div>
+      <ul class="list tight" style="margin-top:6px">
+        <li><strong>Máy</strong>: mỗi Tài sản của Bộ phận là một dòng — chạy / không chạy. Không chạy thì <strong>bắt buộc nêu vì sao</strong></li>
+        <li><strong>Máy</strong>: chiều và các số đang chạy, nếu Bộ phận có</li>
+        <li><strong>Điểm thay đổi</strong>: khác ở chỗ nào, điều ca sau phải theo dõi. Ít nhất một điểm, <em>hoặc</em> bấm xác nhận “Ca này không có điểm thay đổi”</li>
+        <li><strong>Hạng mục quan trọng</strong> của ca</li>
+        <li><strong>Hành động chuyển tiếp</strong>: mọi Hành động đang mở của Bộ phận phải được chuyển tiếp, giao lại, hoặc đóng ngay tại đây</li>
+        <li><strong>Bằng chứng bàn giao</strong>: bật “Đã đi kiểm tra chung” nếu hai ca đã cùng đi một vòng</li>
+        <li><strong>Gửi</strong></li>
+      </ul>
+    </div>
+
+    <div class="card" style="border-color:#1E40AF">
+      <div class="sub">② Gửi — chốt</div>
+      <div class="name">Nút Gửi chỉ bấm được khi đủ</div>
+      <ul class="list tight" style="margin-top:6px">
+        <li>Câu <strong>“Chưa gửi được bản bàn giao này”</strong> nói rõ còn thiếu phần nào</li>
+        <li>Đã gửi → <span class="badge accent">Chốt tại thời điểm gửi</span>: số liệu bên trong <strong>không đổi nữa</strong>, kể cả khi sự cố bên dưới được sửa sau đó</li>
+        <li>Sửa sau khi gửi → <strong>Phiên bản {n}</strong> mới, bắt buộc ghi <em>lý do sửa</em></li>
+      </ul>
+      <div class="note bad" style="margin-top:10px"><strong>Câu quan trọng nhất của cả nhóm.</strong> Một
+      Hành động đang mở mà không được chuyển tiếp, giao lại hay đóng thì bản bàn giao <strong>không gửi
+      được</strong>. Đó là lý do bản bàn giao tồn tại: không để việc gì rơi giữa hai ca.</div>
+    </div>
+
+    <div class="card">
+      <div class="sub">③ Ca sau — xác nhận</div>
+      <div class="name">“Tôi đã đọc, và đây là những gì tôi thấy”</div>
+      <ul class="list tight" style="margin-top:6px">
+        <li>Đọc <strong>Điều ca sau phải theo dõi</strong> của từng điểm thay đổi</li>
+        <li>Với mỗi lượt theo dõi: ghi <strong>lượt theo dõi cho thấy gì</strong> và chọn <strong>Đã thấy</strong>. Bỏ trống = <em>Chưa trả lời</em>, không phải “không có gì”</li>
+        <li>Ghi chú về bàn giao (không bắt buộc) → <strong>Xác nhận bàn giao</strong></li>
+        <li>Câu xác nhận nói rõ: <em>“Bạn đang nhận {Bộ phận} và ca {…}”</em> — đọc câu đó, sai ca là sai người nhận trách nhiệm</li>
+      </ul>
+      <div class="note" style="margin-top:10px"><strong>Xác nhận không phải thủ tục.</strong> Nó gắn tên bạn
+      vào việc đã đọc bàn giao, tại một thời điểm. Một sự cố xảy ra sau khi bạn đã “Đã thấy” khác một sự cố
+      xảy ra khi bạn chưa đọc gì.</div>
+    </div>
+  </div>
+
+  <div class="spacer-12"></div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="name">Bảng của một Bộ phận <span class="badge accent">/production/sections/:orgUnitId/board</span></div>
+      <ul class="list tight" style="margin-top:6px">
+        <li>Các ca của <strong>ngày sản xuất</strong> từ trên xuống — ngày sản xuất không phải ngày dương lịch: ca đêm thuộc về ngày sản xuất của nó</li>
+        <li>Dòng <strong>“xác nhận {lúc} sau khi ca bắt đầu”</strong> là <span class="badge warn">cờ vàng</span>: bàn giao được nhận muộn, tức là có một khoảng ca sau chạy mà không biết điều gì khác thường</li>
+        <li>“Không có ca nào được xếp” là câu trả lời đúng khi Bộ phận chưa có ca — không phải lỗi</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="name">Ai làm được, và ai bị chặn</div>
+      <ul class="list tight" style="margin-top:6px">
+        <li>Ba mã quyền Sản xuất nằm trên <strong>cả sáu vai trò</strong> — nhóm mở nhất trong Nền tảng</li>
+        <li>Cái chặn là <strong>Đơn vị tổ chức</strong>: chỉ bàn giao được cho Bộ phận mà Tài khoản nằm trong phạm vi</li>
+        <li>Cây Bộ phận chính là cây Đơn vị tổ chức của Nhân sự — đây là chỗ hai Phân hệ dùng chung dữ liệu (sơ đồ 3)</li>
+      </ul>
+    </div>
+  </div>
+
+  <footer class="legend">Màn hình: Bàn giao ca · Bàn giao của một ca (/production/sections/:orgUnitId/handover/:shiftInstanceId) ·
+  Bảng của một Bộ phận (/production/sections/:orgUnitId/board) · Xác nhận bàn giao
+  (/production/sections/:orgUnitId/board/acknowledge/:handoverId). Chương 07.</footer>
+</main>
+</body>
+</html>

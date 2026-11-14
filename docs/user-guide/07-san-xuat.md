@@ -10,6 +10,13 @@ một bản**.
 
 ---
 
+![Sơ đồ 8 — Bàn giao ca: một bản cho mỗi Bộ phận, mỗi ca](images/08-ban-giao-ca.png)
+
+***Sơ đồ 8.** Ba thời điểm: ca trước viết, gửi (chốt), ca sau xác nhận. Một Hành động
+đang mở mà không được chuyển tiếp, giao lại hay đóng thì bản bàn giao không gửi được.*
+
+---
+
 ## Bàn giao ca
 
 **Việc này để làm gì.** Chọn một Bộ phận, xem các ca trong **ngày sản xuất**, và mở
@@ -44,7 +51,7 @@ việc gì còn mở, và ca sau phải để ý gì.
 
 **Ai thao tác được.** Ghi: `PRD_HANDOVER_WRITE`. Đọc: `PRD_HANDOVER_DISPLAY`.
 
-**Đường dẫn.** `/production/:orgUnitId/handover/:shiftInstanceId`.
+**Đường dẫn.** `/production/sections/:orgUnitId/handover/:shiftInstanceId`.
 
 **Các bước chính — theo đúng thứ tự trên màn hình**
 
@@ -77,7 +84,7 @@ những gì còn mở ở từng mốc chuyển ca.
 **Ai thao tác được.** Đọc `PRD_HANDOVER_DISPLAY`; xác nhận cần
 `PRD_HANDOVER_ACKNOWLEDGE`.
 
-**Đường dẫn.** `/production/:orgUnitId/board`.
+**Đường dẫn.** `/production/sections/:orgUnitId/board`.
 
 **Các bước chính**
 
@@ -96,7 +103,7 @@ những gì tôi thấy.
 
 **Ai thao tác được.** `PRD_HANDOVER_ACKNOWLEDGE` — **mọi vai trò**.
 
-**Đường dẫn.** `/production/:orgUnitId/board/acknowledge/:handoverId`.
+**Đường dẫn.** `/production/sections/:orgUnitId/board/acknowledge/:handoverId`.
 
 **Các bước chính**
 

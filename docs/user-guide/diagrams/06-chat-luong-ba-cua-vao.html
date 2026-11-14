@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Sơ đồ 6 — Chất lượng: ba cửa vào, một sổ, một vòng khép kín</title>
+<link rel="stylesheet" href="diagram.css">
+</head>
+<body>
+<main class="sheet" id="sheet">
+  <div class="eyebrow">Nền tảng lean-platform · Sơ đồ 6</div>
+  <h1>Chất lượng: ba cửa vào, một sổ, một vòng khép kín</h1>
+  <p class="lede">Ba cửa vào khác nhau — nhưng chỉ <strong>một</strong> sổ kiểm soát hàng: Sản phẩm không
+  phù hợp. Khiếu nại và NCR nhà cung cấp <em>không tự</em> sinh ra bản ghi đó; nếu chỉ ghi rồi đóng, hàng lỗi
+  không được kiểm soát ở đâu cả. Và nguyên nhân gốc thì không xử ở đây — nó đi sang Nhật ký hành động.</p>
+
+  <div class="spacer-16"></div>
+
+  <div class="grid-3">
+    <div class="card owner">
+      <div class="name">Cửa 1 · Sản phẩm không phù hợp</div>
+      <div class="sub" style="margin-top:4px">Phát hiện bên trong nhà máy</div>
+      <ul class="list tight" style="margin-top:6px">
+        <li><strong>Ghi nhận</strong>: Sản phẩm · Mã lỗi · Số lượng · <em>Điểm phát hiện</em> · Đơn vị tổ chức ghi nhận cho · Tham chiếu lô</li>
+        <li><strong>Số lượng chỉ tăng</strong> — phân loại có thể phát hiện thêm; mọi thay đổi có tên người làm trong lịch sử</li>
+        <li><strong>Ghi nhận phương án xử lý</strong> theo từng phần: nhượng bộ / làm lại (ghi số phút) / phế</li>
+        <li><span class="badge ok">tự đóng</span> khi <strong>toàn bộ</strong> số lượng đã có phương án</li>
+      </ul>
+    </div>
+
+    <div class="card owner">
+      <div class="name">Cửa 2 · Khiếu nại khách hàng</div>
+      <div class="sub" style="margin-top:4px">Phát hiện từ phía khách</div>
+      <ul class="list tight" style="margin-top:6px">
+        <li><strong>Ghi nhận</strong>: Khách hàng · Sản phẩm · Mã lỗi · Loại (thường / bảo hành) · <em>Đơn vị tổ chức sẽ trả lời</em></li>
+        <li><strong>Ghi nhận không phù hợp</strong> từ khiếu nại, <strong>hoặc</strong> liên kết một bản đã có cho cùng Sản phẩm</li>
+        <li><strong>Phản hồi</strong> khách, rồi <strong>đóng bằng phản hồi</strong> (bắt buộc có phản hồi)</li>
+        <li><span class="badge bad">lỗ hổng</span> chưa có gì kiểm soát sản phẩm bị khiếu nại — màn hình nói thẳng bằng đỏ</li>
+      </ul>
+    </div>
+
+    <div class="card owner">
+      <div class="name">Cửa 3 · NCR nhà cung cấp</div>
+      <div class="sub" style="margin-top:4px">Phát hiện ở khâu nhận hàng</div>
+      <ul class="list tight" style="margin-top:6px">
+        <li><strong>Ghi nhận</strong>: Nhà cung cấp · Sản phẩm/vật tư · Số lượng · Đơn vị tổ chức · <strong>Tham chiếu lô</strong></li>
+        <li><strong>Phương án xử lý của nhà cung cấp</strong> + <strong>số tiền thu hồi được</strong></li>
+        <li><strong>Ghi nhận không phù hợp</strong> hoặc <strong>liên kết</strong> bản đã có cho cùng lô</li>
+        <li>Đóng NCR khi xong</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="spacer-12"></div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="name">Ghi sổ hay quyết định? Hai mức quyền khác nhau</div>
+      <div class="sub" style="margin-top:8px">Chỉ cần quyền ghi + phạm vi Đơn vị tổ chức</div>
+      <ul class="list tight">
+        <li>Ghi nhận không phù hợp · Tăng số lượng · Nâng mức độ · Ghi biện pháp ngăn chặn</li>
+        <li><strong>Ghi nhận phương án xử lý</strong> cho một phần số lượng (làm lại / phế)</li>
+      </ul>
+      <div class="sub" style="margin-top:8px">Cần thẩm quyền Chất lượng</div>
+      <ul class="list tight">
+        <li><strong>Cho phép nhượng bộ</strong> (bán/phát hàng lỗi có điều kiện)</li>
+        <li><strong>Hạ mức độ</strong> · <strong>Mở lại</strong> bản đã đóng · <strong>Huỷ vì ghi nhầm</strong></li>
+      </ul>
+      <div class="note" style="margin-top:10px"><strong>Vì sao tách hai mức.</strong> Người đứng cạnh 100 cái
+      hàng lỗi phải tự ghi được “40 cái này phế”. Còn nhượng bộ và hạ mức độ là quyết định về sản phẩm — chúng
+      đi qua một người có thẩm quyền Chất lượng ở đơn vị đó.</div>
+    </div>
+
+    <div class="card">
+      <div class="name">Rồi vấn đề đi đâu?</div>
+      <div class="arrow-down" style="font-size:14px">↓</div>
+      <div class="card accent" style="margin-top:4px">
+        <div class="name">Nhật ký hành động — Concern → CAPA</div>
+        <ul class="list tight">
+          <li><strong>Nêu một Concern</strong> khi vấn đề mới; Concern rơi vào <em>Đơn vị tổ chức của bản ghi</em>, không phải đơn vị của bạn</li>
+          <li><strong>Liên kết với một Concern</strong> khi vấn đề đã có — luôn dùng cách này trước khi nêu mới</li>
+          <li>Bản ghi không phù hợp xử lý <em>sản phẩm</em>; nguyên nhân gốc xử ở CAPA (sơ đồ 5)</li>
+        </ul>
+      </div>
+      <div class="sub" style="margin-top:10px">Trình chiếu ở xưởng</div>
+      <ul class="list tight">
+        <li>Chọn Khiếu nại hoặc Sản phẩm không phù hợp, sắp thứ tự, chạy từng ảnh trên màn hình xưởng</li>
+        <li><strong>Một trang cần ảnh</strong>: vấn đề chưa có ảnh sẽ không hiện — đọc con số “{n} đã chọn nhưng chưa có ảnh” trước khi hỏi vì sao màn hình trống</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="spacer-12"></div>
+  <div class="note"><strong>Danh mục là của quản trị viên:</strong> Sản phẩm · Mã lỗi (cây mã cha–con, mức độ
+  bắt đầu) · Khách hàng · Nhà cung cấp dùng chung cho <em>mọi</em> Nhà máy. Đổi đơn vị đo của một Sản phẩm đã
+  có bản ghi phải làm bằng Sản phẩm mới, không sửa.</div>
+
+  <footer class="legend">Chi phí chất lượng đọc từ đây và tính ở Phân tích: số phút làm lại × Chi phí chuẩn
+  sản phẩm, cộng tiền thu hồi từ NCR. Xem chương 05 và sơ đồ 9.</footer>
+</main>
+</body>
+</html>
