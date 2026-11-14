@@ -18,6 +18,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -95,6 +96,7 @@ class _SafetyIncidentSeverityDialogState extends State<SafetyIncidentSeverityDia
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final incident = widget.incident;
 
@@ -106,14 +108,14 @@ class _SafetyIncidentSeverityDialogState extends State<SafetyIncidentSeverityDia
       // description and the single action closes it.
       return AppDialog(
         key: SafetyIncidentSeverityDialog.refusedKey,
-        title: 'Correct the severity',
+        title: l10n.commonCorrectTheSeverity,
         size: AppDialogSize.decision,
         description:
-            "Correcting the severity needs Safety authority at this Safety incident's Org Unit.",
+            l10n.incidentSeverityCorrectingTheSeverityNeedsSafetyAuthorityAt,
         actions: [
           AppDialogAction(
             id: SafetyIncidentSeverityDialog._closeId,
-            label: 'Close',
+            label: l10n.downtimeClose,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -125,20 +127,19 @@ class _SafetyIncidentSeverityDialogState extends State<SafetyIncidentSeverityDia
       listener: _onDetailChanged,
       // A form (520): one select and one note (§11).
       child: AppDialog(
-        title: 'Correct the severity',
+        title: l10n.commonCorrectTheSeverity,
         size: AppDialogSize.form,
-        description: '${incident.incidentNo} is ${incident.severityLabel.toLowerCase()}. '
-            'Correcting it restates the period it occurred in.',
+        description: l10n.incidentSeverityIsCorrectingItRestatesThePeriodIt(incident.incidentNo, incident.severityLabel.toLowerCase()),
         actions: [
           AppDialogAction(
             id: SafetyIncidentSeverityDialog._dismissId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: SafetyIncidentSeverityDialog._submitId,
-            label: 'Correct it',
+            label: l10n.incidentSeverityCorrectIt,
             onPressed: _complete ? _submit : null,
           ),
         ],
@@ -150,14 +151,14 @@ class _SafetyIncidentSeverityDialogState extends State<SafetyIncidentSeverityDia
               key: SafetyIncidentSeverityDialog.severityKey,
               initialValue: _severity,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Correct the severity to',
+              decoration: InputDecoration(
+                labelText: l10n.incidentSeverityCorrectTheSeverityTo,
                 border: OutlineInputBorder(),
               ),
               items: [
-                const DropdownMenuItem<String?>(
+                DropdownMenuItem<String?>(
                   value: null,
-                  child: Text('Leave the severity alone'),
+                  child: Text(l10n.commonLeaveTheSeverityAlone),
                 ),
                 for (final level in _offerableSeverities)
                   DropdownMenuItem<String?>(
@@ -175,9 +176,9 @@ class _SafetyIncidentSeverityDialogState extends State<SafetyIncidentSeverityDia
               minLines: 2,
               maxLines: 3,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Note',
-                helperText: 'Why the severity is being corrected.',
+              decoration: InputDecoration(
+                labelText: l10n.commonNote,
+                helperText: l10n.incidentSeverityWhyTheSeverityIsBeingCorrected,
                 border: OutlineInputBorder(),
               ),
             ),

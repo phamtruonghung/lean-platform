@@ -21,6 +21,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
@@ -79,6 +80,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<SuppliersBloc>().state;
 
     return Scaffold(
@@ -86,7 +88,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
         SuppliersLoading() => const SkeletonList(maxWidth: SuppliersScreen.maxWidth),
         SuppliersUnavailable(message: final message) => PlatformFailureState(
             key: SuppliersScreen.failedKey,
-            title: 'The Supplier list could not be read',
+            title: l10n.suppliersTheSupplierListCouldNotBeRead,
             message: message,
             retryKey: SuppliersScreen.retryKey,
             onRetry: () => context.read<SuppliersBloc>().add(const SuppliersStarted()),
@@ -117,6 +119,7 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final matches = [for (final supplier in state.suppliers) if (supplier.matches(term)) supplier];
 
     return Center(
@@ -126,13 +129,12 @@ class _Loaded extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
             AppPageHeader(
-              title: 'Suppliers',
+              title: l10n.navSuppliers,
               // Straight quotes, not a typographic apostrophe: the repo's copy
               // is plain ASCII throughout (`theme_skeleton` and the goldens
               // both read it back).
               description:
-                  'Who the plant buys from, so an incoming lot that is wrong has someone '
-                  'to belong to and a claim has somewhere to go.',
+                  l10n.suppliersWhoThePlantBuysFromSoAn,
               actions: [
                 if (isAdmin)
                   FilledButton.icon(
@@ -140,7 +142,7 @@ class _Loaded extends StatelessWidget {
                     onPressed:
                         state.isMutating ? null : () => SupplierFormDialog.open(context),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add Supplier'),
+                    label: Text(l10n.commonAddSupplier),
                   ),
               ],
             ),
@@ -148,18 +150,18 @@ class _Loaded extends StatelessWidget {
             if (state.suppliers.isEmpty)
               PlatformEmptyState.noneExist(
                 key: SuppliersScreen.emptyKey,
-                title: 'No Suppliers yet',
-                message: 'Nothing has been defined in the list.',
+                title: l10n.suppliersNoSuppliersYet,
+                message: l10n.commonNothingHasBeenDefinedInTheList,
                 icon: Icons.handshake_outlined,
-                actionLabel: isAdmin ? 'Add Supplier' : null,
+                actionLabel: isAdmin ? l10n.commonAddSupplier : null,
                 actionKey: SuppliersScreen.emptyAddKey,
                 onAction: isAdmin ? () => SupplierFormDialog.open(context) : null,
               )
             else ...[
               AppFilterField(
                 name: SuppliersScreen.filterFieldName,
-                label: 'Filter Suppliers',
-                helperText: 'By name or code.',
+                label: l10n.suppliersFilterSuppliers,
+                helperText: l10n.jobRolesByNameOrCode,
                 term: term,
                 onChanged: onTermChanged,
                 shown: matches.length,
@@ -169,9 +171,8 @@ class _Loaded extends StatelessWidget {
               if (matches.isEmpty)
                 PlatformEmptyState.noneMatched(
                   key: SuppliersScreen.noMatchKey,
-                  title: 'No Suppliers match',
-                  message: 'Nothing in the list matches "${term.trim()}". Try a different '
-                      'name or code, or clear the filter.',
+                  title: l10n.suppliersNoSuppliersMatch,
+                  message: l10n.commonNothingInTheListMatchesTryA(term.trim()),
                 )
               else
                 AppListCard(
@@ -205,6 +206,7 @@ class _SupplierRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return ConstrainedBox(
       key: SuppliersScreen.rowKey(supplier.id),
@@ -226,7 +228,7 @@ class _SupplierRow extends StatelessWidget {
                     const SizedBox(width: Spacing.sm),
                     StatusChip(
                       key: SuppliersScreen.inactiveChipKey(supplier.id),
-                      label: 'Inactive',
+                      label: l10n.jobPlansInactive,
                       tone: StatusTone.neutral,
                     ),
                   ],
@@ -241,7 +243,7 @@ class _SupplierRow extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                 ),
-                child: const Text('Correct'),
+                child: Text(l10n.commonCorrect),
               ),
           ],
         ),

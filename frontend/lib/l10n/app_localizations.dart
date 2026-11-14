@@ -7858,6 +7858,2355 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Signature drawing area'**
   String get signaturePadSignatureDrawingArea;
+
+  /// No description provided for @complaintDetailThatComplaintCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'That complaint could not be read'**
+  String get complaintDetailThatComplaintCouldNotBeRead;
+
+  /// No description provided for @complaintDetailBackToCustomerComplaints.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Customer complaints'**
+  String get complaintDetailBackToCustomerComplaints;
+
+  /// No description provided for @commonPastDue.
+  ///
+  /// In en, this message translates to:
+  /// **'Past due'**
+  String get commonPastDue;
+
+  /// No description provided for @commonWarrantyClaim.
+  ///
+  /// In en, this message translates to:
+  /// **'Warranty claim'**
+  String get commonWarrantyClaim;
+
+  /// No description provided for @complaintDetailTheProductThisIsAbout.
+  ///
+  /// In en, this message translates to:
+  /// **'The product this is about'**
+  String get complaintDetailTheProductThisIsAbout;
+
+  /// No description provided for @complaintDetailNothingControlsTheProductThisCustomerComplained.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing controls the product this customer complained about yet. Record a Non-conformance from this complaint, or link one that already exists for the same Product.'**
+  String get complaintDetailNothingControlsTheProductThisCustomerComplained;
+
+  /// No description provided for @commonLinkOneThatExists.
+  ///
+  /// In en, this message translates to:
+  /// **'Link one that exists'**
+  String get commonLinkOneThatExists;
+
+  /// No description provided for @commonOpenRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Open record'**
+  String get commonOpenRecord;
+
+  /// No description provided for @complaintDetailCustomer.
+  ///
+  /// In en, this message translates to:
+  /// **'customer'**
+  String get complaintDetailCustomer;
+
+  /// No description provided for @complaintDetailFoundByTheCustomerSoThisComplaint.
+  ///
+  /// In en, this message translates to:
+  /// **'Found by the customer, so this complaint is where it started.'**
+  String get complaintDetailFoundByTheCustomerSoThisComplaint;
+
+  /// No description provided for @complaintDetailRecordedAtAndLinkedToThisComplaint.
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded at {value}, and linked to this complaint.'**
+  String complaintDetailRecordedAtAndLinkedToThisComplaint(Object value);
+
+  /// No description provided for @commonOpenTheNonConformance.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the Non-conformance'**
+  String get commonOpenTheNonConformance;
+
+  /// No description provided for @commonTheResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'The response'**
+  String get commonTheResponse;
+
+  /// No description provided for @complaintDetailClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed {closedAt}'**
+  String complaintDetailClosed(Object closedAt);
+
+  /// No description provided for @complaintDetailNothingHasBeenSaidBackToThis.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing has been said back to this customer yet.'**
+  String get complaintDetailNothingHasBeenSaidBackToThis;
+
+  /// No description provided for @complaintDetailCloseWithTheResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Close with the response'**
+  String get complaintDetailCloseWithTheResponse;
+
+  /// No description provided for @complaintFormRecordACustomerComplaint.
+  ///
+  /// In en, this message translates to:
+  /// **'Record a customer complaint'**
+  String get complaintFormRecordACustomerComplaint;
+
+  /// No description provided for @complaintFormCustomer.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer'**
+  String get complaintFormCustomer;
+
+  /// No description provided for @commonDefectCodeOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Defect code (optional)'**
+  String get commonDefectCodeOptional;
+
+  /// No description provided for @complaintFormWhatTheCustomerSaysIsWrongA.
+  ///
+  /// In en, this message translates to:
+  /// **'What the customer says is wrong. A Non-conformance recorded from this complaint carries it.'**
+  String get complaintFormWhatTheCustomerSaysIsWrongA;
+
+  /// No description provided for @commonNotKnownYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not known yet'**
+  String get commonNotKnownYet;
+
+  /// No description provided for @complaintFormQuantityOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity (optional)'**
+  String get complaintFormQuantityOptional;
+
+  /// No description provided for @complaintFormInTheProductSOwnUnitOf.
+  ///
+  /// In en, this message translates to:
+  /// **'In the Product\'s own unit of measure.'**
+  String get complaintFormInTheProductSOwnUnitOf;
+
+  /// No description provided for @complaintFormResponseDueOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Response due (optional)'**
+  String get complaintFormResponseDueOptional;
+
+  /// No description provided for @complaintFormTheDayTheCustomerWasPromisedAn.
+  ///
+  /// In en, this message translates to:
+  /// **'The day the customer was promised an answer.'**
+  String get complaintFormTheDayTheCustomerWasPromisedAn;
+
+  /// No description provided for @complaintFormWhatTheCustomerSaid.
+  ///
+  /// In en, this message translates to:
+  /// **'What the customer said'**
+  String get complaintFormWhatTheCustomerSaid;
+
+  /// No description provided for @complaintFormWhoAnswersIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Who answers it'**
+  String get complaintFormWhoAnswersIt;
+
+  /// No description provided for @complaintFormChooseTheOrgUnitThatWillAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the Org Unit that will answer this complaint. This is what decides who may act on it.'**
+  String get complaintFormChooseTheOrgUnitThatWillAnswer;
+
+  /// No description provided for @complaintFormThisComplaintWillBeFiledAt.
+  ///
+  /// In en, this message translates to:
+  /// **'This complaint will be filed at {value}.'**
+  String complaintFormThisComplaintWillBeFiledAt(Object value);
+
+  /// No description provided for @commonLinkANonConformance.
+  ///
+  /// In en, this message translates to:
+  /// **'Link a Non-conformance'**
+  String get commonLinkANonConformance;
+
+  /// No description provided for @commonLinking.
+  ///
+  /// In en, this message translates to:
+  /// **'Linking…'**
+  String get commonLinking;
+
+  /// No description provided for @commonLinkIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Link it'**
+  String get commonLinkIt;
+
+  /// No description provided for @complaintLinkANonConformanceThatAlreadyExistsFor.
+  ///
+  /// In en, this message translates to:
+  /// **'A Non-conformance that already exists for {productName} can be linked to this complaint, instead of recording a second one for the same problem.'**
+  String complaintLinkANonConformanceThatAlreadyExistsFor(Object productName);
+
+  /// No description provided for @commonTheNonConformancesCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The Non-conformances could not be read'**
+  String get commonTheNonConformancesCouldNotBeRead;
+
+  /// No description provided for @complaintLinkNoNonConformanceHasBeenRecordedFor.
+  ///
+  /// In en, this message translates to:
+  /// **'No Non-conformance has been recorded for this Product yet, so there is nothing to link. Record one from this complaint instead.'**
+  String get complaintLinkNoNonConformanceHasBeenRecordedFor;
+
+  /// No description provided for @commonTheNonConformanceThatControlsIt.
+  ///
+  /// In en, this message translates to:
+  /// **'The Non-conformance that controls it'**
+  String get commonTheNonConformanceThatControlsIt;
+
+  /// No description provided for @complaintNonconformanceControlTheProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Control the product'**
+  String get complaintNonconformanceControlTheProduct;
+
+  /// No description provided for @complaintNonconformanceANonConformanceIsRecordedAtFor.
+  ///
+  /// In en, this message translates to:
+  /// **'A Non-conformance is recorded at {orgUnitName} for {productName}, found by the customer.'**
+  String complaintNonconformanceANonConformanceIsRecordedAtFor(
+    Object orgUnitName,
+    Object productName,
+  );
+
+  /// No description provided for @complaintNonconformanceHowMuchProductIsInQuestionIn.
+  ///
+  /// In en, this message translates to:
+  /// **'How much product is in question, in the Product\'s own unit.'**
+  String get complaintNonconformanceHowMuchProductIsInQuestionIn;
+
+  /// No description provided for @complaintNonconformanceTheComplaintSOwnDefectCodeIs.
+  ///
+  /// In en, this message translates to:
+  /// **'The complaint\'s own Defect code is carried onto the record.'**
+  String get complaintNonconformanceTheComplaintSOwnDefectCodeIs;
+
+  /// No description provided for @commonTheDefectCodesCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The Defect codes could not be read'**
+  String get commonTheDefectCodesCouldNotBeRead;
+
+  /// No description provided for @complaintNonconformanceThisComplaintCarriesNoneSoChooseThe.
+  ///
+  /// In en, this message translates to:
+  /// **'This complaint carries none, so choose the one to record it against.'**
+  String get complaintNonconformanceThisComplaintCarriesNoneSoChooseThe;
+
+  /// No description provided for @commonWhatWasDoneAtOnceRecordingIt.
+  ///
+  /// In en, this message translates to:
+  /// **'What was done at once. Recording it makes the record contained.'**
+  String get commonWhatWasDoneAtOnceRecordingIt;
+
+  /// No description provided for @commonNarrowTheRegister.
+  ///
+  /// In en, this message translates to:
+  /// **'Narrow the register'**
+  String get commonNarrowTheRegister;
+
+  /// No description provided for @complaintOrgUnitFilterChooseTheOrgUnitWhoseComplaintsAnd.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the Org Unit whose complaints, and everything beneath it, you want to read — or clear back to the whole Site.'**
+  String get complaintOrgUnitFilterChooseTheOrgUnitWhoseComplaintsAnd;
+
+  /// No description provided for @complaintRespondAnswerTheCustomer.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer the customer'**
+  String get complaintRespondAnswerTheCustomer;
+
+  /// No description provided for @complaintRespondClosing.
+  ///
+  /// In en, this message translates to:
+  /// **'Closing…'**
+  String get complaintRespondClosing;
+
+  /// No description provided for @complaintRespondCloseTheComplaint.
+  ///
+  /// In en, this message translates to:
+  /// **'Close the complaint'**
+  String get complaintRespondCloseTheComplaint;
+
+  /// No description provided for @complaintRespondWhatWasSaidBackToAboutThis.
+  ///
+  /// In en, this message translates to:
+  /// **'What was said back to {customerName} about {complaintNo}. This closes the complaint.'**
+  String complaintRespondWhatWasSaidBackToAboutThis(
+    Object customerName,
+    Object complaintNo,
+  );
+
+  /// No description provided for @complaintsTheComplaintRegisterCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The complaint register could not be read'**
+  String get complaintsTheComplaintRegisterCouldNotBeRead;
+
+  /// No description provided for @complaintsWhatCustomersHaveComplainedAboutAtThis.
+  ///
+  /// In en, this message translates to:
+  /// **'What customers have complained about at this Site, and whether the product they complained about is under control.'**
+  String get complaintsWhatCustomersHaveComplainedAboutAtThis;
+
+  /// No description provided for @complaintsRecordAComplaint.
+  ///
+  /// In en, this message translates to:
+  /// **'Record a complaint'**
+  String get complaintsRecordAComplaint;
+
+  /// No description provided for @complaintsThereAreMoreComplaintsThanThisList.
+  ///
+  /// In en, this message translates to:
+  /// **'There are more complaints than this list shows. Narrow it by Org Unit or by status to see the rest.'**
+  String get complaintsThereAreMoreComplaintsThanThisList;
+
+  /// No description provided for @complaintsTheRegisterHasComplaintsButNoneOf.
+  ///
+  /// In en, this message translates to:
+  /// **'The register has complaints, but none of them is in the area or state you picked.'**
+  String get complaintsTheRegisterHasComplaintsButNoneOf;
+
+  /// No description provided for @complaintsNoComplaints.
+  ///
+  /// In en, this message translates to:
+  /// **'No complaints'**
+  String get complaintsNoComplaints;
+
+  /// No description provided for @complaintsNoCustomerHasComplainedAboutAnythingFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'No customer has complained about anything from this Site.'**
+  String get complaintsNoCustomerHasComplainedAboutAnythingFrom;
+
+  /// No description provided for @complaintsComplaint.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaint'**
+  String get complaintsComplaint;
+
+  /// No description provided for @complaintsCustomerAndProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer and product'**
+  String get complaintsCustomerAndProduct;
+
+  /// No description provided for @complaintsResponseDue.
+  ///
+  /// In en, this message translates to:
+  /// **'Response due'**
+  String get complaintsResponseDue;
+
+  /// No description provided for @commonControl.
+  ///
+  /// In en, this message translates to:
+  /// **'Control'**
+  String get commonControl;
+
+  /// No description provided for @complaintsWarranty.
+  ///
+  /// In en, this message translates to:
+  /// **'Warranty'**
+  String get complaintsWarranty;
+
+  /// No description provided for @customerFormCorrectCustomer.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct Customer'**
+  String get customerFormCorrectCustomer;
+
+  /// No description provided for @commonAddCustomer.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Customer'**
+  String get commonAddCustomer;
+
+  /// No description provided for @customerFormACustomerSCodeCannotBeCorrected.
+  ///
+  /// In en, this message translates to:
+  /// **'A Customer\'s code cannot be corrected'**
+  String get customerFormACustomerSCodeCannotBeCorrected;
+
+  /// No description provided for @commonContactEmailOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact email (optional)'**
+  String get commonContactEmailOptional;
+
+  /// No description provided for @customersTheCustomerListCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The Customer list could not be read'**
+  String get customersTheCustomerListCouldNotBeRead;
+
+  /// No description provided for @customersWhoThePlantSCustomersAreSo.
+  ///
+  /// In en, this message translates to:
+  /// **'Who the plant\'s customers are, so a complaint has someone to belong to and a response has somewhere to go.'**
+  String get customersWhoThePlantSCustomersAreSo;
+
+  /// No description provided for @customersNoCustomersYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No Customers yet'**
+  String get customersNoCustomersYet;
+
+  /// No description provided for @commonNothingHasBeenDefinedInTheList.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing has been defined in the list.'**
+  String get commonNothingHasBeenDefinedInTheList;
+
+  /// No description provided for @customersFilterCustomers.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter Customers'**
+  String get customersFilterCustomers;
+
+  /// No description provided for @customersNoCustomersMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No Customers match'**
+  String get customersNoCustomersMatch;
+
+  /// No description provided for @commonNothingInTheListMatchesTryA.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing in the list matches \"{term}\". Try a different name or code, or clear the filter.'**
+  String commonNothingInTheListMatchesTryA(Object term);
+
+  /// No description provided for @defectCodeFormCorrectDefectCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct Defect code'**
+  String get defectCodeFormCorrectDefectCode;
+
+  /// No description provided for @commonAddDefectCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Defect code'**
+  String get commonAddDefectCode;
+
+  /// No description provided for @defectCodeFormADefectCodeCannotBeCorrected.
+  ///
+  /// In en, this message translates to:
+  /// **'A Defect code cannot be corrected'**
+  String get defectCodeFormADefectCodeCannotBeCorrected;
+
+  /// No description provided for @defectCodeFormDefaultSeverity.
+  ///
+  /// In en, this message translates to:
+  /// **'Default severity'**
+  String get defectCodeFormDefaultSeverity;
+
+  /// No description provided for @defectCodeFormWhatANonConformanceRecordedAgainstThis.
+  ///
+  /// In en, this message translates to:
+  /// **'What a Non-conformance recorded against this code starts at'**
+  String get defectCodeFormWhatANonConformanceRecordedAgainstThis;
+
+  /// No description provided for @defectCodeFormParent.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent'**
+  String get defectCodeFormParent;
+
+  /// No description provided for @defectCodeFormNoParentTopLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'No parent — top level'**
+  String get defectCodeFormNoParentTopLevel;
+
+  /// No description provided for @defectCodesTheDefectCodeCatalogueCouldNotBe.
+  ///
+  /// In en, this message translates to:
+  /// **'The Defect code catalogue could not be read'**
+  String get defectCodesTheDefectCodeCatalogueCouldNotBe;
+
+  /// No description provided for @defectCodesTheKindsOfThingFoundWrongOne.
+  ///
+  /// In en, this message translates to:
+  /// **'The kinds of thing found wrong — one list shared by every Site, and the severity each starts a Non-conformance at.'**
+  String get defectCodesTheKindsOfThingFoundWrongOne;
+
+  /// No description provided for @defectCodesNoDefectCodesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No Defect codes yet'**
+  String get defectCodesNoDefectCodesYet;
+
+  /// No description provided for @issueImagesRemoveThisPicture.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this picture?'**
+  String get issueImagesRemoveThisPicture;
+
+  /// No description provided for @issueImagesThePictureIsTakenOffTheRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'The picture is taken off the record. A slide needs one, so the issue may leave the show until another is added.'**
+  String get issueImagesThePictureIsTakenOffTheRecord;
+
+  /// No description provided for @issueImagesAddPicture.
+  ///
+  /// In en, this message translates to:
+  /// **'Add picture'**
+  String get issueImagesAddPicture;
+
+  /// No description provided for @issueImagesPictures.
+  ///
+  /// In en, this message translates to:
+  /// **'Pictures'**
+  String get issueImagesPictures;
+
+  /// No description provided for @issueImagesThePicturesCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The pictures could not be read'**
+  String get issueImagesThePicturesCouldNotBeRead;
+
+  /// No description provided for @issueImagesNoPictureYetASlideNeedsAt.
+  ///
+  /// In en, this message translates to:
+  /// **'No picture yet. A slide needs at least one: add the photo that shows the problem.'**
+  String get issueImagesNoPictureYetASlideNeedsAt;
+
+  /// No description provided for @commonThePictureCouldNotBeLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'The picture could not be loaded'**
+  String get commonThePictureCouldNotBeLoaded;
+
+  /// No description provided for @issueImagesAPictureOfTheIssue.
+  ///
+  /// In en, this message translates to:
+  /// **'A picture of the issue'**
+  String get issueImagesAPictureOfTheIssue;
+
+  /// No description provided for @issueImagesRemoveThisPicture2.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this picture'**
+  String get issueImagesRemoveThisPicture2;
+
+  /// No description provided for @issueImagesAddThisPicture.
+  ///
+  /// In en, this message translates to:
+  /// **'Add this picture'**
+  String get issueImagesAddThisPicture;
+
+  /// No description provided for @issueImagesTheCaptionIsWhatTheSlideSays.
+  ///
+  /// In en, this message translates to:
+  /// **'The caption is what the slide says under it. It is optional.'**
+  String get issueImagesTheCaptionIsWhatTheSlideSays;
+
+  /// No description provided for @issueImagesAddIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Add it'**
+  String get issueImagesAddIt;
+
+  /// No description provided for @issueImagesCaptionOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Caption (optional)'**
+  String get issueImagesCaptionOptional;
+
+  /// No description provided for @issueImagesBurrOnTheFlangeNearTheLocating.
+  ///
+  /// In en, this message translates to:
+  /// **'Burr on the flange, near the locating lug'**
+  String get issueImagesBurrOnTheFlangeNearTheLocating;
+
+  /// No description provided for @nonconformanceCancelCannotCancelIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot cancel it'**
+  String get nonconformanceCancelCannotCancelIt;
+
+  /// No description provided for @nonconformanceCancelCancellingANonConformanceNeedsQualityAuthority.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelling a Non-conformance needs Quality authority at its Org Unit.'**
+  String get nonconformanceCancelCancellingANonConformanceNeedsQualityAuthority;
+
+  /// No description provided for @nonconformanceCancelANonConformanceThatIsClosedOr.
+  ///
+  /// In en, this message translates to:
+  /// **'A Non-conformance that is closed or already cancelled cannot be cancelled.'**
+  String get nonconformanceCancelANonConformanceThatIsClosedOr;
+
+  /// No description provided for @nonconformanceCancelCancelThisNonConformance.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this Non-conformance'**
+  String get nonconformanceCancelCancelThisNonConformance;
+
+  /// No description provided for @nonconformanceCancelCancelIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel it'**
+  String get nonconformanceCancelCancelIt;
+
+  /// No description provided for @nonconformanceCancelWillBeCancelledRatherThanDealtWith.
+  ///
+  /// In en, this message translates to:
+  /// **'{issueNo} will be cancelled rather than dealt with. A cancelled Non-conformance accepts no further Dispositions or quantity changes.'**
+  String nonconformanceCancelWillBeCancelledRatherThanDealtWith(Object issueNo);
+
+  /// No description provided for @commonNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get commonNote;
+
+  /// No description provided for @nonconformanceCancelWhyItShouldNeverHaveBeenRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Why it should never have been recorded.'**
+  String get nonconformanceCancelWhyItShouldNeverHaveBeenRecorded;
+
+  /// No description provided for @nonconformanceConcessionCannotGrantIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot grant it'**
+  String get nonconformanceConcessionCannotGrantIt;
+
+  /// No description provided for @nonconformanceConcessionGrantingAConcessionNeedsQualityAuthorityAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Granting a Concession needs Quality authority at this Non-conformance\'s Org Unit.'**
+  String get nonconformanceConcessionGrantingAConcessionNeedsQualityAuthorityAt;
+
+  /// No description provided for @nonconformanceConcessionGrantIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Grant it'**
+  String get nonconformanceConcessionGrantIt;
+
+  /// No description provided for @nonconformanceConcessionAcceptingTheProductAsItIsNeeds.
+  ///
+  /// In en, this message translates to:
+  /// **'Accepting the product as it is needs Quality authority, and your name stays on {issueNo}.'**
+  String nonconformanceConcessionAcceptingTheProductAsItIsNeeds(Object issueNo);
+
+  /// No description provided for @nonconformanceConcessionQuantityAcceptedAsItIs.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity accepted as it is'**
+  String get nonconformanceConcessionQuantityAcceptedAsItIs;
+
+  /// No description provided for @nonconformanceConcessionAtMost.
+  ///
+  /// In en, this message translates to:
+  /// **'At most {value} {unit}.'**
+  String nonconformanceConcessionAtMost(Object value, Object unit);
+
+  /// No description provided for @nonconformanceConcessionReference.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference'**
+  String get nonconformanceConcessionReference;
+
+  /// No description provided for @nonconformanceConcessionTheDeviationOrApprovalNumberItIs.
+  ///
+  /// In en, this message translates to:
+  /// **'The deviation or approval number it is granted under.'**
+  String get nonconformanceConcessionTheDeviationOrApprovalNumberItIs;
+
+  /// No description provided for @nonconformanceConcessionWhyTheProductIsAcceptableAsIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Why the product is acceptable as it is.'**
+  String get nonconformanceConcessionWhyTheProductIsAcceptableAsIt;
+
+  /// No description provided for @nonconformanceDispositionHasStillUndecidedDealWithSomeOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{issueNo} has {value} {unit} still undecided. Deal with some of it here.'**
+  String nonconformanceDispositionHasStillUndecidedDealWithSomeOf(
+    Object issueNo,
+    Object value,
+    Object unit,
+  );
+
+  /// No description provided for @commonDisposition.
+  ///
+  /// In en, this message translates to:
+  /// **'Disposition'**
+  String get commonDisposition;
+
+  /// No description provided for @nonconformanceDispositionScrapReworkOrBackToTheSupplier.
+  ///
+  /// In en, this message translates to:
+  /// **'Scrap, rework, or back to the supplier.'**
+  String get nonconformanceDispositionScrapReworkOrBackToTheSupplier;
+
+  /// No description provided for @nonconformanceDispositionAtMost.
+  ///
+  /// In en, this message translates to:
+  /// **'At most {value} {unit}.'**
+  String nonconformanceDispositionAtMost(Object value, Object unit);
+
+  /// No description provided for @nonconformanceDispositionReworkMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Rework minutes'**
+  String get nonconformanceDispositionReworkMinutes;
+
+  /// No description provided for @nonconformanceDispositionHowLongTheReworkTookForCost.
+  ///
+  /// In en, this message translates to:
+  /// **'How long the rework took, for cost of poor quality.'**
+  String get nonconformanceDispositionHowLongTheReworkTookForCost;
+
+  /// No description provided for @nonconformanceDispositionWhatWasDoneWithIt.
+  ///
+  /// In en, this message translates to:
+  /// **'What was done with it.'**
+  String get nonconformanceDispositionWhatWasDoneWithIt;
+
+  /// No description provided for @nonconformanceLinkConcernBecomesOneOfTheOccurrencesThisConcern.
+  ///
+  /// In en, this message translates to:
+  /// **'{issueNo} becomes one of the occurrences this Concern answers. The Concern keeps the Non-conformance it was raised from.'**
+  String nonconformanceLinkConcernBecomesOneOfTheOccurrencesThisConcern(
+    Object issueNo,
+  );
+
+  /// No description provided for @nonconformanceLinkConcernThisSiteHasNoOpenConcernTo.
+  ///
+  /// In en, this message translates to:
+  /// **'This Site has no open Concern to link it to. Raise one instead.'**
+  String get nonconformanceLinkConcernThisSiteHasNoOpenConcernTo;
+
+  /// No description provided for @nonconformanceLinkConcernConcern.
+  ///
+  /// In en, this message translates to:
+  /// **'Concern'**
+  String get nonconformanceLinkConcernConcern;
+
+  /// No description provided for @nonconformanceLinkConcernByItsNumberOrItsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'By its number or its title.'**
+  String get nonconformanceLinkConcernByItsNumberOrItsTitle;
+
+  /// No description provided for @nonconformanceLowerSeverityCannotLowerIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot lower it'**
+  String get nonconformanceLowerSeverityCannotLowerIt;
+
+  /// No description provided for @nonconformanceLowerSeverityLoweringASeverityNeedsQualityAuthorityAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Lowering a severity needs Quality authority at this Non-conformance\'s Org Unit.'**
+  String
+  get nonconformanceLowerSeverityLoweringASeverityNeedsQualityAuthorityAt;
+
+  /// No description provided for @nonconformanceLowerSeverityLowerIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Lower it'**
+  String get nonconformanceLowerSeverityLowerIt;
+
+  /// No description provided for @nonconformanceLowerSeverityIsSeverityAndItsDefectCodeStarts.
+  ///
+  /// In en, this message translates to:
+  /// **'{issueNo} is {value} severity, and its Defect code starts at {value2}.'**
+  String nonconformanceLowerSeverityIsSeverityAndItsDefectCodeStarts(
+    Object issueNo,
+    Object value,
+    Object value2,
+  );
+
+  /// No description provided for @nonconformanceLowerSeverityThisNonConformanceIsAlreadyAtThe.
+  ///
+  /// In en, this message translates to:
+  /// **'This Non-conformance is already at the lightest severity.'**
+  String get nonconformanceLowerSeverityThisNonConformanceIsAlreadyAtThe;
+
+  /// No description provided for @nonconformanceLowerSeverityLowerTheSeverityTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Lower the severity to'**
+  String get nonconformanceLowerSeverityLowerTheSeverityTo;
+
+  /// No description provided for @nonconformanceLowerSeverityLoweringWhatTheDefectCodeSaysNeeds.
+  ///
+  /// In en, this message translates to:
+  /// **'Lowering what the Defect code says needs Quality authority.'**
+  String get nonconformanceLowerSeverityLoweringWhatTheDefectCodeSaysNeeds;
+
+  /// No description provided for @commonLeaveTheSeverityAlone.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave the severity alone'**
+  String get commonLeaveTheSeverityAlone;
+
+  /// No description provided for @nonconformanceLowerSeverityWhyItIsLessBadThanThe.
+  ///
+  /// In en, this message translates to:
+  /// **'Why it is less bad than the Defect code says.'**
+  String get nonconformanceLowerSeverityWhyItIsLessBadThanThe;
+
+  /// No description provided for @nonconformanceOrgUnitFilterChooseTheOrgUnitWhoseNonConformances.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the Org Unit whose Non-conformances and everything beneath it you want to read, or clear back to the whole Site.'**
+  String get nonconformanceOrgUnitFilterChooseTheOrgUnitWhoseNonConformances;
+
+  /// No description provided for @nonconformanceQuantityIncreaseTheAffectedQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Increase the affected quantity'**
+  String get nonconformanceQuantityIncreaseTheAffectedQuantity;
+
+  /// No description provided for @nonconformanceQuantityIncreaseIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Increase it'**
+  String get nonconformanceQuantityIncreaseIt;
+
+  /// No description provided for @nonconformanceQuantityCurrentlyCoversItCanOnlyGrow.
+  ///
+  /// In en, this message translates to:
+  /// **'{issueNo} currently covers {value} {unit}. It can only grow.'**
+  String nonconformanceQuantityCurrentlyCoversItCanOnlyGrow(
+    Object issueNo,
+    Object value,
+    Object unit,
+  );
+
+  /// No description provided for @nonconformanceQuantityNewAffectedQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'New affected quantity'**
+  String get nonconformanceQuantityNewAffectedQuantity;
+
+  /// No description provided for @nonconformanceQuantityMoreThanOrNothingAtAll.
+  ///
+  /// In en, this message translates to:
+  /// **'More than {value} {unit}, or nothing at all.'**
+  String nonconformanceQuantityMoreThanOrNothingAtAll(
+    Object value,
+    Object unit,
+  );
+
+  /// No description provided for @nonconformanceQuantityWhyItChangedSortingTheBinFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Why it changed — \"sorting the bin found eight more\".'**
+  String get nonconformanceQuantityWhyItChangedSortingTheBinFound;
+
+  /// No description provided for @nonconformanceRaiseConcernIsRecordedAtAndTheConcernIs.
+  ///
+  /// In en, this message translates to:
+  /// **'{issueNo} is recorded at {orgUnitName}, and the Concern is raised there — a problem is solved where it happened.'**
+  String nonconformanceRaiseConcernIsRecordedAtAndTheConcernIs(
+    Object issueNo,
+    Object orgUnitName,
+  );
+
+  /// No description provided for @nonconformanceRaiseConcernWhatIsTheProblemToSolve.
+  ///
+  /// In en, this message translates to:
+  /// **'What is the problem to solve?'**
+  String get nonconformanceRaiseConcernWhatIsTheProblemToSolve;
+
+  /// No description provided for @nonconformanceRaiseConcernTheConcernIsReadInTheAction.
+  ///
+  /// In en, this message translates to:
+  /// **'The Concern is read in the action log, so say the problem, not the product.'**
+  String get nonconformanceRaiseConcernTheConcernIsReadInTheAction;
+
+  /// No description provided for @commonAnythingKnownYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Anything known yet'**
+  String get commonAnythingKnownYet;
+
+  /// No description provided for @nonconformanceRaiseConcernOptionalTheNonConformanceItselfIsAlready.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional. The Non-conformance itself is already linked as evidence.'**
+  String get nonconformanceRaiseConcernOptionalTheNonConformanceItselfIsAlready;
+
+  /// No description provided for @common1IsWorst.
+  ///
+  /// In en, this message translates to:
+  /// **'1 is worst.'**
+  String get common1IsWorst;
+
+  /// No description provided for @nonconformanceReopenCannotReopenIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot reopen it'**
+  String get nonconformanceReopenCannotReopenIt;
+
+  /// No description provided for @nonconformanceReopenReopeningANonConformanceNeedsQualityAuthority.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopening a Non-conformance needs Quality authority at its Org Unit.'**
+  String get nonconformanceReopenReopeningANonConformanceNeedsQualityAuthority;
+
+  /// No description provided for @nonconformanceReopenOnlyAClosedNonConformanceCanBe.
+  ///
+  /// In en, this message translates to:
+  /// **'Only a closed Non-conformance can be reopened.'**
+  String get nonconformanceReopenOnlyAClosedNonConformanceCanBe;
+
+  /// No description provided for @nonconformanceReopenReopenThisNonConformance.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen this Non-conformance'**
+  String get nonconformanceReopenReopenThisNonConformance;
+
+  /// No description provided for @nonconformanceReopenIsClosedReopeningItPutsItBack.
+  ///
+  /// In en, this message translates to:
+  /// **'{issueNo} is closed. Reopening it puts it back to dispositioned, and its closing time goes with it.'**
+  String nonconformanceReopenIsClosedReopeningItPutsItBack(Object issueNo);
+
+  /// No description provided for @nonconformanceReopenWhyItIsBeingReopened.
+  ///
+  /// In en, this message translates to:
+  /// **'Why it is being reopened.'**
+  String get nonconformanceReopenWhyItIsBeingReopened;
+
+  /// No description provided for @nonconformanceUpdateIsSeverityAnd.
+  ///
+  /// In en, this message translates to:
+  /// **'{issueNo} is {value} severity and {value2}.'**
+  String nonconformanceUpdateIsSeverityAnd(
+    Object issueNo,
+    Object value,
+    Object value2,
+  );
+
+  /// No description provided for @nonconformanceUpdateThisNonConformanceIsAlreadyAtThe.
+  ///
+  /// In en, this message translates to:
+  /// **'This Non-conformance is already at the worst severity, so there is nothing to raise it to.'**
+  String get nonconformanceUpdateThisNonConformanceIsAlreadyAtThe;
+
+  /// No description provided for @nonconformanceUpdateRaiseTheSeverityTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Raise the severity to'**
+  String get nonconformanceUpdateRaiseTheSeverityTo;
+
+  /// No description provided for @nonconformanceUpdateSeverityCanBeRaisedHereLoweringIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Severity can be raised here; lowering it is a later decision.'**
+  String get nonconformanceUpdateSeverityCanBeRaisedHereLoweringIt;
+
+  /// No description provided for @nonconformanceUpdateRecordContainment.
+  ///
+  /// In en, this message translates to:
+  /// **'Record containment'**
+  String get nonconformanceUpdateRecordContainment;
+
+  /// No description provided for @nonconformancesNcHcm202600001.
+  ///
+  /// In en, this message translates to:
+  /// **'NC-HCM-2026-00001'**
+  String get nonconformancesNcHcm202600001;
+
+  /// No description provided for @productFormCorrectProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct Product'**
+  String get productFormCorrectProduct;
+
+  /// No description provided for @commonAddProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Product'**
+  String get commonAddProduct;
+
+  /// No description provided for @productFormAProductSCodeCannotBeCorrected.
+  ///
+  /// In en, this message translates to:
+  /// **'A Product\'s code cannot be corrected'**
+  String get productFormAProductSCodeCannotBeCorrected;
+
+  /// No description provided for @productFormAProductSUnitOfMeasureCannot.
+  ///
+  /// In en, this message translates to:
+  /// **'A Product\'s unit of measure cannot be corrected'**
+  String get productFormAProductSUnitOfMeasureCannot;
+
+  /// No description provided for @productFormTheUnitsOfMeasureCouldNotBe.
+  ///
+  /// In en, this message translates to:
+  /// **'The units of measure could not be read'**
+  String get productFormTheUnitsOfMeasureCouldNotBe;
+
+  /// No description provided for @productsTheProductCatalogueCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The Product catalogue could not be read'**
+  String get productsTheProductCatalogueCouldNotBeRead;
+
+  /// No description provided for @productsWhatThePlantMakesOneCatalogueShared.
+  ///
+  /// In en, this message translates to:
+  /// **'What the plant makes — one catalogue shared by every Site, and what each Product is measured in.'**
+  String get productsWhatThePlantMakesOneCatalogueShared;
+
+  /// No description provided for @productsNoProductsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No Products yet'**
+  String get productsNoProductsYet;
+
+  /// No description provided for @slideShowTheSlideShowCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The slide show could not be read'**
+  String get slideShowTheSlideShowCouldNotBeRead;
+
+  /// No description provided for @slideShowTheQualityIssuesChosenForThisSite.
+  ///
+  /// In en, this message translates to:
+  /// **'The Quality issues chosen for this Site, one picture at a time. Choose an issue from its register or its own Screen, and set the order here.'**
+  String get slideShowTheQualityIssuesChosenForThisSite;
+
+  /// No description provided for @slideShowPauseTheShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause the show'**
+  String get slideShowPauseTheShow;
+
+  /// No description provided for @slideShowPlayTheShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Play the show'**
+  String get slideShowPlayTheShow;
+
+  /// No description provided for @slideShowChooseTheOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the order'**
+  String get slideShowChooseTheOrder;
+
+  /// No description provided for @slideShowNothingIsOnTheWallYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is on the wall yet'**
+  String get slideShowNothingIsOnTheWallYet;
+
+  /// No description provided for @slideShowChooseACustomerComplaintOrANon.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a Customer complaint or a Non-conformance in its register, and add at least one picture to it. The chosen issues appear here.'**
+  String get slideShowChooseACustomerComplaintOrANon;
+
+  /// No description provided for @slideShowChosenNoneWithAPicture.
+  ///
+  /// In en, this message translates to:
+  /// **'{length} chosen, none with a picture'**
+  String slideShowChosenNoneWithAPicture(Object length);
+
+  /// No description provided for @slideShowASlideNeedsAPictureOpenAnd.
+  ///
+  /// In en, this message translates to:
+  /// **'A slide needs a picture. Open {value} and add one, and {value2} will appear here.'**
+  String slideShowASlideNeedsAPictureOpenAnd(Object value, Object value2);
+
+  /// No description provided for @slideShowAPictureOf.
+  ///
+  /// In en, this message translates to:
+  /// **'A picture of {value}'**
+  String slideShowAPictureOf(Object value);
+
+  /// No description provided for @slideShowPreviousSlide.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous slide'**
+  String get slideShowPreviousSlide;
+
+  /// No description provided for @slideShowNoSlides.
+  ///
+  /// In en, this message translates to:
+  /// **'No slides'**
+  String get slideShowNoSlides;
+
+  /// No description provided for @slideShowNextSlide.
+  ///
+  /// In en, this message translates to:
+  /// **'Next slide'**
+  String get slideShowNextSlide;
+
+  /// No description provided for @slideShowChosenWithoutAPicture.
+  ///
+  /// In en, this message translates to:
+  /// **'{length} chosen without a picture'**
+  String slideShowChosenWithoutAPicture(Object length);
+
+  /// No description provided for @slideShowTheOrderTheShowPlaysIn.
+  ///
+  /// In en, this message translates to:
+  /// **'The order the show plays in'**
+  String get slideShowTheOrderTheShowPlaysIn;
+
+  /// No description provided for @slideShowNothingIsChosenYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is chosen yet.'**
+  String get slideShowNothingIsChosenYet;
+
+  /// No description provided for @slideShowPicture.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} picture{value2}'**
+  String slideShowPicture(Object value, Object value2);
+
+  /// No description provided for @slideShowNoPictureYetItWillNotAppear.
+  ///
+  /// In en, this message translates to:
+  /// **'No picture yet — it will not appear until one is added'**
+  String get slideShowNoPictureYetItWillNotAppear;
+
+  /// No description provided for @slideShowMoveEarlier.
+  ///
+  /// In en, this message translates to:
+  /// **'Move earlier'**
+  String get slideShowMoveEarlier;
+
+  /// No description provided for @slideShowMoveLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Move later'**
+  String get slideShowMoveLater;
+
+  /// No description provided for @slideShowTakeOffTheWall.
+  ///
+  /// In en, this message translates to:
+  /// **'Take off the wall'**
+  String get slideShowTakeOffTheWall;
+
+  /// No description provided for @slideShowToggleOnTheSlideShow.
+  ///
+  /// In en, this message translates to:
+  /// **'On the slide show'**
+  String get slideShowToggleOnTheSlideShow;
+
+  /// No description provided for @slideShowToggleNotOnTheSlideShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Not on the slide show'**
+  String get slideShowToggleNotOnTheSlideShow;
+
+  /// No description provided for @slideShowToggleChosenIssuesPlayInTheQualitySlide.
+  ///
+  /// In en, this message translates to:
+  /// **'Chosen issues play in the Quality slide show, one picture at a time.'**
+  String get slideShowToggleChosenIssuesPlayInTheQualitySlide;
+
+  /// No description provided for @supplierFormCorrectSupplier.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct Supplier'**
+  String get supplierFormCorrectSupplier;
+
+  /// No description provided for @commonAddSupplier.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Supplier'**
+  String get commonAddSupplier;
+
+  /// No description provided for @supplierFormASupplierSCodeCannotBeCorrected.
+  ///
+  /// In en, this message translates to:
+  /// **'A Supplier\'s code cannot be corrected'**
+  String get supplierFormASupplierSCodeCannotBeCorrected;
+
+  /// No description provided for @supplierNcrDetailThatSupplierNcrCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'That supplier NCR could not be read'**
+  String get supplierNcrDetailThatSupplierNcrCouldNotBeRead;
+
+  /// No description provided for @supplierNcrDetailBackToSupplierNcrs.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Supplier NCRs'**
+  String get supplierNcrDetailBackToSupplierNcrs;
+
+  /// No description provided for @supplierNcrDetailNothingWasWrittenDownAboutIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing was written down about it.'**
+  String get supplierNcrDetailNothingWasWrittenDownAboutIt;
+
+  /// No description provided for @supplierNcrDetailTheMaterialThisIsAbout.
+  ///
+  /// In en, this message translates to:
+  /// **'The material this is about'**
+  String get supplierNcrDetailTheMaterialThisIsAbout;
+
+  /// No description provided for @supplierNcrDetailNothingControlsTheMaterialThisNcrIs.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing controls the material this NCR is about yet. Record a Non-conformance from this NCR, or link one that already exists for the same lot.'**
+  String get supplierNcrDetailNothingControlsTheMaterialThisNcrIs;
+
+  /// No description provided for @supplierNcrDetailIncoming.
+  ///
+  /// In en, this message translates to:
+  /// **'incoming'**
+  String get supplierNcrDetailIncoming;
+
+  /// No description provided for @supplierNcrDetailFoundAtGoodsInSoThisNcr.
+  ///
+  /// In en, this message translates to:
+  /// **'Found at goods-in, so this NCR is where it started.'**
+  String get supplierNcrDetailFoundAtGoodsInSoThisNcr;
+
+  /// No description provided for @supplierNcrDetailRecordedAtAndLinkedToThisNcr.
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded at {value}, and linked to this NCR.'**
+  String supplierNcrDetailRecordedAtAndLinkedToThisNcr(Object value);
+
+  /// No description provided for @supplierNcrDetailTheSupplierSDisposition.
+  ///
+  /// In en, this message translates to:
+  /// **'The Supplier\'s disposition'**
+  String get supplierNcrDetailTheSupplierSDisposition;
+
+  /// No description provided for @supplierNcrDetailNothingHasBeenRecoveredFromThisSupplier.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing has been recovered from this Supplier.'**
+  String get supplierNcrDetailNothingHasBeenRecoveredFromThisSupplier;
+
+  /// No description provided for @supplierNcrDetailRecovered.
+  ///
+  /// In en, this message translates to:
+  /// **'Recovered {costRecoveredLabel}.'**
+  String supplierNcrDetailRecovered(Object costRecoveredLabel);
+
+  /// No description provided for @supplierNcrDetailClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed {closedAt}'**
+  String supplierNcrDetailClosed(Object closedAt);
+
+  /// No description provided for @commonRecordTheDisposition.
+  ///
+  /// In en, this message translates to:
+  /// **'Record the disposition'**
+  String get commonRecordTheDisposition;
+
+  /// No description provided for @supplierNcrDetailCorrectTheDisposition.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct the disposition'**
+  String get supplierNcrDetailCorrectTheDisposition;
+
+  /// No description provided for @supplierNcrDetailCloseTheNcr.
+  ///
+  /// In en, this message translates to:
+  /// **'Close the NCR'**
+  String get supplierNcrDetailCloseTheNcr;
+
+  /// No description provided for @supplierNcrDispositionDecideTheMaterial.
+  ///
+  /// In en, this message translates to:
+  /// **'Decide the material'**
+  String get supplierNcrDispositionDecideTheMaterial;
+
+  /// No description provided for @supplierNcrDispositionWhatHappensToThatCameFromOn.
+  ///
+  /// In en, this message translates to:
+  /// **'What happens to {quantityLabel} that came from {supplierName} on {ncrNo}.'**
+  String supplierNcrDispositionWhatHappensToThatCameFromOn(
+    Object quantityLabel,
+    Object supplierName,
+    Object ncrNo,
+  );
+
+  /// No description provided for @supplierNcrDispositionWhatThePlantDecidedHappensToThe.
+  ///
+  /// In en, this message translates to:
+  /// **'What the plant decided happens to the received material.'**
+  String get supplierNcrDispositionWhatThePlantDecidedHappensToThe;
+
+  /// No description provided for @supplierNcrDispositionCostRecoveredOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost recovered (optional)'**
+  String get supplierNcrDispositionCostRecoveredOptional;
+
+  /// No description provided for @supplierNcrDispositionWhatWasClawedBackFromTheSupplier.
+  ///
+  /// In en, this message translates to:
+  /// **'What was clawed back from the Supplier. Leave it blank when nothing was claimed.'**
+  String get supplierNcrDispositionWhatWasClawedBackFromTheSupplier;
+
+  /// No description provided for @supplierNcrDispositionThreeLettersTheCurrencyTheCostRecovered.
+  ///
+  /// In en, this message translates to:
+  /// **'Three letters, the currency the cost recovered is in.'**
+  String get supplierNcrDispositionThreeLettersTheCurrencyTheCostRecovered;
+
+  /// No description provided for @commonRecordASupplierNcr.
+  ///
+  /// In en, this message translates to:
+  /// **'Record a supplier NCR'**
+  String get commonRecordASupplierNcr;
+
+  /// No description provided for @commonSupplier.
+  ///
+  /// In en, this message translates to:
+  /// **'Supplier'**
+  String get commonSupplier;
+
+  /// No description provided for @supplierNcrFormProductOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Product (optional)'**
+  String get supplierNcrFormProductOptional;
+
+  /// No description provided for @supplierNcrFormWhatTheLotIsWhenThatIs.
+  ///
+  /// In en, this message translates to:
+  /// **'What the lot is, when that is known. A Non-conformance recorded from this NCR needs one.'**
+  String get supplierNcrFormWhatTheLotIsWhenThatIs;
+
+  /// No description provided for @supplierNcrFormNotNamedYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not named yet'**
+  String get supplierNcrFormNotNamedYet;
+
+  /// No description provided for @supplierNcrFormWhatIsWrongWithItANon.
+  ///
+  /// In en, this message translates to:
+  /// **'What is wrong with it. A Non-conformance recorded from this NCR carries it.'**
+  String get supplierNcrFormWhatIsWrongWithItANon;
+
+  /// No description provided for @supplierNcrFormHowMuchCameInWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'How much came in wrong.'**
+  String get supplierNcrFormHowMuchCameInWrong;
+
+  /// No description provided for @supplierNcrFormWhatTheQuantityIsCountedInTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'What the quantity is counted in. Taken from the Product when one is named.'**
+  String get supplierNcrFormWhatTheQuantityIsCountedInTaken;
+
+  /// No description provided for @supplierNcrFormIncomingLotReferenceOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Incoming lot reference (optional)'**
+  String get supplierNcrFormIncomingLotReferenceOptional;
+
+  /// No description provided for @supplierNcrFormTheLotTheDeliveryNoteSays.
+  ///
+  /// In en, this message translates to:
+  /// **'The lot the delivery note says.'**
+  String get supplierNcrFormTheLotTheDeliveryNoteSays;
+
+  /// No description provided for @supplierNcrFormPurchaseReferenceOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase reference (optional)'**
+  String get supplierNcrFormPurchaseReferenceOptional;
+
+  /// No description provided for @supplierNcrFormTheOrderItArrivedAgainst.
+  ///
+  /// In en, this message translates to:
+  /// **'The order it arrived against.'**
+  String get supplierNcrFormTheOrderItArrivedAgainst;
+
+  /// No description provided for @supplierNcrFormAnswerDueOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer due (optional)'**
+  String get supplierNcrFormAnswerDueOptional;
+
+  /// No description provided for @supplierNcrFormTheDayTheSupplierWasGivenTo.
+  ///
+  /// In en, this message translates to:
+  /// **'The day the Supplier was given to answer.'**
+  String get supplierNcrFormTheDayTheSupplierWasGivenTo;
+
+  /// No description provided for @supplierNcrFormWhatIsWrongWithItOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'What is wrong with it (optional)'**
+  String get supplierNcrFormWhatIsWrongWithItOptional;
+
+  /// No description provided for @supplierNcrFormWhoWorksIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Who works it'**
+  String get supplierNcrFormWhoWorksIt;
+
+  /// No description provided for @supplierNcrFormChooseTheOrgUnitThatWillWork.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the Org Unit that will work this supplier NCR. This is what decides who may act on it.'**
+  String get supplierNcrFormChooseTheOrgUnitThatWillWork;
+
+  /// No description provided for @supplierNcrFormThisSupplierNcrWillBeFiledAt.
+  ///
+  /// In en, this message translates to:
+  /// **'This supplier NCR will be filed at {value}.'**
+  String supplierNcrFormThisSupplierNcrWillBeFiledAt(Object value);
+
+  /// No description provided for @supplierNcrLinkANonConformanceThatAlreadyExistsCan.
+  ///
+  /// In en, this message translates to:
+  /// **'A Non-conformance that already exists{value} can be linked to this supplier NCR, instead of recording a second one for the same problem.'**
+  String supplierNcrLinkANonConformanceThatAlreadyExistsCan(Object value);
+
+  /// No description provided for @supplierNcrLinkNoNonConformanceHasBeenRecordedFor.
+  ///
+  /// In en, this message translates to:
+  /// **'No Non-conformance has been recorded for this Product yet, so there is nothing to link. Record one from this supplier NCR instead.'**
+  String get supplierNcrLinkNoNonConformanceHasBeenRecordedFor;
+
+  /// No description provided for @supplierNcrNonconformanceControlTheMaterial.
+  ///
+  /// In en, this message translates to:
+  /// **'Control the material'**
+  String get supplierNcrNonconformanceControlTheMaterial;
+
+  /// No description provided for @supplierNcrNonconformanceANonConformanceIsRecordedAtFound.
+  ///
+  /// In en, this message translates to:
+  /// **'A Non-conformance is recorded at {orgUnitName}{value}, found at goods-in.'**
+  String supplierNcrNonconformanceANonConformanceIsRecordedAtFound(
+    Object orgUnitName,
+    Object value,
+  );
+
+  /// No description provided for @supplierNcrNonconformanceHowMuchMaterialIsInQuestionIn.
+  ///
+  /// In en, this message translates to:
+  /// **'How much material is in question, in the unit it came in.'**
+  String get supplierNcrNonconformanceHowMuchMaterialIsInQuestionIn;
+
+  /// No description provided for @supplierNcrNonconformanceTheSupplierNcrSOwnProductIs.
+  ///
+  /// In en, this message translates to:
+  /// **'The supplier NCR\'s own Product is carried onto the record.'**
+  String get supplierNcrNonconformanceTheSupplierNcrSOwnProductIs;
+
+  /// No description provided for @supplierNcrNonconformanceTheProductsCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The Products could not be read'**
+  String get supplierNcrNonconformanceTheProductsCouldNotBeRead;
+
+  /// No description provided for @supplierNcrNonconformanceThisSupplierNcrNamesNoneSoChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'This supplier NCR names none, so choose what the lot was for.'**
+  String get supplierNcrNonconformanceThisSupplierNcrNamesNoneSoChoose;
+
+  /// No description provided for @supplierNcrNonconformanceTheSupplierNcrSOwnDefectCode.
+  ///
+  /// In en, this message translates to:
+  /// **'The supplier NCR\'s own Defect code is carried onto the record.'**
+  String get supplierNcrNonconformanceTheSupplierNcrSOwnDefectCode;
+
+  /// No description provided for @supplierNcrNonconformanceThisSupplierNcrCarriesNoneSoChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'This supplier NCR carries none, so choose the one to record it against.'**
+  String get supplierNcrNonconformanceThisSupplierNcrCarriesNoneSoChoose;
+
+  /// No description provided for @supplierNcrOrgUnitFilterChooseTheOrgUnitWhoseSupplierNcrs.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the Org Unit whose supplier NCRs, and everything beneath it, you want to read — or clear back to the whole Site.'**
+  String get supplierNcrOrgUnitFilterChooseTheOrgUnitWhoseSupplierNcrs;
+
+  /// No description provided for @supplierNcrSupplierFilterFilterBySupplier.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by Supplier'**
+  String get supplierNcrSupplierFilterFilterBySupplier;
+
+  /// No description provided for @commonAllSuppliers.
+  ///
+  /// In en, this message translates to:
+  /// **'All Suppliers'**
+  String get commonAllSuppliers;
+
+  /// No description provided for @supplierNcrSupplierFilterChooseTheSupplierWhoseSupplierNcrsYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the Supplier whose supplier NCRs you want to read, or clear back to every Supplier.'**
+  String get supplierNcrSupplierFilterChooseTheSupplierWhoseSupplierNcrsYou;
+
+  /// No description provided for @supplierNcrsTheSupplierNcrRegisterCouldNotBe.
+  ///
+  /// In en, this message translates to:
+  /// **'The supplier NCR register could not be read'**
+  String get supplierNcrsTheSupplierNcrRegisterCouldNotBe;
+
+  /// No description provided for @supplierNcrsWhatArrivedWrongFromASupplierAt.
+  ///
+  /// In en, this message translates to:
+  /// **'What arrived wrong from a Supplier at this Site, and whether the material it came in with is under control.'**
+  String get supplierNcrsWhatArrivedWrongFromASupplierAt;
+
+  /// No description provided for @supplierNcrsThereAreMoreSupplierNcrsThanThis.
+  ///
+  /// In en, this message translates to:
+  /// **'There are more supplier NCRs than this list shows. Narrow it by Supplier or by status to see the rest.'**
+  String get supplierNcrsThereAreMoreSupplierNcrsThanThis;
+
+  /// No description provided for @supplierNcrsTheRegisterHasSupplierNcrsButNone.
+  ///
+  /// In en, this message translates to:
+  /// **'The register has supplier NCRs, but none of them is in the area, the Supplier or the state you picked.'**
+  String get supplierNcrsTheRegisterHasSupplierNcrsButNone;
+
+  /// No description provided for @supplierNcrsNoSupplierNcrs.
+  ///
+  /// In en, this message translates to:
+  /// **'No supplier NCRs'**
+  String get supplierNcrsNoSupplierNcrs;
+
+  /// No description provided for @supplierNcrsNothingHasComeInWrongFromA.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing has come in wrong from a Supplier at this Site.'**
+  String get supplierNcrsNothingHasComeInWrongFromA;
+
+  /// No description provided for @supplierNcrsNcr.
+  ///
+  /// In en, this message translates to:
+  /// **'NCR'**
+  String get supplierNcrsNcr;
+
+  /// No description provided for @supplierNcrsSupplierAndProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Supplier and product'**
+  String get supplierNcrsSupplierAndProduct;
+
+  /// No description provided for @supplierNcrsAnswerDue.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer due'**
+  String get supplierNcrsAnswerDue;
+
+  /// No description provided for @suppliersTheSupplierListCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The Supplier list could not be read'**
+  String get suppliersTheSupplierListCouldNotBeRead;
+
+  /// No description provided for @suppliersWhoThePlantBuysFromSoAn.
+  ///
+  /// In en, this message translates to:
+  /// **'Who the plant buys from, so an incoming lot that is wrong has someone to belong to and a claim has somewhere to go.'**
+  String get suppliersWhoThePlantBuysFromSoAn;
+
+  /// No description provided for @suppliersNoSuppliersYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No Suppliers yet'**
+  String get suppliersNoSuppliersYet;
+
+  /// No description provided for @suppliersFilterSuppliers.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter Suppliers'**
+  String get suppliersFilterSuppliers;
+
+  /// No description provided for @suppliersNoSuppliersMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No Suppliers match'**
+  String get suppliersNoSuppliersMatch;
+
+  /// No description provided for @bodyPartFormCorrectBodyPart.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct Body part'**
+  String get bodyPartFormCorrectBodyPart;
+
+  /// No description provided for @commonAddBodyPart.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Body part'**
+  String get commonAddBodyPart;
+
+  /// No description provided for @bodyPartFormABodyPartSCodeCannotBe.
+  ///
+  /// In en, this message translates to:
+  /// **'A Body part\'s code cannot be corrected'**
+  String get bodyPartFormABodyPartSCodeCannotBe;
+
+  /// No description provided for @bodyPartFormRegion.
+  ///
+  /// In en, this message translates to:
+  /// **'Region'**
+  String get bodyPartFormRegion;
+
+  /// No description provided for @bodyPartFormARetiredBodyPartIsNoLonger.
+  ///
+  /// In en, this message translates to:
+  /// **'A retired Body part is no longer offered while classifying, and stays on every incident that already names it.'**
+  String get bodyPartFormARetiredBodyPartIsNoLonger;
+
+  /// No description provided for @bodyPartsTheBodyPartCatalogueCouldNotBe.
+  ///
+  /// In en, this message translates to:
+  /// **'The Body part catalogue could not be read'**
+  String get bodyPartsTheBodyPartCatalogueCouldNotBe;
+
+  /// No description provided for @bodyPartsWhereOnTheBodyAnInjuryWas.
+  ///
+  /// In en, this message translates to:
+  /// **'Where on the body an injury was — one catalogue shared by every Site, filed under the region each part belongs to.'**
+  String get bodyPartsWhereOnTheBodyAnInjuryWas;
+
+  /// No description provided for @bodyPartsNoBodyPartsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No Body parts yet'**
+  String get bodyPartsNoBodyPartsYet;
+
+  /// No description provided for @commonClassifyTheInjury.
+  ///
+  /// In en, this message translates to:
+  /// **'Classify the injury'**
+  String get commonClassifyTheInjury;
+
+  /// No description provided for @incidentClassifyClassifyingTheInjuryNeedsSafetyAuthorityAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Classifying the injury needs Safety authority at this Safety incident\'s Org Unit.'**
+  String get incidentClassifyClassifyingTheInjuryNeedsSafetyAuthorityAt;
+
+  /// No description provided for @incidentClassifySitsOnTheNoInjuryRungNobody.
+  ///
+  /// In en, this message translates to:
+  /// **'{incidentNo} sits on the no-injury rung. Nobody was hurt, so there is nothing to classify — correct the severity first if that is wrong.'**
+  String incidentClassifySitsOnTheNoInjuryRungNobody(Object incidentNo);
+
+  /// No description provided for @incidentClassifyWhoWasHurtWhatTheInjuryWas.
+  ///
+  /// In en, this message translates to:
+  /// **'Who was hurt, what the injury was and where on the body. These three are read only by a holder of Safety authority for this area and by the injured person\'s own Account.'**
+  String get incidentClassifyWhoWasHurtWhatTheInjuryWas;
+
+  /// No description provided for @incidentClassifySaveTheClassification.
+  ///
+  /// In en, this message translates to:
+  /// **'Save the classification'**
+  String get incidentClassifySaveTheClassification;
+
+  /// No description provided for @commonInjuredEmployee.
+  ///
+  /// In en, this message translates to:
+  /// **'Injured Employee'**
+  String get commonInjuredEmployee;
+
+  /// No description provided for @incidentClassifyWhoWasHurt.
+  ///
+  /// In en, this message translates to:
+  /// **'Who was hurt.'**
+  String get incidentClassifyWhoWasHurt;
+
+  /// No description provided for @incidentClassifyClearTheInjuredEmployee.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear the injured Employee'**
+  String get incidentClassifyClearTheInjuredEmployee;
+
+  /// No description provided for @incidentClassifyTheInjuryTypeAndBodyPartCatalogues.
+  ///
+  /// In en, this message translates to:
+  /// **'The Injury type and Body part catalogues could not be read'**
+  String get incidentClassifyTheInjuryTypeAndBodyPartCatalogues;
+
+  /// No description provided for @commonInjuryType.
+  ///
+  /// In en, this message translates to:
+  /// **'Injury type'**
+  String get commonInjuryType;
+
+  /// No description provided for @incidentClassifyWhatTheInjuryWas.
+  ///
+  /// In en, this message translates to:
+  /// **'What the injury was.'**
+  String get incidentClassifyWhatTheInjuryWas;
+
+  /// No description provided for @incidentClassifyClearTheInjuryType.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear the Injury type'**
+  String get incidentClassifyClearTheInjuryType;
+
+  /// No description provided for @commonBodyPart.
+  ///
+  /// In en, this message translates to:
+  /// **'Body part'**
+  String get commonBodyPart;
+
+  /// No description provided for @incidentClassifyWhereOnTheBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Where on the body.'**
+  String get incidentClassifyWhereOnTheBody;
+
+  /// No description provided for @incidentClassifyClearTheBodyPart.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear the Body part'**
+  String get incidentClassifyClearTheBodyPart;
+
+  /// No description provided for @incidentCloseCloseThisSafetyIncident.
+  ///
+  /// In en, this message translates to:
+  /// **'Close this Safety incident'**
+  String get incidentCloseCloseThisSafetyIncident;
+
+  /// No description provided for @incidentCloseClosingASafetyIncidentNeedsSafetyAuthority.
+  ///
+  /// In en, this message translates to:
+  /// **'Closing a Safety incident needs Safety authority at its Org Unit.'**
+  String get incidentCloseClosingASafetyIncidentNeedsSafetyAuthority;
+
+  /// No description provided for @incidentCloseThisSafetyIncidentIsAlreadyClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'This Safety incident is already closed.'**
+  String get incidentCloseThisSafetyIncidentIsAlreadyClosed;
+
+  /// No description provided for @incidentCloseWillBeClosedAConcernRaisedFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'{incidentNo} will be closed. A Concern raised from it, if any, keeps working the cause on its own.'**
+  String incidentCloseWillBeClosedAConcernRaisedFrom(Object incidentNo);
+
+  /// No description provided for @incidentCloseLeaveItOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave it open'**
+  String get incidentCloseLeaveItOpen;
+
+  /// No description provided for @commonCloseIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Close it'**
+  String get commonCloseIt;
+
+  /// No description provided for @incidentCloseWhyThisIncidentIsBeingClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Why this incident is being closed.'**
+  String get incidentCloseWhyThisIncidentIsBeingClosed;
+
+  /// No description provided for @commonRecordTheDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Record the days'**
+  String get commonRecordTheDays;
+
+  /// No description provided for @incidentDaysRecordingTheDaysNeedsSafetyAuthorityAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording the days needs Safety authority at this Safety incident\'s Org Unit.'**
+  String get incidentDaysRecordingTheDaysNeedsSafetyAuthorityAt;
+
+  /// No description provided for @incidentDaysThisSafetyIncidentIsClosedItsDays.
+  ///
+  /// In en, this message translates to:
+  /// **'This Safety incident is closed; its days cannot be changed.'**
+  String get incidentDaysThisSafetyIncidentIsClosedItsDays;
+
+  /// No description provided for @incidentDaysWhatCostZeroIsARealAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'What {incidentNo} cost — zero is a real answer, and settles it.'**
+  String incidentDaysWhatCostZeroIsARealAnswer(Object incidentNo);
+
+  /// No description provided for @commonLostTimeDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Lost-time days'**
+  String get commonLostTimeDays;
+
+  /// No description provided for @commonRestrictedDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Restricted days'**
+  String get commonRestrictedDays;
+
+  /// No description provided for @incidentDetailNoSuchSafetyIncident.
+  ///
+  /// In en, this message translates to:
+  /// **'No such Safety incident'**
+  String get incidentDetailNoSuchSafetyIncident;
+
+  /// No description provided for @incidentDetailBackToSafetyIncidents.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Safety incidents'**
+  String get incidentDetailBackToSafetyIncidents;
+
+  /// No description provided for @incidentDetailTheSafetyIncidentCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The Safety incident could not be read'**
+  String get incidentDetailTheSafetyIncidentCouldNotBeRead;
+
+  /// No description provided for @incidentDetailReportedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Reported at'**
+  String get incidentDetailReportedAt;
+
+  /// No description provided for @incidentDetailImmediateAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Immediate action'**
+  String get incidentDetailImmediateAction;
+
+  /// No description provided for @commonInvestigationDueDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Investigation due date'**
+  String get commonInvestigationDueDate;
+
+  /// No description provided for @incidentDetailMoveTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to {value}'**
+  String incidentDetailMoveTo(Object value);
+
+  /// No description provided for @commonCorrectTheSeverity.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct the severity'**
+  String get commonCorrectTheSeverity;
+
+  /// No description provided for @incidentDetailClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed {closedAt}'**
+  String incidentDetailClosed(Object closedAt);
+
+  /// No description provided for @commonInvestigationDueAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Investigation due at'**
+  String get commonInvestigationDueAt;
+
+  /// No description provided for @incidentDetailTheInjury.
+  ///
+  /// In en, this message translates to:
+  /// **'The injury'**
+  String get incidentDetailTheInjury;
+
+  /// No description provided for @incidentDetailRestrictedVisibleToSafetyAuthorityForThis.
+  ///
+  /// In en, this message translates to:
+  /// **'Restricted — visible to Safety authority for this area.'**
+  String get incidentDetailRestrictedVisibleToSafetyAuthorityForThis;
+
+  /// No description provided for @incidentDetailNotClassifiedYetWhoWasHurtWhat.
+  ///
+  /// In en, this message translates to:
+  /// **'Not classified yet. Who was hurt, what the injury was and where on the body have not been recorded.'**
+  String get incidentDetailNotClassifiedYetWhoWasHurtWhat;
+
+  /// No description provided for @incidentDetailTheIncidentItselfIsRecordedHereThe.
+  ///
+  /// In en, this message translates to:
+  /// **'The incident itself is recorded here; the cause behind it is solved in the action log, as a Concern.'**
+  String get incidentDetailTheIncidentItselfIsRecordedHereThe;
+
+  /// No description provided for @incidentDetailEventHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Event history'**
+  String get incidentDetailEventHistory;
+
+  /// No description provided for @incidentDetailEverySeverityChangeStatusMoveDaysChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Every severity change, status move, days change, closure and classification change, kept with who and when.'**
+  String get incidentDetailEverySeverityChangeStatusMoveDaysChange;
+
+  /// No description provided for @incidentDetailNothingHasChangedAboutThisRecordSince.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing has changed about this record since it was recorded.'**
+  String get incidentDetailNothingHasChangedAboutThisRecordSince;
+
+  /// No description provided for @incidentDueDateThisSafetyIncidentIsClosedItsInvestigation.
+  ///
+  /// In en, this message translates to:
+  /// **'This Safety incident is closed; its investigation due date cannot be changed.'**
+  String get incidentDueDateThisSafetyIncidentIsClosedItsInvestigation;
+
+  /// No description provided for @incidentDueDateSInvestigationDeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'{incidentNo}\'s investigation deadline.'**
+  String incidentDueDateSInvestigationDeadline(Object incidentNo);
+
+  /// No description provided for @incidentFormWhatKindOfEventThisWas.
+  ///
+  /// In en, this message translates to:
+  /// **'What kind of event this was.'**
+  String get incidentFormWhatKindOfEventThisWas;
+
+  /// No description provided for @incidentFormTheWorstActualOutcomeToAPerson.
+  ///
+  /// In en, this message translates to:
+  /// **'The worst actual outcome to a person. Ladder order.'**
+  String get incidentFormTheWorstActualOutcomeToAPerson;
+
+  /// No description provided for @incidentFormWhatHappened.
+  ///
+  /// In en, this message translates to:
+  /// **'What happened.'**
+  String get incidentFormWhatHappened;
+
+  /// No description provided for @incidentFormWhatWasDoneAtOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'What was done at once.'**
+  String get incidentFormWhatWasDoneAtOnce;
+
+  /// No description provided for @incidentFormInjuredEmployeeOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Injured Employee (optional)'**
+  String get incidentFormInjuredEmployeeOptional;
+
+  /// No description provided for @incidentFormWhoWasHurtIfAnyoneReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Who was hurt, if anyone. Read only by Safety authority for this area and by the injured person\'s own Account.'**
+  String get incidentFormWhoWasHurtIfAnyoneReadOnly;
+
+  /// No description provided for @incidentFormWhenItHappenedThisIsWhatDecides.
+  ///
+  /// In en, this message translates to:
+  /// **'When it happened. This is what decides the production day and shift it is filed against.'**
+  String get incidentFormWhenItHappenedThisIsWhatDecides;
+
+  /// No description provided for @incidentFormReportedAtOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Reported at (optional)'**
+  String get incidentFormReportedAtOptional;
+
+  /// No description provided for @incidentFormWhenItWasReportedIfThatIs.
+  ///
+  /// In en, this message translates to:
+  /// **'When it was reported, if that is not now.'**
+  String get incidentFormWhenItWasReportedIfThatIs;
+
+  /// No description provided for @incidentFormWhereItHappened.
+  ///
+  /// In en, this message translates to:
+  /// **'Where it happened'**
+  String get incidentFormWhereItHappened;
+
+  /// No description provided for @incidentFormChooseTheOrgUnitTheIncidentOccurred.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the Org Unit the incident occurred at. This is what decides who may act on it.'**
+  String get incidentFormChooseTheOrgUnitTheIncidentOccurred;
+
+  /// No description provided for @incidentFormThisSafetyIncidentWillBeRecordedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'This Safety incident will be recorded at {value}.'**
+  String incidentFormThisSafetyIncidentWillBeRecordedAt(Object value);
+
+  /// No description provided for @incidentFormWhichMachineIfTheIncidentWasOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Which machine, if the incident was on one. It must sit at that Org Unit.'**
+  String get incidentFormWhichMachineIfTheIncidentWasOn;
+
+  /// No description provided for @incidentRaiseConcernIsRecordedAtAndTheConcernIs.
+  ///
+  /// In en, this message translates to:
+  /// **'{incidentNo} is recorded at {orgUnitName}, and the Concern is raised there — a problem is solved where it happened.'**
+  String incidentRaiseConcernIsRecordedAtAndTheConcernIs(
+    Object incidentNo,
+    Object orgUnitName,
+  );
+
+  /// No description provided for @incidentRaiseConcernWhatIsTheCauseToSolve.
+  ///
+  /// In en, this message translates to:
+  /// **'What is the cause to solve?'**
+  String get incidentRaiseConcernWhatIsTheCauseToSolve;
+
+  /// No description provided for @incidentRaiseConcernTheConcernIsReadInTheAction.
+  ///
+  /// In en, this message translates to:
+  /// **'The Concern is read in the action log, so say the problem, not the injury.'**
+  String get incidentRaiseConcernTheConcernIsReadInTheAction;
+
+  /// No description provided for @incidentRaiseConcernOptionalTheSafetyIncidentItselfIsAlready.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional. The Safety incident itself is already linked as evidence.'**
+  String get incidentRaiseConcernOptionalTheSafetyIncidentItselfIsAlready;
+
+  /// No description provided for @incidentSeverityCorrectingTheSeverityNeedsSafetyAuthorityAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Correcting the severity needs Safety authority at this Safety incident\'s Org Unit.'**
+  String get incidentSeverityCorrectingTheSeverityNeedsSafetyAuthorityAt;
+
+  /// No description provided for @incidentSeverityIsCorrectingItRestatesThePeriodIt.
+  ///
+  /// In en, this message translates to:
+  /// **'{incidentNo} is {value}. Correcting it restates the period it occurred in.'**
+  String incidentSeverityIsCorrectingItRestatesThePeriodIt(
+    Object incidentNo,
+    Object value,
+  );
+
+  /// No description provided for @incidentSeverityCorrectIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct it'**
+  String get incidentSeverityCorrectIt;
+
+  /// No description provided for @incidentSeverityCorrectTheSeverityTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct the severity to'**
+  String get incidentSeverityCorrectTheSeverityTo;
+
+  /// No description provided for @incidentSeverityWhyTheSeverityIsBeingCorrected.
+  ///
+  /// In en, this message translates to:
+  /// **'Why the severity is being corrected.'**
+  String get incidentSeverityWhyTheSeverityIsBeingCorrected;
+
+  /// No description provided for @incidentStatusMoveTheStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Move the status'**
+  String get incidentStatusMoveTheStatus;
+
+  /// No description provided for @incidentStatusThisSafetyIncidentIsClosedItsStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'This Safety incident is closed; its status cannot be moved.'**
+  String get incidentStatusThisSafetyIncidentIsClosedItsStatus;
+
+  /// No description provided for @incidentStatusThisSafetyIncidentIsAlreadyOnlyClosing.
+  ///
+  /// In en, this message translates to:
+  /// **'This Safety incident is already {value}; only closing moves it further.'**
+  String incidentStatusThisSafetyIncidentIsAlreadyOnlyClosing(Object value);
+
+  /// No description provided for @incidentStatusMovesFromTo.
+  ///
+  /// In en, this message translates to:
+  /// **'{incidentNo} moves from {statusLabel} to {value}.'**
+  String incidentStatusMovesFromTo(
+    Object incidentNo,
+    Object statusLabel,
+    Object value,
+  );
+
+  /// No description provided for @incidentStatusMoveTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to {value}'**
+  String incidentStatusMoveTo(Object value);
+
+  /// No description provided for @incidents1SafetyIncident.
+  ///
+  /// In en, this message translates to:
+  /// **'1 Safety incident'**
+  String get incidents1SafetyIncident;
+
+  /// No description provided for @incidentsSafetyIncidents.
+  ///
+  /// In en, this message translates to:
+  /// **'{length} Safety incidents'**
+  String incidentsSafetyIncidents(Object length);
+
+  /// No description provided for @incidentsSiHcm202600001.
+  ///
+  /// In en, this message translates to:
+  /// **'SI-HCM-2026-00001'**
+  String get incidentsSiHcm202600001;
+
+  /// No description provided for @injuryTypeFormCorrectInjuryType.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct Injury type'**
+  String get injuryTypeFormCorrectInjuryType;
+
+  /// No description provided for @commonAddInjuryType.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Injury type'**
+  String get commonAddInjuryType;
+
+  /// No description provided for @injuryTypeFormAnInjuryTypeSCodeCannotBe.
+  ///
+  /// In en, this message translates to:
+  /// **'An Injury type\'s code cannot be corrected'**
+  String get injuryTypeFormAnInjuryTypeSCodeCannotBe;
+
+  /// No description provided for @injuryTypeFormARetiredInjuryTypeIsNoLonger.
+  ///
+  /// In en, this message translates to:
+  /// **'A retired Injury type is no longer offered while classifying, and stays on every incident that already names it.'**
+  String get injuryTypeFormARetiredInjuryTypeIsNoLonger;
+
+  /// No description provided for @injuryTypesTheInjuryTypeCatalogueCouldNotBe.
+  ///
+  /// In en, this message translates to:
+  /// **'The Injury type catalogue could not be read'**
+  String get injuryTypesTheInjuryTypeCatalogueCouldNotBe;
+
+  /// No description provided for @injuryTypesWhatAnInjuryWasOneCatalogueShared.
+  ///
+  /// In en, this message translates to:
+  /// **'What an injury was — one catalogue shared by every Site, and what a Safety incident is classified against.'**
+  String get injuryTypesWhatAnInjuryWasOneCatalogueShared;
+
+  /// No description provided for @injuryTypesNoInjuryTypesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No Injury types yet'**
+  String get injuryTypesNoInjuryTypesYet;
+
+  /// No description provided for @observationDetailNoSuchSafetyObservation.
+  ///
+  /// In en, this message translates to:
+  /// **'No such Safety observation'**
+  String get observationDetailNoSuchSafetyObservation;
+
+  /// No description provided for @observationDetailBackToSafetyObservations.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Safety observations'**
+  String get observationDetailBackToSafetyObservations;
+
+  /// No description provided for @observationDetailTheSafetyObservationCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The Safety observation could not be read'**
+  String get observationDetailTheSafetyObservationCouldNotBeRead;
+
+  /// No description provided for @observationDetailActionTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Action taken'**
+  String get observationDetailActionTaken;
+
+  /// No description provided for @observationDetailRecordedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded by'**
+  String get observationDetailRecordedBy;
+
+  /// No description provided for @observationDetailObservedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Observed at'**
+  String get observationDetailObservedAt;
+
+  /// No description provided for @observationDetailClosingTheLoop.
+  ///
+  /// In en, this message translates to:
+  /// **'Closing the loop'**
+  String get observationDetailClosingTheLoop;
+
+  /// No description provided for @observationDetailTheObservationItselfIsRecordedHereWhat.
+  ///
+  /// In en, this message translates to:
+  /// **'The observation itself is recorded here; what somebody does about it is owned in the action log, as an Action.'**
+  String get observationDetailTheObservationItselfIsRecordedHereWhat;
+
+  /// No description provided for @observationDetailNothingIsBeingDoneAboutThisYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is being done about this yet.'**
+  String get observationDetailNothingIsBeingDoneAboutThisYet;
+
+  /// No description provided for @commonRaiseAnAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Raise an Action'**
+  String get commonRaiseAnAction;
+
+  /// No description provided for @observationFormASafeActAnUnsafeActOr.
+  ///
+  /// In en, this message translates to:
+  /// **'A safe act, an unsafe act, or an unsafe condition.'**
+  String get observationFormASafeActAnUnsafeActOr;
+
+  /// No description provided for @observationFormTheWorstCredibleOutcomeNotWhatActually.
+  ///
+  /// In en, this message translates to:
+  /// **'The worst credible outcome, not what actually happened.'**
+  String get observationFormTheWorstCredibleOutcomeNotWhatActually;
+
+  /// No description provided for @observationFormWhatWasSeen.
+  ///
+  /// In en, this message translates to:
+  /// **'What was seen.'**
+  String get observationFormWhatWasSeen;
+
+  /// No description provided for @observationFormWhatWasDoneOnTheSpot.
+  ///
+  /// In en, this message translates to:
+  /// **'What was done on the spot.'**
+  String get observationFormWhatWasDoneOnTheSpot;
+
+  /// No description provided for @observationFormRareAndTheSingleStrongestSignalThat.
+  ///
+  /// In en, this message translates to:
+  /// **'Rare, and the single strongest signal that the safety culture is real.'**
+  String get observationFormRareAndTheSingleStrongestSignalThat;
+
+  /// No description provided for @observationFormObservedAtOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Observed at (optional)'**
+  String get observationFormObservedAtOptional;
+
+  /// No description provided for @observationFormWhenItWasSeenIfNotNow.
+  ///
+  /// In en, this message translates to:
+  /// **'When it was seen, if not now. This is what decides the production day and shift it is filed against.'**
+  String get observationFormWhenItWasSeenIfNotNow;
+
+  /// No description provided for @observationFormWhereItWasSeen.
+  ///
+  /// In en, this message translates to:
+  /// **'Where it was seen'**
+  String get observationFormWhereItWasSeen;
+
+  /// No description provided for @observationFormChooseTheOrgUnitTheObservationWas.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the Org Unit the observation was made at. This is what decides who may act on it.'**
+  String get observationFormChooseTheOrgUnitTheObservationWas;
+
+  /// No description provided for @observationFormThisSafetyObservationWillBeRecordedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'This Safety observation will be recorded at {value}.'**
+  String observationFormThisSafetyObservationWillBeRecordedAt(Object value);
+
+  /// No description provided for @observationRaiseActionThisObservationIsRecordedAtAndThe.
+  ///
+  /// In en, this message translates to:
+  /// **'This observation is recorded at {orgUnitName}, and the Action is raised there — a problem is owned where it was seen.'**
+  String observationRaiseActionThisObservationIsRecordedAtAndThe(
+    Object orgUnitName,
+  );
+
+  /// No description provided for @observationRaiseActionChooseWhatThisIs.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose what this is.'**
+  String get observationRaiseActionChooseWhatThisIs;
+
+  /// No description provided for @observationRaiseActionChooseAKind.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a kind'**
+  String get observationRaiseActionChooseAKind;
+
+  /// No description provided for @observationRaiseActionWhatNeedsDoing.
+  ///
+  /// In en, this message translates to:
+  /// **'What needs doing?'**
+  String get observationRaiseActionWhatNeedsDoing;
+
+  /// No description provided for @observationRaiseActionTheActionIsReadInTheAction.
+  ///
+  /// In en, this message translates to:
+  /// **'The Action is read in the action log, so say the work, not the observation.'**
+  String get observationRaiseActionTheActionIsReadInTheAction;
+
+  /// No description provided for @observationRaiseActionOptionalTheSafetyObservationItselfIsAlready.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional. The Safety observation itself is already linked as evidence.'**
+  String get observationRaiseActionOptionalTheSafetyObservationItselfIsAlready;
+
+  /// No description provided for @observations1SafetyObservation.
+  ///
+  /// In en, this message translates to:
+  /// **'1 Safety observation'**
+  String get observations1SafetyObservation;
+
+  /// No description provided for @observationsSafetyObservations.
+  ///
+  /// In en, this message translates to:
+  /// **'{length} Safety observations'**
+  String observationsSafetyObservations(Object length);
+
+  /// No description provided for @safetyIncidentRecordable.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} · recordable'**
+  String safetyIncidentRecordable(Object value);
+
+  /// No description provided for @safetyObservationOrgUnitFilterChooseTheOrgUnitWhoseSafetyObservations.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the Org Unit whose Safety observations and everything beneath it you want to read, or clear back to the whole Site.'**
+  String
+  get safetyObservationOrgUnitFilterChooseTheOrgUnitWhoseSafetyObservations;
+
+  /// No description provided for @safetyOrgUnitFilterChooseTheOrgUnitWhoseSafetyIncidents.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the Org Unit whose Safety incidents and everything beneath it you want to read, or clear back to the whole Site.'**
+  String get safetyOrgUnitFilterChooseTheOrgUnitWhoseSafetyIncidents;
 }
 
 class _AppLocalizationsDelegate

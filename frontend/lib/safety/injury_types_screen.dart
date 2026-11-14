@@ -36,6 +36,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_list_card.dart';
@@ -74,6 +75,7 @@ class InjuryTypesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<InjuryTypesBloc>().state;
 
     return Scaffold(
@@ -81,7 +83,7 @@ class InjuryTypesScreen extends StatelessWidget {
         InjuryTypesLoading() => const SkeletonList(maxWidth: InjuryTypesScreen.maxWidth),
         InjuryTypesUnavailable(message: final message) => PlatformFailureState(
             key: InjuryTypesScreen.failedKey,
-            title: 'The Injury type catalogue could not be read',
+            title: l10n.injuryTypesTheInjuryTypeCatalogueCouldNotBe,
             message: message,
             retryKey: InjuryTypesScreen.retryKey,
             onRetry: () => context.read<InjuryTypesBloc>().add(const InjuryTypesStarted()),
@@ -100,6 +102,7 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: InjuryTypesScreen.maxWidth,
@@ -107,17 +110,16 @@ class _Loaded extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
             AppPageHeader(
-              title: 'Injury types',
+              title: l10n.navInjuryTypes,
               description:
-                  'What an injury was — one catalogue shared by every Site, '
-                  'and what a Safety incident is classified against.',
+                  l10n.injuryTypesWhatAnInjuryWasOneCatalogueShared,
               actions: [
                 if (isAdmin)
                   FilledButton.icon(
                     key: InjuryTypesScreen.addKey,
                     onPressed: state.isMutating ? null : () => InjuryTypeFormDialog.open(context),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add Injury type'),
+                    label: Text(l10n.commonAddInjuryType),
                   ),
               ],
             ),
@@ -125,10 +127,10 @@ class _Loaded extends StatelessWidget {
             if (state.injuryTypes.isEmpty)
               PlatformEmptyState.noneExist(
                 key: InjuryTypesScreen.emptyKey,
-                title: 'No Injury types yet',
-                message: 'Nothing has been defined in the catalogue.',
+                title: l10n.injuryTypesNoInjuryTypesYet,
+                message: l10n.commonNothingHasBeenDefinedInTheCatalogue,
                 icon: Icons.healing_outlined,
-                actionLabel: isAdmin ? 'Add Injury type' : null,
+                actionLabel: isAdmin ? l10n.commonAddInjuryType : null,
                 actionKey: InjuryTypesScreen.emptyAddKey,
                 onAction: isAdmin ? () => InjuryTypeFormDialog.open(context) : null,
               )
@@ -163,6 +165,7 @@ class _InjuryTypeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return ConstrainedBox(
       key: InjuryTypesScreen.rowKey(injuryType.id),
@@ -186,7 +189,7 @@ class _InjuryTypeRow extends StatelessWidget {
                     const SizedBox(width: Spacing.sm),
                     StatusChip(
                       key: InjuryTypesScreen.inactiveChipKey(injuryType.id),
-                      label: 'Inactive',
+                      label: l10n.jobPlansInactive,
                       tone: StatusTone.neutral,
                     ),
                   ],
@@ -202,7 +205,7 @@ class _InjuryTypeRow extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                 ),
-                child: const Text('Correct'),
+                child: Text(l10n.commonCorrect),
               ),
           ],
         ),

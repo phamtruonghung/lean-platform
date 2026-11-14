@@ -11,6 +11,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'complaint_detail_bloc.dart';
@@ -71,24 +72,25 @@ class _ComplaintRespondDialogState extends State<ComplaintRespondDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocListener<ComplaintDetailBloc, ComplaintDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Answer the customer',
+        title: l10n.complaintRespondAnswerTheCustomer,
         size: AppDialogSize.picker,
         actions: [
           // `DialogPage` is not barrier-dismissible, so a dialog that refuses
           // its own request still needs a way out of its own.
           AppDialogAction(
             id: 'complaint-respond-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'complaint-respond-submit',
-            label: _awaiting ? 'Closing…' : 'Close the complaint',
+            label: _awaiting ? l10n.complaintRespondClosing : l10n.complaintRespondCloseTheComplaint,
             onPressed: _note.text.trim().isEmpty || _awaiting ? null : _submit,
           ),
         ],
@@ -97,8 +99,7 @@ class _ComplaintRespondDialogState extends State<ComplaintRespondDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'What was said back to ${widget.complaint.customerName} about '
-              '${widget.complaint.complaintNo}. This closes the complaint.',
+              l10n.complaintRespondWhatWasSaidBackToAboutThis(widget.complaint.customerName, widget.complaint.complaintNo),
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
@@ -110,8 +111,8 @@ class _ComplaintRespondDialogState extends State<ComplaintRespondDialog> {
               minLines: 3,
               maxLines: 6,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'The response',
+              decoration: InputDecoration(
+                labelText: l10n.commonTheResponse,
                 border: OutlineInputBorder(),
               ),
             ),

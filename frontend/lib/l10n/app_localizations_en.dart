@@ -4699,4 +4699,1483 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get signaturePadSignatureDrawingArea => 'Signature drawing area';
+
+  @override
+  String get complaintDetailThatComplaintCouldNotBeRead =>
+      'That complaint could not be read';
+
+  @override
+  String get complaintDetailBackToCustomerComplaints =>
+      'Back to Customer complaints';
+
+  @override
+  String get commonPastDue => 'Past due';
+
+  @override
+  String get commonWarrantyClaim => 'Warranty claim';
+
+  @override
+  String get complaintDetailTheProductThisIsAbout =>
+      'The product this is about';
+
+  @override
+  String get complaintDetailNothingControlsTheProductThisCustomerComplained =>
+      'Nothing controls the product this customer complained about yet. Record a Non-conformance from this complaint, or link one that already exists for the same Product.';
+
+  @override
+  String get commonLinkOneThatExists => 'Link one that exists';
+
+  @override
+  String get commonOpenRecord => 'Open record';
+
+  @override
+  String get complaintDetailCustomer => 'customer';
+
+  @override
+  String get complaintDetailFoundByTheCustomerSoThisComplaint =>
+      'Found by the customer, so this complaint is where it started.';
+
+  @override
+  String complaintDetailRecordedAtAndLinkedToThisComplaint(Object value) {
+    return 'Recorded at $value, and linked to this complaint.';
+  }
+
+  @override
+  String get commonOpenTheNonConformance => 'Open the Non-conformance';
+
+  @override
+  String get commonTheResponse => 'The response';
+
+  @override
+  String complaintDetailClosed(Object closedAt) {
+    return 'Closed $closedAt';
+  }
+
+  @override
+  String get complaintDetailNothingHasBeenSaidBackToThis =>
+      'Nothing has been said back to this customer yet.';
+
+  @override
+  String get complaintDetailCloseWithTheResponse => 'Close with the response';
+
+  @override
+  String get complaintFormRecordACustomerComplaint =>
+      'Record a customer complaint';
+
+  @override
+  String get complaintFormCustomer => 'Customer';
+
+  @override
+  String get commonDefectCodeOptional => 'Defect code (optional)';
+
+  @override
+  String get complaintFormWhatTheCustomerSaysIsWrongA =>
+      'What the customer says is wrong. A Non-conformance recorded from this complaint carries it.';
+
+  @override
+  String get commonNotKnownYet => 'Not known yet';
+
+  @override
+  String get complaintFormQuantityOptional => 'Quantity (optional)';
+
+  @override
+  String get complaintFormInTheProductSOwnUnitOf =>
+      'In the Product\'s own unit of measure.';
+
+  @override
+  String get complaintFormResponseDueOptional => 'Response due (optional)';
+
+  @override
+  String get complaintFormTheDayTheCustomerWasPromisedAn =>
+      'The day the customer was promised an answer.';
+
+  @override
+  String get complaintFormWhatTheCustomerSaid => 'What the customer said';
+
+  @override
+  String get complaintFormWhoAnswersIt => 'Who answers it';
+
+  @override
+  String get complaintFormChooseTheOrgUnitThatWillAnswer =>
+      'Choose the Org Unit that will answer this complaint. This is what decides who may act on it.';
+
+  @override
+  String complaintFormThisComplaintWillBeFiledAt(Object value) {
+    return 'This complaint will be filed at $value.';
+  }
+
+  @override
+  String get commonLinkANonConformance => 'Link a Non-conformance';
+
+  @override
+  String get commonLinking => 'Linking…';
+
+  @override
+  String get commonLinkIt => 'Link it';
+
+  @override
+  String complaintLinkANonConformanceThatAlreadyExistsFor(Object productName) {
+    return 'A Non-conformance that already exists for $productName can be linked to this complaint, instead of recording a second one for the same problem.';
+  }
+
+  @override
+  String get commonTheNonConformancesCouldNotBeRead =>
+      'The Non-conformances could not be read';
+
+  @override
+  String get complaintLinkNoNonConformanceHasBeenRecordedFor =>
+      'No Non-conformance has been recorded for this Product yet, so there is nothing to link. Record one from this complaint instead.';
+
+  @override
+  String get commonTheNonConformanceThatControlsIt =>
+      'The Non-conformance that controls it';
+
+  @override
+  String get complaintNonconformanceControlTheProduct => 'Control the product';
+
+  @override
+  String complaintNonconformanceANonConformanceIsRecordedAtFor(
+    Object orgUnitName,
+    Object productName,
+  ) {
+    return 'A Non-conformance is recorded at $orgUnitName for $productName, found by the customer.';
+  }
+
+  @override
+  String get complaintNonconformanceHowMuchProductIsInQuestionIn =>
+      'How much product is in question, in the Product\'s own unit.';
+
+  @override
+  String get complaintNonconformanceTheComplaintSOwnDefectCodeIs =>
+      'The complaint\'s own Defect code is carried onto the record.';
+
+  @override
+  String get commonTheDefectCodesCouldNotBeRead =>
+      'The Defect codes could not be read';
+
+  @override
+  String get complaintNonconformanceThisComplaintCarriesNoneSoChooseThe =>
+      'This complaint carries none, so choose the one to record it against.';
+
+  @override
+  String get commonWhatWasDoneAtOnceRecordingIt =>
+      'What was done at once. Recording it makes the record contained.';
+
+  @override
+  String get commonNarrowTheRegister => 'Narrow the register';
+
+  @override
+  String get complaintOrgUnitFilterChooseTheOrgUnitWhoseComplaintsAnd =>
+      'Choose the Org Unit whose complaints, and everything beneath it, you want to read — or clear back to the whole Site.';
+
+  @override
+  String get complaintRespondAnswerTheCustomer => 'Answer the customer';
+
+  @override
+  String get complaintRespondClosing => 'Closing…';
+
+  @override
+  String get complaintRespondCloseTheComplaint => 'Close the complaint';
+
+  @override
+  String complaintRespondWhatWasSaidBackToAboutThis(
+    Object customerName,
+    Object complaintNo,
+  ) {
+    return 'What was said back to $customerName about $complaintNo. This closes the complaint.';
+  }
+
+  @override
+  String get complaintsTheComplaintRegisterCouldNotBeRead =>
+      'The complaint register could not be read';
+
+  @override
+  String get complaintsWhatCustomersHaveComplainedAboutAtThis =>
+      'What customers have complained about at this Site, and whether the product they complained about is under control.';
+
+  @override
+  String get complaintsRecordAComplaint => 'Record a complaint';
+
+  @override
+  String get complaintsThereAreMoreComplaintsThanThisList =>
+      'There are more complaints than this list shows. Narrow it by Org Unit or by status to see the rest.';
+
+  @override
+  String get complaintsTheRegisterHasComplaintsButNoneOf =>
+      'The register has complaints, but none of them is in the area or state you picked.';
+
+  @override
+  String get complaintsNoComplaints => 'No complaints';
+
+  @override
+  String get complaintsNoCustomerHasComplainedAboutAnythingFrom =>
+      'No customer has complained about anything from this Site.';
+
+  @override
+  String get complaintsComplaint => 'Complaint';
+
+  @override
+  String get complaintsCustomerAndProduct => 'Customer and product';
+
+  @override
+  String get complaintsResponseDue => 'Response due';
+
+  @override
+  String get commonControl => 'Control';
+
+  @override
+  String get complaintsWarranty => 'Warranty';
+
+  @override
+  String get customerFormCorrectCustomer => 'Correct Customer';
+
+  @override
+  String get commonAddCustomer => 'Add Customer';
+
+  @override
+  String get customerFormACustomerSCodeCannotBeCorrected =>
+      'A Customer\'s code cannot be corrected';
+
+  @override
+  String get commonContactEmailOptional => 'Contact email (optional)';
+
+  @override
+  String get customersTheCustomerListCouldNotBeRead =>
+      'The Customer list could not be read';
+
+  @override
+  String get customersWhoThePlantSCustomersAreSo =>
+      'Who the plant\'s customers are, so a complaint has someone to belong to and a response has somewhere to go.';
+
+  @override
+  String get customersNoCustomersYet => 'No Customers yet';
+
+  @override
+  String get commonNothingHasBeenDefinedInTheList =>
+      'Nothing has been defined in the list.';
+
+  @override
+  String get customersFilterCustomers => 'Filter Customers';
+
+  @override
+  String get customersNoCustomersMatch => 'No Customers match';
+
+  @override
+  String commonNothingInTheListMatchesTryA(Object term) {
+    return 'Nothing in the list matches \"$term\". Try a different name or code, or clear the filter.';
+  }
+
+  @override
+  String get defectCodeFormCorrectDefectCode => 'Correct Defect code';
+
+  @override
+  String get commonAddDefectCode => 'Add Defect code';
+
+  @override
+  String get defectCodeFormADefectCodeCannotBeCorrected =>
+      'A Defect code cannot be corrected';
+
+  @override
+  String get defectCodeFormDefaultSeverity => 'Default severity';
+
+  @override
+  String get defectCodeFormWhatANonConformanceRecordedAgainstThis =>
+      'What a Non-conformance recorded against this code starts at';
+
+  @override
+  String get defectCodeFormParent => 'Parent';
+
+  @override
+  String get defectCodeFormNoParentTopLevel => 'No parent — top level';
+
+  @override
+  String get defectCodesTheDefectCodeCatalogueCouldNotBe =>
+      'The Defect code catalogue could not be read';
+
+  @override
+  String get defectCodesTheKindsOfThingFoundWrongOne =>
+      'The kinds of thing found wrong — one list shared by every Site, and the severity each starts a Non-conformance at.';
+
+  @override
+  String get defectCodesNoDefectCodesYet => 'No Defect codes yet';
+
+  @override
+  String get issueImagesRemoveThisPicture => 'Remove this picture?';
+
+  @override
+  String get issueImagesThePictureIsTakenOffTheRecord =>
+      'The picture is taken off the record. A slide needs one, so the issue may leave the show until another is added.';
+
+  @override
+  String get issueImagesAddPicture => 'Add picture';
+
+  @override
+  String get issueImagesPictures => 'Pictures';
+
+  @override
+  String get issueImagesThePicturesCouldNotBeRead =>
+      'The pictures could not be read';
+
+  @override
+  String get issueImagesNoPictureYetASlideNeedsAt =>
+      'No picture yet. A slide needs at least one: add the photo that shows the problem.';
+
+  @override
+  String get commonThePictureCouldNotBeLoaded =>
+      'The picture could not be loaded';
+
+  @override
+  String get issueImagesAPictureOfTheIssue => 'A picture of the issue';
+
+  @override
+  String get issueImagesRemoveThisPicture2 => 'Remove this picture';
+
+  @override
+  String get issueImagesAddThisPicture => 'Add this picture';
+
+  @override
+  String get issueImagesTheCaptionIsWhatTheSlideSays =>
+      'The caption is what the slide says under it. It is optional.';
+
+  @override
+  String get issueImagesAddIt => 'Add it';
+
+  @override
+  String get issueImagesCaptionOptional => 'Caption (optional)';
+
+  @override
+  String get issueImagesBurrOnTheFlangeNearTheLocating =>
+      'Burr on the flange, near the locating lug';
+
+  @override
+  String get nonconformanceCancelCannotCancelIt => 'Cannot cancel it';
+
+  @override
+  String
+  get nonconformanceCancelCancellingANonConformanceNeedsQualityAuthority =>
+      'Cancelling a Non-conformance needs Quality authority at its Org Unit.';
+
+  @override
+  String get nonconformanceCancelANonConformanceThatIsClosedOr =>
+      'A Non-conformance that is closed or already cancelled cannot be cancelled.';
+
+  @override
+  String get nonconformanceCancelCancelThisNonConformance =>
+      'Cancel this Non-conformance';
+
+  @override
+  String get nonconformanceCancelCancelIt => 'Cancel it';
+
+  @override
+  String nonconformanceCancelWillBeCancelledRatherThanDealtWith(
+    Object issueNo,
+  ) {
+    return '$issueNo will be cancelled rather than dealt with. A cancelled Non-conformance accepts no further Dispositions or quantity changes.';
+  }
+
+  @override
+  String get commonNote => 'Note';
+
+  @override
+  String get nonconformanceCancelWhyItShouldNeverHaveBeenRecorded =>
+      'Why it should never have been recorded.';
+
+  @override
+  String get nonconformanceConcessionCannotGrantIt => 'Cannot grant it';
+
+  @override
+  String
+  get nonconformanceConcessionGrantingAConcessionNeedsQualityAuthorityAt =>
+      'Granting a Concession needs Quality authority at this Non-conformance\'s Org Unit.';
+
+  @override
+  String get nonconformanceConcessionGrantIt => 'Grant it';
+
+  @override
+  String nonconformanceConcessionAcceptingTheProductAsItIsNeeds(
+    Object issueNo,
+  ) {
+    return 'Accepting the product as it is needs Quality authority, and your name stays on $issueNo.';
+  }
+
+  @override
+  String get nonconformanceConcessionQuantityAcceptedAsItIs =>
+      'Quantity accepted as it is';
+
+  @override
+  String nonconformanceConcessionAtMost(Object value, Object unit) {
+    return 'At most $value $unit.';
+  }
+
+  @override
+  String get nonconformanceConcessionReference => 'Reference';
+
+  @override
+  String get nonconformanceConcessionTheDeviationOrApprovalNumberItIs =>
+      'The deviation or approval number it is granted under.';
+
+  @override
+  String get nonconformanceConcessionWhyTheProductIsAcceptableAsIt =>
+      'Why the product is acceptable as it is.';
+
+  @override
+  String nonconformanceDispositionHasStillUndecidedDealWithSomeOf(
+    Object issueNo,
+    Object value,
+    Object unit,
+  ) {
+    return '$issueNo has $value $unit still undecided. Deal with some of it here.';
+  }
+
+  @override
+  String get commonDisposition => 'Disposition';
+
+  @override
+  String get nonconformanceDispositionScrapReworkOrBackToTheSupplier =>
+      'Scrap, rework, or back to the supplier.';
+
+  @override
+  String nonconformanceDispositionAtMost(Object value, Object unit) {
+    return 'At most $value $unit.';
+  }
+
+  @override
+  String get nonconformanceDispositionReworkMinutes => 'Rework minutes';
+
+  @override
+  String get nonconformanceDispositionHowLongTheReworkTookForCost =>
+      'How long the rework took, for cost of poor quality.';
+
+  @override
+  String get nonconformanceDispositionWhatWasDoneWithIt =>
+      'What was done with it.';
+
+  @override
+  String nonconformanceLinkConcernBecomesOneOfTheOccurrencesThisConcern(
+    Object issueNo,
+  ) {
+    return '$issueNo becomes one of the occurrences this Concern answers. The Concern keeps the Non-conformance it was raised from.';
+  }
+
+  @override
+  String get nonconformanceLinkConcernThisSiteHasNoOpenConcernTo =>
+      'This Site has no open Concern to link it to. Raise one instead.';
+
+  @override
+  String get nonconformanceLinkConcernConcern => 'Concern';
+
+  @override
+  String get nonconformanceLinkConcernByItsNumberOrItsTitle =>
+      'By its number or its title.';
+
+  @override
+  String get nonconformanceLowerSeverityCannotLowerIt => 'Cannot lower it';
+
+  @override
+  String
+  get nonconformanceLowerSeverityLoweringASeverityNeedsQualityAuthorityAt =>
+      'Lowering a severity needs Quality authority at this Non-conformance\'s Org Unit.';
+
+  @override
+  String get nonconformanceLowerSeverityLowerIt => 'Lower it';
+
+  @override
+  String nonconformanceLowerSeverityIsSeverityAndItsDefectCodeStarts(
+    Object issueNo,
+    Object value,
+    Object value2,
+  ) {
+    return '$issueNo is $value severity, and its Defect code starts at $value2.';
+  }
+
+  @override
+  String get nonconformanceLowerSeverityThisNonConformanceIsAlreadyAtThe =>
+      'This Non-conformance is already at the lightest severity.';
+
+  @override
+  String get nonconformanceLowerSeverityLowerTheSeverityTo =>
+      'Lower the severity to';
+
+  @override
+  String get nonconformanceLowerSeverityLoweringWhatTheDefectCodeSaysNeeds =>
+      'Lowering what the Defect code says needs Quality authority.';
+
+  @override
+  String get commonLeaveTheSeverityAlone => 'Leave the severity alone';
+
+  @override
+  String get nonconformanceLowerSeverityWhyItIsLessBadThanThe =>
+      'Why it is less bad than the Defect code says.';
+
+  @override
+  String get nonconformanceOrgUnitFilterChooseTheOrgUnitWhoseNonConformances =>
+      'Choose the Org Unit whose Non-conformances and everything beneath it you want to read, or clear back to the whole Site.';
+
+  @override
+  String get nonconformanceQuantityIncreaseTheAffectedQuantity =>
+      'Increase the affected quantity';
+
+  @override
+  String get nonconformanceQuantityIncreaseIt => 'Increase it';
+
+  @override
+  String nonconformanceQuantityCurrentlyCoversItCanOnlyGrow(
+    Object issueNo,
+    Object value,
+    Object unit,
+  ) {
+    return '$issueNo currently covers $value $unit. It can only grow.';
+  }
+
+  @override
+  String get nonconformanceQuantityNewAffectedQuantity =>
+      'New affected quantity';
+
+  @override
+  String nonconformanceQuantityMoreThanOrNothingAtAll(
+    Object value,
+    Object unit,
+  ) {
+    return 'More than $value $unit, or nothing at all.';
+  }
+
+  @override
+  String get nonconformanceQuantityWhyItChangedSortingTheBinFound =>
+      'Why it changed — \"sorting the bin found eight more\".';
+
+  @override
+  String nonconformanceRaiseConcernIsRecordedAtAndTheConcernIs(
+    Object issueNo,
+    Object orgUnitName,
+  ) {
+    return '$issueNo is recorded at $orgUnitName, and the Concern is raised there — a problem is solved where it happened.';
+  }
+
+  @override
+  String get nonconformanceRaiseConcernWhatIsTheProblemToSolve =>
+      'What is the problem to solve?';
+
+  @override
+  String get nonconformanceRaiseConcernTheConcernIsReadInTheAction =>
+      'The Concern is read in the action log, so say the problem, not the product.';
+
+  @override
+  String get commonAnythingKnownYet => 'Anything known yet';
+
+  @override
+  String
+  get nonconformanceRaiseConcernOptionalTheNonConformanceItselfIsAlready =>
+      'Optional. The Non-conformance itself is already linked as evidence.';
+
+  @override
+  String get common1IsWorst => '1 is worst.';
+
+  @override
+  String get nonconformanceReopenCannotReopenIt => 'Cannot reopen it';
+
+  @override
+  String
+  get nonconformanceReopenReopeningANonConformanceNeedsQualityAuthority =>
+      'Reopening a Non-conformance needs Quality authority at its Org Unit.';
+
+  @override
+  String get nonconformanceReopenOnlyAClosedNonConformanceCanBe =>
+      'Only a closed Non-conformance can be reopened.';
+
+  @override
+  String get nonconformanceReopenReopenThisNonConformance =>
+      'Reopen this Non-conformance';
+
+  @override
+  String nonconformanceReopenIsClosedReopeningItPutsItBack(Object issueNo) {
+    return '$issueNo is closed. Reopening it puts it back to dispositioned, and its closing time goes with it.';
+  }
+
+  @override
+  String get nonconformanceReopenWhyItIsBeingReopened =>
+      'Why it is being reopened.';
+
+  @override
+  String nonconformanceUpdateIsSeverityAnd(
+    Object issueNo,
+    Object value,
+    Object value2,
+  ) {
+    return '$issueNo is $value severity and $value2.';
+  }
+
+  @override
+  String get nonconformanceUpdateThisNonConformanceIsAlreadyAtThe =>
+      'This Non-conformance is already at the worst severity, so there is nothing to raise it to.';
+
+  @override
+  String get nonconformanceUpdateRaiseTheSeverityTo => 'Raise the severity to';
+
+  @override
+  String get nonconformanceUpdateSeverityCanBeRaisedHereLoweringIt =>
+      'Severity can be raised here; lowering it is a later decision.';
+
+  @override
+  String get nonconformanceUpdateRecordContainment => 'Record containment';
+
+  @override
+  String get nonconformancesNcHcm202600001 => 'NC-HCM-2026-00001';
+
+  @override
+  String get productFormCorrectProduct => 'Correct Product';
+
+  @override
+  String get commonAddProduct => 'Add Product';
+
+  @override
+  String get productFormAProductSCodeCannotBeCorrected =>
+      'A Product\'s code cannot be corrected';
+
+  @override
+  String get productFormAProductSUnitOfMeasureCannot =>
+      'A Product\'s unit of measure cannot be corrected';
+
+  @override
+  String get productFormTheUnitsOfMeasureCouldNotBe =>
+      'The units of measure could not be read';
+
+  @override
+  String get productsTheProductCatalogueCouldNotBeRead =>
+      'The Product catalogue could not be read';
+
+  @override
+  String get productsWhatThePlantMakesOneCatalogueShared =>
+      'What the plant makes — one catalogue shared by every Site, and what each Product is measured in.';
+
+  @override
+  String get productsNoProductsYet => 'No Products yet';
+
+  @override
+  String get slideShowTheSlideShowCouldNotBeRead =>
+      'The slide show could not be read';
+
+  @override
+  String get slideShowTheQualityIssuesChosenForThisSite =>
+      'The Quality issues chosen for this Site, one picture at a time. Choose an issue from its register or its own Screen, and set the order here.';
+
+  @override
+  String get slideShowPauseTheShow => 'Pause the show';
+
+  @override
+  String get slideShowPlayTheShow => 'Play the show';
+
+  @override
+  String get slideShowChooseTheOrder => 'Choose the order';
+
+  @override
+  String get slideShowNothingIsOnTheWallYet => 'Nothing is on the wall yet';
+
+  @override
+  String get slideShowChooseACustomerComplaintOrANon =>
+      'Choose a Customer complaint or a Non-conformance in its register, and add at least one picture to it. The chosen issues appear here.';
+
+  @override
+  String slideShowChosenNoneWithAPicture(Object length) {
+    return '$length chosen, none with a picture';
+  }
+
+  @override
+  String slideShowASlideNeedsAPictureOpenAnd(Object value, Object value2) {
+    return 'A slide needs a picture. Open $value and add one, and $value2 will appear here.';
+  }
+
+  @override
+  String slideShowAPictureOf(Object value) {
+    return 'A picture of $value';
+  }
+
+  @override
+  String get slideShowPreviousSlide => 'Previous slide';
+
+  @override
+  String get slideShowNoSlides => 'No slides';
+
+  @override
+  String get slideShowNextSlide => 'Next slide';
+
+  @override
+  String slideShowChosenWithoutAPicture(Object length) {
+    return '$length chosen without a picture';
+  }
+
+  @override
+  String get slideShowTheOrderTheShowPlaysIn => 'The order the show plays in';
+
+  @override
+  String get slideShowNothingIsChosenYet => 'Nothing is chosen yet.';
+
+  @override
+  String slideShowPicture(Object value, Object value2) {
+    return '$value picture$value2';
+  }
+
+  @override
+  String get slideShowNoPictureYetItWillNotAppear =>
+      'No picture yet — it will not appear until one is added';
+
+  @override
+  String get slideShowMoveEarlier => 'Move earlier';
+
+  @override
+  String get slideShowMoveLater => 'Move later';
+
+  @override
+  String get slideShowTakeOffTheWall => 'Take off the wall';
+
+  @override
+  String get slideShowToggleOnTheSlideShow => 'On the slide show';
+
+  @override
+  String get slideShowToggleNotOnTheSlideShow => 'Not on the slide show';
+
+  @override
+  String get slideShowToggleChosenIssuesPlayInTheQualitySlide =>
+      'Chosen issues play in the Quality slide show, one picture at a time.';
+
+  @override
+  String get supplierFormCorrectSupplier => 'Correct Supplier';
+
+  @override
+  String get commonAddSupplier => 'Add Supplier';
+
+  @override
+  String get supplierFormASupplierSCodeCannotBeCorrected =>
+      'A Supplier\'s code cannot be corrected';
+
+  @override
+  String get supplierNcrDetailThatSupplierNcrCouldNotBeRead =>
+      'That supplier NCR could not be read';
+
+  @override
+  String get supplierNcrDetailBackToSupplierNcrs => 'Back to Supplier NCRs';
+
+  @override
+  String get supplierNcrDetailNothingWasWrittenDownAboutIt =>
+      'Nothing was written down about it.';
+
+  @override
+  String get supplierNcrDetailTheMaterialThisIsAbout =>
+      'The material this is about';
+
+  @override
+  String get supplierNcrDetailNothingControlsTheMaterialThisNcrIs =>
+      'Nothing controls the material this NCR is about yet. Record a Non-conformance from this NCR, or link one that already exists for the same lot.';
+
+  @override
+  String get supplierNcrDetailIncoming => 'incoming';
+
+  @override
+  String get supplierNcrDetailFoundAtGoodsInSoThisNcr =>
+      'Found at goods-in, so this NCR is where it started.';
+
+  @override
+  String supplierNcrDetailRecordedAtAndLinkedToThisNcr(Object value) {
+    return 'Recorded at $value, and linked to this NCR.';
+  }
+
+  @override
+  String get supplierNcrDetailTheSupplierSDisposition =>
+      'The Supplier\'s disposition';
+
+  @override
+  String get supplierNcrDetailNothingHasBeenRecoveredFromThisSupplier =>
+      'Nothing has been recovered from this Supplier.';
+
+  @override
+  String supplierNcrDetailRecovered(Object costRecoveredLabel) {
+    return 'Recovered $costRecoveredLabel.';
+  }
+
+  @override
+  String supplierNcrDetailClosed(Object closedAt) {
+    return 'Closed $closedAt';
+  }
+
+  @override
+  String get commonRecordTheDisposition => 'Record the disposition';
+
+  @override
+  String get supplierNcrDetailCorrectTheDisposition =>
+      'Correct the disposition';
+
+  @override
+  String get supplierNcrDetailCloseTheNcr => 'Close the NCR';
+
+  @override
+  String get supplierNcrDispositionDecideTheMaterial => 'Decide the material';
+
+  @override
+  String supplierNcrDispositionWhatHappensToThatCameFromOn(
+    Object quantityLabel,
+    Object supplierName,
+    Object ncrNo,
+  ) {
+    return 'What happens to $quantityLabel that came from $supplierName on $ncrNo.';
+  }
+
+  @override
+  String get supplierNcrDispositionWhatThePlantDecidedHappensToThe =>
+      'What the plant decided happens to the received material.';
+
+  @override
+  String get supplierNcrDispositionCostRecoveredOptional =>
+      'Cost recovered (optional)';
+
+  @override
+  String get supplierNcrDispositionWhatWasClawedBackFromTheSupplier =>
+      'What was clawed back from the Supplier. Leave it blank when nothing was claimed.';
+
+  @override
+  String get supplierNcrDispositionThreeLettersTheCurrencyTheCostRecovered =>
+      'Three letters, the currency the cost recovered is in.';
+
+  @override
+  String get commonRecordASupplierNcr => 'Record a supplier NCR';
+
+  @override
+  String get commonSupplier => 'Supplier';
+
+  @override
+  String get supplierNcrFormProductOptional => 'Product (optional)';
+
+  @override
+  String get supplierNcrFormWhatTheLotIsWhenThatIs =>
+      'What the lot is, when that is known. A Non-conformance recorded from this NCR needs one.';
+
+  @override
+  String get supplierNcrFormNotNamedYet => 'Not named yet';
+
+  @override
+  String get supplierNcrFormWhatIsWrongWithItANon =>
+      'What is wrong with it. A Non-conformance recorded from this NCR carries it.';
+
+  @override
+  String get supplierNcrFormHowMuchCameInWrong => 'How much came in wrong.';
+
+  @override
+  String get supplierNcrFormWhatTheQuantityIsCountedInTaken =>
+      'What the quantity is counted in. Taken from the Product when one is named.';
+
+  @override
+  String get supplierNcrFormIncomingLotReferenceOptional =>
+      'Incoming lot reference (optional)';
+
+  @override
+  String get supplierNcrFormTheLotTheDeliveryNoteSays =>
+      'The lot the delivery note says.';
+
+  @override
+  String get supplierNcrFormPurchaseReferenceOptional =>
+      'Purchase reference (optional)';
+
+  @override
+  String get supplierNcrFormTheOrderItArrivedAgainst =>
+      'The order it arrived against.';
+
+  @override
+  String get supplierNcrFormAnswerDueOptional => 'Answer due (optional)';
+
+  @override
+  String get supplierNcrFormTheDayTheSupplierWasGivenTo =>
+      'The day the Supplier was given to answer.';
+
+  @override
+  String get supplierNcrFormWhatIsWrongWithItOptional =>
+      'What is wrong with it (optional)';
+
+  @override
+  String get supplierNcrFormWhoWorksIt => 'Who works it';
+
+  @override
+  String get supplierNcrFormChooseTheOrgUnitThatWillWork =>
+      'Choose the Org Unit that will work this supplier NCR. This is what decides who may act on it.';
+
+  @override
+  String supplierNcrFormThisSupplierNcrWillBeFiledAt(Object value) {
+    return 'This supplier NCR will be filed at $value.';
+  }
+
+  @override
+  String supplierNcrLinkANonConformanceThatAlreadyExistsCan(Object value) {
+    return 'A Non-conformance that already exists$value can be linked to this supplier NCR, instead of recording a second one for the same problem.';
+  }
+
+  @override
+  String get supplierNcrLinkNoNonConformanceHasBeenRecordedFor =>
+      'No Non-conformance has been recorded for this Product yet, so there is nothing to link. Record one from this supplier NCR instead.';
+
+  @override
+  String get supplierNcrNonconformanceControlTheMaterial =>
+      'Control the material';
+
+  @override
+  String supplierNcrNonconformanceANonConformanceIsRecordedAtFound(
+    Object orgUnitName,
+    Object value,
+  ) {
+    return 'A Non-conformance is recorded at $orgUnitName$value, found at goods-in.';
+  }
+
+  @override
+  String get supplierNcrNonconformanceHowMuchMaterialIsInQuestionIn =>
+      'How much material is in question, in the unit it came in.';
+
+  @override
+  String get supplierNcrNonconformanceTheSupplierNcrSOwnProductIs =>
+      'The supplier NCR\'s own Product is carried onto the record.';
+
+  @override
+  String get supplierNcrNonconformanceTheProductsCouldNotBeRead =>
+      'The Products could not be read';
+
+  @override
+  String get supplierNcrNonconformanceThisSupplierNcrNamesNoneSoChoose =>
+      'This supplier NCR names none, so choose what the lot was for.';
+
+  @override
+  String get supplierNcrNonconformanceTheSupplierNcrSOwnDefectCode =>
+      'The supplier NCR\'s own Defect code is carried onto the record.';
+
+  @override
+  String get supplierNcrNonconformanceThisSupplierNcrCarriesNoneSoChoose =>
+      'This supplier NCR carries none, so choose the one to record it against.';
+
+  @override
+  String get supplierNcrOrgUnitFilterChooseTheOrgUnitWhoseSupplierNcrs =>
+      'Choose the Org Unit whose supplier NCRs, and everything beneath it, you want to read — or clear back to the whole Site.';
+
+  @override
+  String get supplierNcrSupplierFilterFilterBySupplier => 'Filter by Supplier';
+
+  @override
+  String get commonAllSuppliers => 'All Suppliers';
+
+  @override
+  String get supplierNcrSupplierFilterChooseTheSupplierWhoseSupplierNcrsYou =>
+      'Choose the Supplier whose supplier NCRs you want to read, or clear back to every Supplier.';
+
+  @override
+  String get supplierNcrsTheSupplierNcrRegisterCouldNotBe =>
+      'The supplier NCR register could not be read';
+
+  @override
+  String get supplierNcrsWhatArrivedWrongFromASupplierAt =>
+      'What arrived wrong from a Supplier at this Site, and whether the material it came in with is under control.';
+
+  @override
+  String get supplierNcrsThereAreMoreSupplierNcrsThanThis =>
+      'There are more supplier NCRs than this list shows. Narrow it by Supplier or by status to see the rest.';
+
+  @override
+  String get supplierNcrsTheRegisterHasSupplierNcrsButNone =>
+      'The register has supplier NCRs, but none of them is in the area, the Supplier or the state you picked.';
+
+  @override
+  String get supplierNcrsNoSupplierNcrs => 'No supplier NCRs';
+
+  @override
+  String get supplierNcrsNothingHasComeInWrongFromA =>
+      'Nothing has come in wrong from a Supplier at this Site.';
+
+  @override
+  String get supplierNcrsNcr => 'NCR';
+
+  @override
+  String get supplierNcrsSupplierAndProduct => 'Supplier and product';
+
+  @override
+  String get supplierNcrsAnswerDue => 'Answer due';
+
+  @override
+  String get suppliersTheSupplierListCouldNotBeRead =>
+      'The Supplier list could not be read';
+
+  @override
+  String get suppliersWhoThePlantBuysFromSoAn =>
+      'Who the plant buys from, so an incoming lot that is wrong has someone to belong to and a claim has somewhere to go.';
+
+  @override
+  String get suppliersNoSuppliersYet => 'No Suppliers yet';
+
+  @override
+  String get suppliersFilterSuppliers => 'Filter Suppliers';
+
+  @override
+  String get suppliersNoSuppliersMatch => 'No Suppliers match';
+
+  @override
+  String get bodyPartFormCorrectBodyPart => 'Correct Body part';
+
+  @override
+  String get commonAddBodyPart => 'Add Body part';
+
+  @override
+  String get bodyPartFormABodyPartSCodeCannotBe =>
+      'A Body part\'s code cannot be corrected';
+
+  @override
+  String get bodyPartFormRegion => 'Region';
+
+  @override
+  String get bodyPartFormARetiredBodyPartIsNoLonger =>
+      'A retired Body part is no longer offered while classifying, and stays on every incident that already names it.';
+
+  @override
+  String get bodyPartsTheBodyPartCatalogueCouldNotBe =>
+      'The Body part catalogue could not be read';
+
+  @override
+  String get bodyPartsWhereOnTheBodyAnInjuryWas =>
+      'Where on the body an injury was — one catalogue shared by every Site, filed under the region each part belongs to.';
+
+  @override
+  String get bodyPartsNoBodyPartsYet => 'No Body parts yet';
+
+  @override
+  String get commonClassifyTheInjury => 'Classify the injury';
+
+  @override
+  String get incidentClassifyClassifyingTheInjuryNeedsSafetyAuthorityAt =>
+      'Classifying the injury needs Safety authority at this Safety incident\'s Org Unit.';
+
+  @override
+  String incidentClassifySitsOnTheNoInjuryRungNobody(Object incidentNo) {
+    return '$incidentNo sits on the no-injury rung. Nobody was hurt, so there is nothing to classify — correct the severity first if that is wrong.';
+  }
+
+  @override
+  String get incidentClassifyWhoWasHurtWhatTheInjuryWas =>
+      'Who was hurt, what the injury was and where on the body. These three are read only by a holder of Safety authority for this area and by the injured person\'s own Account.';
+
+  @override
+  String get incidentClassifySaveTheClassification => 'Save the classification';
+
+  @override
+  String get commonInjuredEmployee => 'Injured Employee';
+
+  @override
+  String get incidentClassifyWhoWasHurt => 'Who was hurt.';
+
+  @override
+  String get incidentClassifyClearTheInjuredEmployee =>
+      'Clear the injured Employee';
+
+  @override
+  String get incidentClassifyTheInjuryTypeAndBodyPartCatalogues =>
+      'The Injury type and Body part catalogues could not be read';
+
+  @override
+  String get commonInjuryType => 'Injury type';
+
+  @override
+  String get incidentClassifyWhatTheInjuryWas => 'What the injury was.';
+
+  @override
+  String get incidentClassifyClearTheInjuryType => 'Clear the Injury type';
+
+  @override
+  String get commonBodyPart => 'Body part';
+
+  @override
+  String get incidentClassifyWhereOnTheBody => 'Where on the body.';
+
+  @override
+  String get incidentClassifyClearTheBodyPart => 'Clear the Body part';
+
+  @override
+  String get incidentCloseCloseThisSafetyIncident =>
+      'Close this Safety incident';
+
+  @override
+  String get incidentCloseClosingASafetyIncidentNeedsSafetyAuthority =>
+      'Closing a Safety incident needs Safety authority at its Org Unit.';
+
+  @override
+  String get incidentCloseThisSafetyIncidentIsAlreadyClosed =>
+      'This Safety incident is already closed.';
+
+  @override
+  String incidentCloseWillBeClosedAConcernRaisedFrom(Object incidentNo) {
+    return '$incidentNo will be closed. A Concern raised from it, if any, keeps working the cause on its own.';
+  }
+
+  @override
+  String get incidentCloseLeaveItOpen => 'Leave it open';
+
+  @override
+  String get commonCloseIt => 'Close it';
+
+  @override
+  String get incidentCloseWhyThisIncidentIsBeingClosed =>
+      'Why this incident is being closed.';
+
+  @override
+  String get commonRecordTheDays => 'Record the days';
+
+  @override
+  String get incidentDaysRecordingTheDaysNeedsSafetyAuthorityAt =>
+      'Recording the days needs Safety authority at this Safety incident\'s Org Unit.';
+
+  @override
+  String get incidentDaysThisSafetyIncidentIsClosedItsDays =>
+      'This Safety incident is closed; its days cannot be changed.';
+
+  @override
+  String incidentDaysWhatCostZeroIsARealAnswer(Object incidentNo) {
+    return 'What $incidentNo cost — zero is a real answer, and settles it.';
+  }
+
+  @override
+  String get commonLostTimeDays => 'Lost-time days';
+
+  @override
+  String get commonRestrictedDays => 'Restricted days';
+
+  @override
+  String get incidentDetailNoSuchSafetyIncident => 'No such Safety incident';
+
+  @override
+  String get incidentDetailBackToSafetyIncidents => 'Back to Safety incidents';
+
+  @override
+  String get incidentDetailTheSafetyIncidentCouldNotBeRead =>
+      'The Safety incident could not be read';
+
+  @override
+  String get incidentDetailReportedAt => 'Reported at';
+
+  @override
+  String get incidentDetailImmediateAction => 'Immediate action';
+
+  @override
+  String get commonInvestigationDueDate => 'Investigation due date';
+
+  @override
+  String incidentDetailMoveTo(Object value) {
+    return 'Move to $value';
+  }
+
+  @override
+  String get commonCorrectTheSeverity => 'Correct the severity';
+
+  @override
+  String incidentDetailClosed(Object closedAt) {
+    return 'Closed $closedAt';
+  }
+
+  @override
+  String get commonInvestigationDueAt => 'Investigation due at';
+
+  @override
+  String get incidentDetailTheInjury => 'The injury';
+
+  @override
+  String get incidentDetailRestrictedVisibleToSafetyAuthorityForThis =>
+      'Restricted — visible to Safety authority for this area.';
+
+  @override
+  String get incidentDetailNotClassifiedYetWhoWasHurtWhat =>
+      'Not classified yet. Who was hurt, what the injury was and where on the body have not been recorded.';
+
+  @override
+  String get incidentDetailTheIncidentItselfIsRecordedHereThe =>
+      'The incident itself is recorded here; the cause behind it is solved in the action log, as a Concern.';
+
+  @override
+  String get incidentDetailEventHistory => 'Event history';
+
+  @override
+  String get incidentDetailEverySeverityChangeStatusMoveDaysChange =>
+      'Every severity change, status move, days change, closure and classification change, kept with who and when.';
+
+  @override
+  String get incidentDetailNothingHasChangedAboutThisRecordSince =>
+      'Nothing has changed about this record since it was recorded.';
+
+  @override
+  String get incidentDueDateThisSafetyIncidentIsClosedItsInvestigation =>
+      'This Safety incident is closed; its investigation due date cannot be changed.';
+
+  @override
+  String incidentDueDateSInvestigationDeadline(Object incidentNo) {
+    return '$incidentNo\'s investigation deadline.';
+  }
+
+  @override
+  String get incidentFormWhatKindOfEventThisWas =>
+      'What kind of event this was.';
+
+  @override
+  String get incidentFormTheWorstActualOutcomeToAPerson =>
+      'The worst actual outcome to a person. Ladder order.';
+
+  @override
+  String get incidentFormWhatHappened => 'What happened.';
+
+  @override
+  String get incidentFormWhatWasDoneAtOnce => 'What was done at once.';
+
+  @override
+  String get incidentFormInjuredEmployeeOptional =>
+      'Injured Employee (optional)';
+
+  @override
+  String get incidentFormWhoWasHurtIfAnyoneReadOnly =>
+      'Who was hurt, if anyone. Read only by Safety authority for this area and by the injured person\'s own Account.';
+
+  @override
+  String get incidentFormWhenItHappenedThisIsWhatDecides =>
+      'When it happened. This is what decides the production day and shift it is filed against.';
+
+  @override
+  String get incidentFormReportedAtOptional => 'Reported at (optional)';
+
+  @override
+  String get incidentFormWhenItWasReportedIfThatIs =>
+      'When it was reported, if that is not now.';
+
+  @override
+  String get incidentFormWhereItHappened => 'Where it happened';
+
+  @override
+  String get incidentFormChooseTheOrgUnitTheIncidentOccurred =>
+      'Choose the Org Unit the incident occurred at. This is what decides who may act on it.';
+
+  @override
+  String incidentFormThisSafetyIncidentWillBeRecordedAt(Object value) {
+    return 'This Safety incident will be recorded at $value.';
+  }
+
+  @override
+  String get incidentFormWhichMachineIfTheIncidentWasOn =>
+      'Which machine, if the incident was on one. It must sit at that Org Unit.';
+
+  @override
+  String incidentRaiseConcernIsRecordedAtAndTheConcernIs(
+    Object incidentNo,
+    Object orgUnitName,
+  ) {
+    return '$incidentNo is recorded at $orgUnitName, and the Concern is raised there — a problem is solved where it happened.';
+  }
+
+  @override
+  String get incidentRaiseConcernWhatIsTheCauseToSolve =>
+      'What is the cause to solve?';
+
+  @override
+  String get incidentRaiseConcernTheConcernIsReadInTheAction =>
+      'The Concern is read in the action log, so say the problem, not the injury.';
+
+  @override
+  String get incidentRaiseConcernOptionalTheSafetyIncidentItselfIsAlready =>
+      'Optional. The Safety incident itself is already linked as evidence.';
+
+  @override
+  String get incidentSeverityCorrectingTheSeverityNeedsSafetyAuthorityAt =>
+      'Correcting the severity needs Safety authority at this Safety incident\'s Org Unit.';
+
+  @override
+  String incidentSeverityIsCorrectingItRestatesThePeriodIt(
+    Object incidentNo,
+    Object value,
+  ) {
+    return '$incidentNo is $value. Correcting it restates the period it occurred in.';
+  }
+
+  @override
+  String get incidentSeverityCorrectIt => 'Correct it';
+
+  @override
+  String get incidentSeverityCorrectTheSeverityTo => 'Correct the severity to';
+
+  @override
+  String get incidentSeverityWhyTheSeverityIsBeingCorrected =>
+      'Why the severity is being corrected.';
+
+  @override
+  String get incidentStatusMoveTheStatus => 'Move the status';
+
+  @override
+  String get incidentStatusThisSafetyIncidentIsClosedItsStatus =>
+      'This Safety incident is closed; its status cannot be moved.';
+
+  @override
+  String incidentStatusThisSafetyIncidentIsAlreadyOnlyClosing(Object value) {
+    return 'This Safety incident is already $value; only closing moves it further.';
+  }
+
+  @override
+  String incidentStatusMovesFromTo(
+    Object incidentNo,
+    Object statusLabel,
+    Object value,
+  ) {
+    return '$incidentNo moves from $statusLabel to $value.';
+  }
+
+  @override
+  String incidentStatusMoveTo(Object value) {
+    return 'Move to $value';
+  }
+
+  @override
+  String get incidents1SafetyIncident => '1 Safety incident';
+
+  @override
+  String incidentsSafetyIncidents(Object length) {
+    return '$length Safety incidents';
+  }
+
+  @override
+  String get incidentsSiHcm202600001 => 'SI-HCM-2026-00001';
+
+  @override
+  String get injuryTypeFormCorrectInjuryType => 'Correct Injury type';
+
+  @override
+  String get commonAddInjuryType => 'Add Injury type';
+
+  @override
+  String get injuryTypeFormAnInjuryTypeSCodeCannotBe =>
+      'An Injury type\'s code cannot be corrected';
+
+  @override
+  String get injuryTypeFormARetiredInjuryTypeIsNoLonger =>
+      'A retired Injury type is no longer offered while classifying, and stays on every incident that already names it.';
+
+  @override
+  String get injuryTypesTheInjuryTypeCatalogueCouldNotBe =>
+      'The Injury type catalogue could not be read';
+
+  @override
+  String get injuryTypesWhatAnInjuryWasOneCatalogueShared =>
+      'What an injury was — one catalogue shared by every Site, and what a Safety incident is classified against.';
+
+  @override
+  String get injuryTypesNoInjuryTypesYet => 'No Injury types yet';
+
+  @override
+  String get observationDetailNoSuchSafetyObservation =>
+      'No such Safety observation';
+
+  @override
+  String get observationDetailBackToSafetyObservations =>
+      'Back to Safety observations';
+
+  @override
+  String get observationDetailTheSafetyObservationCouldNotBeRead =>
+      'The Safety observation could not be read';
+
+  @override
+  String get observationDetailActionTaken => 'Action taken';
+
+  @override
+  String get observationDetailRecordedBy => 'Recorded by';
+
+  @override
+  String get observationDetailObservedAt => 'Observed at';
+
+  @override
+  String get observationDetailClosingTheLoop => 'Closing the loop';
+
+  @override
+  String get observationDetailTheObservationItselfIsRecordedHereWhat =>
+      'The observation itself is recorded here; what somebody does about it is owned in the action log, as an Action.';
+
+  @override
+  String get observationDetailNothingIsBeingDoneAboutThisYet =>
+      'Nothing is being done about this yet.';
+
+  @override
+  String get commonRaiseAnAction => 'Raise an Action';
+
+  @override
+  String get observationFormASafeActAnUnsafeActOr =>
+      'A safe act, an unsafe act, or an unsafe condition.';
+
+  @override
+  String get observationFormTheWorstCredibleOutcomeNotWhatActually =>
+      'The worst credible outcome, not what actually happened.';
+
+  @override
+  String get observationFormWhatWasSeen => 'What was seen.';
+
+  @override
+  String get observationFormWhatWasDoneOnTheSpot =>
+      'What was done on the spot.';
+
+  @override
+  String get observationFormRareAndTheSingleStrongestSignalThat =>
+      'Rare, and the single strongest signal that the safety culture is real.';
+
+  @override
+  String get observationFormObservedAtOptional => 'Observed at (optional)';
+
+  @override
+  String get observationFormWhenItWasSeenIfNotNow =>
+      'When it was seen, if not now. This is what decides the production day and shift it is filed against.';
+
+  @override
+  String get observationFormWhereItWasSeen => 'Where it was seen';
+
+  @override
+  String get observationFormChooseTheOrgUnitTheObservationWas =>
+      'Choose the Org Unit the observation was made at. This is what decides who may act on it.';
+
+  @override
+  String observationFormThisSafetyObservationWillBeRecordedAt(Object value) {
+    return 'This Safety observation will be recorded at $value.';
+  }
+
+  @override
+  String observationRaiseActionThisObservationIsRecordedAtAndThe(
+    Object orgUnitName,
+  ) {
+    return 'This observation is recorded at $orgUnitName, and the Action is raised there — a problem is owned where it was seen.';
+  }
+
+  @override
+  String get observationRaiseActionChooseWhatThisIs => 'Choose what this is.';
+
+  @override
+  String get observationRaiseActionChooseAKind => 'Choose a kind';
+
+  @override
+  String get observationRaiseActionWhatNeedsDoing => 'What needs doing?';
+
+  @override
+  String get observationRaiseActionTheActionIsReadInTheAction =>
+      'The Action is read in the action log, so say the work, not the observation.';
+
+  @override
+  String
+  get observationRaiseActionOptionalTheSafetyObservationItselfIsAlready =>
+      'Optional. The Safety observation itself is already linked as evidence.';
+
+  @override
+  String get observations1SafetyObservation => '1 Safety observation';
+
+  @override
+  String observationsSafetyObservations(Object length) {
+    return '$length Safety observations';
+  }
+
+  @override
+  String safetyIncidentRecordable(Object value) {
+    return '$value · recordable';
+  }
+
+  @override
+  String
+  get safetyObservationOrgUnitFilterChooseTheOrgUnitWhoseSafetyObservations =>
+      'Choose the Org Unit whose Safety observations and everything beneath it you want to read, or clear back to the whole Site.';
+
+  @override
+  String get safetyOrgUnitFilterChooseTheOrgUnitWhoseSafetyIncidents =>
+      'Choose the Org Unit whose Safety incidents and everything beneath it you want to read, or clear back to the whole Site.';
 }

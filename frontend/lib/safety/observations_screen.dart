@@ -422,8 +422,8 @@ class _Filters extends StatelessWidget {
       ],
       count: Text(
         loaded.observations.length == 1
-            ? '1 Safety observation'
-            : '${loaded.observations.length} Safety observations',
+            ? l10n.observations1SafetyObservation
+            : l10n.observationsSafetyObservations(loaded.observations.length),
         key: SafetyObservationsScreen.countKey,
         style: AppTypography.dense(context)?.copyWith(color: AppColors.of(context).textMuted),
       ),

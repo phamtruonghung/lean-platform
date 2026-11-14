@@ -64,6 +64,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -157,6 +158,7 @@ class SafetyIncidentDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<SafetyIncidentDetailBloc>().state;
 
     // The page head sits above the state switch, so a load, a failed read, a
@@ -178,17 +180,16 @@ class SafetyIncidentDetailScreen extends StatelessWidget {
                 const SkeletonList(rows: 4, maxWidth: maxWidth),
               SafetyIncidentDetailUnavailable(isMissing: true) => PlatformEmptyState.noneExist(
                   key: missingKey,
-                  title: 'No such Safety incident',
-                  message: 'Nothing is recorded at this address. It may have been removed, or '
-                      'the address may be wrong.',
+                  title: l10n.incidentDetailNoSuchSafetyIncident,
+                  message: l10n.nonconformanceDetailMissingMessage,
                   icon: Icons.search_off_outlined,
-                  actionLabel: 'Back to Safety incidents',
+                  actionLabel: l10n.incidentDetailBackToSafetyIncidents,
                   actionKey: backKey,
                   onAction: () => context.go(Routes.safetyIncidents),
                 ),
               SafetyIncidentDetailUnavailable(message: final message) => PlatformFailureState(
                   key: failedKey,
-                  title: 'The Safety incident could not be read',
+                  title: l10n.incidentDetailTheSafetyIncidentCouldNotBeRead,
                   message: message,
                   retryKey: retryKey,
                   onRetry: () => context
@@ -216,6 +217,7 @@ class _Head extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: SafetyIncidentDetailScreen.maxWidth,
@@ -234,12 +236,12 @@ class _Head extends StatelessWidget {
                       minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                     ),
                     icon: const Icon(Icons.arrow_back),
-                    label: const Text('Back to Safety incidents'),
+                    label: Text(l10n.incidentDetailBackToSafetyIncidents),
                   ),
                 ),
                 const SizedBox(height: Spacing.sm),
               ],
-              const AppPageHeader(title: 'Safety incident'),
+              AppPageHeader(title: l10n.titleSafetyIncident),
             ],
           ),
         ),
@@ -255,6 +257,7 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final row = state.incident;
 
@@ -278,24 +281,24 @@ class _Loaded extends StatelessWidget {
             // event itself — the equipment, who reported it, what was done on
             // the spot and what it cost.
             AppDetailSection(
-              title: 'What happened',
+              title: l10n.safetyWhatHappened,
               children: [
                     _Fact(
-                      label: 'Asset',
+                      label: l10n.commonAsset,
                       value:
                           row.assetName == null ? 'None named' : '${row.assetName} · ${row.assetCode}',
                     ),
-                    _Fact(label: 'Reported at', value: row.reportedAt ?? 'Not recorded'),
-                    _Fact(label: 'Reported by', value: row.reportedByLabel),
-                    _Fact(label: 'Description', value: row.description ?? 'None given'),
+                    _Fact(label: l10n.incidentDetailReportedAt, value: row.reportedAt ?? 'Not recorded'),
+                    _Fact(label: l10n.downtimeReportedByColumn, value: row.reportedByLabel),
+                    _Fact(label: l10n.commonDescription, value: row.description ?? 'None given'),
                     _Fact(
-                      label: 'Immediate action',
+                      label: l10n.incidentDetailImmediateAction,
                       value: row.immediateAction ?? 'None recorded yet',
                     ),
                     if (row.lostTimeDays > 0)
-                      _Fact(label: 'Lost-time days', value: row.lostTimeDays.toString()),
+                      _Fact(label: l10n.commonLostTimeDays, value: row.lostTimeDays.toString()),
                     if (row.restrictedDays > 0)
-                      _Fact(label: 'Restricted days', value: row.restrictedDays.toString()),
+                      _Fact(label: l10n.commonRestrictedDays, value: row.restrictedDays.toString()),
               ],
             ),
             // The record's own story, then what is being done about the cause
@@ -330,7 +333,7 @@ class _Loaded extends StatelessWidget {
                         ? null
                         : () => context.go('${Routes.safetyIncidents}/${row.id}/due-date'),
                     icon: const Icon(Icons.event_outlined),
-                    label: const Text('Investigation due date'),
+                    label: Text(l10n.commonInvestigationDueDate),
                   ),
                 if (row.nextStatus != null)
                   OutlinedButton.icon(
@@ -339,7 +342,7 @@ class _Loaded extends StatelessWidget {
                         ? null
                         : () => context.go('${Routes.safetyIncidents}/${row.id}/status'),
                     icon: const Icon(Icons.trending_flat),
-                    label: Text('Move to ${SafetyIncidentStatus.label(row.nextStatus!)}'),
+                    label: Text(l10n.incidentDetailMoveTo(SafetyIncidentStatus.label(row.nextStatus!))),
                   ),
                 // The three decisions Safety authority gates (ADR-0039):
                 // correcting the severity, recording the days, and closing.
@@ -358,7 +361,7 @@ class _Loaded extends StatelessWidget {
                           ? null
                           : () => context.go('${Routes.safetyIncidents}/${row.id}/classify'),
                       icon: const Icon(Icons.medical_information_outlined),
-                      label: const Text('Classify the injury'),
+                      label: Text(l10n.commonClassifyTheInjury),
                     ),
                   FilledButton.icon(
                     key: SafetyIncidentDetailScreen.changeSeverityKey,
@@ -366,7 +369,7 @@ class _Loaded extends StatelessWidget {
                         ? null
                         : () => context.go('${Routes.safetyIncidents}/${row.id}/severity'),
                     icon: const Icon(Icons.edit_outlined),
-                    label: const Text('Correct the severity'),
+                    label: Text(l10n.commonCorrectTheSeverity),
                   ),
                   if (!row.isClosed)
                     OutlinedButton.icon(
@@ -375,7 +378,7 @@ class _Loaded extends StatelessWidget {
                           ? null
                           : () => context.go('${Routes.safetyIncidents}/${row.id}/days'),
                       icon: const Icon(Icons.calendar_month_outlined),
-                      label: const Text('Record the days'),
+                      label: Text(l10n.commonRecordTheDays),
                     ),
                   if (!row.isClosed)
                     FilledButton.icon(
@@ -384,13 +387,13 @@ class _Loaded extends StatelessWidget {
                           ? null
                           : () => context.go('${Routes.safetyIncidents}/${row.id}/close'),
                       icon: const Icon(Icons.check_circle_outline),
-                      label: const Text('Close it'),
+                      label: Text(l10n.commonCloseIt),
                     ),
                 ],
                 if (row.closedAt != null)
                   StatusChip(
                     key: SafetyIncidentDetailScreen.closedKey,
-                    label: 'Closed ${row.closedAt}',
+                    label: l10n.incidentDetailClosed((row.closedAt ?? '')),
                     tone: StatusTone.neutral,
                   ),
               ],
@@ -422,6 +425,7 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     return Card(
@@ -454,24 +458,24 @@ class _SummaryCard extends StatelessWidget {
             ),
             const SizedBox(height: Spacing.xs),
             Text(
-              incident.isRecordable ? 'Recordable' : 'Not recordable',
+              incident.isRecordable ? l10n.safetyRecordable : l10n.safetyNotRecordable,
               key: SafetyIncidentDetailScreen.recordableKey,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: Spacing.md),
-            Text('Summary', style: theme.textTheme.titleMedium),
+            Text(l10n.commonSummary, style: theme.textTheme.titleMedium),
             const SizedBox(height: Spacing.sm),
-            _Fact(label: 'Incident type', value: incident.incidentTypeLabel),
-            _Fact(label: 'Org Unit', value: incident.orgUnitName),
+            _Fact(label: l10n.safetyIncidentType, value: incident.incidentTypeLabel),
+            _Fact(label: l10n.commonOrgUnit, value: incident.orgUnitName),
             _Fact(
-              label: 'Filed against',
+              label: l10n.nonconformanceDetailFiledAgainst,
               key: SafetyIncidentDetailScreen.filedKey,
               value: incident.filedAgainst,
             ),
-            _Fact(label: 'Occurred at', value: incident.occurredAt ?? 'Not recorded'),
+            _Fact(label: l10n.safetyOccurredAt, value: incident.occurredAt ?? 'Not recorded'),
             _Fact(
               key: SafetyIncidentDetailScreen.dueDateFactKey,
-              label: 'Investigation due at',
+              label: l10n.commonInvestigationDueAt,
               value: incident.investigationDueAt ?? 'No deadline set',
             ),
           ],
@@ -500,39 +504,39 @@ class _InjuryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     return AppDetailSection(
       key: SafetyIncidentDetailScreen.injuryKey,
-      title: 'The injury',
+      title: l10n.incidentDetailTheInjury,
       children: [
             if (!incident.injuryDetailsVisible)
               Text(
-                'Restricted — visible to Safety authority for this area.',
+                l10n.incidentDetailRestrictedVisibleToSafetyAuthorityForThis,
                 key: SafetyIncidentDetailScreen.injuryRestrictedKey,
                 style: theme.textTheme.bodyMedium,
               )
             else if (!incident.isClassified)
               Text(
-                'Not classified yet. Who was hurt, what the injury was and where on the '
-                'body have not been recorded.',
+                l10n.incidentDetailNotClassifiedYetWhoWasHurtWhat,
                 key: SafetyIncidentDetailScreen.injuryUnclassifiedKey,
                 style: theme.textTheme.bodyMedium,
               )
             else ...[
               _Fact(
                 key: SafetyIncidentDetailScreen.injuredEmployeeKey,
-                label: 'Injured Employee',
+                label: l10n.commonInjuredEmployee,
                 value: incident.employeeName ?? 'Not recorded',
               ),
               _Fact(
                 key: SafetyIncidentDetailScreen.injuryTypeKey,
-                label: 'Injury type',
+                label: l10n.commonInjuryType,
                 value: incident.injuryTypeName ?? 'Not recorded',
               ),
               _Fact(
                 key: SafetyIncidentDetailScreen.bodyPartKey,
-                label: 'Body part',
+                label: l10n.commonBodyPart,
                 value: incident.bodyPartName == null
                     ? 'Not recorded'
                     : '${incident.bodyPartName} · '
@@ -566,16 +570,16 @@ class _ConcernsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final concerns = incident.concerns;
 
     return AppDetailSection(
       key: SafetyIncidentDetailScreen.concernsKey,
-      title: 'The cause',
+      title: l10n.nonconformanceDetailCause,
       children: [
             Text(
-              'The incident itself is recorded here; the cause behind it is solved in the action '
-              'log, as a Concern.',
+              l10n.incidentDetailTheIncidentItselfIsRecordedHereThe,
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
@@ -591,7 +595,7 @@ class _ConcernsCard extends StatelessWidget {
             if (concerns.isEmpty)
               Text(
                 key: SafetyIncidentDetailScreen.noConcernsKey,
-                'Nothing is being done about the cause yet.',
+                l10n.nonconformanceDetailNoConcerns,
                 style: theme.textTheme.bodyMedium,
               )
             else
@@ -612,7 +616,7 @@ class _ConcernsCard extends StatelessWidget {
                             concern.actionNo,
                             concern.typeLabel,
                             if (concern.ownerName != null) concern.ownerName!,
-                            if (concern.isOverdue) 'overdue',
+                            if (concern.isOverdue) l10n.nonconformanceDetailOverdue,
                           ].join(' · '),
                         ),
                         trailing: StatusChip(
@@ -630,7 +634,7 @@ class _ConcernsCard extends StatelessWidget {
                   ? null
                   : () => context.go('${Routes.safetyIncidents}/${incident.id}/raise-concern'),
               icon: const Icon(Icons.lightbulb_outline),
-              label: const Text('Raise a Concern'),
+              label: Text(l10n.nonconformanceRaiseConcern),
             ),
       ],
     );
@@ -647,21 +651,21 @@ class _EventHistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     return AppDetailSection(
-      title: 'Event history',
+      title: l10n.incidentDetailEventHistory,
       children: [
             Text(
-              'Every severity change, status move, days change, closure and classification '
-              'change, kept with who and when.',
+              l10n.incidentDetailEverySeverityChangeStatusMoveDaysChange,
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: Spacing.sm),
             if (events.isEmpty)
               Text(
-                'Nothing has changed about this record since it was recorded.',
+                l10n.incidentDetailNothingHasChangedAboutThisRecordSince,
                 key: SafetyIncidentDetailScreen.noEventsKey,
                 style: theme.textTheme.bodyMedium,
               )

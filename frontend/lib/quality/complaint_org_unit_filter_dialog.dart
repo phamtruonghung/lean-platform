@@ -16,6 +16,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../people_api.dart';
@@ -57,24 +58,25 @@ class ComplaintOrgUnitFilterDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<ComplaintsBloc>().state;
     final selectedId = state is ComplaintsLoaded ? state.filters.orgUnitId : null;
 
     return AppDialog(
-      title: 'Filter by Org Unit',
+      title: l10n.commonFilterByOrgUnit,
       size: AppDialogSize.decision,
       // Clearing is this dialog's own act, so it is the primary and sits
       // right-most; Cancel is the dismiss, which is what `Esc` runs.
       actions: [
         AppDialogAction(
           id: 'complaints-filter-cancel',
-          label: 'Cancel',
+          label: l10n.commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(),
         ),
         AppDialogAction(
           id: 'complaints-filter-all',
-          label: 'All Org Units',
+          label: l10n.commonAllOrgUnits,
           onPressed: () {
             context.read<ComplaintsBloc>().add(const ComplaintsFiltersCleared());
             Navigator.of(context).pop();
@@ -91,9 +93,8 @@ class ComplaintOrgUnitFilterDialog extends StatelessWidget {
           // The register is one Site's, so the chooser may not name an Org Unit
           // in another one.
           showSitePicker: false,
-          title: 'Narrow the register',
-          description: 'Choose the Org Unit whose complaints, and everything beneath it, you '
-              'want to read — or clear back to the whole Site.',
+          title: l10n.commonNarrowTheRegister,
+          description: l10n.complaintOrgUnitFilterChooseTheOrgUnitWhoseComplaintsAnd,
           onSelected: (node) {
             context.read<ComplaintsBloc>().add(
                   ComplaintsOrgUnitFilterSet(orgUnitId: node.id, name: node.name),

@@ -21,6 +21,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_list_card.dart';
@@ -57,6 +58,7 @@ class ProductsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<ProductsBloc>().state;
 
     return Scaffold(
@@ -64,7 +66,7 @@ class ProductsScreen extends StatelessWidget {
         ProductsLoading() => const SkeletonList(maxWidth: ProductsScreen.maxWidth),
         ProductsUnavailable(message: final message) => PlatformFailureState(
             key: ProductsScreen.failedKey,
-            title: 'The Product catalogue could not be read',
+            title: l10n.productsTheProductCatalogueCouldNotBeRead,
             message: message,
             retryKey: ProductsScreen.retryKey,
             onRetry: () => context.read<ProductsBloc>().add(const ProductsStarted()),
@@ -83,6 +85,7 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: ProductsScreen.maxWidth,
@@ -90,17 +93,16 @@ class _Loaded extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
             AppPageHeader(
-              title: 'Products',
+              title: l10n.navProducts,
               description:
-                  'What the plant makes — one catalogue shared by every Site, '
-                  'and what each Product is measured in.',
+                  l10n.productsWhatThePlantMakesOneCatalogueShared,
               actions: [
                 if (isAdmin)
                   FilledButton.icon(
                     key: ProductsScreen.addKey,
                     onPressed: state.isMutating ? null : () => ProductFormDialog.open(context),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add Product'),
+                    label: Text(l10n.commonAddProduct),
                   ),
               ],
             ),
@@ -108,10 +110,10 @@ class _Loaded extends StatelessWidget {
             if (state.products.isEmpty)
               PlatformEmptyState.noneExist(
                 key: ProductsScreen.emptyKey,
-                title: 'No Products yet',
-                message: 'Nothing has been defined in the catalogue.',
+                title: l10n.productsNoProductsYet,
+                message: l10n.commonNothingHasBeenDefinedInTheCatalogue,
                 icon: Icons.category_outlined,
-                actionLabel: isAdmin ? 'Add Product' : null,
+                actionLabel: isAdmin ? l10n.commonAddProduct : null,
                 actionKey: ProductsScreen.emptyAddKey,
                 onAction: isAdmin ? () => ProductFormDialog.open(context) : null,
               )
@@ -138,6 +140,7 @@ class _ProductRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return ConstrainedBox(
       key: ProductsScreen.rowKey(product.id),
@@ -162,7 +165,7 @@ class _ProductRow extends StatelessWidget {
                     const SizedBox(width: Spacing.sm),
                     StatusChip(
                       key: ProductsScreen.inactiveChipKey(product.id),
-                      label: 'Inactive',
+                      label: l10n.jobPlansInactive,
                       tone: StatusTone.neutral,
                     ),
                   ],
@@ -177,7 +180,7 @@ class _ProductRow extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                 ),
-                child: const Text('Correct'),
+                child: Text(l10n.commonCorrect),
               ),
           ],
         ),

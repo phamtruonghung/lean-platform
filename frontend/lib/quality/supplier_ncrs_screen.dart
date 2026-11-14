@@ -35,6 +35,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -98,6 +99,7 @@ class SupplierNcrsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<SupplierNcrsBloc>().state;
 
     return _RefreshOnMount(
@@ -111,15 +113,15 @@ class SupplierNcrsScreen extends StatelessWidget {
                 SupplierNcrsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
                 SupplierNcrsUnavailable(message: final message) => PlatformFailureState(
                     key: failedKey,
-                    title: 'The supplier NCR register could not be read',
+                    title: l10n.supplierNcrsTheSupplierNcrRegisterCouldNotBe,
                     message: message,
                     retryKey: retryKey,
                     onRetry: () => context.read<SupplierNcrsBloc>().add(const SupplierNcrsStarted()),
                   ),
-                SupplierNcrsLoaded(siteId: null) => const PlatformEmptyState.noneExist(
+                SupplierNcrsLoaded(siteId: null) => PlatformEmptyState.noneExist(
                     key: noSiteKey,
-                    title: 'No Site to show',
-                    message: 'Your Account can see no Site yet, so there is nothing to read here.',
+                    title: l10n.nonconformancesNoSiteTitle,
+                    message: l10n.nonconformancesNoSiteMessage,
                     icon: Icons.factory_outlined,
                   ),
                 SupplierNcrsLoaded(supplierNcrs: final rows, filters: final filters)
@@ -172,6 +174,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final loaded = state is SupplierNcrsLoaded ? state as SupplierNcrsLoaded : null;
 
     return Center(
@@ -180,10 +183,9 @@ class _Header extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
-            title: 'Supplier NCRs',
+            title: l10n.navSupplierNcrs,
             description:
-                'What arrived wrong from a Supplier at this Site, and whether the '
-                'material it came in with is under control.',
+                l10n.supplierNcrsWhatArrivedWrongFromASupplierAt,
             actions: [
               if (loaded != null)
                 FilledButton.icon(
@@ -192,7 +194,7 @@ class _Header extends StatelessWidget {
                       ? null
                       : () => context.go('${Routes.supplierNcrs}/new'),
                   icon: const Icon(Icons.add),
-                  label: const Text('Record a supplier NCR'),
+                  label: Text(l10n.commonRecordASupplierNcr),
                   style: FilledButton.styleFrom(
                     minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
@@ -213,6 +215,7 @@ class _Filters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final filters = loaded.filters;
 
@@ -226,7 +229,7 @@ class _Filters extends StatelessWidget {
               initialValue: loaded.siteId,
               isDense: true,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.commonSite, border: OutlineInputBorder()),
               items: [
                 for (final site in loaded.sites)
                   DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -241,13 +244,13 @@ class _Filters extends StatelessWidget {
           key: SupplierNcrsScreen.supplierFilterKey,
           onPressed: () => SupplierNcrSupplierFilterDialog.open(context),
           icon: const Icon(Icons.local_shipping_outlined),
-          label: Text(filters.supplierName ?? 'All Suppliers'),
+          label: Text(filters.supplierName ?? l10n.commonAllSuppliers),
         ),
         OutlinedButton.icon(
           key: SupplierNcrsScreen.orgUnitFilterKey,
           onPressed: () => SupplierNcrOrgUnitFilterDialog.open(context, siteId: loaded.siteId),
           icon: const Icon(Icons.account_tree_outlined),
-          label: Text(filters.orgUnitName ?? 'All Org Units'),
+          label: Text(filters.orgUnitName ?? l10n.commonAllOrgUnits),
         ),
         SizedBox(
           width: AppLayout.atTextScale(context, 190),
@@ -256,9 +259,9 @@ class _Filters extends StatelessWidget {
             initialValue: filters.status,
             isDense: true,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: l10n.commonStatus, border: OutlineInputBorder()),
             items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('Any status')),
+              DropdownMenuItem<String?>(value: null, child: Text(l10n.nonconformancesAnyStatus)),
               for (final status in SupplierNcrStatus.values)
                 DropdownMenuItem<String?>(
                   value: status,
@@ -274,7 +277,7 @@ class _Filters extends StatelessWidget {
             key: SupplierNcrsScreen.clearFiltersKey,
             onPressed: () =>
                 context.read<SupplierNcrsBloc>().add(const SupplierNcrsFiltersCleared()),
-            child: Text('Clear filters', style: theme.textTheme.bodyMedium),
+            child: Text(l10n.workOrdersClearFilters, style: theme.textTheme.bodyMedium),
           ),
       ],
     );
@@ -288,6 +291,7 @@ class _Truncated extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return Center(
       child: AppPageFrame(
@@ -296,8 +300,7 @@ class _Truncated extends StatelessWidget {
           key: SupplierNcrsScreen.truncatedKey,
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.sm),
           child: Text(
-            'There are more supplier NCRs than this list shows. Narrow it by Supplier or by '
-            'status to see the rest.',
+            l10n.supplierNcrsThereAreMoreSupplierNcrsThanThis,
             style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
           ),
         ),
@@ -316,21 +319,21 @@ class _Empty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (isFiltered) {
       return PlatformEmptyState.noneMatched(
         key: SupplierNcrsScreen.emptyMatchedKey,
-        title: 'Nothing matches these filters',
-        message: 'The register has supplier NCRs, but none of them is in the area, the Supplier '
-            'or the state you picked.',
-        actionLabel: 'Clear the filters',
+        title: l10n.nonconformancesNoMatchTitle,
+        message: l10n.supplierNcrsTheRegisterHasSupplierNcrsButNone,
+        actionLabel: l10n.nonconformancesClearTheFilters,
         actionKey: SupplierNcrsScreen.emptyClearFiltersKey,
         onAction: () => context.read<SupplierNcrsBloc>().add(const SupplierNcrsFiltersCleared()),
       );
     }
-    return const PlatformEmptyState.noneExist(
+    return PlatformEmptyState.noneExist(
       key: SupplierNcrsScreen.emptyKey,
-      title: 'No supplier NCRs',
-      message: 'Nothing has come in wrong from a Supplier at this Site.',
+      title: l10n.supplierNcrsNoSupplierNcrs,
+      message: l10n.supplierNcrsNothingHasComeInWrongFromA,
       icon: Icons.local_shipping_outlined,
     );
   }
@@ -373,8 +376,9 @@ double _stateColumnWidth(BuildContext context) {
 }
 
 double _openColumnWidth(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
   final painter = TextPainter(
-    text: TextSpan(text: 'Open', style: Theme.of(context).textTheme.labelLarge),
+    text: TextSpan(text: l10n.commonOpen, style: Theme.of(context).textTheme.labelLarge),
     textDirection: Directionality.of(context),
     textScaler: MediaQuery.textScalerOf(context),
     maxLines: 1,
@@ -384,13 +388,13 @@ double _openColumnWidth(BuildContext context) {
 
 /// The register's one column spec, spent by the band and by every row.
 List<AppTableColumn> _columns(BuildContext context) => [
-      AppTableColumn('NCR', width: _numberColumnWidth(context)),
-      const AppTableColumn('Supplier and product', flex: 4),
-      AppTableColumn('State', width: _stateColumnWidth(context)),
-      const AppTableColumn('Disposition', flex: 3),
-      const AppTableColumn('Answer due', flex: 2),
-      const AppTableColumn('Control', flex: 3),
-      AppTableColumn('Actions', width: _openColumnWidth(context), align: AppColumnAlign.end),
+      AppTableColumn(AppLocalizations.of(context).supplierNcrsNcr, width: _numberColumnWidth(context)),
+      AppTableColumn(AppLocalizations.of(context).supplierNcrsSupplierAndProduct, flex: 4),
+      AppTableColumn(AppLocalizations.of(context).commonState, width: _stateColumnWidth(context)),
+      AppTableColumn(AppLocalizations.of(context).commonDisposition, flex: 3),
+      AppTableColumn(AppLocalizations.of(context).supplierNcrsAnswerDue, flex: 2),
+      AppTableColumn(AppLocalizations.of(context).commonControl, flex: 3),
+      AppTableColumn(AppLocalizations.of(context).groupActions, width: _openColumnWidth(context), align: AppColumnAlign.end),
     ];
 
 Widget _shrinkWrapTargets(BuildContext context, Widget child) => Theme(
@@ -417,7 +421,7 @@ String _control(SupplierNcr row) => row.nonconformance == null
     ? 'No Non-conformance controls this lot yet'
     : 'Controlled by ${row.nonconformance!.issueNo}';
 
-List<Widget> _marks(SupplierNcr row) => [
+List<Widget> _marks(BuildContext context, SupplierNcr row) => [
       StatusChip(
         key: SupplierNcrsScreen.rowStatusKey(row.id),
         label: row.statusLabel,
@@ -426,7 +430,7 @@ List<Widget> _marks(SupplierNcr row) => [
       if (row.isOverdue)
         StatusChip(
           key: SupplierNcrsScreen.rowOverdueKey(row.id),
-          label: 'Past due',
+          label: AppLocalizations.of(context).commonPastDue,
           tone: StatusTone.danger,
         ),
     ];
@@ -476,6 +480,7 @@ class _SupplierNcrTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final dense = AppTypography.dense(context);
     final row = supplierNcr;
@@ -490,7 +495,7 @@ class _SupplierNcrTableRow extends StatelessWidget {
           DisclosingText(_subject(row), style: dense?.copyWith(color: palette.textPrimary)),
           _shrinkWrapTargets(
             context,
-            Row(mainAxisSize: MainAxisSize.min, children: _marks(row)),
+            Row(mainAxisSize: MainAxisSize.min, children: _marks(context, row)),
           ),
           DisclosingText(
             _dispositionLabel(row),
@@ -515,7 +520,7 @@ class _SupplierNcrTableRow extends StatelessWidget {
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
               ),
-              child: const Text('Open'),
+              child: Text(l10n.commonOpen),
             ),
           ),
         ],
@@ -534,6 +539,7 @@ class _SupplierNcrCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final row = supplierNcr;
 
@@ -569,7 +575,7 @@ class _SupplierNcrCard extends StatelessWidget {
                 spacing: Spacing.xs,
                 runSpacing: Spacing.xxs,
                 crossAxisAlignment: WrapCrossAlignment.center,
-                children: _marks(row),
+                children: _marks(context, row),
               ),
               const SizedBox(height: Spacing.xxs),
               Text(
@@ -598,7 +604,7 @@ class _SupplierNcrCard extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                 ),
-                child: const Text('Open'),
+                child: Text(l10n.commonOpen),
               ),
             ],
           ),

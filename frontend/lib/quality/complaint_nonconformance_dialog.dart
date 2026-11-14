@@ -19,6 +19,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -149,24 +150,25 @@ class _ComplaintNonconformanceDialogState extends State<ComplaintNonconformanceD
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final complaint = widget.complaint;
 
     return BlocListener<ComplaintDetailBloc, ComplaintDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Control the product',
+        title: l10n.complaintNonconformanceControlTheProduct,
         size: AppDialogSize.picker,
         actions: [
           AppDialogAction(
             id: 'complaint-nc-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'complaint-nc-submit',
-            label: _awaiting ? 'Recording…' : 'Record it',
+            label: _awaiting ? l10n.employeeDepartureRecording : l10n.nonconformanceFormRecord,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -175,8 +177,7 @@ class _ComplaintNonconformanceDialogState extends State<ComplaintNonconformanceD
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'A Non-conformance is recorded at ${complaint.orgUnitName} for '
-              '${complaint.productName}, found by the customer.',
+              l10n.complaintNonconformanceANonConformanceIsRecordedAtFor(complaint.orgUnitName, complaint.productName),
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
@@ -187,9 +188,9 @@ class _ComplaintNonconformanceDialogState extends State<ComplaintNonconformanceD
               enabled: !_awaiting,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Quantity affected',
-                helperText: 'How much product is in question, in the Product\'s own unit.',
+              decoration: InputDecoration(
+                labelText: l10n.nonconformanceDetailQuantityAffected,
+                helperText: l10n.complaintNonconformanceHowMuchProductIsInQuestionIn,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -199,9 +200,9 @@ class _ComplaintNonconformanceDialogState extends State<ComplaintNonconformanceD
                 key: ComplaintNonconformanceDialog.defectCodeKey,
                 initialValue: '${complaint.defectCodeName} · ${complaint.defectCodeCode}',
                 enabled: false,
-                decoration: const InputDecoration(
-                  labelText: 'Defect code',
-                  helperText: 'The complaint\'s own Defect code is carried onto the record.',
+                decoration: InputDecoration(
+                  labelText: l10n.commonDefectCode,
+                  helperText: l10n.complaintNonconformanceTheComplaintSOwnDefectCodeIs,
                   border: OutlineInputBorder(),
                 ),
               )
@@ -213,7 +214,7 @@ class _ComplaintNonconformanceDialogState extends State<ComplaintNonconformanceD
             else if (_codesFailure != null)
               PlatformFailureState(
                 key: ComplaintNonconformanceDialog.codesFailedKey,
-                title: 'The Defect codes could not be read',
+                title: l10n.commonTheDefectCodesCouldNotBeRead,
                 message: _codesFailure!,
                 retryKey: ComplaintNonconformanceDialog.codesRetryKey,
                 onRetry: _loadCodes,
@@ -223,10 +224,9 @@ class _ComplaintNonconformanceDialogState extends State<ComplaintNonconformanceD
                 key: ComplaintNonconformanceDialog.defectCodeKey,
                 initialValue: _defectCodeId,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Defect code',
-                  helperText: 'This complaint carries none, so choose the one to record '
-                      'it against.',
+                decoration: InputDecoration(
+                  labelText: l10n.commonDefectCode,
+                  helperText: l10n.complaintNonconformanceThisComplaintCarriesNoneSoChooseThe,
                   border: OutlineInputBorder(),
                 ),
                 items: [
@@ -246,9 +246,9 @@ class _ComplaintNonconformanceDialogState extends State<ComplaintNonconformanceD
               enabled: !_awaiting,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Immediate containment (optional)',
-                helperText: 'What was done at once. Recording it makes the record contained.',
+              decoration: InputDecoration(
+                labelText: l10n.nonconformanceFormContainment,
+                helperText: l10n.commonWhatWasDoneAtOnceRecordingIt,
                 border: OutlineInputBorder(),
               ),
             ),

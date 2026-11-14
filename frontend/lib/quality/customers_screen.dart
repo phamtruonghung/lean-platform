@@ -36,6 +36,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
@@ -94,6 +95,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<CustomersBloc>().state;
 
     return Scaffold(
@@ -101,7 +103,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
         CustomersLoading() => const SkeletonList(maxWidth: CustomersScreen.maxWidth),
         CustomersUnavailable(message: final message) => PlatformFailureState(
             key: CustomersScreen.failedKey,
-            title: 'The Customer list could not be read',
+            title: l10n.customersTheCustomerListCouldNotBeRead,
             message: message,
             retryKey: CustomersScreen.retryKey,
             onRetry: () => context.read<CustomersBloc>().add(const CustomersStarted()),
@@ -132,6 +134,7 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final matches = [for (final customer in state.customers) if (customer.matches(term)) customer];
 
     return Center(
@@ -141,13 +144,12 @@ class _Loaded extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
             AppPageHeader(
-              title: 'Customers',
+              title: l10n.navCustomers,
               // Straight quotes, not a typographic apostrophe: the repo's copy
               // is plain ASCII throughout (`theme_skeleton` and the goldens
               // both read it back).
               description:
-                  'Who the plant\'s customers are, so a complaint has someone to belong to '
-                  'and a response has somewhere to go.',
+                  l10n.customersWhoThePlantSCustomersAreSo,
               actions: [
                 if (isAdmin)
                   FilledButton.icon(
@@ -155,7 +157,7 @@ class _Loaded extends StatelessWidget {
                     onPressed:
                         state.isMutating ? null : () => CustomerFormDialog.open(context),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add Customer'),
+                    label: Text(l10n.commonAddCustomer),
                   ),
               ],
             ),
@@ -163,18 +165,18 @@ class _Loaded extends StatelessWidget {
             if (state.customers.isEmpty)
               PlatformEmptyState.noneExist(
                 key: CustomersScreen.emptyKey,
-                title: 'No Customers yet',
-                message: 'Nothing has been defined in the list.',
+                title: l10n.customersNoCustomersYet,
+                message: l10n.commonNothingHasBeenDefinedInTheList,
                 icon: Icons.handshake_outlined,
-                actionLabel: isAdmin ? 'Add Customer' : null,
+                actionLabel: isAdmin ? l10n.commonAddCustomer : null,
                 actionKey: CustomersScreen.emptyAddKey,
                 onAction: isAdmin ? () => CustomerFormDialog.open(context) : null,
               )
             else ...[
               AppFilterField(
                 name: CustomersScreen.filterFieldName,
-                label: 'Filter Customers',
-                helperText: 'By name or code.',
+                label: l10n.customersFilterCustomers,
+                helperText: l10n.jobRolesByNameOrCode,
                 term: term,
                 onChanged: onTermChanged,
                 shown: matches.length,
@@ -184,9 +186,8 @@ class _Loaded extends StatelessWidget {
               if (matches.isEmpty)
                 PlatformEmptyState.noneMatched(
                   key: CustomersScreen.noMatchKey,
-                  title: 'No Customers match',
-                  message: 'Nothing in the list matches "${term.trim()}". Try a different '
-                      'name or code, or clear the filter.',
+                  title: l10n.customersNoCustomersMatch,
+                  message: l10n.commonNothingInTheListMatchesTryA(term.trim()),
                 )
               else
                 AppListCard(
@@ -220,6 +221,7 @@ class _CustomerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return ConstrainedBox(
       key: CustomersScreen.rowKey(customer.id),
@@ -241,7 +243,7 @@ class _CustomerRow extends StatelessWidget {
                     const SizedBox(width: Spacing.sm),
                     StatusChip(
                       key: CustomersScreen.inactiveChipKey(customer.id),
-                      label: 'Inactive',
+                      label: l10n.jobPlansInactive,
                       tone: StatusTone.neutral,
                     ),
                   ],
@@ -256,7 +258,7 @@ class _CustomerRow extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                 ),
-                child: const Text('Correct'),
+                child: Text(l10n.commonCorrect),
               ),
           ],
         ),

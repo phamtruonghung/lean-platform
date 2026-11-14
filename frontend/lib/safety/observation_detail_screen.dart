@@ -28,6 +28,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_detail_section.dart';
@@ -75,6 +76,7 @@ class SafetyObservationDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<SafetyObservationDetailBloc>().state;
 
     // The page head sits above the state switch, so a load, a failed read, a
@@ -97,17 +99,16 @@ class SafetyObservationDetailScreen extends StatelessWidget {
               SafetyObservationDetailUnavailable(isMissing: true) =>
                 PlatformEmptyState.noneExist(
                   key: missingKey,
-                  title: 'No such Safety observation',
-                  message: 'Nothing is recorded at this address. It may have been removed, or '
-                      'the address may be wrong.',
+                  title: l10n.observationDetailNoSuchSafetyObservation,
+                  message: l10n.nonconformanceDetailMissingMessage,
                   icon: Icons.search_off_outlined,
-                  actionLabel: 'Back to Safety observations',
+                  actionLabel: l10n.observationDetailBackToSafetyObservations,
                   actionKey: backKey,
                   onAction: () => context.go(Routes.safetyObservations),
                 ),
               SafetyObservationDetailUnavailable(message: final message) => PlatformFailureState(
                   key: failedKey,
-                  title: 'The Safety observation could not be read',
+                  title: l10n.observationDetailTheSafetyObservationCouldNotBeRead,
                   message: message,
                   retryKey: retryKey,
                   onRetry: () => context
@@ -135,6 +136,7 @@ class _Head extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: SafetyObservationDetailScreen.maxWidth,
@@ -153,12 +155,12 @@ class _Head extends StatelessWidget {
                       minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                     ),
                     icon: const Icon(Icons.arrow_back),
-                    label: const Text('Back to Safety observations'),
+                    label: Text(l10n.observationDetailBackToSafetyObservations),
                   ),
                 ),
                 const SizedBox(height: Spacing.sm),
               ],
-              const AppPageHeader(title: 'Safety observation'),
+              AppPageHeader(title: l10n.titleSafetyObservation),
             ],
           ),
         ),
@@ -174,6 +176,7 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final row = state.observation;
 
     return Center(
@@ -190,14 +193,14 @@ class _Loaded extends StatelessWidget {
             _SummaryCard(observation: row),
             const SizedBox(height: Spacing.md),
             AppDetailSection(
-              title: 'What was seen',
+              title: l10n.safetyWhatWasSeen,
               children: [
-                    _Fact(label: 'Description', value: row.description ?? 'None given'),
+                    _Fact(label: l10n.commonDescription, value: row.description ?? 'None given'),
                     _Fact(
-                      label: 'Action taken',
+                      label: l10n.observationDetailActionTaken,
                       value: row.actionTaken ?? 'None recorded yet',
                     ),
-                    _Fact(label: 'Recorded by', value: row.recordedByLabel),
+                    _Fact(label: l10n.observationDetailRecordedBy, value: row.recordedByLabel),
               ],
             ),
             // What is being done about it (issue #231). Below the record's
@@ -229,6 +232,7 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     return Card(
@@ -255,21 +259,21 @@ class _SummaryCard extends StatelessWidget {
                 if (observation.isStopWork)
                   Chip(
                     key: SafetyObservationDetailScreen.stopWorkKey,
-                    label: const Text('Stop-work'),
+                    label: Text(l10n.safetyStopWork),
                   ),
               ],
             ),
             const SizedBox(height: Spacing.md),
-            Text('Summary', style: theme.textTheme.titleMedium),
+            Text(l10n.commonSummary, style: theme.textTheme.titleMedium),
             const SizedBox(height: Spacing.sm),
-            _Fact(label: 'Category', value: observation.categoryLabel),
-            _Fact(label: 'Org Unit', value: observation.orgUnitName),
+            _Fact(label: l10n.commonCategory, value: observation.categoryLabel),
+            _Fact(label: l10n.commonOrgUnit, value: observation.orgUnitName),
             _Fact(
-              label: 'Filed against',
+              label: l10n.nonconformanceDetailFiledAgainst,
               key: SafetyObservationDetailScreen.filedKey,
               value: observation.filedAgainst,
             ),
-            _Fact(label: 'Observed at', value: observation.observedAt ?? 'Not recorded'),
+            _Fact(label: l10n.observationDetailObservedAt, value: observation.observedAt ?? 'Not recorded'),
           ],
         ),
       ),
@@ -300,16 +304,16 @@ class _ActionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final actions = observation.actions;
 
     return AppDetailSection(
       key: SafetyObservationDetailScreen.actionsKey,
-      title: 'Closing the loop',
+      title: l10n.observationDetailClosingTheLoop,
       children: [
             Text(
-              'The observation itself is recorded here; what somebody does about it is owned '
-              'in the action log, as an Action.',
+              l10n.observationDetailTheObservationItselfIsRecordedHereWhat,
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
@@ -325,7 +329,7 @@ class _ActionsCard extends StatelessWidget {
             if (actions.isEmpty)
               Text(
                 key: SafetyObservationDetailScreen.noActionsKey,
-                'Nothing is being done about this yet.',
+                l10n.observationDetailNothingIsBeingDoneAboutThisYet,
                 style: theme.textTheme.bodyMedium,
               )
             else
@@ -346,7 +350,7 @@ class _ActionsCard extends StatelessWidget {
                             action.actionNo,
                             action.typeLabel,
                             if (action.ownerName != null) action.ownerName!,
-                            if (action.isOverdue) 'overdue',
+                            if (action.isOverdue) l10n.nonconformanceDetailOverdue,
                           ].join(' · '),
                         ),
                         trailing: StatusChip(
@@ -364,7 +368,7 @@ class _ActionsCard extends StatelessWidget {
                   ? null
                   : () => context.go('${Routes.safetyObservations}/${observation.id}/raise-action'),
               icon: const Icon(Icons.assignment_add),
-              label: const Text('Raise an Action'),
+              label: Text(l10n.commonRaiseAnAction),
             ),
       ],
     );

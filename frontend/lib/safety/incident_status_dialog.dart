@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'incident_detail_bloc.dart';
@@ -71,6 +72,7 @@ class _SafetyIncidentStatusDialogState extends State<SafetyIncidentStatusDialog>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final incident = widget.incident;
     final next = incident.nextStatus;
@@ -80,16 +82,15 @@ class _SafetyIncidentStatusDialogState extends State<SafetyIncidentStatusDialog>
       // own description and the single action closes it.
       return AppDialog(
         key: SafetyIncidentStatusDialog.refusedKey,
-        title: 'Move the status',
+        title: l10n.incidentStatusMoveTheStatus,
         size: AppDialogSize.decision,
         description: incident.isClosed
-            ? 'This Safety incident is closed; its status cannot be moved.'
-            : 'This Safety incident is already ${incident.statusLabel.toLowerCase()}; '
-                'only closing moves it further.',
+            ? l10n.incidentStatusThisSafetyIncidentIsClosedItsStatus
+            : l10n.incidentStatusThisSafetyIncidentIsAlreadyOnlyClosing(incident.statusLabel.toLowerCase()),
         actions: [
           AppDialogAction(
             id: SafetyIncidentStatusDialog._closeId,
-            label: 'Close',
+            label: l10n.downtimeClose,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -102,20 +103,19 @@ class _SafetyIncidentStatusDialogState extends State<SafetyIncidentStatusDialog>
       // A decision (420): one sentence restating the move, and two actions —
       // there are no fields, because there is nothing to fill in.
       child: AppDialog(
-        title: 'Move the status',
+        title: l10n.incidentStatusMoveTheStatus,
         size: AppDialogSize.decision,
-        description: '${incident.incidentNo} moves from ${incident.statusLabel} to '
-            '${SafetyIncidentStatus.label(next)}.',
+        description: l10n.incidentStatusMovesFromTo(incident.incidentNo, incident.statusLabel, SafetyIncidentStatus.label(next)),
         actions: [
           AppDialogAction(
             id: SafetyIncidentStatusDialog._dismissId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: SafetyIncidentStatusDialog._submitId,
-            label: 'Move to ${SafetyIncidentStatus.label(next)}',
+            label: l10n.incidentStatusMoveTo(SafetyIncidentStatus.label(next)),
             onPressed: _awaiting ? null : () => _submit(next),
           ),
         ],

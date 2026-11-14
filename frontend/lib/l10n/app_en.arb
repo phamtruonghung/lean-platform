@@ -3660,5 +3660,651 @@
     }
   },
   "failureStateNotVisibleToYou2": "Not visible to you",
-  "signaturePadSignatureDrawingArea": "Signature drawing area"
+  "signaturePadSignatureDrawingArea": "Signature drawing area",
+  "complaintDetailThatComplaintCouldNotBeRead": "That complaint could not be read",
+  "complaintDetailBackToCustomerComplaints": "Back to Customer complaints",
+  "commonPastDue": "Past due",
+  "commonWarrantyClaim": "Warranty claim",
+  "complaintDetailTheProductThisIsAbout": "The product this is about",
+  "complaintDetailNothingControlsTheProductThisCustomerComplained": "Nothing controls the product this customer complained about yet. Record a Non-conformance from this complaint, or link one that already exists for the same Product.",
+  "commonLinkOneThatExists": "Link one that exists",
+  "commonOpenRecord": "Open record",
+  "complaintDetailCustomer": "customer",
+  "complaintDetailFoundByTheCustomerSoThisComplaint": "Found by the customer, so this complaint is where it started.",
+  "complaintDetailRecordedAtAndLinkedToThisComplaint": "Recorded at {value}, and linked to this complaint.",
+  "@complaintDetailRecordedAtAndLinkedToThisComplaint": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "commonOpenTheNonConformance": "Open the Non-conformance",
+  "commonTheResponse": "The response",
+  "complaintDetailClosed": "Closed {closedAt}",
+  "@complaintDetailClosed": {
+    "placeholders": {
+      "closedAt": {"type": "Object"}
+    }
+  },
+  "complaintDetailNothingHasBeenSaidBackToThis": "Nothing has been said back to this customer yet.",
+  "complaintDetailCloseWithTheResponse": "Close with the response",
+  "complaintFormRecordACustomerComplaint": "Record a customer complaint",
+  "complaintFormCustomer": "Customer",
+  "commonDefectCodeOptional": "Defect code (optional)",
+  "complaintFormWhatTheCustomerSaysIsWrongA": "What the customer says is wrong. A Non-conformance recorded from this complaint carries it.",
+  "commonNotKnownYet": "Not known yet",
+  "complaintFormQuantityOptional": "Quantity (optional)",
+  "complaintFormInTheProductSOwnUnitOf": "In the Product's own unit of measure.",
+  "complaintFormResponseDueOptional": "Response due (optional)",
+  "complaintFormTheDayTheCustomerWasPromisedAn": "The day the customer was promised an answer.",
+  "complaintFormWhatTheCustomerSaid": "What the customer said",
+  "complaintFormWhoAnswersIt": "Who answers it",
+  "complaintFormChooseTheOrgUnitThatWillAnswer": "Choose the Org Unit that will answer this complaint. This is what decides who may act on it.",
+  "complaintFormThisComplaintWillBeFiledAt": "This complaint will be filed at {value}.",
+  "@complaintFormThisComplaintWillBeFiledAt": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "commonLinkANonConformance": "Link a Non-conformance",
+  "commonLinking": "Linking…",
+  "commonLinkIt": "Link it",
+  "complaintLinkANonConformanceThatAlreadyExistsFor": "A Non-conformance that already exists for {productName} can be linked to this complaint, instead of recording a second one for the same problem.",
+  "@complaintLinkANonConformanceThatAlreadyExistsFor": {
+    "placeholders": {
+      "productName": {"type": "Object"}
+    }
+  },
+  "commonTheNonConformancesCouldNotBeRead": "The Non-conformances could not be read",
+  "complaintLinkNoNonConformanceHasBeenRecordedFor": "No Non-conformance has been recorded for this Product yet, so there is nothing to link. Record one from this complaint instead.",
+  "commonTheNonConformanceThatControlsIt": "The Non-conformance that controls it",
+  "complaintNonconformanceControlTheProduct": "Control the product",
+  "complaintNonconformanceANonConformanceIsRecordedAtFor": "A Non-conformance is recorded at {orgUnitName} for {productName}, found by the customer.",
+  "@complaintNonconformanceANonConformanceIsRecordedAtFor": {
+    "placeholders": {
+      "orgUnitName": {"type": "Object"},
+      "productName": {"type": "Object"}
+    }
+  },
+  "complaintNonconformanceHowMuchProductIsInQuestionIn": "How much product is in question, in the Product's own unit.",
+  "complaintNonconformanceTheComplaintSOwnDefectCodeIs": "The complaint's own Defect code is carried onto the record.",
+  "commonTheDefectCodesCouldNotBeRead": "The Defect codes could not be read",
+  "complaintNonconformanceThisComplaintCarriesNoneSoChooseThe": "This complaint carries none, so choose the one to record it against.",
+  "commonWhatWasDoneAtOnceRecordingIt": "What was done at once. Recording it makes the record contained.",
+  "commonNarrowTheRegister": "Narrow the register",
+  "complaintOrgUnitFilterChooseTheOrgUnitWhoseComplaintsAnd": "Choose the Org Unit whose complaints, and everything beneath it, you want to read — or clear back to the whole Site.",
+  "complaintRespondAnswerTheCustomer": "Answer the customer",
+  "complaintRespondClosing": "Closing…",
+  "complaintRespondCloseTheComplaint": "Close the complaint",
+  "complaintRespondWhatWasSaidBackToAboutThis": "What was said back to {customerName} about {complaintNo}. This closes the complaint.",
+  "@complaintRespondWhatWasSaidBackToAboutThis": {
+    "placeholders": {
+      "customerName": {"type": "Object"},
+      "complaintNo": {"type": "Object"}
+    }
+  },
+  "complaintsTheComplaintRegisterCouldNotBeRead": "The complaint register could not be read",
+  "complaintsWhatCustomersHaveComplainedAboutAtThis": "What customers have complained about at this Site, and whether the product they complained about is under control.",
+  "complaintsRecordAComplaint": "Record a complaint",
+  "complaintsThereAreMoreComplaintsThanThisList": "There are more complaints than this list shows. Narrow it by Org Unit or by status to see the rest.",
+  "complaintsTheRegisterHasComplaintsButNoneOf": "The register has complaints, but none of them is in the area or state you picked.",
+  "complaintsNoComplaints": "No complaints",
+  "complaintsNoCustomerHasComplainedAboutAnythingFrom": "No customer has complained about anything from this Site.",
+  "complaintsComplaint": "Complaint",
+  "complaintsCustomerAndProduct": "Customer and product",
+  "complaintsResponseDue": "Response due",
+  "commonControl": "Control",
+  "complaintsWarranty": "Warranty",
+  "customerFormCorrectCustomer": "Correct Customer",
+  "commonAddCustomer": "Add Customer",
+  "customerFormACustomerSCodeCannotBeCorrected": "A Customer's code cannot be corrected",
+  "commonContactEmailOptional": "Contact email (optional)",
+  "customersTheCustomerListCouldNotBeRead": "The Customer list could not be read",
+  "customersWhoThePlantSCustomersAreSo": "Who the plant's customers are, so a complaint has someone to belong to and a response has somewhere to go.",
+  "customersNoCustomersYet": "No Customers yet",
+  "commonNothingHasBeenDefinedInTheList": "Nothing has been defined in the list.",
+  "customersFilterCustomers": "Filter Customers",
+  "customersNoCustomersMatch": "No Customers match",
+  "commonNothingInTheListMatchesTryA": "Nothing in the list matches \"{term}\". Try a different name or code, or clear the filter.",
+  "@commonNothingInTheListMatchesTryA": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "defectCodeFormCorrectDefectCode": "Correct Defect code",
+  "commonAddDefectCode": "Add Defect code",
+  "defectCodeFormADefectCodeCannotBeCorrected": "A Defect code cannot be corrected",
+  "defectCodeFormDefaultSeverity": "Default severity",
+  "defectCodeFormWhatANonConformanceRecordedAgainstThis": "What a Non-conformance recorded against this code starts at",
+  "defectCodeFormParent": "Parent",
+  "defectCodeFormNoParentTopLevel": "No parent — top level",
+  "defectCodesTheDefectCodeCatalogueCouldNotBe": "The Defect code catalogue could not be read",
+  "defectCodesTheKindsOfThingFoundWrongOne": "The kinds of thing found wrong — one list shared by every Site, and the severity each starts a Non-conformance at.",
+  "defectCodesNoDefectCodesYet": "No Defect codes yet",
+  "issueImagesRemoveThisPicture": "Remove this picture?",
+  "issueImagesThePictureIsTakenOffTheRecord": "The picture is taken off the record. A slide needs one, so the issue may leave the show until another is added.",
+  "issueImagesAddPicture": "Add picture",
+  "issueImagesPictures": "Pictures",
+  "issueImagesThePicturesCouldNotBeRead": "The pictures could not be read",
+  "issueImagesNoPictureYetASlideNeedsAt": "No picture yet. A slide needs at least one: add the photo that shows the problem.",
+  "commonThePictureCouldNotBeLoaded": "The picture could not be loaded",
+  "issueImagesAPictureOfTheIssue": "A picture of the issue",
+  "issueImagesRemoveThisPicture2": "Remove this picture",
+  "issueImagesAddThisPicture": "Add this picture",
+  "issueImagesTheCaptionIsWhatTheSlideSays": "The caption is what the slide says under it. It is optional.",
+  "issueImagesAddIt": "Add it",
+  "issueImagesCaptionOptional": "Caption (optional)",
+  "issueImagesBurrOnTheFlangeNearTheLocating": "Burr on the flange, near the locating lug",
+  "nonconformanceCancelCannotCancelIt": "Cannot cancel it",
+  "nonconformanceCancelCancellingANonConformanceNeedsQualityAuthority": "Cancelling a Non-conformance needs Quality authority at its Org Unit.",
+  "nonconformanceCancelANonConformanceThatIsClosedOr": "A Non-conformance that is closed or already cancelled cannot be cancelled.",
+  "nonconformanceCancelCancelThisNonConformance": "Cancel this Non-conformance",
+  "nonconformanceCancelCancelIt": "Cancel it",
+  "nonconformanceCancelWillBeCancelledRatherThanDealtWith": "{issueNo} will be cancelled rather than dealt with. A cancelled Non-conformance accepts no further Dispositions or quantity changes.",
+  "@nonconformanceCancelWillBeCancelledRatherThanDealtWith": {
+    "placeholders": {
+      "issueNo": {"type": "Object"}
+    }
+  },
+  "commonNote": "Note",
+  "nonconformanceCancelWhyItShouldNeverHaveBeenRecorded": "Why it should never have been recorded.",
+  "nonconformanceConcessionCannotGrantIt": "Cannot grant it",
+  "nonconformanceConcessionGrantingAConcessionNeedsQualityAuthorityAt": "Granting a Concession needs Quality authority at this Non-conformance's Org Unit.",
+  "nonconformanceConcessionGrantIt": "Grant it",
+  "nonconformanceConcessionAcceptingTheProductAsItIsNeeds": "Accepting the product as it is needs Quality authority, and your name stays on {issueNo}.",
+  "@nonconformanceConcessionAcceptingTheProductAsItIsNeeds": {
+    "placeholders": {
+      "issueNo": {"type": "Object"}
+    }
+  },
+  "nonconformanceConcessionQuantityAcceptedAsItIs": "Quantity accepted as it is",
+  "nonconformanceConcessionAtMost": "At most {value} {unit}.",
+  "@nonconformanceConcessionAtMost": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "unit": {"type": "Object"}
+    }
+  },
+  "nonconformanceConcessionReference": "Reference",
+  "nonconformanceConcessionTheDeviationOrApprovalNumberItIs": "The deviation or approval number it is granted under.",
+  "nonconformanceConcessionWhyTheProductIsAcceptableAsIt": "Why the product is acceptable as it is.",
+  "nonconformanceDispositionHasStillUndecidedDealWithSomeOf": "{issueNo} has {value} {unit} still undecided. Deal with some of it here.",
+  "@nonconformanceDispositionHasStillUndecidedDealWithSomeOf": {
+    "placeholders": {
+      "issueNo": {"type": "Object"},
+      "value": {"type": "Object"},
+      "unit": {"type": "Object"}
+    }
+  },
+  "commonDisposition": "Disposition",
+  "nonconformanceDispositionScrapReworkOrBackToTheSupplier": "Scrap, rework, or back to the supplier.",
+  "nonconformanceDispositionAtMost": "At most {value} {unit}.",
+  "@nonconformanceDispositionAtMost": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "unit": {"type": "Object"}
+    }
+  },
+  "nonconformanceDispositionReworkMinutes": "Rework minutes",
+  "nonconformanceDispositionHowLongTheReworkTookForCost": "How long the rework took, for cost of poor quality.",
+  "nonconformanceDispositionWhatWasDoneWithIt": "What was done with it.",
+  "nonconformanceLinkConcernBecomesOneOfTheOccurrencesThisConcern": "{issueNo} becomes one of the occurrences this Concern answers. The Concern keeps the Non-conformance it was raised from.",
+  "@nonconformanceLinkConcernBecomesOneOfTheOccurrencesThisConcern": {
+    "placeholders": {
+      "issueNo": {"type": "Object"}
+    }
+  },
+  "nonconformanceLinkConcernThisSiteHasNoOpenConcernTo": "This Site has no open Concern to link it to. Raise one instead.",
+  "nonconformanceLinkConcernConcern": "Concern",
+  "nonconformanceLinkConcernByItsNumberOrItsTitle": "By its number or its title.",
+  "nonconformanceLowerSeverityCannotLowerIt": "Cannot lower it",
+  "nonconformanceLowerSeverityLoweringASeverityNeedsQualityAuthorityAt": "Lowering a severity needs Quality authority at this Non-conformance's Org Unit.",
+  "nonconformanceLowerSeverityLowerIt": "Lower it",
+  "nonconformanceLowerSeverityIsSeverityAndItsDefectCodeStarts": "{issueNo} is {value} severity, and its Defect code starts at {value2}.",
+  "@nonconformanceLowerSeverityIsSeverityAndItsDefectCodeStarts": {
+    "placeholders": {
+      "issueNo": {"type": "Object"},
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "nonconformanceLowerSeverityThisNonConformanceIsAlreadyAtThe": "This Non-conformance is already at the lightest severity.",
+  "nonconformanceLowerSeverityLowerTheSeverityTo": "Lower the severity to",
+  "nonconformanceLowerSeverityLoweringWhatTheDefectCodeSaysNeeds": "Lowering what the Defect code says needs Quality authority.",
+  "commonLeaveTheSeverityAlone": "Leave the severity alone",
+  "nonconformanceLowerSeverityWhyItIsLessBadThanThe": "Why it is less bad than the Defect code says.",
+  "nonconformanceOrgUnitFilterChooseTheOrgUnitWhoseNonConformances": "Choose the Org Unit whose Non-conformances and everything beneath it you want to read, or clear back to the whole Site.",
+  "nonconformanceQuantityIncreaseTheAffectedQuantity": "Increase the affected quantity",
+  "nonconformanceQuantityIncreaseIt": "Increase it",
+  "nonconformanceQuantityCurrentlyCoversItCanOnlyGrow": "{issueNo} currently covers {value} {unit}. It can only grow.",
+  "@nonconformanceQuantityCurrentlyCoversItCanOnlyGrow": {
+    "placeholders": {
+      "issueNo": {"type": "Object"},
+      "value": {"type": "Object"},
+      "unit": {"type": "Object"}
+    }
+  },
+  "nonconformanceQuantityNewAffectedQuantity": "New affected quantity",
+  "nonconformanceQuantityMoreThanOrNothingAtAll": "More than {value} {unit}, or nothing at all.",
+  "@nonconformanceQuantityMoreThanOrNothingAtAll": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "unit": {"type": "Object"}
+    }
+  },
+  "nonconformanceQuantityWhyItChangedSortingTheBinFound": "Why it changed — \"sorting the bin found eight more\".",
+  "nonconformanceRaiseConcernIsRecordedAtAndTheConcernIs": "{issueNo} is recorded at {orgUnitName}, and the Concern is raised there — a problem is solved where it happened.",
+  "@nonconformanceRaiseConcernIsRecordedAtAndTheConcernIs": {
+    "placeholders": {
+      "issueNo": {"type": "Object"},
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "nonconformanceRaiseConcernWhatIsTheProblemToSolve": "What is the problem to solve?",
+  "nonconformanceRaiseConcernTheConcernIsReadInTheAction": "The Concern is read in the action log, so say the problem, not the product.",
+  "commonAnythingKnownYet": "Anything known yet",
+  "nonconformanceRaiseConcernOptionalTheNonConformanceItselfIsAlready": "Optional. The Non-conformance itself is already linked as evidence.",
+  "common1IsWorst": "1 is worst.",
+  "nonconformanceReopenCannotReopenIt": "Cannot reopen it",
+  "nonconformanceReopenReopeningANonConformanceNeedsQualityAuthority": "Reopening a Non-conformance needs Quality authority at its Org Unit.",
+  "nonconformanceReopenOnlyAClosedNonConformanceCanBe": "Only a closed Non-conformance can be reopened.",
+  "nonconformanceReopenReopenThisNonConformance": "Reopen this Non-conformance",
+  "nonconformanceReopenIsClosedReopeningItPutsItBack": "{issueNo} is closed. Reopening it puts it back to dispositioned, and its closing time goes with it.",
+  "@nonconformanceReopenIsClosedReopeningItPutsItBack": {
+    "placeholders": {
+      "issueNo": {"type": "Object"}
+    }
+  },
+  "nonconformanceReopenWhyItIsBeingReopened": "Why it is being reopened.",
+  "nonconformanceUpdateIsSeverityAnd": "{issueNo} is {value} severity and {value2}.",
+  "@nonconformanceUpdateIsSeverityAnd": {
+    "placeholders": {
+      "issueNo": {"type": "Object"},
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "nonconformanceUpdateThisNonConformanceIsAlreadyAtThe": "This Non-conformance is already at the worst severity, so there is nothing to raise it to.",
+  "nonconformanceUpdateRaiseTheSeverityTo": "Raise the severity to",
+  "nonconformanceUpdateSeverityCanBeRaisedHereLoweringIt": "Severity can be raised here; lowering it is a later decision.",
+  "nonconformanceUpdateRecordContainment": "Record containment",
+  "nonconformancesNcHcm202600001": "NC-HCM-2026-00001",
+  "productFormCorrectProduct": "Correct Product",
+  "commonAddProduct": "Add Product",
+  "productFormAProductSCodeCannotBeCorrected": "A Product's code cannot be corrected",
+  "productFormAProductSUnitOfMeasureCannot": "A Product's unit of measure cannot be corrected",
+  "productFormTheUnitsOfMeasureCouldNotBe": "The units of measure could not be read",
+  "productsTheProductCatalogueCouldNotBeRead": "The Product catalogue could not be read",
+  "productsWhatThePlantMakesOneCatalogueShared": "What the plant makes — one catalogue shared by every Site, and what each Product is measured in.",
+  "productsNoProductsYet": "No Products yet",
+  "slideShowTheSlideShowCouldNotBeRead": "The slide show could not be read",
+  "slideShowTheQualityIssuesChosenForThisSite": "The Quality issues chosen for this Site, one picture at a time. Choose an issue from its register or its own Screen, and set the order here.",
+  "slideShowPauseTheShow": "Pause the show",
+  "slideShowPlayTheShow": "Play the show",
+  "slideShowChooseTheOrder": "Choose the order",
+  "slideShowNothingIsOnTheWallYet": "Nothing is on the wall yet",
+  "slideShowChooseACustomerComplaintOrANon": "Choose a Customer complaint or a Non-conformance in its register, and add at least one picture to it. The chosen issues appear here.",
+  "slideShowChosenNoneWithAPicture": "{length} chosen, none with a picture",
+  "@slideShowChosenNoneWithAPicture": {
+    "placeholders": {
+      "length": {"type": "Object"}
+    }
+  },
+  "slideShowASlideNeedsAPictureOpenAnd": "A slide needs a picture. Open {value} and add one, and {value2} will appear here.",
+  "@slideShowASlideNeedsAPictureOpenAnd": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "slideShowAPictureOf": "A picture of {value}",
+  "@slideShowAPictureOf": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "slideShowPreviousSlide": "Previous slide",
+  "slideShowNoSlides": "No slides",
+  "slideShowNextSlide": "Next slide",
+  "slideShowChosenWithoutAPicture": "{length} chosen without a picture",
+  "@slideShowChosenWithoutAPicture": {
+    "placeholders": {
+      "length": {"type": "Object"}
+    }
+  },
+  "slideShowTheOrderTheShowPlaysIn": "The order the show plays in",
+  "slideShowNothingIsChosenYet": "Nothing is chosen yet.",
+  "slideShowPicture": "{value} picture{value2}",
+  "@slideShowPicture": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "slideShowNoPictureYetItWillNotAppear": "No picture yet — it will not appear until one is added",
+  "slideShowMoveEarlier": "Move earlier",
+  "slideShowMoveLater": "Move later",
+  "slideShowTakeOffTheWall": "Take off the wall",
+  "slideShowToggleOnTheSlideShow": "On the slide show",
+  "slideShowToggleNotOnTheSlideShow": "Not on the slide show",
+  "slideShowToggleChosenIssuesPlayInTheQualitySlide": "Chosen issues play in the Quality slide show, one picture at a time.",
+  "supplierFormCorrectSupplier": "Correct Supplier",
+  "commonAddSupplier": "Add Supplier",
+  "supplierFormASupplierSCodeCannotBeCorrected": "A Supplier's code cannot be corrected",
+  "supplierNcrDetailThatSupplierNcrCouldNotBeRead": "That supplier NCR could not be read",
+  "supplierNcrDetailBackToSupplierNcrs": "Back to Supplier NCRs",
+  "supplierNcrDetailNothingWasWrittenDownAboutIt": "Nothing was written down about it.",
+  "supplierNcrDetailTheMaterialThisIsAbout": "The material this is about",
+  "supplierNcrDetailNothingControlsTheMaterialThisNcrIs": "Nothing controls the material this NCR is about yet. Record a Non-conformance from this NCR, or link one that already exists for the same lot.",
+  "supplierNcrDetailIncoming": "incoming",
+  "supplierNcrDetailFoundAtGoodsInSoThisNcr": "Found at goods-in, so this NCR is where it started.",
+  "supplierNcrDetailRecordedAtAndLinkedToThisNcr": "Recorded at {value}, and linked to this NCR.",
+  "@supplierNcrDetailRecordedAtAndLinkedToThisNcr": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "supplierNcrDetailTheSupplierSDisposition": "The Supplier's disposition",
+  "supplierNcrDetailNothingHasBeenRecoveredFromThisSupplier": "Nothing has been recovered from this Supplier.",
+  "supplierNcrDetailRecovered": "Recovered {costRecoveredLabel}.",
+  "@supplierNcrDetailRecovered": {
+    "placeholders": {
+      "costRecoveredLabel": {"type": "Object"}
+    }
+  },
+  "supplierNcrDetailClosed": "Closed {closedAt}",
+  "@supplierNcrDetailClosed": {
+    "placeholders": {
+      "closedAt": {"type": "Object"}
+    }
+  },
+  "commonRecordTheDisposition": "Record the disposition",
+  "supplierNcrDetailCorrectTheDisposition": "Correct the disposition",
+  "supplierNcrDetailCloseTheNcr": "Close the NCR",
+  "supplierNcrDispositionDecideTheMaterial": "Decide the material",
+  "supplierNcrDispositionWhatHappensToThatCameFromOn": "What happens to {quantityLabel} that came from {supplierName} on {ncrNo}.",
+  "@supplierNcrDispositionWhatHappensToThatCameFromOn": {
+    "placeholders": {
+      "quantityLabel": {"type": "Object"},
+      "supplierName": {"type": "Object"},
+      "ncrNo": {"type": "Object"}
+    }
+  },
+  "supplierNcrDispositionWhatThePlantDecidedHappensToThe": "What the plant decided happens to the received material.",
+  "supplierNcrDispositionCostRecoveredOptional": "Cost recovered (optional)",
+  "supplierNcrDispositionWhatWasClawedBackFromTheSupplier": "What was clawed back from the Supplier. Leave it blank when nothing was claimed.",
+  "supplierNcrDispositionThreeLettersTheCurrencyTheCostRecovered": "Three letters, the currency the cost recovered is in.",
+  "commonRecordASupplierNcr": "Record a supplier NCR",
+  "commonSupplier": "Supplier",
+  "supplierNcrFormProductOptional": "Product (optional)",
+  "supplierNcrFormWhatTheLotIsWhenThatIs": "What the lot is, when that is known. A Non-conformance recorded from this NCR needs one.",
+  "supplierNcrFormNotNamedYet": "Not named yet",
+  "supplierNcrFormWhatIsWrongWithItANon": "What is wrong with it. A Non-conformance recorded from this NCR carries it.",
+  "supplierNcrFormHowMuchCameInWrong": "How much came in wrong.",
+  "supplierNcrFormWhatTheQuantityIsCountedInTaken": "What the quantity is counted in. Taken from the Product when one is named.",
+  "supplierNcrFormIncomingLotReferenceOptional": "Incoming lot reference (optional)",
+  "supplierNcrFormTheLotTheDeliveryNoteSays": "The lot the delivery note says.",
+  "supplierNcrFormPurchaseReferenceOptional": "Purchase reference (optional)",
+  "supplierNcrFormTheOrderItArrivedAgainst": "The order it arrived against.",
+  "supplierNcrFormAnswerDueOptional": "Answer due (optional)",
+  "supplierNcrFormTheDayTheSupplierWasGivenTo": "The day the Supplier was given to answer.",
+  "supplierNcrFormWhatIsWrongWithItOptional": "What is wrong with it (optional)",
+  "supplierNcrFormWhoWorksIt": "Who works it",
+  "supplierNcrFormChooseTheOrgUnitThatWillWork": "Choose the Org Unit that will work this supplier NCR. This is what decides who may act on it.",
+  "supplierNcrFormThisSupplierNcrWillBeFiledAt": "This supplier NCR will be filed at {value}.",
+  "@supplierNcrFormThisSupplierNcrWillBeFiledAt": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "supplierNcrLinkANonConformanceThatAlreadyExistsCan": "A Non-conformance that already exists{value} can be linked to this supplier NCR, instead of recording a second one for the same problem.",
+  "@supplierNcrLinkANonConformanceThatAlreadyExistsCan": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "supplierNcrLinkNoNonConformanceHasBeenRecordedFor": "No Non-conformance has been recorded for this Product yet, so there is nothing to link. Record one from this supplier NCR instead.",
+  "supplierNcrNonconformanceControlTheMaterial": "Control the material",
+  "supplierNcrNonconformanceANonConformanceIsRecordedAtFound": "A Non-conformance is recorded at {orgUnitName}{value}, found at goods-in.",
+  "@supplierNcrNonconformanceANonConformanceIsRecordedAtFound": {
+    "placeholders": {
+      "orgUnitName": {"type": "Object"},
+      "value": {"type": "Object"}
+    }
+  },
+  "supplierNcrNonconformanceHowMuchMaterialIsInQuestionIn": "How much material is in question, in the unit it came in.",
+  "supplierNcrNonconformanceTheSupplierNcrSOwnProductIs": "The supplier NCR's own Product is carried onto the record.",
+  "supplierNcrNonconformanceTheProductsCouldNotBeRead": "The Products could not be read",
+  "supplierNcrNonconformanceThisSupplierNcrNamesNoneSoChoose": "This supplier NCR names none, so choose what the lot was for.",
+  "supplierNcrNonconformanceTheSupplierNcrSOwnDefectCode": "The supplier NCR's own Defect code is carried onto the record.",
+  "supplierNcrNonconformanceThisSupplierNcrCarriesNoneSoChoose": "This supplier NCR carries none, so choose the one to record it against.",
+  "supplierNcrOrgUnitFilterChooseTheOrgUnitWhoseSupplierNcrs": "Choose the Org Unit whose supplier NCRs, and everything beneath it, you want to read — or clear back to the whole Site.",
+  "supplierNcrSupplierFilterFilterBySupplier": "Filter by Supplier",
+  "commonAllSuppliers": "All Suppliers",
+  "supplierNcrSupplierFilterChooseTheSupplierWhoseSupplierNcrsYou": "Choose the Supplier whose supplier NCRs you want to read, or clear back to every Supplier.",
+  "supplierNcrsTheSupplierNcrRegisterCouldNotBe": "The supplier NCR register could not be read",
+  "supplierNcrsWhatArrivedWrongFromASupplierAt": "What arrived wrong from a Supplier at this Site, and whether the material it came in with is under control.",
+  "supplierNcrsThereAreMoreSupplierNcrsThanThis": "There are more supplier NCRs than this list shows. Narrow it by Supplier or by status to see the rest.",
+  "supplierNcrsTheRegisterHasSupplierNcrsButNone": "The register has supplier NCRs, but none of them is in the area, the Supplier or the state you picked.",
+  "supplierNcrsNoSupplierNcrs": "No supplier NCRs",
+  "supplierNcrsNothingHasComeInWrongFromA": "Nothing has come in wrong from a Supplier at this Site.",
+  "supplierNcrsNcr": "NCR",
+  "supplierNcrsSupplierAndProduct": "Supplier and product",
+  "supplierNcrsAnswerDue": "Answer due",
+  "suppliersTheSupplierListCouldNotBeRead": "The Supplier list could not be read",
+  "suppliersWhoThePlantBuysFromSoAn": "Who the plant buys from, so an incoming lot that is wrong has someone to belong to and a claim has somewhere to go.",
+  "suppliersNoSuppliersYet": "No Suppliers yet",
+  "suppliersFilterSuppliers": "Filter Suppliers",
+  "suppliersNoSuppliersMatch": "No Suppliers match",
+  "bodyPartFormCorrectBodyPart": "Correct Body part",
+  "commonAddBodyPart": "Add Body part",
+  "bodyPartFormABodyPartSCodeCannotBe": "A Body part's code cannot be corrected",
+  "bodyPartFormRegion": "Region",
+  "bodyPartFormARetiredBodyPartIsNoLonger": "A retired Body part is no longer offered while classifying, and stays on every incident that already names it.",
+  "bodyPartsTheBodyPartCatalogueCouldNotBe": "The Body part catalogue could not be read",
+  "bodyPartsWhereOnTheBodyAnInjuryWas": "Where on the body an injury was — one catalogue shared by every Site, filed under the region each part belongs to.",
+  "bodyPartsNoBodyPartsYet": "No Body parts yet",
+  "commonClassifyTheInjury": "Classify the injury",
+  "incidentClassifyClassifyingTheInjuryNeedsSafetyAuthorityAt": "Classifying the injury needs Safety authority at this Safety incident's Org Unit.",
+  "incidentClassifySitsOnTheNoInjuryRungNobody": "{incidentNo} sits on the no-injury rung. Nobody was hurt, so there is nothing to classify — correct the severity first if that is wrong.",
+  "@incidentClassifySitsOnTheNoInjuryRungNobody": {
+    "placeholders": {
+      "incidentNo": {"type": "Object"}
+    }
+  },
+  "incidentClassifyWhoWasHurtWhatTheInjuryWas": "Who was hurt, what the injury was and where on the body. These three are read only by a holder of Safety authority for this area and by the injured person's own Account.",
+  "incidentClassifySaveTheClassification": "Save the classification",
+  "commonInjuredEmployee": "Injured Employee",
+  "incidentClassifyWhoWasHurt": "Who was hurt.",
+  "incidentClassifyClearTheInjuredEmployee": "Clear the injured Employee",
+  "incidentClassifyTheInjuryTypeAndBodyPartCatalogues": "The Injury type and Body part catalogues could not be read",
+  "commonInjuryType": "Injury type",
+  "incidentClassifyWhatTheInjuryWas": "What the injury was.",
+  "incidentClassifyClearTheInjuryType": "Clear the Injury type",
+  "commonBodyPart": "Body part",
+  "incidentClassifyWhereOnTheBody": "Where on the body.",
+  "incidentClassifyClearTheBodyPart": "Clear the Body part",
+  "incidentCloseCloseThisSafetyIncident": "Close this Safety incident",
+  "incidentCloseClosingASafetyIncidentNeedsSafetyAuthority": "Closing a Safety incident needs Safety authority at its Org Unit.",
+  "incidentCloseThisSafetyIncidentIsAlreadyClosed": "This Safety incident is already closed.",
+  "incidentCloseWillBeClosedAConcernRaisedFrom": "{incidentNo} will be closed. A Concern raised from it, if any, keeps working the cause on its own.",
+  "@incidentCloseWillBeClosedAConcernRaisedFrom": {
+    "placeholders": {
+      "incidentNo": {"type": "Object"}
+    }
+  },
+  "incidentCloseLeaveItOpen": "Leave it open",
+  "commonCloseIt": "Close it",
+  "incidentCloseWhyThisIncidentIsBeingClosed": "Why this incident is being closed.",
+  "commonRecordTheDays": "Record the days",
+  "incidentDaysRecordingTheDaysNeedsSafetyAuthorityAt": "Recording the days needs Safety authority at this Safety incident's Org Unit.",
+  "incidentDaysThisSafetyIncidentIsClosedItsDays": "This Safety incident is closed; its days cannot be changed.",
+  "incidentDaysWhatCostZeroIsARealAnswer": "What {incidentNo} cost — zero is a real answer, and settles it.",
+  "@incidentDaysWhatCostZeroIsARealAnswer": {
+    "placeholders": {
+      "incidentNo": {"type": "Object"}
+    }
+  },
+  "commonLostTimeDays": "Lost-time days",
+  "commonRestrictedDays": "Restricted days",
+  "incidentDetailNoSuchSafetyIncident": "No such Safety incident",
+  "incidentDetailBackToSafetyIncidents": "Back to Safety incidents",
+  "incidentDetailTheSafetyIncidentCouldNotBeRead": "The Safety incident could not be read",
+  "incidentDetailReportedAt": "Reported at",
+  "incidentDetailImmediateAction": "Immediate action",
+  "commonInvestigationDueDate": "Investigation due date",
+  "incidentDetailMoveTo": "Move to {value}",
+  "@incidentDetailMoveTo": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "commonCorrectTheSeverity": "Correct the severity",
+  "incidentDetailClosed": "Closed {closedAt}",
+  "@incidentDetailClosed": {
+    "placeholders": {
+      "closedAt": {"type": "Object"}
+    }
+  },
+  "commonInvestigationDueAt": "Investigation due at",
+  "incidentDetailTheInjury": "The injury",
+  "incidentDetailRestrictedVisibleToSafetyAuthorityForThis": "Restricted — visible to Safety authority for this area.",
+  "incidentDetailNotClassifiedYetWhoWasHurtWhat": "Not classified yet. Who was hurt, what the injury was and where on the body have not been recorded.",
+  "incidentDetailTheIncidentItselfIsRecordedHereThe": "The incident itself is recorded here; the cause behind it is solved in the action log, as a Concern.",
+  "incidentDetailEventHistory": "Event history",
+  "incidentDetailEverySeverityChangeStatusMoveDaysChange": "Every severity change, status move, days change, closure and classification change, kept with who and when.",
+  "incidentDetailNothingHasChangedAboutThisRecordSince": "Nothing has changed about this record since it was recorded.",
+  "incidentDueDateThisSafetyIncidentIsClosedItsInvestigation": "This Safety incident is closed; its investigation due date cannot be changed.",
+  "incidentDueDateSInvestigationDeadline": "{incidentNo}'s investigation deadline.",
+  "@incidentDueDateSInvestigationDeadline": {
+    "placeholders": {
+      "incidentNo": {"type": "Object"}
+    }
+  },
+  "incidentFormWhatKindOfEventThisWas": "What kind of event this was.",
+  "incidentFormTheWorstActualOutcomeToAPerson": "The worst actual outcome to a person. Ladder order.",
+  "incidentFormWhatHappened": "What happened.",
+  "incidentFormWhatWasDoneAtOnce": "What was done at once.",
+  "incidentFormInjuredEmployeeOptional": "Injured Employee (optional)",
+  "incidentFormWhoWasHurtIfAnyoneReadOnly": "Who was hurt, if anyone. Read only by Safety authority for this area and by the injured person's own Account.",
+  "incidentFormWhenItHappenedThisIsWhatDecides": "When it happened. This is what decides the production day and shift it is filed against.",
+  "incidentFormReportedAtOptional": "Reported at (optional)",
+  "incidentFormWhenItWasReportedIfThatIs": "When it was reported, if that is not now.",
+  "incidentFormWhereItHappened": "Where it happened",
+  "incidentFormChooseTheOrgUnitTheIncidentOccurred": "Choose the Org Unit the incident occurred at. This is what decides who may act on it.",
+  "incidentFormThisSafetyIncidentWillBeRecordedAt": "This Safety incident will be recorded at {value}.",
+  "@incidentFormThisSafetyIncidentWillBeRecordedAt": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "incidentFormWhichMachineIfTheIncidentWasOn": "Which machine, if the incident was on one. It must sit at that Org Unit.",
+  "incidentRaiseConcernIsRecordedAtAndTheConcernIs": "{incidentNo} is recorded at {orgUnitName}, and the Concern is raised there — a problem is solved where it happened.",
+  "@incidentRaiseConcernIsRecordedAtAndTheConcernIs": {
+    "placeholders": {
+      "incidentNo": {"type": "Object"},
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "incidentRaiseConcernWhatIsTheCauseToSolve": "What is the cause to solve?",
+  "incidentRaiseConcernTheConcernIsReadInTheAction": "The Concern is read in the action log, so say the problem, not the injury.",
+  "incidentRaiseConcernOptionalTheSafetyIncidentItselfIsAlready": "Optional. The Safety incident itself is already linked as evidence.",
+  "incidentSeverityCorrectingTheSeverityNeedsSafetyAuthorityAt": "Correcting the severity needs Safety authority at this Safety incident's Org Unit.",
+  "incidentSeverityIsCorrectingItRestatesThePeriodIt": "{incidentNo} is {value}. Correcting it restates the period it occurred in.",
+  "@incidentSeverityIsCorrectingItRestatesThePeriodIt": {
+    "placeholders": {
+      "incidentNo": {"type": "Object"},
+      "value": {"type": "Object"}
+    }
+  },
+  "incidentSeverityCorrectIt": "Correct it",
+  "incidentSeverityCorrectTheSeverityTo": "Correct the severity to",
+  "incidentSeverityWhyTheSeverityIsBeingCorrected": "Why the severity is being corrected.",
+  "incidentStatusMoveTheStatus": "Move the status",
+  "incidentStatusThisSafetyIncidentIsClosedItsStatus": "This Safety incident is closed; its status cannot be moved.",
+  "incidentStatusThisSafetyIncidentIsAlreadyOnlyClosing": "This Safety incident is already {value}; only closing moves it further.",
+  "@incidentStatusThisSafetyIncidentIsAlreadyOnlyClosing": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "incidentStatusMovesFromTo": "{incidentNo} moves from {statusLabel} to {value}.",
+  "@incidentStatusMovesFromTo": {
+    "placeholders": {
+      "incidentNo": {"type": "Object"},
+      "statusLabel": {"type": "Object"},
+      "value": {"type": "Object"}
+    }
+  },
+  "incidentStatusMoveTo": "Move to {value}",
+  "@incidentStatusMoveTo": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "incidents1SafetyIncident": "1 Safety incident",
+  "incidentsSafetyIncidents": "{length} Safety incidents",
+  "@incidentsSafetyIncidents": {
+    "placeholders": {
+      "length": {"type": "Object"}
+    }
+  },
+  "incidentsSiHcm202600001": "SI-HCM-2026-00001",
+  "injuryTypeFormCorrectInjuryType": "Correct Injury type",
+  "commonAddInjuryType": "Add Injury type",
+  "injuryTypeFormAnInjuryTypeSCodeCannotBe": "An Injury type's code cannot be corrected",
+  "injuryTypeFormARetiredInjuryTypeIsNoLonger": "A retired Injury type is no longer offered while classifying, and stays on every incident that already names it.",
+  "injuryTypesTheInjuryTypeCatalogueCouldNotBe": "The Injury type catalogue could not be read",
+  "injuryTypesWhatAnInjuryWasOneCatalogueShared": "What an injury was — one catalogue shared by every Site, and what a Safety incident is classified against.",
+  "injuryTypesNoInjuryTypesYet": "No Injury types yet",
+  "observationDetailNoSuchSafetyObservation": "No such Safety observation",
+  "observationDetailBackToSafetyObservations": "Back to Safety observations",
+  "observationDetailTheSafetyObservationCouldNotBeRead": "The Safety observation could not be read",
+  "observationDetailActionTaken": "Action taken",
+  "observationDetailRecordedBy": "Recorded by",
+  "observationDetailObservedAt": "Observed at",
+  "observationDetailClosingTheLoop": "Closing the loop",
+  "observationDetailTheObservationItselfIsRecordedHereWhat": "The observation itself is recorded here; what somebody does about it is owned in the action log, as an Action.",
+  "observationDetailNothingIsBeingDoneAboutThisYet": "Nothing is being done about this yet.",
+  "commonRaiseAnAction": "Raise an Action",
+  "observationFormASafeActAnUnsafeActOr": "A safe act, an unsafe act, or an unsafe condition.",
+  "observationFormTheWorstCredibleOutcomeNotWhatActually": "The worst credible outcome, not what actually happened.",
+  "observationFormWhatWasSeen": "What was seen.",
+  "observationFormWhatWasDoneOnTheSpot": "What was done on the spot.",
+  "observationFormRareAndTheSingleStrongestSignalThat": "Rare, and the single strongest signal that the safety culture is real.",
+  "observationFormObservedAtOptional": "Observed at (optional)",
+  "observationFormWhenItWasSeenIfNotNow": "When it was seen, if not now. This is what decides the production day and shift it is filed against.",
+  "observationFormWhereItWasSeen": "Where it was seen",
+  "observationFormChooseTheOrgUnitTheObservationWas": "Choose the Org Unit the observation was made at. This is what decides who may act on it.",
+  "observationFormThisSafetyObservationWillBeRecordedAt": "This Safety observation will be recorded at {value}.",
+  "@observationFormThisSafetyObservationWillBeRecordedAt": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "observationRaiseActionThisObservationIsRecordedAtAndThe": "This observation is recorded at {orgUnitName}, and the Action is raised there — a problem is owned where it was seen.",
+  "@observationRaiseActionThisObservationIsRecordedAtAndThe": {
+    "placeholders": {
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "observationRaiseActionChooseWhatThisIs": "Choose what this is.",
+  "observationRaiseActionChooseAKind": "Choose a kind",
+  "observationRaiseActionWhatNeedsDoing": "What needs doing?",
+  "observationRaiseActionTheActionIsReadInTheAction": "The Action is read in the action log, so say the work, not the observation.",
+  "observationRaiseActionOptionalTheSafetyObservationItselfIsAlready": "Optional. The Safety observation itself is already linked as evidence.",
+  "observations1SafetyObservation": "1 Safety observation",
+  "observationsSafetyObservations": "{length} Safety observations",
+  "@observationsSafetyObservations": {
+    "placeholders": {
+      "length": {"type": "Object"}
+    }
+  },
+  "safetyIncidentRecordable": "{value} · recordable",
+  "@safetyIncidentRecordable": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "safetyObservationOrgUnitFilterChooseTheOrgUnitWhoseSafetyObservations": "Choose the Org Unit whose Safety observations and everything beneath it you want to read, or clear back to the whole Site.",
+  "safetyOrgUnitFilterChooseTheOrgUnitWhoseSafetyIncidents": "Choose the Org Unit whose Safety incidents and everything beneath it you want to read, or clear back to the whole Site."
 }

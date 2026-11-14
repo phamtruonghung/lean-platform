@@ -24,6 +24,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'body_part.dart';
@@ -142,23 +143,24 @@ class _BodyPartFormDialogState extends State<BodyPartFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocListener<BodyPartsBloc, BodyPartsState>(
       listener: _onCatalogueChanged,
       child: AppDialog(
-        title: _isCorrection ? 'Correct Body part' : 'Add Body part',
+        title: _isCorrection ? l10n.bodyPartFormCorrectBodyPart : l10n.commonAddBodyPart,
         // A short form (520): four fields at most (§11).
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: BodyPartFormDialog._dismissId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: BodyPartFormDialog._submitId,
-            label: _awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add Body part'),
+            label: _awaiting ? l10n.commonSaving : (_isCorrection ? l10n.commonSave : l10n.commonAddBodyPart),
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -172,9 +174,9 @@ class _BodyPartFormDialogState extends State<BodyPartFormDialog> {
               enabled: !_isCorrection && !_awaiting,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                labelText: 'Code',
+                labelText: l10n.commonCode,
                 border: const OutlineInputBorder(),
-                helperText: _isCorrection ? "A Body part's code cannot be corrected" : null,
+                helperText: _isCorrection ? l10n.bodyPartFormABodyPartSCodeCannotBe : null,
               ),
             ),
             const SizedBox(height: Spacing.md),
@@ -183,15 +185,15 @@ class _BodyPartFormDialogState extends State<BodyPartFormDialog> {
               controller: _name,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.commonName, border: OutlineInputBorder()),
             ),
             const SizedBox(height: Spacing.md),
             DropdownButtonFormField<String>(
               key: BodyPartFormDialog.regionKey,
               initialValue: _region,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Region',
+              decoration: InputDecoration(
+                labelText: l10n.bodyPartFormRegion,
                 border: OutlineInputBorder(),
               ),
               items: [
@@ -210,10 +212,9 @@ class _BodyPartFormDialogState extends State<BodyPartFormDialog> {
               SwitchListTile(
                 key: BodyPartFormDialog.activeKey,
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Active'),
-                subtitle: const Text(
-                  'A retired Body part is no longer offered while classifying, and '
-                  'stays on every incident that already names it.',
+                title: Text(l10n.commonActive),
+                subtitle: Text(
+                  l10n.bodyPartFormARetiredBodyPartIsNoLonger,
                 ),
                 value: _isActive,
                 onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),

@@ -17,6 +17,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_date_time_field.dart';
 import '../widgets/app_dialog.dart';
@@ -81,6 +82,7 @@ class _SafetyIncidentDueDateDialogState extends State<SafetyIncidentDueDateDialo
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final incident = widget.incident;
 
@@ -89,14 +91,14 @@ class _SafetyIncidentDueDateDialogState extends State<SafetyIncidentDueDateDialo
       // description and the single action closes it.
       return AppDialog(
         key: SafetyIncidentDueDateDialog.refusedKey,
-        title: 'Investigation due date',
+        title: l10n.commonInvestigationDueDate,
         size: AppDialogSize.decision,
         description:
-            'This Safety incident is closed; its investigation due date cannot be changed.',
+            l10n.incidentDueDateThisSafetyIncidentIsClosedItsInvestigation,
         actions: [
           AppDialogAction(
             id: SafetyIncidentDueDateDialog._closeId,
-            label: 'Close',
+            label: l10n.downtimeClose,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -108,19 +110,19 @@ class _SafetyIncidentDueDateDialogState extends State<SafetyIncidentDueDateDialo
       listener: _onDetailChanged,
       // A form (520): one optional date (§11).
       child: AppDialog(
-        title: 'Investigation due date',
+        title: l10n.commonInvestigationDueDate,
         size: AppDialogSize.form,
-        description: "${incident.incidentNo}'s investigation deadline.",
+        description: l10n.incidentDueDateSInvestigationDeadline(incident.incidentNo),
         actions: [
           AppDialogAction(
             id: SafetyIncidentDueDateDialog._dismissId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: SafetyIncidentDueDateDialog._submitId,
-            label: 'Save',
+            label: l10n.commonSave,
             onPressed: _awaiting ? null : _submit,
           ),
         ],
@@ -131,7 +133,7 @@ class _SafetyIncidentDueDateDialogState extends State<SafetyIncidentDueDateDialo
             AppDateTimeField(
               key: SafetyIncidentDueDateDialog.fieldKey,
               name: 'safety-incident-due-date',
-              label: 'Investigation due at',
+              label: l10n.commonInvestigationDueAt,
               optional: true,
               value: _dueDate,
               enabled: !_awaiting,

@@ -22,6 +22,7 @@
 /// than by the API after the upload.
 library;
 
+import '../l10n/app_localizations.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -105,10 +106,10 @@ class _IssueImagesSectionState extends State<IssueImagesSection> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AppConfirmDialog(
-        title: 'Remove this picture?',
+        title: AppLocalizations.of(context).issueImagesRemoveThisPicture,
         description:
-            'The picture is taken off the record. A slide needs one, so the issue may leave the show until another is added.',
-        confirmLabel: 'Remove',
+            AppLocalizations.of(context).issueImagesThePictureIsTakenOffTheRecord,
+        confirmLabel: AppLocalizations.of(context).commonRemove,
         dismissLabel: 'Keep it',
       ),
     );
@@ -118,6 +119,7 @@ class _IssueImagesSectionState extends State<IssueImagesSection> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return BlocBuilder<IssueImagesBloc, IssueImagesState>(
       bloc: widget.bloc,
       builder: (context, state) {
@@ -126,12 +128,12 @@ class _IssueImagesSectionState extends State<IssueImagesSection> {
                 key: IssueImagesSection.addKey,
                 onPressed: state is IssueImagesLoaded && state.isBusy ? null : _add,
                 icon: const Icon(Icons.add_a_photo_outlined, size: 20),
-                label: const Text('Add picture'),
+                label: Text(l10n.issueImagesAddPicture),
               )
             : null;
 
         return AppDetailSection(
-          title: 'Pictures',
+          title: l10n.issueImagesPictures,
           trailing: trailing,
           children: [
             if (state is IssueImagesLoading)
@@ -141,7 +143,7 @@ class _IssueImagesSectionState extends State<IssueImagesSection> {
               ),
             if (state is IssueImagesUnavailable)
               PlatformFailureState(
-                title: 'The pictures could not be read',
+                title: l10n.issueImagesThePicturesCouldNotBeRead,
                 message: state.message,
                 onRetry: _retry,
               ),
@@ -155,6 +157,7 @@ class _IssueImagesSectionState extends State<IssueImagesSection> {
   void _retry() => widget.bloc.add(const IssueImagesStarted());
 
   List<Widget> _loaded(BuildContext context, IssueImagesLoaded state) {
+    final l10n = AppLocalizations.of(context);
     return [
       if (_pickerFailure != null)
         Padding(
@@ -183,7 +186,7 @@ class _IssueImagesSectionState extends State<IssueImagesSection> {
       if (state.images.isEmpty)
         Text(
           key: IssueImagesSection.emptyKey,
-          'No picture yet. A slide needs at least one: add the photo that shows the problem.',
+          l10n.issueImagesNoPictureYetASlideNeedsAt,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: AppColors.of(context).textMuted,
               ),
@@ -226,6 +229,7 @@ class _ImageTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return SizedBox(
       width: 210,
@@ -246,7 +250,7 @@ class _ImageTile extends StatelessWidget {
                             child: Icon(
                               Icons.broken_image_outlined,
                               color: palette.textMuted,
-                              semanticLabel: 'The picture could not be loaded',
+                              semanticLabel: l10n.commonThePictureCouldNotBeLoaded,
                             ),
                           ),
                         )
@@ -254,7 +258,7 @@ class _ImageTile extends StatelessWidget {
                           bytes!,
                           fit: BoxFit.cover,
                           gaplessPlayback: true,
-                          semanticLabel: image.caption ?? 'A picture of the issue',
+                          semanticLabel: image.caption ?? l10n.issueImagesAPictureOfTheIssue,
                         ),
                 ),
                 if (onRemove != null || removing)
@@ -266,7 +270,7 @@ class _ImageTile extends StatelessWidget {
                       shape: const CircleBorder(),
                       child: IconButton(
                         key: IssueImagesSection.removeKey(image.id),
-                        tooltip: 'Remove this picture',
+                        tooltip: l10n.issueImagesRemoveThisPicture2,
                         onPressed: removing ? null : onRemove,
                         icon: removing
                             ? const SizedBox(
@@ -317,19 +321,20 @@ class _CaptionDialogState extends State<_CaptionDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AppDialog(
-      title: 'Add this picture',
-      description: 'The caption is what the slide says under it. It is optional.',
+      title: l10n.issueImagesAddThisPicture,
+      description: l10n.issueImagesTheCaptionIsWhatTheSlideSays,
       actions: [
         AppDialogAction(
           id: 'quality-image-cancel',
-          label: 'Cancel',
+          label: l10n.commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(),
         ),
         AppDialogAction(
           id: 'quality-image-upload',
-          label: 'Add it',
+          label: l10n.issueImagesAddIt,
           onPressed: _upload,
         ),
       ],
@@ -350,9 +355,9 @@ class _CaptionDialogState extends State<_CaptionDialog> {
             controller: _controller,
             maxLength: imageMaxCaptionLength,
             textInputAction: TextInputAction.done,
-            decoration: const InputDecoration(
-              labelText: 'Caption (optional)',
-              hintText: 'Burr on the flange, near the locating lug',
+            decoration: InputDecoration(
+              labelText: l10n.issueImagesCaptionOptional,
+              hintText: l10n.issueImagesBurrOnTheFlangeNearTheLocating,
             ),
             onSubmitted: (_) => _upload(),
           ),

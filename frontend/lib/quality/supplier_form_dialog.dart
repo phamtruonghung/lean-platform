@@ -22,6 +22,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'supplier.dart';
@@ -151,22 +152,23 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocListener<SuppliersBloc, SuppliersState>(
       listener: _onSuppliersChanged,
       child: AppDialog(
-        title: _isCorrection ? 'Correct Supplier' : 'Add Supplier',
+        title: _isCorrection ? l10n.supplierFormCorrectSupplier : l10n.commonAddSupplier,
         size: AppDialogSize.decision,
         actions: [
           AppDialogAction(
             id: 'supplier-form-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'supplier-form-submit',
-            label: _awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add Supplier'),
+            label: _awaiting ? l10n.commonSaving : (_isCorrection ? l10n.commonSave : l10n.commonAddSupplier),
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -181,9 +183,9 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
               enabled: !_isCorrection && !_awaiting,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                labelText: 'Code',
+                labelText: l10n.commonCode,
                 border: const OutlineInputBorder(),
-                helperText: _isCorrection ? 'A Supplier\'s code cannot be corrected' : null,
+                helperText: _isCorrection ? l10n.supplierFormASupplierSCodeCannotBeCorrected : null,
               ),
             ),
             const SizedBox(height: Spacing.md),
@@ -192,8 +194,8 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
               controller: _name,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Name',
+              decoration: InputDecoration(
+                labelText: l10n.commonName,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -203,8 +205,8 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
               controller: _email,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Contact email (optional)',
+              decoration: InputDecoration(
+                labelText: l10n.commonContactEmailOptional,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -213,7 +215,7 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
               SwitchListTile(
                 key: SupplierFormDialog.activeKey,
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Active'),
+                title: Text(l10n.commonActive),
                 value: _isActive,
                 onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
               ),

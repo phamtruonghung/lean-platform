@@ -4683,4 +4683,1476 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get signaturePadSignatureDrawingArea => 'Vùng vẽ chữ ký';
+
+  @override
+  String get complaintDetailThatComplaintCouldNotBeRead =>
+      'Không đọc được khiếu nại đó';
+
+  @override
+  String get complaintDetailBackToCustomerComplaints =>
+      'Về Khiếu nại khách hàng';
+
+  @override
+  String get commonPastDue => 'Quá hạn';
+
+  @override
+  String get commonWarrantyClaim => 'Yêu cầu bảo hành';
+
+  @override
+  String get complaintDetailTheProductThisIsAbout =>
+      'Sản phẩm mà khiếu nại này nói tới';
+
+  @override
+  String get complaintDetailNothingControlsTheProductThisCustomerComplained =>
+      'Chưa có gì kiểm soát sản phẩm mà khách hàng khiếu nại. Hãy ghi nhận một Sản phẩm không phù hợp từ khiếu nại này, hoặc liên kết một bản đã có cho cùng Sản phẩm.';
+
+  @override
+  String get commonLinkOneThatExists => 'Liên kết một bản đã có';
+
+  @override
+  String get commonOpenRecord => 'Mở bản ghi';
+
+  @override
+  String get complaintDetailCustomer => 'khách hàng';
+
+  @override
+  String get complaintDetailFoundByTheCustomerSoThisComplaint =>
+      'Do khách hàng phát hiện, nên khiếu nại này là nơi mọi việc bắt đầu.';
+
+  @override
+  String complaintDetailRecordedAtAndLinkedToThisComplaint(Object value) {
+    return 'Ghi nhận ngày $value, và đã liên kết với khiếu nại này.';
+  }
+
+  @override
+  String get commonOpenTheNonConformance => 'Mở Sản phẩm không phù hợp';
+
+  @override
+  String get commonTheResponse => 'Phản hồi';
+
+  @override
+  String complaintDetailClosed(Object closedAt) {
+    return 'Đã đóng $closedAt';
+  }
+
+  @override
+  String get complaintDetailNothingHasBeenSaidBackToThis =>
+      'Chưa phản hồi gì lại cho khách hàng này.';
+
+  @override
+  String get complaintDetailCloseWithTheResponse => 'Đóng bằng phản hồi';
+
+  @override
+  String get complaintFormRecordACustomerComplaint =>
+      'Ghi nhận khiếu nại khách hàng';
+
+  @override
+  String get complaintFormCustomer => 'Khách hàng';
+
+  @override
+  String get commonDefectCodeOptional => 'Mã lỗi (không bắt buộc)';
+
+  @override
+  String get complaintFormWhatTheCustomerSaysIsWrongA =>
+      'Điều khách hàng nói là sai. Sản phẩm không phù hợp ghi nhận từ khiếu nại này sẽ mang theo nội dung đó.';
+
+  @override
+  String get commonNotKnownYet => 'Chưa biết';
+
+  @override
+  String get complaintFormQuantityOptional => 'Số lượng (không bắt buộc)';
+
+  @override
+  String get complaintFormInTheProductSOwnUnitOf =>
+      'Theo đơn vị đo của chính Sản phẩm.';
+
+  @override
+  String get complaintFormResponseDueOptional =>
+      'Hạn phản hồi (không bắt buộc)';
+
+  @override
+  String get complaintFormTheDayTheCustomerWasPromisedAn =>
+      'Ngày đã hứa với khách hàng là sẽ có câu trả lời.';
+
+  @override
+  String get complaintFormWhatTheCustomerSaid => 'Khách hàng đã nói gì';
+
+  @override
+  String get complaintFormWhoAnswersIt => 'Ai trả lời khiếu nại này';
+
+  @override
+  String get complaintFormChooseTheOrgUnitThatWillAnswer =>
+      'Chọn Đơn vị tổ chức sẽ trả lời khiếu nại này. Đây là điều quyết định ai được thao tác trên nó.';
+
+  @override
+  String complaintFormThisComplaintWillBeFiledAt(Object value) {
+    return 'Khiếu nại này sẽ được ghi nhận tại $value.';
+  }
+
+  @override
+  String get commonLinkANonConformance => 'Liên kết Sản phẩm không phù hợp';
+
+  @override
+  String get commonLinking => 'Đang liên kết…';
+
+  @override
+  String get commonLinkIt => 'Liên kết';
+
+  @override
+  String complaintLinkANonConformanceThatAlreadyExistsFor(Object productName) {
+    return 'Một Sản phẩm không phù hợp đã có cho $productName có thể được liên kết với khiếu nại này, thay vì ghi nhận thêm bản thứ hai cho cùng vấn đề.';
+  }
+
+  @override
+  String get commonTheNonConformancesCouldNotBeRead =>
+      'Không đọc được danh sách Sản phẩm không phù hợp';
+
+  @override
+  String get complaintLinkNoNonConformanceHasBeenRecordedFor =>
+      'Chưa ghi nhận Sản phẩm không phù hợp nào cho Sản phẩm này nên không có gì để liên kết. Hãy ghi nhận một bản từ khiếu nại này thay vào.';
+
+  @override
+  String get commonTheNonConformanceThatControlsIt =>
+      'Sản phẩm không phù hợp kiểm soát nó';
+
+  @override
+  String get complaintNonconformanceControlTheProduct => 'Kiểm soát sản phẩm';
+
+  @override
+  String complaintNonconformanceANonConformanceIsRecordedAtFor(
+    Object orgUnitName,
+    Object productName,
+  ) {
+    return 'Một Sản phẩm không phù hợp sẽ được ghi nhận tại $orgUnitName cho $productName, do khách hàng phát hiện.';
+  }
+
+  @override
+  String get complaintNonconformanceHowMuchProductIsInQuestionIn =>
+      'Có bao nhiêu sản phẩm bị nghi vấn, theo đơn vị của chính Sản phẩm.';
+
+  @override
+  String get complaintNonconformanceTheComplaintSOwnDefectCodeIs =>
+      'Mã lỗi của khiếu nại được mang sang bản ghi.';
+
+  @override
+  String get commonTheDefectCodesCouldNotBeRead =>
+      'Không đọc được danh mục Mã lỗi';
+
+  @override
+  String get complaintNonconformanceThisComplaintCarriesNoneSoChooseThe =>
+      'Khiếu nại này không mang mã nào, nên hãy chọn mã để ghi nhận.';
+
+  @override
+  String get commonWhatWasDoneAtOnceRecordingIt =>
+      'Đã làm gì ngay lúc đó. Ghi nhận bước này sẽ đưa bản ghi vào trạng thái đã ngăn chặn.';
+
+  @override
+  String get commonNarrowTheRegister => 'Thu hẹp danh sách';
+
+  @override
+  String get complaintOrgUnitFilterChooseTheOrgUnitWhoseComplaintsAnd =>
+      'Chọn Đơn vị tổ chức mà bạn muốn đọc khiếu nại cùng mọi thứ bên dưới nó, hoặc xoá về toàn bộ Nhà máy.';
+
+  @override
+  String get complaintRespondAnswerTheCustomer => 'Trả lời khách hàng';
+
+  @override
+  String get complaintRespondClosing => 'Đang đóng…';
+
+  @override
+  String get complaintRespondCloseTheComplaint => 'Đóng khiếu nại';
+
+  @override
+  String complaintRespondWhatWasSaidBackToAboutThis(
+    Object customerName,
+    Object complaintNo,
+  ) {
+    return 'Điều đã phản hồi cho $customerName về $complaintNo. Việc này đóng khiếu nại.';
+  }
+
+  @override
+  String get complaintsTheComplaintRegisterCouldNotBeRead =>
+      'Không đọc được danh sách khiếu nại';
+
+  @override
+  String get complaintsWhatCustomersHaveComplainedAboutAtThis =>
+      'Những gì khách hàng đã khiếu nại tại Nhà máy này, và sản phẩm bị khiếu nại có đang được kiểm soát hay không.';
+
+  @override
+  String get complaintsRecordAComplaint => 'Ghi nhận khiếu nại';
+
+  @override
+  String get complaintsThereAreMoreComplaintsThanThisList =>
+      'Còn nhiều khiếu nại hơn danh sách này hiển thị. Hãy thu hẹp theo Đơn vị tổ chức hoặc theo trạng thái để xem phần còn lại.';
+
+  @override
+  String get complaintsTheRegisterHasComplaintsButNoneOf =>
+      'Danh sách có khiếu nại, nhưng không cái nào thuộc khu vực hay trạng thái bạn đã chọn.';
+
+  @override
+  String get complaintsNoComplaints => 'Không có khiếu nại nào';
+
+  @override
+  String get complaintsNoCustomerHasComplainedAboutAnythingFrom =>
+      'Chưa khách hàng nào khiếu nại về sản phẩm nào từ Nhà máy này.';
+
+  @override
+  String get complaintsComplaint => 'Khiếu nại';
+
+  @override
+  String get complaintsCustomerAndProduct => 'Khách hàng và sản phẩm';
+
+  @override
+  String get complaintsResponseDue => 'Hạn phản hồi';
+
+  @override
+  String get commonControl => 'Kiểm soát';
+
+  @override
+  String get complaintsWarranty => 'Bảo hành';
+
+  @override
+  String get customerFormCorrectCustomer => 'Sửa Khách hàng';
+
+  @override
+  String get commonAddCustomer => 'Thêm Khách hàng';
+
+  @override
+  String get customerFormACustomerSCodeCannotBeCorrected =>
+      'Không sửa được mã của Khách hàng';
+
+  @override
+  String get commonContactEmailOptional => 'Email liên hệ (không bắt buộc)';
+
+  @override
+  String get customersTheCustomerListCouldNotBeRead =>
+      'Không đọc được danh sách Khách hàng';
+
+  @override
+  String get customersWhoThePlantSCustomersAreSo =>
+      'Khách hàng của nhà máy là ai — để khiếu nại có người thuộc về và phản hồi có nơi gửi tới.';
+
+  @override
+  String get customersNoCustomersYet => 'Chưa có Khách hàng nào';
+
+  @override
+  String get commonNothingHasBeenDefinedInTheList => 'Danh sách chưa có gì.';
+
+  @override
+  String get customersFilterCustomers => 'Lọc Khách hàng';
+
+  @override
+  String get customersNoCustomersMatch => 'Không có Khách hàng nào khớp';
+
+  @override
+  String commonNothingInTheListMatchesTryA(Object term) {
+    return 'Danh sách không có gì khớp “$term”. Hãy thử tên hoặc mã khác, hoặc xoá bộ lọc.';
+  }
+
+  @override
+  String get defectCodeFormCorrectDefectCode => 'Sửa Mã lỗi';
+
+  @override
+  String get commonAddDefectCode => 'Thêm Mã lỗi';
+
+  @override
+  String get defectCodeFormADefectCodeCannotBeCorrected =>
+      'Không sửa được Mã lỗi';
+
+  @override
+  String get defectCodeFormDefaultSeverity => 'Mức độ mặc định';
+
+  @override
+  String get defectCodeFormWhatANonConformanceRecordedAgainstThis =>
+      'Mức độ mà một Sản phẩm không phù hợp ghi theo mã này sẽ bắt đầu';
+
+  @override
+  String get defectCodeFormParent => 'Mã cha';
+
+  @override
+  String get defectCodeFormNoParentTopLevel => 'Không có mã cha — cấp cao nhất';
+
+  @override
+  String get defectCodesTheDefectCodeCatalogueCouldNotBe =>
+      'Không đọc được danh mục Mã lỗi';
+
+  @override
+  String get defectCodesTheKindsOfThingFoundWrongOne =>
+      'Các kiểu sai hỏng — một danh mục dùng chung cho mọi Nhà máy, kèm mức độ mà mỗi mã bắt đầu.';
+
+  @override
+  String get defectCodesNoDefectCodesYet => 'Chưa có Mã lỗi nào';
+
+  @override
+  String get issueImagesRemoveThisPicture => 'Bỏ ảnh này?';
+
+  @override
+  String get issueImagesThePictureIsTakenOffTheRecord =>
+      'Ảnh bị bỏ khỏi bản ghi. Một trang trình chiếu cần ảnh, nên vấn đề này có thể rời khỏi buổi trình chiếu cho tới khi có ảnh khác.';
+
+  @override
+  String get issueImagesAddPicture => 'Thêm ảnh';
+
+  @override
+  String get issueImagesPictures => 'Ảnh';
+
+  @override
+  String get issueImagesThePicturesCouldNotBeRead =>
+      'Không đọc được danh sách ảnh';
+
+  @override
+  String get issueImagesNoPictureYetASlideNeedsAt =>
+      'Chưa có ảnh. Một trang trình chiếu cần ít nhất một ảnh: hãy thêm ảnh cho thấy vấn đề.';
+
+  @override
+  String get commonThePictureCouldNotBeLoaded => 'Không tải được ảnh';
+
+  @override
+  String get issueImagesAPictureOfTheIssue => 'Ảnh của vấn đề';
+
+  @override
+  String get issueImagesRemoveThisPicture2 => 'Bỏ ảnh này';
+
+  @override
+  String get issueImagesAddThisPicture => 'Thêm ảnh này';
+
+  @override
+  String get issueImagesTheCaptionIsWhatTheSlideSays =>
+      'Chú thích là dòng chữ trang trình chiếu nói dưới ảnh. Không bắt buộc.';
+
+  @override
+  String get issueImagesAddIt => 'Thêm vào';
+
+  @override
+  String get issueImagesCaptionOptional => 'Chú thích (không bắt buộc)';
+
+  @override
+  String get issueImagesBurrOnTheFlangeNearTheLocating =>
+      'Ba via trên mặt bích, gần chốt định vị';
+
+  @override
+  String get nonconformanceCancelCannotCancelIt => 'Không huỷ được';
+
+  @override
+  String
+  get nonconformanceCancelCancellingANonConformanceNeedsQualityAuthority =>
+      'Huỷ một Sản phẩm không phù hợp cần thẩm quyền Chất lượng tại Đơn vị tổ chức của nó.';
+
+  @override
+  String get nonconformanceCancelANonConformanceThatIsClosedOr =>
+      'Sản phẩm không phù hợp đã đóng hoặc đã huỷ thì không huỷ lại được.';
+
+  @override
+  String get nonconformanceCancelCancelThisNonConformance =>
+      'Huỷ Sản phẩm không phù hợp này';
+
+  @override
+  String get nonconformanceCancelCancelIt => 'Huỷ bản ghi';
+
+  @override
+  String nonconformanceCancelWillBeCancelledRatherThanDealtWith(
+    Object issueNo,
+  ) {
+    return '$issueNo sẽ bị huỷ thay vì được xử lý. Sản phẩm không phù hợp đã huỷ không nhận thêm Phương án xử lý hay thay đổi số lượng nào.';
+  }
+
+  @override
+  String get commonNote => 'Ghi chú';
+
+  @override
+  String get nonconformanceCancelWhyItShouldNeverHaveBeenRecorded =>
+      'Vì sao lẽ ra không nên ghi nhận bản này.';
+
+  @override
+  String get nonconformanceConcessionCannotGrantIt => 'Không cấp được';
+
+  @override
+  String
+  get nonconformanceConcessionGrantingAConcessionNeedsQualityAuthorityAt =>
+      'Cấp một Nhượng bộ cần thẩm quyền Chất lượng tại Đơn vị tổ chức của Sản phẩm không phù hợp này.';
+
+  @override
+  String get nonconformanceConcessionGrantIt => 'Cấp nhượng bộ';
+
+  @override
+  String nonconformanceConcessionAcceptingTheProductAsItIsNeeds(
+    Object issueNo,
+  ) {
+    return 'Chấp nhận sản phẩm nguyên trạng cần thẩm quyền Chất lượng, và tên bạn sẽ nằm trên $issueNo.';
+  }
+
+  @override
+  String get nonconformanceConcessionQuantityAcceptedAsItIs =>
+      'Số lượng được chấp nhận nguyên trạng';
+
+  @override
+  String nonconformanceConcessionAtMost(Object value, Object unit) {
+    return 'Tối đa $value $unit.';
+  }
+
+  @override
+  String get nonconformanceConcessionReference => 'Số tham chiếu';
+
+  @override
+  String get nonconformanceConcessionTheDeviationOrApprovalNumberItIs =>
+      'Số cho phép sai lệch hoặc số phê duyệt mà nhượng bộ này được cấp theo.';
+
+  @override
+  String get nonconformanceConcessionWhyTheProductIsAcceptableAsIt =>
+      'Vì sao sản phẩm nguyên trạng vẫn chấp nhận được.';
+
+  @override
+  String nonconformanceDispositionHasStillUndecidedDealWithSomeOf(
+    Object issueNo,
+    Object value,
+    Object unit,
+  ) {
+    return '$issueNo còn $value $unit chưa quyết. Hãy xử lý một phần ở đây.';
+  }
+
+  @override
+  String get commonDisposition => 'Phương án xử lý';
+
+  @override
+  String get nonconformanceDispositionScrapReworkOrBackToTheSupplier =>
+      'Huỷ bỏ, làm lại, hoặc trả lại nhà cung cấp.';
+
+  @override
+  String nonconformanceDispositionAtMost(Object value, Object unit) {
+    return 'Tối đa $value $unit.';
+  }
+
+  @override
+  String get nonconformanceDispositionReworkMinutes => 'Số phút làm lại';
+
+  @override
+  String get nonconformanceDispositionHowLongTheReworkTookForCost =>
+      'Làm lại mất bao lâu, để tính chi phí chất lượng kém.';
+
+  @override
+  String get nonconformanceDispositionWhatWasDoneWithIt =>
+      'Đã làm gì với số hàng đó.';
+
+  @override
+  String nonconformanceLinkConcernBecomesOneOfTheOccurrencesThisConcern(
+    Object issueNo,
+  ) {
+    return '$issueNo trở thành một trong những lần xuất hiện mà Concern này trả lời. Concern vẫn giữ Sản phẩm không phù hợp mà nó được nêu từ đó.';
+  }
+
+  @override
+  String get nonconformanceLinkConcernThisSiteHasNoOpenConcernTo =>
+      'Nhà máy này không có Concern nào đang mở để liên kết. Hãy nêu một Concern mới.';
+
+  @override
+  String get nonconformanceLinkConcernConcern => 'Concern';
+
+  @override
+  String get nonconformanceLinkConcernByItsNumberOrItsTitle =>
+      'Theo số hoặc tiêu đề của nó.';
+
+  @override
+  String get nonconformanceLowerSeverityCannotLowerIt => 'Không hạ được';
+
+  @override
+  String
+  get nonconformanceLowerSeverityLoweringASeverityNeedsQualityAuthorityAt =>
+      'Hạ mức độ cần thẩm quyền Chất lượng tại Đơn vị tổ chức của Sản phẩm không phù hợp này.';
+
+  @override
+  String get nonconformanceLowerSeverityLowerIt => 'Hạ mức độ';
+
+  @override
+  String nonconformanceLowerSeverityIsSeverityAndItsDefectCodeStarts(
+    Object issueNo,
+    Object value,
+    Object value2,
+  ) {
+    return '$issueNo đang ở mức độ $value, và Mã lỗi của nó bắt đầu ở mức $value2.';
+  }
+
+  @override
+  String get nonconformanceLowerSeverityThisNonConformanceIsAlreadyAtThe =>
+      'Sản phẩm không phù hợp này đã ở mức độ nhẹ nhất.';
+
+  @override
+  String get nonconformanceLowerSeverityLowerTheSeverityTo => 'Hạ mức độ xuống';
+
+  @override
+  String get nonconformanceLowerSeverityLoweringWhatTheDefectCodeSaysNeeds =>
+      'Hạ thấp hơn mức Mã lỗi quy định cần thẩm quyền Chất lượng.';
+
+  @override
+  String get commonLeaveTheSeverityAlone => 'Để nguyên mức độ';
+
+  @override
+  String get nonconformanceLowerSeverityWhyItIsLessBadThanThe =>
+      'Vì sao trường hợp này nhẹ hơn mức Mã lỗi quy định.';
+
+  @override
+  String get nonconformanceOrgUnitFilterChooseTheOrgUnitWhoseNonConformances =>
+      'Chọn Đơn vị tổ chức mà bạn muốn đọc Sản phẩm không phù hợp cùng mọi thứ bên dưới nó, hoặc xoá về toàn bộ Nhà máy.';
+
+  @override
+  String get nonconformanceQuantityIncreaseTheAffectedQuantity =>
+      'Tăng số lượng ảnh hưởng';
+
+  @override
+  String get nonconformanceQuantityIncreaseIt => 'Tăng số lượng';
+
+  @override
+  String nonconformanceQuantityCurrentlyCoversItCanOnlyGrow(
+    Object issueNo,
+    Object value,
+    Object unit,
+  ) {
+    return '$issueNo hiện bao $value $unit. Số lượng chỉ có thể tăng.';
+  }
+
+  @override
+  String get nonconformanceQuantityNewAffectedQuantity =>
+      'Số lượng ảnh hưởng mới';
+
+  @override
+  String nonconformanceQuantityMoreThanOrNothingAtAll(
+    Object value,
+    Object unit,
+  ) {
+    return 'Nhiều hơn $value $unit, hoặc không thêm gì.';
+  }
+
+  @override
+  String get nonconformanceQuantityWhyItChangedSortingTheBinFound =>
+      'Vì sao số lượng thay đổi — “soạn lại thùng thì thấy thêm tám cái”.';
+
+  @override
+  String nonconformanceRaiseConcernIsRecordedAtAndTheConcernIs(
+    Object issueNo,
+    Object orgUnitName,
+  ) {
+    return '$issueNo được ghi nhận tại $orgUnitName, và Concern được nêu ở đó — vấn đề được giải quyết tại nơi nó xảy ra.';
+  }
+
+  @override
+  String get nonconformanceRaiseConcernWhatIsTheProblemToSolve =>
+      'Vấn đề cần giải quyết là gì?';
+
+  @override
+  String get nonconformanceRaiseConcernTheConcernIsReadInTheAction =>
+      'Concern được đọc trong nhật ký hành động, nên hãy nói vấn đề, đừng nói sản phẩm.';
+
+  @override
+  String get commonAnythingKnownYet => 'Đã biết gì chưa';
+
+  @override
+  String
+  get nonconformanceRaiseConcernOptionalTheNonConformanceItselfIsAlready =>
+      'Không bắt buộc. Bản thân Sản phẩm không phù hợp đã được liên kết làm bằng chứng.';
+
+  @override
+  String get common1IsWorst => '1 là nặng nhất.';
+
+  @override
+  String get nonconformanceReopenCannotReopenIt => 'Không mở lại được';
+
+  @override
+  String
+  get nonconformanceReopenReopeningANonConformanceNeedsQualityAuthority =>
+      'Mở lại một Sản phẩm không phù hợp cần thẩm quyền Chất lượng tại Đơn vị tổ chức của nó.';
+
+  @override
+  String get nonconformanceReopenOnlyAClosedNonConformanceCanBe =>
+      'Chỉ Sản phẩm không phù hợp đã đóng mới mở lại được.';
+
+  @override
+  String get nonconformanceReopenReopenThisNonConformance =>
+      'Mở lại Sản phẩm không phù hợp này';
+
+  @override
+  String nonconformanceReopenIsClosedReopeningItPutsItBack(Object issueNo) {
+    return '$issueNo đã đóng. Mở lại sẽ đưa nó về trạng thái đã có phương án xử lý, và mốc thời gian đóng bị bỏ theo.';
+  }
+
+  @override
+  String get nonconformanceReopenWhyItIsBeingReopened => 'Vì sao mở lại.';
+
+  @override
+  String nonconformanceUpdateIsSeverityAnd(
+    Object issueNo,
+    Object value,
+    Object value2,
+  ) {
+    return '$issueNo đang ở mức độ $value và $value2.';
+  }
+
+  @override
+  String get nonconformanceUpdateThisNonConformanceIsAlreadyAtThe =>
+      'Sản phẩm không phù hợp này đã ở mức độ nặng nhất nên không nâng được nữa.';
+
+  @override
+  String get nonconformanceUpdateRaiseTheSeverityTo => 'Nâng mức độ lên';
+
+  @override
+  String get nonconformanceUpdateSeverityCanBeRaisedHereLoweringIt =>
+      'Mức độ có thể nâng ở đây; hạ xuống là một quyết định riêng về sau.';
+
+  @override
+  String get nonconformanceUpdateRecordContainment => 'Ghi nhận ngăn chặn';
+
+  @override
+  String get nonconformancesNcHcm202600001 => 'NC-HCM-2026-00001';
+
+  @override
+  String get productFormCorrectProduct => 'Sửa Sản phẩm';
+
+  @override
+  String get commonAddProduct => 'Thêm Sản phẩm';
+
+  @override
+  String get productFormAProductSCodeCannotBeCorrected =>
+      'Không sửa được mã của Sản phẩm';
+
+  @override
+  String get productFormAProductSUnitOfMeasureCannot =>
+      'Không sửa được đơn vị đo của Sản phẩm';
+
+  @override
+  String get productFormTheUnitsOfMeasureCouldNotBe =>
+      'Không đọc được danh sách đơn vị đo';
+
+  @override
+  String get productsTheProductCatalogueCouldNotBeRead =>
+      'Không đọc được danh mục Sản phẩm';
+
+  @override
+  String get productsWhatThePlantMakesOneCatalogueShared =>
+      'Nhà máy sản xuất gì — một danh mục dùng chung cho mọi Nhà máy, và mỗi Sản phẩm được đo bằng gì.';
+
+  @override
+  String get productsNoProductsYet => 'Chưa có Sản phẩm nào';
+
+  @override
+  String get slideShowTheSlideShowCouldNotBeRead =>
+      'Không đọc được buổi trình chiếu';
+
+  @override
+  String get slideShowTheQualityIssuesChosenForThisSite =>
+      'Các vấn đề chất lượng được chọn cho Nhà máy này, từng ảnh một. Hãy chọn vấn đề từ danh sách hoặc từ màn hình của nó, và sắp thứ tự ở đây.';
+
+  @override
+  String get slideShowPauseTheShow => 'Tạm dừng trình chiếu';
+
+  @override
+  String get slideShowPlayTheShow => 'Chạy trình chiếu';
+
+  @override
+  String get slideShowChooseTheOrder => 'Chọn thứ tự';
+
+  @override
+  String get slideShowNothingIsOnTheWallYet => 'Chưa có gì trên màn hình';
+
+  @override
+  String get slideShowChooseACustomerComplaintOrANon =>
+      'Hãy chọn một Khiếu nại khách hàng hoặc một Sản phẩm không phù hợp trong danh sách của nó, và thêm ít nhất một ảnh. Các vấn đề được chọn sẽ hiện ở đây.';
+
+  @override
+  String slideShowChosenNoneWithAPicture(Object length) {
+    return 'đã chọn $length, không cái nào có ảnh';
+  }
+
+  @override
+  String slideShowASlideNeedsAPictureOpenAnd(Object value, Object value2) {
+    return 'Một trang trình chiếu cần ảnh. Mở $value và thêm ảnh, rồi $value2 sẽ hiện ở đây.';
+  }
+
+  @override
+  String slideShowAPictureOf(Object value) {
+    return 'Ảnh của $value';
+  }
+
+  @override
+  String get slideShowPreviousSlide => 'Trang trước';
+
+  @override
+  String get slideShowNoSlides => 'Không có trang nào';
+
+  @override
+  String get slideShowNextSlide => 'Trang sau';
+
+  @override
+  String slideShowChosenWithoutAPicture(Object length) {
+    return '$length đã chọn nhưng chưa có ảnh';
+  }
+
+  @override
+  String get slideShowTheOrderTheShowPlaysIn => 'Thứ tự buổi trình chiếu chạy';
+
+  @override
+  String get slideShowNothingIsChosenYet => 'Chưa chọn gì.';
+
+  @override
+  String slideShowPicture(Object value, Object value2) {
+    return '$value ảnh$value2';
+  }
+
+  @override
+  String get slideShowNoPictureYetItWillNotAppear =>
+      'Chưa có ảnh — vấn đề sẽ không hiện cho tới khi có ảnh';
+
+  @override
+  String get slideShowMoveEarlier => 'Chuyển lên trước';
+
+  @override
+  String get slideShowMoveLater => 'Chuyển ra sau';
+
+  @override
+  String get slideShowTakeOffTheWall => 'Bỏ khỏi màn hình';
+
+  @override
+  String get slideShowToggleOnTheSlideShow => 'Đang trong buổi trình chiếu';
+
+  @override
+  String get slideShowToggleNotOnTheSlideShow => 'Không trong buổi trình chiếu';
+
+  @override
+  String get slideShowToggleChosenIssuesPlayInTheQualitySlide =>
+      'Các vấn đề được chọn sẽ chạy trong buổi trình chiếu chất lượng, từng ảnh một.';
+
+  @override
+  String get supplierFormCorrectSupplier => 'Sửa Nhà cung cấp';
+
+  @override
+  String get commonAddSupplier => 'Thêm Nhà cung cấp';
+
+  @override
+  String get supplierFormASupplierSCodeCannotBeCorrected =>
+      'Không sửa được mã của Nhà cung cấp';
+
+  @override
+  String get supplierNcrDetailThatSupplierNcrCouldNotBeRead =>
+      'Không đọc được NCR nhà cung cấp đó';
+
+  @override
+  String get supplierNcrDetailBackToSupplierNcrs => 'Về NCR nhà cung cấp';
+
+  @override
+  String get supplierNcrDetailNothingWasWrittenDownAboutIt =>
+      'Chưa ghi lại gì về việc này.';
+
+  @override
+  String get supplierNcrDetailTheMaterialThisIsAbout =>
+      'Vật tư mà NCR này nói tới';
+
+  @override
+  String get supplierNcrDetailNothingControlsTheMaterialThisNcrIs =>
+      'Chưa có gì kiểm soát vật tư mà NCR này nói tới. Hãy ghi nhận một Sản phẩm không phù hợp từ NCR này, hoặc liên kết một bản đã có cho cùng lô.';
+
+  @override
+  String get supplierNcrDetailIncoming => 'hàng về';
+
+  @override
+  String get supplierNcrDetailFoundAtGoodsInSoThisNcr =>
+      'Phát hiện ở khâu nhận hàng, nên NCR này là nơi mọi việc bắt đầu.';
+
+  @override
+  String supplierNcrDetailRecordedAtAndLinkedToThisNcr(Object value) {
+    return 'Ghi nhận ngày $value, và đã liên kết với NCR này.';
+  }
+
+  @override
+  String get supplierNcrDetailTheSupplierSDisposition =>
+      'Phương án xử lý của Nhà cung cấp';
+
+  @override
+  String get supplierNcrDetailNothingHasBeenRecoveredFromThisSupplier =>
+      'Chưa thu hồi được gì từ Nhà cung cấp này.';
+
+  @override
+  String supplierNcrDetailRecovered(Object costRecoveredLabel) {
+    return 'Đã thu hồi $costRecoveredLabel.';
+  }
+
+  @override
+  String supplierNcrDetailClosed(Object closedAt) {
+    return 'Đã đóng $closedAt';
+  }
+
+  @override
+  String get commonRecordTheDisposition => 'Ghi nhận phương án xử lý';
+
+  @override
+  String get supplierNcrDetailCorrectTheDisposition => 'Sửa phương án xử lý';
+
+  @override
+  String get supplierNcrDetailCloseTheNcr => 'Đóng NCR';
+
+  @override
+  String get supplierNcrDispositionDecideTheMaterial => 'Quyết định vật tư';
+
+  @override
+  String supplierNcrDispositionWhatHappensToThatCameFromOn(
+    Object quantityLabel,
+    Object supplierName,
+    Object ncrNo,
+  ) {
+    return 'Điều gì xảy ra với $quantityLabel đến từ $supplierName ngày $ncrNo.';
+  }
+
+  @override
+  String get supplierNcrDispositionWhatThePlantDecidedHappensToThe =>
+      'Nhà máy đã quyết định xử lý vật tư nhận về như thế nào.';
+
+  @override
+  String get supplierNcrDispositionCostRecoveredOptional =>
+      'Chi phí thu hồi (không bắt buộc)';
+
+  @override
+  String get supplierNcrDispositionWhatWasClawedBackFromTheSupplier =>
+      'Số tiền đòi lại được từ Nhà cung cấp. Để trống nếu không đòi gì.';
+
+  @override
+  String get supplierNcrDispositionThreeLettersTheCurrencyTheCostRecovered =>
+      'Ba chữ cái, đơn vị tiền của khoản thu hồi.';
+
+  @override
+  String get commonRecordASupplierNcr => 'Ghi nhận NCR nhà cung cấp';
+
+  @override
+  String get commonSupplier => 'Nhà cung cấp';
+
+  @override
+  String get supplierNcrFormProductOptional => 'Sản phẩm (không bắt buộc)';
+
+  @override
+  String get supplierNcrFormWhatTheLotIsWhenThatIs =>
+      'Lô hàng là gì, khi đã biết. Sản phẩm không phù hợp ghi nhận từ NCR này cần thông tin đó.';
+
+  @override
+  String get supplierNcrFormNotNamedYet => 'Chưa nêu tên';
+
+  @override
+  String get supplierNcrFormWhatIsWrongWithItANon =>
+      'Sai ở chỗ nào. Sản phẩm không phù hợp ghi nhận từ NCR này sẽ mang theo nội dung đó.';
+
+  @override
+  String get supplierNcrFormHowMuchCameInWrong => 'Bao nhiêu hàng về bị sai.';
+
+  @override
+  String get supplierNcrFormWhatTheQuantityIsCountedInTaken =>
+      'Số lượng được tính theo đơn vị nào. Lấy từ Sản phẩm khi đã chọn Sản phẩm.';
+
+  @override
+  String get supplierNcrFormIncomingLotReferenceOptional =>
+      'Số tham chiếu lô hàng về (không bắt buộc)';
+
+  @override
+  String get supplierNcrFormTheLotTheDeliveryNoteSays =>
+      'Lô mà phiếu giao hàng ghi.';
+
+  @override
+  String get supplierNcrFormPurchaseReferenceOptional =>
+      'Số tham chiếu mua hàng (không bắt buộc)';
+
+  @override
+  String get supplierNcrFormTheOrderItArrivedAgainst =>
+      'Đơn hàng mà lô này về theo.';
+
+  @override
+  String get supplierNcrFormAnswerDueOptional => 'Hạn trả lời (không bắt buộc)';
+
+  @override
+  String get supplierNcrFormTheDayTheSupplierWasGivenTo =>
+      'Ngày đã giao cho Nhà cung cấp để trả lời.';
+
+  @override
+  String get supplierNcrFormWhatIsWrongWithItOptional =>
+      'Sai ở chỗ nào (không bắt buộc)';
+
+  @override
+  String get supplierNcrFormWhoWorksIt => 'Ai xử lý NCR này';
+
+  @override
+  String get supplierNcrFormChooseTheOrgUnitThatWillWork =>
+      'Chọn Đơn vị tổ chức sẽ xử lý NCR nhà cung cấp này. Đây là điều quyết định ai được thao tác trên nó.';
+
+  @override
+  String supplierNcrFormThisSupplierNcrWillBeFiledAt(Object value) {
+    return 'NCR nhà cung cấp này sẽ được ghi nhận tại $value.';
+  }
+
+  @override
+  String supplierNcrLinkANonConformanceThatAlreadyExistsCan(Object value) {
+    return 'Một Sản phẩm không phù hợp đã có$value có thể được liên kết với NCR nhà cung cấp này, thay vì ghi nhận thêm bản thứ hai cho cùng vấn đề.';
+  }
+
+  @override
+  String get supplierNcrLinkNoNonConformanceHasBeenRecordedFor =>
+      'Chưa ghi nhận Sản phẩm không phù hợp nào cho Sản phẩm này nên không có gì để liên kết. Hãy ghi nhận một bản từ NCR nhà cung cấp này thay vào.';
+
+  @override
+  String get supplierNcrNonconformanceControlTheMaterial => 'Kiểm soát vật tư';
+
+  @override
+  String supplierNcrNonconformanceANonConformanceIsRecordedAtFound(
+    Object orgUnitName,
+    Object value,
+  ) {
+    return 'Một Sản phẩm không phù hợp sẽ được ghi nhận tại $orgUnitName$value, phát hiện ở khâu nhận hàng.';
+  }
+
+  @override
+  String get supplierNcrNonconformanceHowMuchMaterialIsInQuestionIn =>
+      'Có bao nhiêu vật tư bị nghi vấn, theo đơn vị mà lô hàng về.';
+
+  @override
+  String get supplierNcrNonconformanceTheSupplierNcrSOwnProductIs =>
+      'Sản phẩm của chính NCR nhà cung cấp được mang sang bản ghi.';
+
+  @override
+  String get supplierNcrNonconformanceTheProductsCouldNotBeRead =>
+      'Không đọc được danh sách Sản phẩm';
+
+  @override
+  String get supplierNcrNonconformanceThisSupplierNcrNamesNoneSoChoose =>
+      'NCR nhà cung cấp này không nêu Sản phẩm nào, nên hãy chọn lô hàng dùng cho việc gì.';
+
+  @override
+  String get supplierNcrNonconformanceTheSupplierNcrSOwnDefectCode =>
+      'Mã lỗi của chính NCR nhà cung cấp được mang sang bản ghi.';
+
+  @override
+  String get supplierNcrNonconformanceThisSupplierNcrCarriesNoneSoChoose =>
+      'NCR nhà cung cấp này không mang mã nào, nên hãy chọn mã để ghi nhận.';
+
+  @override
+  String get supplierNcrOrgUnitFilterChooseTheOrgUnitWhoseSupplierNcrs =>
+      'Chọn Đơn vị tổ chức mà bạn muốn đọc NCR nhà cung cấp cùng mọi thứ bên dưới nó, hoặc xoá về toàn bộ Nhà máy.';
+
+  @override
+  String get supplierNcrSupplierFilterFilterBySupplier =>
+      'Lọc theo Nhà cung cấp';
+
+  @override
+  String get commonAllSuppliers => 'Tất cả nhà cung cấp';
+
+  @override
+  String get supplierNcrSupplierFilterChooseTheSupplierWhoseSupplierNcrsYou =>
+      'Chọn Nhà cung cấp mà bạn muốn đọc NCR, hoặc xoá về mọi Nhà cung cấp.';
+
+  @override
+  String get supplierNcrsTheSupplierNcrRegisterCouldNotBe =>
+      'Không đọc được danh sách NCR nhà cung cấp';
+
+  @override
+  String get supplierNcrsWhatArrivedWrongFromASupplierAt =>
+      'Những gì về sai từ Nhà cung cấp tại Nhà máy này, và vật tư đi kèm có đang được kiểm soát hay không.';
+
+  @override
+  String get supplierNcrsThereAreMoreSupplierNcrsThanThis =>
+      'Còn nhiều NCR nhà cung cấp hơn danh sách này hiển thị. Hãy thu hẹp theo Nhà cung cấp hoặc theo trạng thái để xem phần còn lại.';
+
+  @override
+  String get supplierNcrsTheRegisterHasSupplierNcrsButNone =>
+      'Danh sách có NCR nhà cung cấp, nhưng không bản nào thuộc khu vực, Nhà cung cấp hay trạng thái bạn đã chọn.';
+
+  @override
+  String get supplierNcrsNoSupplierNcrs => 'Không có NCR nhà cung cấp nào';
+
+  @override
+  String get supplierNcrsNothingHasComeInWrongFromA =>
+      'Chưa có gì về sai từ Nhà cung cấp tại Nhà máy này.';
+
+  @override
+  String get supplierNcrsNcr => 'NCR';
+
+  @override
+  String get supplierNcrsSupplierAndProduct => 'Nhà cung cấp và sản phẩm';
+
+  @override
+  String get supplierNcrsAnswerDue => 'Hạn trả lời';
+
+  @override
+  String get suppliersTheSupplierListCouldNotBeRead =>
+      'Không đọc được danh sách Nhà cung cấp';
+
+  @override
+  String get suppliersWhoThePlantBuysFromSoAn =>
+      'Nhà máy mua hàng từ ai — để một lô hàng về bị sai có người thuộc về và một yêu cầu đòi bồi thường có nơi gửi tới.';
+
+  @override
+  String get suppliersNoSuppliersYet => 'Chưa có Nhà cung cấp nào';
+
+  @override
+  String get suppliersFilterSuppliers => 'Lọc Nhà cung cấp';
+
+  @override
+  String get suppliersNoSuppliersMatch => 'Không có Nhà cung cấp nào khớp';
+
+  @override
+  String get bodyPartFormCorrectBodyPart => 'Sửa Bộ phận cơ thể';
+
+  @override
+  String get commonAddBodyPart => 'Thêm Bộ phận cơ thể';
+
+  @override
+  String get bodyPartFormABodyPartSCodeCannotBe =>
+      'Không sửa được mã của Bộ phận cơ thể';
+
+  @override
+  String get bodyPartFormRegion => 'Vùng cơ thể';
+
+  @override
+  String get bodyPartFormARetiredBodyPartIsNoLonger =>
+      'Bộ phận cơ thể đã ngừng dùng không còn được đưa ra khi phân loại, và vẫn nằm trên mọi sự cố đã nêu nó.';
+
+  @override
+  String get bodyPartsTheBodyPartCatalogueCouldNotBe =>
+      'Không đọc được danh mục Bộ phận cơ thể';
+
+  @override
+  String get bodyPartsWhereOnTheBodyAnInjuryWas =>
+      'Thương tích ở đâu trên cơ thể — một danh mục dùng chung cho mọi Nhà máy, xếp theo vùng của từng bộ phận.';
+
+  @override
+  String get bodyPartsNoBodyPartsYet => 'Chưa có Bộ phận cơ thể nào';
+
+  @override
+  String get commonClassifyTheInjury => 'Phân loại thương tích';
+
+  @override
+  String get incidentClassifyClassifyingTheInjuryNeedsSafetyAuthorityAt =>
+      'Phân loại thương tích cần thẩm quyền An toàn tại Đơn vị tổ chức của Sự cố an toàn này.';
+
+  @override
+  String incidentClassifySitsOnTheNoInjuryRungNobody(Object incidentNo) {
+    return '$incidentNo đang ở mức không có thương tích. Không ai bị thương nên không có gì để phân loại — nếu mức độ sai, hãy sửa mức độ trước.';
+  }
+
+  @override
+  String get incidentClassifyWhoWasHurtWhatTheInjuryWas =>
+      'Ai bị thương, thương tích là gì và ở đâu trên cơ thể. Ba thông tin này chỉ người có thẩm quyền An toàn của khu vực này và chính Tài khoản của người bị thương đọc được.';
+
+  @override
+  String get incidentClassifySaveTheClassification => 'Lưu phân loại';
+
+  @override
+  String get commonInjuredEmployee => 'Nhân viên bị thương';
+
+  @override
+  String get incidentClassifyWhoWasHurt => 'Ai bị thương.';
+
+  @override
+  String get incidentClassifyClearTheInjuredEmployee =>
+      'Bỏ Nhân viên bị thương';
+
+  @override
+  String get incidentClassifyTheInjuryTypeAndBodyPartCatalogues =>
+      'Không đọc được danh mục Loại thương tích và Bộ phận cơ thể';
+
+  @override
+  String get commonInjuryType => 'Loại thương tích';
+
+  @override
+  String get incidentClassifyWhatTheInjuryWas => 'Thương tích là gì.';
+
+  @override
+  String get incidentClassifyClearTheInjuryType => 'Bỏ Loại thương tích';
+
+  @override
+  String get commonBodyPart => 'Bộ phận cơ thể';
+
+  @override
+  String get incidentClassifyWhereOnTheBody => 'Ở đâu trên cơ thể.';
+
+  @override
+  String get incidentClassifyClearTheBodyPart => 'Bỏ Bộ phận cơ thể';
+
+  @override
+  String get incidentCloseCloseThisSafetyIncident => 'Đóng Sự cố an toàn này';
+
+  @override
+  String get incidentCloseClosingASafetyIncidentNeedsSafetyAuthority =>
+      'Đóng một Sự cố an toàn cần thẩm quyền An toàn tại Đơn vị tổ chức của nó.';
+
+  @override
+  String get incidentCloseThisSafetyIncidentIsAlreadyClosed =>
+      'Sự cố an toàn này đã đóng.';
+
+  @override
+  String incidentCloseWillBeClosedAConcernRaisedFrom(Object incidentNo) {
+    return '$incidentNo sẽ được đóng. Concern nêu từ sự cố này, nếu có, vẫn tiếp tục xử lý nguyên nhân một cách độc lập.';
+  }
+
+  @override
+  String get incidentCloseLeaveItOpen => 'Để mở';
+
+  @override
+  String get commonCloseIt => 'Đóng lại';
+
+  @override
+  String get incidentCloseWhyThisIncidentIsBeingClosed =>
+      'Vì sao đóng sự cố này.';
+
+  @override
+  String get commonRecordTheDays => 'Ghi nhận số ngày';
+
+  @override
+  String get incidentDaysRecordingTheDaysNeedsSafetyAuthorityAt =>
+      'Ghi nhận số ngày cần thẩm quyền An toàn tại Đơn vị tổ chức của Sự cố an toàn này.';
+
+  @override
+  String get incidentDaysThisSafetyIncidentIsClosedItsDays =>
+      'Sự cố an toàn này đã đóng; số ngày của nó không sửa được.';
+
+  @override
+  String incidentDaysWhatCostZeroIsARealAnswer(Object incidentNo) {
+    return '$incidentNo gây tốn bao nhiêu — số 0 là một câu trả lời thật, và là câu trả lời chốt.';
+  }
+
+  @override
+  String get commonLostTimeDays => 'Số ngày nghỉ do thương tích';
+
+  @override
+  String get commonRestrictedDays => 'Số ngày làm hạn chế';
+
+  @override
+  String get incidentDetailNoSuchSafetyIncident => 'Không có Sự cố an toàn này';
+
+  @override
+  String get incidentDetailBackToSafetyIncidents => 'Về Sự cố an toàn';
+
+  @override
+  String get incidentDetailTheSafetyIncidentCouldNotBeRead =>
+      'Không đọc được Sự cố an toàn này';
+
+  @override
+  String get incidentDetailReportedAt => 'Báo cáo lúc';
+
+  @override
+  String get incidentDetailImmediateAction => 'Xử lý ngay';
+
+  @override
+  String get commonInvestigationDueDate => 'Hạn điều tra';
+
+  @override
+  String incidentDetailMoveTo(Object value) {
+    return 'Chuyển sang $value';
+  }
+
+  @override
+  String get commonCorrectTheSeverity => 'Sửa mức độ';
+
+  @override
+  String incidentDetailClosed(Object closedAt) {
+    return 'Đã đóng $closedAt';
+  }
+
+  @override
+  String get commonInvestigationDueAt => 'Hạn điều tra';
+
+  @override
+  String get incidentDetailTheInjury => 'Thương tích';
+
+  @override
+  String get incidentDetailRestrictedVisibleToSafetyAuthorityForThis =>
+      'Hạn chế — chỉ người có thẩm quyền An toàn của khu vực này xem được.';
+
+  @override
+  String get incidentDetailNotClassifiedYetWhoWasHurtWhat =>
+      'Chưa phân loại. Chưa ghi ai bị thương, thương tích là gì và ở đâu trên cơ thể.';
+
+  @override
+  String get incidentDetailTheIncidentItselfIsRecordedHereThe =>
+      'Bản thân sự cố được ghi ở đây; nguyên nhân phía sau được giải quyết trong nhật ký hành động, dưới dạng Concern.';
+
+  @override
+  String get incidentDetailEventHistory => 'Lịch sử thay đổi';
+
+  @override
+  String get incidentDetailEverySeverityChangeStatusMoveDaysChange =>
+      'Mọi lần đổi mức độ, chuyển trạng thái, đổi số ngày, đóng và đổi phân loại, kèm ai làm và khi nào.';
+
+  @override
+  String get incidentDetailNothingHasChangedAboutThisRecordSince =>
+      'Bản ghi này chưa thay đổi gì kể từ khi được ghi nhận.';
+
+  @override
+  String get incidentDueDateThisSafetyIncidentIsClosedItsInvestigation =>
+      'Sự cố an toàn này đã đóng; hạn điều tra của nó không sửa được.';
+
+  @override
+  String incidentDueDateSInvestigationDeadline(Object incidentNo) {
+    return 'Hạn điều tra của $incidentNo.';
+  }
+
+  @override
+  String get incidentFormWhatKindOfEventThisWas => 'Đây là loại sự việc gì.';
+
+  @override
+  String get incidentFormTheWorstActualOutcomeToAPerson =>
+      'Hậu quả thực tế nặng nhất với một người. Theo thứ tự mức độ.';
+
+  @override
+  String get incidentFormWhatHappened => 'Đã xảy ra chuyện gì.';
+
+  @override
+  String get incidentFormWhatWasDoneAtOnce => 'Đã làm gì ngay lúc đó.';
+
+  @override
+  String get incidentFormInjuredEmployeeOptional =>
+      'Nhân viên bị thương (không bắt buộc)';
+
+  @override
+  String get incidentFormWhoWasHurtIfAnyoneReadOnly =>
+      'Ai bị thương, nếu có. Chỉ người có thẩm quyền An toàn của khu vực này và chính Tài khoản của người bị thương đọc được.';
+
+  @override
+  String get incidentFormWhenItHappenedThisIsWhatDecides =>
+      'Xảy ra khi nào. Đây là điều quyết định ngày sản xuất và ca mà sự cố được ghi vào.';
+
+  @override
+  String get incidentFormReportedAtOptional => 'Báo cáo lúc (không bắt buộc)';
+
+  @override
+  String get incidentFormWhenItWasReportedIfThatIs =>
+      'Được báo khi nào, nếu không phải bây giờ.';
+
+  @override
+  String get incidentFormWhereItHappened => 'Xảy ra ở đâu';
+
+  @override
+  String get incidentFormChooseTheOrgUnitTheIncidentOccurred =>
+      'Chọn Đơn vị tổ chức nơi sự cố xảy ra. Đây là điều quyết định ai được thao tác trên nó.';
+
+  @override
+  String incidentFormThisSafetyIncidentWillBeRecordedAt(Object value) {
+    return 'Sự cố an toàn này sẽ được ghi nhận tại $value.';
+  }
+
+  @override
+  String get incidentFormWhichMachineIfTheIncidentWasOn =>
+      'Máy nào, nếu sự cố xảy ra trên máy. Máy đó phải nằm tại Đơn vị tổ chức ấy.';
+
+  @override
+  String incidentRaiseConcernIsRecordedAtAndTheConcernIs(
+    Object incidentNo,
+    Object orgUnitName,
+  ) {
+    return '$incidentNo được ghi nhận tại $orgUnitName, và Concern được nêu ở đó — vấn đề được giải quyết tại nơi nó xảy ra.';
+  }
+
+  @override
+  String get incidentRaiseConcernWhatIsTheCauseToSolve =>
+      'Nguyên nhân cần giải quyết là gì?';
+
+  @override
+  String get incidentRaiseConcernTheConcernIsReadInTheAction =>
+      'Concern được đọc trong nhật ký hành động, nên hãy nói vấn đề, đừng nói thương tích.';
+
+  @override
+  String get incidentRaiseConcernOptionalTheSafetyIncidentItselfIsAlready =>
+      'Không bắt buộc. Bản thân Sự cố an toàn đã được liên kết làm bằng chứng.';
+
+  @override
+  String get incidentSeverityCorrectingTheSeverityNeedsSafetyAuthorityAt =>
+      'Sửa mức độ cần thẩm quyền An toàn tại Đơn vị tổ chức của Sự cố an toàn này.';
+
+  @override
+  String incidentSeverityIsCorrectingItRestatesThePeriodIt(
+    Object incidentNo,
+    Object value,
+  ) {
+    return '$incidentNo đang ở mức $value. Sửa mức độ sẽ khai lại khoảng thời gian mà sự cố đã xảy ra.';
+  }
+
+  @override
+  String get incidentSeverityCorrectIt => 'Sửa mức độ';
+
+  @override
+  String get incidentSeverityCorrectTheSeverityTo => 'Sửa mức độ thành';
+
+  @override
+  String get incidentSeverityWhyTheSeverityIsBeingCorrected =>
+      'Vì sao sửa mức độ.';
+
+  @override
+  String get incidentStatusMoveTheStatus => 'Chuyển trạng thái';
+
+  @override
+  String get incidentStatusThisSafetyIncidentIsClosedItsStatus =>
+      'Sự cố an toàn này đã đóng; trạng thái của nó không chuyển được.';
+
+  @override
+  String incidentStatusThisSafetyIncidentIsAlreadyOnlyClosing(Object value) {
+    return 'Sự cố an toàn này đã ở trạng thái $value; chỉ việc đóng mới đưa nó đi tiếp.';
+  }
+
+  @override
+  String incidentStatusMovesFromTo(
+    Object incidentNo,
+    Object statusLabel,
+    Object value,
+  ) {
+    return '$incidentNo chuyển từ $statusLabel sang $value.';
+  }
+
+  @override
+  String incidentStatusMoveTo(Object value) {
+    return 'Chuyển sang $value';
+  }
+
+  @override
+  String get incidents1SafetyIncident => '1 sự cố an toàn';
+
+  @override
+  String incidentsSafetyIncidents(Object length) {
+    return '$length sự cố an toàn';
+  }
+
+  @override
+  String get incidentsSiHcm202600001 => 'SI-HCM-2026-00001';
+
+  @override
+  String get injuryTypeFormCorrectInjuryType => 'Sửa Loại thương tích';
+
+  @override
+  String get commonAddInjuryType => 'Thêm Loại thương tích';
+
+  @override
+  String get injuryTypeFormAnInjuryTypeSCodeCannotBe =>
+      'Không sửa được mã của Loại thương tích';
+
+  @override
+  String get injuryTypeFormARetiredInjuryTypeIsNoLonger =>
+      'Loại thương tích đã ngừng dùng không còn được đưa ra khi phân loại, và vẫn nằm trên mọi sự cố đã nêu nó.';
+
+  @override
+  String get injuryTypesTheInjuryTypeCatalogueCouldNotBe =>
+      'Không đọc được danh mục Loại thương tích';
+
+  @override
+  String get injuryTypesWhatAnInjuryWasOneCatalogueShared =>
+      'Thương tích là gì — một danh mục dùng chung cho mọi Nhà máy, và là căn cứ để phân loại một Sự cố an toàn.';
+
+  @override
+  String get injuryTypesNoInjuryTypesYet => 'Chưa có Loại thương tích nào';
+
+  @override
+  String get observationDetailNoSuchSafetyObservation =>
+      'Không có Quan sát an toàn này';
+
+  @override
+  String get observationDetailBackToSafetyObservations => 'Về Quan sát an toàn';
+
+  @override
+  String get observationDetailTheSafetyObservationCouldNotBeRead =>
+      'Không đọc được Quan sát an toàn này';
+
+  @override
+  String get observationDetailActionTaken => 'Đã xử lý';
+
+  @override
+  String get observationDetailRecordedBy => 'Ghi nhận bởi';
+
+  @override
+  String get observationDetailObservedAt => 'Quan sát lúc';
+
+  @override
+  String get observationDetailClosingTheLoop => 'Khép vòng';
+
+  @override
+  String get observationDetailTheObservationItselfIsRecordedHereWhat =>
+      'Bản thân quan sát được ghi ở đây; việc người khác làm gì về nó được quản lý trong nhật ký hành động, dưới dạng Hành động.';
+
+  @override
+  String get observationDetailNothingIsBeingDoneAboutThisYet =>
+      'Chưa có gì được làm về việc này.';
+
+  @override
+  String get commonRaiseAnAction => 'Nêu một Hành động';
+
+  @override
+  String get observationFormASafeActAnUnsafeActOr =>
+      'Một hành vi an toàn, một hành vi không an toàn, hoặc một điều kiện không an toàn.';
+
+  @override
+  String get observationFormTheWorstCredibleOutcomeNotWhatActually =>
+      'Hậu quả nặng nhất có thể tin được, không phải điều đã thực sự xảy ra.';
+
+  @override
+  String get observationFormWhatWasSeen => 'Đã thấy gì.';
+
+  @override
+  String get observationFormWhatWasDoneOnTheSpot => 'Đã làm gì ngay tại chỗ.';
+
+  @override
+  String get observationFormRareAndTheSingleStrongestSignalThat =>
+      'Hiếm, và là dấu hiệu mạnh nhất cho thấy văn hoá an toàn là thật.';
+
+  @override
+  String get observationFormObservedAtOptional =>
+      'Quan sát lúc (không bắt buộc)';
+
+  @override
+  String get observationFormWhenItWasSeenIfNotNow =>
+      'Được thấy khi nào, nếu không phải bây giờ. Đây là điều quyết định ngày sản xuất và ca mà quan sát được ghi vào.';
+
+  @override
+  String get observationFormWhereItWasSeen => 'Được thấy ở đâu';
+
+  @override
+  String get observationFormChooseTheOrgUnitTheObservationWas =>
+      'Chọn Đơn vị tổ chức nơi quan sát được thực hiện. Đây là điều quyết định ai được thao tác trên nó.';
+
+  @override
+  String observationFormThisSafetyObservationWillBeRecordedAt(Object value) {
+    return 'Quan sát an toàn này sẽ được ghi nhận tại $value.';
+  }
+
+  @override
+  String observationRaiseActionThisObservationIsRecordedAtAndThe(
+    Object orgUnitName,
+  ) {
+    return 'Quan sát này được ghi nhận tại $orgUnitName, và Hành động được nêu ở đó — vấn đề được nhận tại nơi nó được thấy.';
+  }
+
+  @override
+  String get observationRaiseActionChooseWhatThisIs => 'Chọn loại quan sát.';
+
+  @override
+  String get observationRaiseActionChooseAKind => 'Chọn một loại';
+
+  @override
+  String get observationRaiseActionWhatNeedsDoing => 'Cần làm gì?';
+
+  @override
+  String get observationRaiseActionTheActionIsReadInTheAction =>
+      'Hành động được đọc trong nhật ký hành động, nên hãy nói việc cần làm, đừng nói quan sát.';
+
+  @override
+  String
+  get observationRaiseActionOptionalTheSafetyObservationItselfIsAlready =>
+      'Không bắt buộc. Bản thân Quan sát an toàn đã được liên kết làm bằng chứng.';
+
+  @override
+  String get observations1SafetyObservation => '1 quan sát an toàn';
+
+  @override
+  String observationsSafetyObservations(Object length) {
+    return '$length quan sát an toàn';
+  }
+
+  @override
+  String safetyIncidentRecordable(Object value) {
+    return '$value · phải khai báo';
+  }
+
+  @override
+  String
+  get safetyObservationOrgUnitFilterChooseTheOrgUnitWhoseSafetyObservations =>
+      'Chọn Đơn vị tổ chức mà bạn muốn đọc Quan sát an toàn cùng mọi thứ bên dưới nó, hoặc xoá về toàn bộ Nhà máy.';
+
+  @override
+  String get safetyOrgUnitFilterChooseTheOrgUnitWhoseSafetyIncidents =>
+      'Chọn Đơn vị tổ chức mà bạn muốn đọc Sự cố an toàn cùng mọi thứ bên dưới nó, hoặc xoá về toàn bộ Nhà máy.';
 }

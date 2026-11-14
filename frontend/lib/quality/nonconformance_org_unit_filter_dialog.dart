@@ -14,6 +14,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../people_api.dart';
@@ -59,24 +60,25 @@ class NonconformanceOrgUnitFilterDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<NonconformancesBloc>().state;
     final selectedId = state is NonconformancesLoaded ? state.filters.orgUnitId : null;
 
     return AppDialog(
-      title: 'Filter by Org Unit',
+      title: l10n.commonFilterByOrgUnit,
       size: AppDialogSize.decision,
       // Clearing is this dialog's own act (the primary, right-most); Cancel is
       // the dismiss, which is what `Esc` runs.
       actions: [
         AppDialogAction(
           id: 'nonconformances-filter-cancel',
-          label: 'Cancel',
+          label: l10n.commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(),
         ),
         AppDialogAction(
           id: 'nonconformances-filter-all',
-          label: 'All Org Units',
+          label: l10n.commonAllOrgUnits,
           onPressed: () {
             context.read<NonconformancesBloc>().add(const NonconformancesFiltersCleared());
             Navigator.of(context).pop();
@@ -92,9 +94,8 @@ class NonconformanceOrgUnitFilterDialog extends StatelessWidget {
           // The register is one Site's, so the chooser may not name an Org Unit
           // in another one.
           showSitePicker: false,
-          title: 'Narrow the register',
-          description: 'Choose the Org Unit whose Non-conformances and everything beneath it '
-              'you want to read, or clear back to the whole Site.',
+          title: l10n.commonNarrowTheRegister,
+          description: l10n.nonconformanceOrgUnitFilterChooseTheOrgUnitWhoseNonConformances,
           onSelected: (node) {
             context.read<NonconformancesBloc>().add(
                   NonconformancesOrgUnitFilterSet(orgUnitId: node.id, name: node.name),
