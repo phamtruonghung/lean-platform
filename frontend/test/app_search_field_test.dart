@@ -637,6 +637,11 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: buildAppTheme(),
+          // The field reads its own "No matches"/"Search failed" words from the
+          // catalogue, so the app around it has to carry the delegates —
+          // `nullable-getter: false` makes a missing localisation a tree bug.
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: AppFormSubmit(
               onSubmit: () => submits++,
