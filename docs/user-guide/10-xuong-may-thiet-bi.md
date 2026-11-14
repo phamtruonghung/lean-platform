@@ -16,6 +16,12 @@ khác biệt đó là điều đầu tiên phải dạy:
 Sản phẩm, Mã lỗi, Tài sản ở mọi ô chọn trên thiết bị đều là "những gì thiết bị này thấy
 được".
 
+![Sơ đồ 10 — Một thao tác trên thiết bị Xưởng, từ lúc cài đặt tới bản ghi](images/10-xuong-thiet-bi.png)
+
+***Sơ đồ 10.** Hai tầng: ba bước cài đặt một lần (đăng ký thiết bị, đặt PIN, mở màn hình)
+rồi vòng lặp mỗi thao tác (chọn việc → nhận diện → ghi → bản ghi mang tên người vừa nhận
+diện).*
+
 ---
 
 ## Ai cài đặt thiết bị — việc của quản trị viên, không phải của công nhân

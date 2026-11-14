@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Sơ đồ 3 — Nhân sự là nguồn dữ liệu nền của mọi Phân hệ</title>
+<link rel="stylesheet" href="diagram.css">
+</head>
+<body>
+<main class="sheet" id="sheet">
+  <div class="eyebrow">Nền tảng lean-platform · Sơ đồ 3</div>
+  <h1>Nhân sự là nguồn dữ liệu nền của mọi Phân hệ</h1>
+  <p class="lede">Bốn thứ do Nhân sự sở hữu được <strong>mọi</strong> Phân hệ dùng lại. Vì vậy một sai sót
+  ở đây không hỏng một màn hình — nó hỏng phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng
+  lúc. Đọc theo chiều: trên là nơi khai báo, dưới là nơi dùng.</p>
+
+  <div class="spacer-16"></div>
+
+  <div class="band">
+    <div class="sub" style="font-size:11px;letter-spacing:.08em;color:#64748B;font-weight:700;text-transform:uppercase">Nhân sự sở hữu</div>
+    <div class="grid-4" style="margin-top:8px">
+      <div class="card">
+        <div class="name">Nhà máy → Đơn vị tổ chức</div>
+        <ul class="list tight">
+          <li>Một cây, không phải danh sách phẳng</li>
+          <li>Thu hẹp theo một đơn vị là thu hẹp <strong>mọi đơn vị bên dưới</strong></li>
+          <li>Quyết định <em>ai ghi được ở đâu</em></li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="name">Nhân viên</div>
+        <ul class="list tight">
+          <li>Mã nhân viên + tên + chức danh</li>
+          <li>Thuộc một Đơn vị tổ chức; có lịch sử chuyển đơn vị</li>
+          <li>Có <strong>chữ ký đã lưu</strong> để ký ở mọi nơi</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="name">Kỹ năng · bậc · ngày đánh giá lại</div>
+        <ul class="list tight">
+          <li>Kỹ năng là danh mục nhà máy công nhận</li>
+          <li>Mỗi người có một <strong>bậc</strong></li>
+          <li>Quá chu kỳ đánh giá lại thì <strong>hết hạn</strong></li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="name">Đào tạo · Chấm công · Đơn giá giờ</div>
+        <ul class="list tight">
+          <li>Bản ghi đào tạo + biên bản in + chữ ký người học</li>
+          <li>Chấm công theo ca; xác nhận công</li>
+          <li>Đơn giá giờ, Chi phí chuẩn sản phẩm: dùng chung mọi Nhà máy</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-down">↓</div>
+
+  <div class="grid-4">
+    <div class="card owner">
+      <div class="name">Bảo trì</div>
+      <div class="sub" style="margin-top:6px">Dùng gì</div>
+      <ul class="list tight">
+        <li>Phân công tìm người theo <strong>tên, mã nhân viên, hoặc chứng nhận</strong> — danh sách ứng viên chỉ gồm người đủ phạm vi</li>
+        <li>Giờ công trên Lệnh công việc ghi theo Nhân viên và Đơn giá giờ</li>
+        <li>Đơn vị tổ chức của Tài sản quyết định ai phân công / đóng lệnh được</li>
+        <li>Tài sản và danh bạ <strong>đọc toàn Nền tảng</strong>, chỉ ghi mới lọc theo phạm vi</li>
+      </ul>
+    </div>
+
+    <div class="card owner">
+      <div class="name">Sản xuất</div>
+      <div class="sub" style="margin-top:6px">Dùng gì</div>
+      <ul class="list tight">
+        <li>Cây Bộ phận <strong>chính là</strong> cây Đơn vị tổ chức</li>
+        <li>Người bàn giao và người xác nhận là Nhân viên của Bộ phận</li>
+        <li>Ba mã quyền Sản xuất nằm trên cả sáu vai trò — cái chặn là <strong>phạm vi Đơn vị tổ chức</strong></li>
+        <li>Một bản bàn giao cho mỗi Bộ phận mỗi ca, không phải mỗi người một bản</li>
+      </ul>
+    </div>
+
+    <div class="card owner">
+      <div class="name">Chất lượng &amp; An toàn</div>
+      <div class="sub" style="margin-top:6px">Dùng gì</div>
+      <ul class="list tight">
+        <li>Người ghi nhận là Nhân viên — kể cả khi ghi từ thiết bị Xưởng</li>
+        <li>Phân loại thương tích chọn <strong>Nhân viên bị thương</strong> trong danh bạ</li>
+        <li>Thẩm quyền Chất lượng / An toàn gắn với một Đơn vị tổ chức, cấp trong Tài khoản</li>
+      </ul>
+    </div>
+
+    <div class="card owner">
+      <div class="name">Phân tích &amp; Xưởng</div>
+      <div class="sub" style="margin-top:6px">Dùng gì</div>
+      <ul class="list tight">
+        <li>Phân tích: <strong>Độ phủ kỹ năng</strong> — yêu cầu do chính nhà máy đặt, so với bậc tối thiểu; người hết hạn <em>không</em> tính là đủ điều kiện</li>
+        <li>Xưởng: <strong>mã nhân viên + PIN</strong> gắn với Nhân viên, không gắn với Tài khoản (ADR-0016)</li>
+        <li>Sai PIN khoá Nhân viên đó một lúc, không khoá thiết bị (ADR-0047)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="spacer-12"></div>
+  <div class="grid-2">
+    <div class="note"><strong>Một chỗ sửa, bốn chỗ đổi.</strong> Đổi Đơn vị tổ chức của một Tài sản
+    <em>không</em> chuyển công việc đã ghi nhận — chúng vẫn ở nơi chúng đã xảy ra; chỉ công việc mới đi theo
+    vị trí mới. Đổi đơn vị của một Nhân viên cũng không viết lại bàn giao ca đã gửi.</div>
+    <div class="note ok"><strong>Đào tạo là một luồng riêng</strong> — xem sơ đồ
+    <em>“Một bản ghi đào tạo, từ lúc nêu tới chữ ký của người học”</em> (docs/diagrams/training-record-flow.png)
+    và mục Đào tạo của chương 02.</div>
+  </div>
+
+  <footer class="legend">Nguồn: 02 · Nhân sự. Quy tắc nền: ADR-0006 (Modules là đường nối mã, không phải
+  đường nối dữ liệu), ADR-0009 (đọc rộng, ghi hẹp), ADR-0016 và ADR-0047 (thiết bị Xưởng).</footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Sơ đồ 1 — Các Phân hệ liên kết với nhau thế nào</title>
+<link rel="stylesheet" href="diagram.css">
+</head>
+<body>
+<main class="sheet" id="sheet">
+  <div class="eyebrow">Nền tảng lean-platform · Sơ đồ 1</div>
+  <h1>Các Phân hệ liên kết với nhau thế nào</h1>
+  <p class="lede">Một ứng dụng, một cơ sở dữ liệu vận hành. Mỗi Phân hệ <strong>sở hữu</strong> dữ liệu
+  của mình và <strong>cấp</strong> nó cho Phân hệ khác qua cửa vào duy nhất của mình — không Phân hệ
+  nào đọc thẳng bảng của Phân hệ khác (ADR-0006). Các dòng “Cấp cho” dưới đây là chiều cấp dữ liệu đó.</p>
+
+  <div class="spacer-16"></div>
+
+  <div class="row">
+    <div class="card accent" style="flex:2">
+      <div class="sub">Vỏ ứng dụng</div>
+      <div class="name">Shell — thanh điều hướng, Trang chủ, đăng nhập</div>
+      <ul class="list tight">
+        <li>Bảy nhóm trên thanh điều hướng: Nhân sự · Bảo trì · Hành động · Chất lượng · An toàn · Sản xuất · Phân tích (+ Quản trị)</li>
+        <li>Mỗi Màn hình có địa chỉ riêng, mở thẳng được bằng liên kết</li>
+      </ul>
+    </div>
+    <div class="card" style="flex:1;margin-left:12px">
+      <div class="sub">Lưu trữ</div>
+      <div class="name">Một PostgreSQL vận hành</div>
+      <ul class="list tight">
+        <li>Toàn bộ dữ liệu dưới đây ở chung một lược đồ</li>
+        <li><span class="badge purple">CSDL thứ hai</span> KPI MTU (ADR-0055)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="spacer-12"></div>
+
+  <div class="band">
+    <div class="sub" style="font-size:11px;letter-spacing:.08em;color:#64748B;font-weight:700;text-transform:uppercase">Dữ liệu nền — Nhân sự sở hữu, mọi Phân hệ đọc</div>
+    <div class="row" style="margin-top:6px">
+      <div class="step card" style="margin-right:10px"><div class="name">Nhà máy → Đơn vị tổ chức</div><p class="list tight" style="margin-top:2px">Cây đơn vị. Là thứ quyết định <em>ai ghi được ở đâu</em>.</p></div>
+      <div class="step card" style="margin-right:10px"><div class="name">Nhân viên</div><p class="list tight" style="margin-top:2px">Thuộc một Đơn vị tổ chức; có chức danh, kỹ năng, chữ ký.</p></div>
+      <div class="step card" style="margin-right:10px"><div class="name">Kỹ năng · bậc · ngày đánh giá lại</div><p class="list tight" style="margin-top:2px">Nuôi phân công công việc và Độ phủ kỹ năng.</p></div>
+      <div class="step card"><div class="name">Đơn giá giờ · Chi phí chuẩn sản phẩm</div><p class="list tight" style="margin-top:2px">Nuôi chi phí bảo trì và chi phí chất lượng.</p></div>
+    </div>
+  </div>
+
+  <div class="spacer-12"></div>
+
+  <div class="grid-4">
+    <div class="card owner">
+      <div class="name">Nhân sự</div>
+      <div class="sub" style="margin-top:6px">Sở hữu</div>
+      <ul class="list tight">
+        <li>Đơn vị tổ chức, Nhân viên</li>
+        <li>Kỹ năng, Chấm công, Đào tạo</li>
+        <li>Đơn xin nghỉ, chữ ký</li>
+        <li>Đơn giá giờ, Chi phí chuẩn</li>
+      </ul>
+      <div class="sub" style="margin-top:6px">Cấp cho</div>
+      <ul class="list tight">
+        <li>Mọi Phân hệ: Đơn vị tổ chức</li>
+        <li>Bảo trì: người đủ chứng nhận để phân công</li>
+        <li>Sản xuất: cây Bộ phận, người bàn giao</li>
+        <li>Phân tích: Độ phủ kỹ năng</li>
+      </ul>
+    </div>
+
+    <div class="card owner">
+      <div class="name">Bảo trì</div>
+      <div class="sub" style="margin-top:6px">Sở hữu</div>
+      <ul class="list tight">
+        <li>Tài sản (thuộc một Đơn vị tổ chức)</li>
+        <li>Yêu cầu → Lệnh công việc</li>
+        <li>Kho, Phụ tùng, giờ công</li>
+        <li>Dừng máy, Lịch định kỳ, Đồng hồ đo, Kế hoạch công việc</li>
+      </ul>
+      <div class="sub" style="margin-top:6px">Cấp cho</div>
+      <ul class="list tight">
+        <li>Sản xuất: máy nào đang chạy, việc gì còn mở</li>
+        <li>Phân tích: MTBF/MTTR, chi phí bảo trì</li>
+        <li>Hành động: Concern nêu từ sự cố máy</li>
+      </ul>
+    </div>
+
+    <div class="card owner">
+      <div class="name">Sản xuất</div>
+      <div class="sub" style="margin-top:6px">Sở hữu</div>
+      <ul class="list tight">
+        <li>Bàn giao ca — <strong>một bản cho mỗi Bộ phận, mỗi ca</strong></li>
+        <li>Trạng thái máy, điểm thay đổi</li>
+        <li>Xác nhận của ca sau</li>
+      </ul>
+      <div class="sub" style="margin-top:6px">Dùng của Phân hệ khác</div>
+      <ul class="list tight">
+        <li>Nhân sự: cây Bộ phận, người bàn giao</li>
+        <li>Bảo trì: Tài sản của Bộ phận</li>
+        <li>Hành động: mọi Hành động đang mở phải chuyển tiếp trước khi gửi</li>
+      </ul>
+    </div>
+
+    <div class="card owner">
+      <div class="name">Hành động</div>
+      <div class="sub" style="margin-top:6px">Sở hữu</div>
+      <ul class="list tight">
+        <li>Concern · Biện pháp · Giai đoạn PDCA</li>
+        <li>CAPA/8D: xương cá 6M, hai chuỗi Why, bước kiểm tra hiệu quả</li>
+      </ul>
+      <div class="sub" style="margin-top:6px">Nhận liên kết từ</div>
+      <ul class="list tight">
+        <li>Chất lượng: Sản phẩm không phù hợp</li>
+        <li>An toàn: Sự cố, Quan sát</li>
+        <li>Bảo trì: sự cố máy</li>
+        <li>Xưởng: ghi nhận từ sàn</li>
+      </ul>
+    </div>
+
+    <div class="card owner">
+      <div class="name">Chất lượng</div>
+      <div class="sub" style="margin-top:6px">Sở hữu</div>
+      <ul class="list tight">
+        <li>Sản phẩm, Mã lỗi</li>
+        <li>Sản phẩm không phù hợp, phương án xử lý</li>
+        <li>Khiếu nại khách hàng</li>
+        <li>Nhà cung cấp, NCR nhà cung cấp</li>
+        <li>Trình chiếu</li>
+      </ul>
+      <div class="sub" style="margin-top:6px">Cấp cho</div>
+      <ul class="list tight">
+        <li>Hành động: Concern (một vấn đề = một Concern)</li>
+        <li>Phân tích: chi phí chất lượng</li>
+      </ul>
+    </div>
+
+    <div class="card owner">
+      <div class="name">An toàn</div>
+      <div class="sub" style="margin-top:6px">Sở hữu</div>
+      <ul class="list tight">
+        <li>Sự cố, mức độ, số ngày mất làm việc</li>
+        <li>Quan sát (điều kiện / hành vi / việc làm tốt)</li>
+        <li>Danh mục Loại thương tích, Bộ phận cơ thể</li>
+      </ul>
+      <div class="sub" style="margin-top:6px">Cấp cho</div>
+      <ul class="list tight">
+        <li>Hành động: Concern từ sự cố hoặc quan sát</li>
+        <li>Phân tích: SAF-TRIR, SAF-LTIFR</li>
+      </ul>
+    </div>
+
+    <div class="card owner">
+      <div class="name">Phân tích</div>
+      <div class="sub" style="margin-top:6px">Chỉ đọc — không tạo bản ghi vận hành</div>
+      <ul class="list tight">
+        <li>Bảng phân cấp: năm Trụ cột</li>
+        <li>Danh mục KPI · Mục tiêu theo kỳ · Đánh giá theo ngày</li>
+        <li>Độ phủ kỹ năng</li>
+      </ul>
+      <div class="sub" style="margin-top:6px">Đọc từ</div>
+      <ul class="list tight">
+        <li>Cả sáu Phân hệ trên</li>
+        <li>CSDL KPI riêng: KPI chưa có trong danh mục thì không hiện</li>
+      </ul>
+    </div>
+
+    <div class="card" style="border-left:3px solid #5B21B6">
+      <div class="name" style="color:#5B21B6">Xưởng <span class="badge purple">/floor</span></div>
+      <div class="sub" style="margin-top:6px">Thiết bị dùng chung — không đăng nhập</div>
+      <ul class="list tight">
+        <li>Gắn với một Đơn vị tổ chức (ADR-0016)</li>
+        <li>Mỗi thao tác nhận diện bằng <strong>mã nhân viên + PIN</strong></li>
+        <li>PIN gắn với Nhân viên, không với Tài khoản</li>
+      </ul>
+      <div class="sub" style="margin-top:6px">Ghi vào</div>
+      <ul class="list tight">
+        <li>Bảo trì: bắt đầu / hoàn thành Lệnh công việc</li>
+        <li>Chất lượng: Sản phẩm không phù hợp</li>
+        <li>An toàn: Sự cố, Quan sát</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="spacer-12"></div>
+
+  <div class="grid-2">
+    <div class="note"><strong>Đọc rộng, ghi hẹp (ADR-0009).</strong> Danh bạ Nhân viên và danh sách Tài sản
+    đọc được toàn Nền tảng. Chỉ <em>ghi</em> mới cần quyền trên Đơn vị tổ chức. Đây là chủ ý, không phải
+    chỗ thiếu bộ lọc.</div>
+    <div class="note"><strong>Thẩm quyền theo đơn vị.</strong> “Thẩm quyền Chất lượng” và “Thẩm quyền An toàn”
+    không phải vai trò: quản trị viên cấp chúng cho một Tài khoản <em>trên một Đơn vị tổ chức</em>, trong
+    màn hình Tài khoản.</div>
+  </div>
+
+  <footer class="legend">Sơ đồ này mô tả quan hệ dữ liệu, không phải lịch sử phát triển. Mọi mũi tên là
+  một lời gọi qua cửa vào của Phân hệ sở hữu (ADR-0006), ví dụ Bảo trì hỏi Nhân sự “người này có chứng nhận
+  gì” — nó không đọc bảng của Nhân sự.</footer>
+</main>
+</body>
+</html>

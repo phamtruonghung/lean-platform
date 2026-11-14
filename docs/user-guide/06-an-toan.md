@@ -21,6 +21,13 @@ không nêu ai bị gì thì ai cũng ghi được.
 
 ---
 
+![Sơ đồ 7 — An toàn: sự cố và quan sát là hai sổ, một luật](images/07-an-toan-su-co-va-quan-sat.png)
+
+***Sơ đồ 7.** Hai sổ, hai luồng. Điểm khác biệt duy nhất về quyền: nêu tên người bị
+thương, loại thương tích hay bộ phận cơ thể cần thẩm quyền An toàn ở đơn vị đó.*
+
+---
+
 ## Sự cố
 
 **Việc này để làm gì.** Đã xảy ra chuyện gì tại nhà máy, ở đâu, và nằm ở mức nào trên

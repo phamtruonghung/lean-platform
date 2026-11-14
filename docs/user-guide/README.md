@@ -18,6 +18,25 @@ trên màn hình** (lấy từ `frontend/lib/l10n/app_vi.arb`). Nếu màn hình
 
 ---
 
+## Bản PDF, và mười sơ đồ
+
+Tài liệu này đọc được hai cách: các tệp Markdown trong thư mục này (bản gốc, sửa được,
+xem thẳng trên GitHub), và một **bản PDF để đọc hoặc in**.
+
+- **Bản PDF**: [`pdf/huong-dan-su-dung.pdf`](pdf/huong-dan-su-dung.pdf) — toàn bộ chương
+  00–90 trong một tệp, kèm **mười sơ đồ**, mỗi sơ đồ in trên một **trang ngang** riêng.
+- **Sinh lại bản PDF** sau khi sửa Markdown: `bash scripts/build-user-guide-pdf.sh`.
+  Script dò Chromium có sẵn trên máy, dựng lại ảnh sơ đồ và in PDF vào `pdf/`.
+- **Nguồn của sơ đồ** là `diagrams/*.html` + `diagrams/diagram.css`, sinh ảnh bằng
+  `node docs/user-guide/diagrams/render.js` → `images/*.png`. Muốn đổi chữ trong sơ đồ
+  thì sửa HTML rồi render lại, đừng sửa thẳng tệp PNG.
+
+Chương [**00 · Toàn cảnh**](00-tong-quan.md) là bản đồ của cả tài liệu: Nền tảng gồm những
+nhóm việc gì, nhóm nào cấp dữ liệu cho nhóm nào, và một việc trên sàn đi qua những màn
+hình nào trước khi thành con số.
+
+---
+
 ## 1. Sáu vai trò, và cách đọc phần "Ai thao tác được"
 
 Nền tảng không cấp quyền cho từng người một cách tuỳ tiện. Mỗi Tài khoản mang
@@ -210,17 +229,19 @@ của chức năng mẹ, và — với mọi thao tác ghi — phạm vi Đơn v
 Đào tạo một người mới, đi theo đúng thứ tự này — mỗi bước chỉ dùng cái bước trước
 đã dạy:
 
-1. [Vào cửa và Tài khoản](01-vao-cua-va-tai-khoan.md) — đăng nhập, Trang chủ, Cài đặt.
-2. [An toàn](06-an-toan.md) — ghi nhận quan sát và sự cố. Đây là việc **mọi**
+1. [Toàn cảnh](00-tong-quan.md) — năm phút: Nền tảng gồm những nhóm việc gì và các Phân
+   hệ nối với nhau ra sao. Đọc trước mọi thứ khác.
+2. [Vào cửa và Tài khoản](01-vao-cua-va-tai-khoan.md) — đăng nhập, Trang chủ, Cài đặt.
+3. [An toàn](06-an-toan.md) — ghi nhận quan sát và sự cố. Đây là việc **mọi**
    Tài khoản làm được, nên dạy trước tiên.
-3. [Chất lượng](05-chat-luong.md) — ghi nhận sản phẩm không phù hợp, cũng mọi
+4. [Chất lượng](05-chat-luong.md) — ghi nhận sản phẩm không phù hợp, cũng mọi
    Tài khoản làm được.
-4. [Hành động](04-hanh-dong.md) — nêu Concern, chạy các giai đoạn, mở CAPA.
-5. [Bảo trì](03-bao-tri.md) — nêu Yêu cầu trước (mọi Tài khoản), rồi mới tới
+5. [Hành động](04-hanh-dong.md) — nêu Concern, chạy các giai đoạn, mở CAPA.
+6. [Bảo trì](03-bao-tri.md) — nêu Yêu cầu trước (mọi Tài khoản), rồi mới tới
    Lệnh công việc và phần dành cho giám sát.
-6. [Nhân sự](02-nhan-su.md) — Danh bạ, Chữ ký, Đào tạo của tôi, Đơn xin nghỉ.
-7. [Sản xuất](07-san-xuat.md) và [Phân tích](08-phan-tich.md).
-8. [Quản trị](09-quan-tri.md) — chỉ quản trị viên.
+7. [Nhân sự](02-nhan-su.md) — Danh bạ, Chữ ký, Đào tạo của tôi, Đơn xin nghỉ.
+8. [Sản xuất](07-san-xuat.md) và [Phân tích](08-phan-tich.md).
+9. [Quản trị](09-quan-tri.md) — chỉ quản trị viên.
 
 ## 5. Tài liệu này không nói gì
 

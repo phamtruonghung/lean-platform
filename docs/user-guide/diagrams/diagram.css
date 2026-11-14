@@ -1,0 +1,114 @@
+/* Shared style for the user-guide diagrams.
+ *
+ * Rendered to PNG by render.js (headless Chromium, device scale 2), then
+ * embedded in the PDF by build_pdf.py. Colours are the app's own
+ * (frontend/lib/theme.dart) so a diagram looks like the product it describes.
+ * No webfont, no network: the render host has Noto Sans and DejaVu Sans, both
+ * of which carry the Vietnamese diacritics.
+ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --paper: #F8FAFC;
+  --card: #FFFFFF;
+  --ink: #1E3A8A;
+  --muted: #475569;
+  --soft: #64748B;
+  --rule: #DBEAFE;
+  --accent: #1E40AF;
+  --tint: #DBEAFE;
+  --ok: #166534;      --ok-tint: #DCFCE7;
+  --warn: #92400E;    --warn-tint: #FEF3C7;
+  --bad: #B91C1C;     --bad-tint: #FEE2E2;
+  --purple: #5B21B6;  --purple-tint: #EDE9FE;
+  --font: "Noto Sans", "DejaVu Sans", sans-serif;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--paper);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+.sheet { width: 1400px; background: var(--paper); padding: 40px 44px 34px; }
+
+.eyebrow {
+  font-size: 11px; font-weight: 700; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--soft);
+}
+h1 { font-size: 28px; line-height: 1.2; color: var(--ink); margin: 6px 0 8px; letter-spacing: -.01em; }
+.lede { font-size: 13.5px; color: var(--muted); max-width: 1120px; }
+.lede strong { color: var(--ink); }
+
+/* ---- boxes ---- */
+.card {
+  background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
+  padding: 11px 13px; box-shadow: 0 1px 2px rgba(30, 58, 138, .06);
+}
+.card > .name { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.card > .sub { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--soft); }
+.card.accent { border-color: var(--accent); box-shadow: 0 2px 6px rgba(30, 64, 175, .12); }
+.card.owner { background: #fff; border-left: 3px solid var(--accent); }
+
+.list { list-style: none; font-size: 12px; color: var(--muted); }
+.list > li { position: relative; padding-left: 12px; margin-top: 2px; }
+.list > li::before { content: "·"; position: absolute; left: 2px; color: var(--soft); font-weight: 700; }
+.list.tight > li { margin-top: 1px; }
+
+/* ---- grids / flows ---- */
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.row { display: flex; align-items: stretch; gap: 0; }
+.row > .step { flex: 1 1 0; }
+.row > .arrow {
+  flex: 0 0 34px; display: flex; align-items: center; justify-content: center;
+  color: var(--soft); font-size: 17px; font-weight: 700;
+}
+.row > .arrow.wide { flex-basis: 46px; }
+
+.lane { display: grid; grid-template-columns: 132px 1fr; gap: 12px; align-items: stretch; }
+.lane + .lane { margin-top: 12px; }
+.lane-label {
+  background: var(--tint); border: 1px solid var(--rule); border-radius: 10px;
+  padding: 10px; color: var(--accent); font-weight: 700; font-size: 12.5px;
+  display: flex; align-items: center;
+}
+.lane-label.alt { background: #fff; border-left: 3px solid var(--accent); }
+
+.band {
+  background: linear-gradient(180deg, #fff, #F8FAFC);
+  border: 1px solid var(--rule); border-radius: 10px; padding: 10px 14px;
+}
+
+.badge {
+  display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .04em;
+  padding: 1px 7px; border-radius: 999px; border: 1px solid transparent;
+  vertical-align: 1px; white-space: nowrap;
+}
+.badge.ok { color: var(--ok); background: var(--ok-tint); }
+.badge.warn { color: var(--warn); background: var(--warn-tint); }
+.badge.bad { color: var(--bad); background: var(--bad-tint); }
+.badge.accent { color: var(--accent); background: var(--tint); }
+.badge.purple { color: var(--purple); background: var(--purple-tint); }
+.badge.plain { color: var(--soft); background: #F1F5F9; }
+
+.note {
+  border-left: 3px solid var(--accent); background: #fff; padding: 8px 12px;
+  font-size: 12px; color: var(--muted); border-radius: 0 8px 8px 0;
+}
+.note.bad { border-left-color: var(--bad); }
+.note.ok { border-left-color: var(--ok); }
+.note strong { color: var(--ink); }
+
+.arrow-down { text-align: center; color: var(--soft); font-size: 16px; font-weight: 700; line-height: 1; padding: 4px 0; }
+
+.spacer-8 { height: 8px; } .spacer-12 { height: 12px; } .spacer-16 { height: 16px; }
+
+footer.legend {
+  margin-top: 18px; padding-top: 10px; border-top: 1px solid var(--rule);
+  font-size: 11.5px; color: var(--soft);
+}

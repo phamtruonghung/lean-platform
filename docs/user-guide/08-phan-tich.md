@@ -11,6 +11,13 @@ chưa có trong danh mục thì **không** hiện trên Bảng phân cấp, dù 
 
 ---
 
+![Sơ đồ 9 — Phân tích: số liệu đến từ đâu, và màn hình nào đọc nó](images/09-phan-tich-nguon-so-lieu.png)
+
+***Sơ đồ 9.** Ba cột: thao tác đã ghi trên sàn, chỉ số dẫn ra, màn hình nơi đọc. Mỗi con
+số chỉ đúng khi đúng một điều kiện ở nguồn của nó.*
+
+---
+
 ## Bảng phân cấp
 
 **Việc này để làm gì.** Những số liệu mà công việc của Nhà máy này tạo ra, báo cáo

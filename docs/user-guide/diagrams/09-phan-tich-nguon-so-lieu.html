@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Sơ đồ 9 — Phân tích: số liệu đến từ đâu, và màn hình nào đọc nó</title>
+<link rel="stylesheet" href="diagram.css">
+</head>
+<body>
+<main class="sheet" id="sheet">
+  <div class="eyebrow">Nền tảng lean-platform · Sơ đồ 9</div>
+  <h1>Phân tích: số liệu đến từ đâu, và màn hình nào đọc nó</h1>
+  <p class="lede">Nhóm Phân tích không nhập số liệu — nó đọc việc đã ghi. Vì vậy mỗi con số chỉ đúng khi
+  đúng một điều kiện ở nguồn của nó. Ba cột: <strong>nguồn</strong> là thao tác trên sàn,
+  <strong>chỉ số</strong> là thứ dẫn ra, và <strong>màn hình</strong> là nơi đọc.</p>
+
+  <div class="spacer-16"></div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="name">① Nguồn — thao tác đã ghi</div>
+      <ul class="list tight" style="margin-top:6px">
+        <li><strong>Dừng máy</strong> (Bảo trì): mỗi lần dừng đã <em>đóng</em> và đã <em>phân loại lý do</em></li>
+        <li><strong>Giờ công + phụ tùng</strong> trên Lệnh công việc</li>
+        <li><strong>Sản phẩm không phù hợp</strong>: số lượng, phương án xử lý, số phút làm lại</li>
+        <li><strong>Tiền thu hồi</strong> từ NCR nhà cung cấp</li>
+        <li><strong>Mức độ + số ngày</strong> mất làm việc của sự cố</li>
+        <li><strong>Kỹ năng, bậc, ngày đánh giá lại</strong> + yêu cầu kỹ năng của nhà máy</li>
+        <li><strong>Đơn giá giờ</strong>, <strong>Chi phí chuẩn sản phẩm</strong></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="name">② Chỉ số dẫn ra</div>
+      <div class="sub" style="margin-top:8px">Bảo trì</div>
+      <ul class="list tight">
+        <li><strong>MTBF / MTTR</strong> — từ các lần dừng máy</li>
+        <li><strong>Chi phí bảo trì</strong> — giờ công (đã nằm trong chi phí nhân công) + phụ tùng (phần tăng thêm duy nhất)</li>
+      </ul>
+      <div class="sub" style="margin-top:8px">Chất lượng</div>
+      <ul class="list tight">
+        <li><strong>Chi phí chất lượng</strong> — số phút làm lại × Chi phí chuẩn sản phẩm, cộng tiền thu hồi từ NCR</li>
+        <li>Pareto theo <strong>cây Mã lỗi</strong> và theo <strong>Điểm phát hiện</strong></li>
+      </ul>
+      <div class="sub" style="margin-top:8px">An toàn</div>
+      <ul class="list tight">
+        <li><strong>SAF-TRIR</strong> — theo mức độ sự cố</li>
+        <li><strong>SAF-LTIFR</strong> — theo số ngày mất làm việc, <strong>12 tháng trượt</strong>; chưa xác nhận thì chưa có số</li>
+      </ul>
+      <div class="sub" style="margin-top:8px">Nhân sự</div>
+      <ul class="list tight">
+        <li><strong>Độ phủ kỹ năng</strong> — người <em>hết hạn</em> không tính là đủ điều kiện; chỉ tính bậc <strong>≥</strong> bậc tối thiểu của yêu cầu</li>
+      </ul>
+    </div>
+
+    <div class="card" style="border-left:3px solid #5B21B6">
+      <div class="name">③ Màn hình — nơi đọc</div>
+      <div class="sub" style="margin-top:8px">Bảng phân cấp <span class="badge ok">mọi vai trò</span></div>
+      <ul class="list tight">
+        <li>Năm <strong>Trụ cột</strong>, mỗi dòng một Giá trị và một Trạng thái</li>
+        <li>Trụ cột <strong>luôn hiện, kể cả trống</strong> — một Trụ cột trống là thông tin, không phải lỗi hiển thị</li>
+        <li>“Chưa có dữ liệu” ≠ “Chưa có KPI nào được định nghĩa dưới Trụ cột này” — chỉ cái thứ hai là việc của quản trị viên</li>
+      </ul>
+      <div class="sub" style="margin-top:8px">Danh mục KPI + Mục tiêu</div>
+      <ul class="list tight">
+        <li><strong>Chiều so sánh</strong> <span class="badge plain">&gt;=</span> / <span class="badge plain">&lt;=</span> đặt lúc tạo KPI — chiều sai làm mọi đánh giá đảo ngược</li>
+        <li>Mục tiêu theo <strong>kỳ</strong>, mỗi kỳ một mức; <strong>một mục tiêu không bao giờ bị sửa</strong> — mục sau thay thế mục trước bằng một ngày hiệu lực</li>
+        <li>Để trống mục tiêu từ một ngày = cách huỷ mục tiêu đang áp dụng</li>
+      </ul>
+      <div class="sub" style="margin-top:8px">Đánh giá KPI <span class="badge warn">theo ngày</span></div>
+      <ul class="list tight">
+        <li>Đạt / Không đạt / <strong>Chưa đo</strong> — “chưa đo” là một câu trả lời, khác “không đạt”</li>
+        <li>Không đạt thì <strong>bắt buộc</strong> ghi vì sao (có độ dài tối thiểu)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="spacer-12"></div>
+
+  <div class="grid-2">
+    <div class="note bad"><strong>KPI sống trong một cơ sở dữ liệu thứ hai (ADR-0055).</strong> Danh mục KPI,
+    Mục tiêu và bản Đánh giá là dữ liệu của chuyền MTU, tách khỏi dữ liệu vận hành hằng ngày. Hệ quả thực tế:
+    một KPI <em>chưa có trong danh mục</em> thì <strong>không</strong> hiện trên Bảng phân cấp, dù công việc đã
+    được ghi đủ.</div>
+    <div class="note"><strong>Một con số chỉ đúng khi điều kiện ở nguồn đúng.</strong> Lần dừng chưa phân loại
+    thì không vào thống kê theo lý do · sự cố chưa ghi số ngày thì chưa có LTIFR · người quá hạn đánh giá lại
+    thì không tính là đủ tay nghề. Đào tạo người ghi, không sửa báo cáo.</div>
+  </div>
+
+  <footer class="legend">Đọc rộng: Bảng phân cấp mở cho mọi vai trò. Danh mục KPI, Mục tiêu, Đánh giá: supervisor
+  trở lên. Độ phủ kỹ năng: chỉ quản trị viên. Chương 08.</footer>
+</main>
+</body>
+</html>

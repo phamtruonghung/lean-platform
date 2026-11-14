@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Sơ đồ 2 — Từ lúc được tạo Tài khoản tới Trang chủ</title>
+<link rel="stylesheet" href="diagram.css">
+</head>
+<body>
+<main class="sheet" id="sheet">
+  <div class="eyebrow">Nền tảng lean-platform · Sơ đồ 2</div>
+  <h1>Từ lúc Tài khoản được tạo tới Trang chủ</h1>
+  <p class="lede">Không ai tự tạo được Tài khoản, và <strong>đăng nhập được không có nghĩa là đã được nhận
+  vào</strong>. Sáu bước dưới đây là toàn bộ đường vào; bước 3 là bước hay bị bỏ qua nhất khi đào tạo.</p>
+
+  <div class="spacer-16"></div>
+
+  <div class="row">
+    <div class="step card">
+      <span class="badge plain">1</span>
+      <div class="name" style="margin-top:5px">Quản trị viên tạo Tài khoản</div>
+      <ul class="list tight">
+        <li>Màn hình <strong>Tài khoản</strong></li>
+        <li>Email + mật khẩu tạm, báo trực tiếp cho người dùng</li>
+        <li>Không có email tự động nào</li>
+      </ul>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step card">
+      <span class="badge plain">2</span>
+      <div class="name" style="margin-top:5px">Đăng nhập <span class="badge accent">/sign-in</span></div>
+      <ul class="list tight">
+        <li>Email + mật khẩu</li>
+        <li>Sai một trong hai: <strong>cùng một lời từ chối</strong></li>
+        <li>Không Google, không tự tạo tài khoản</li>
+      </ul>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step card" style="border-color:#F59E0B">
+      <span class="badge warn">3</span>
+      <div class="name" style="margin-top:5px">Chờ phê duyệt <span class="badge warn">/awaiting-approval</span></div>
+      <ul class="list tight">
+        <li>Đúng email, đúng mật khẩu, nhưng <strong>chưa được chấp nhận</strong></li>
+        <li>Bấm <strong>Kiểm tra lại</strong> sau khi quản trị viên chấp nhận</li>
+        <li>Nền tảng không tự báo cho quản trị viên</li>
+      </ul>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step card">
+      <span class="badge accent">4</span>
+      <div class="name" style="margin-top:5px">Quản trị viên phê duyệt</div>
+      <ul class="list tight">
+        <li>Màn hình <strong>Phê duyệt</strong>: chọn vai trò</li>
+        <li>Chọn quyền trên <strong>Đơn vị tổ chức</strong></li>
+        <li>Tuỳ chọn: Thẩm quyền Chất lượng / An toàn</li>
+      </ul>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step card">
+      <span class="badge plain">5</span>
+      <div class="name" style="margin-top:5px">Đổi mật khẩu tạm (bắt buộc)</div>
+      <ul class="list tight">
+        <li>Mật khẩu do quản trị viên đặt không dùng tiếp được</li>
+        <li>Chỉ hiện một lần, ngay sau khi được chấp nhận</li>
+      </ul>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step card" style="border-color:#166534">
+      <span class="badge ok">6</span>
+      <div class="name" style="margin-top:5px">Trang chủ</div>
+      <ul class="list tight">
+        <li>Việc đang chờ <strong>bạn</strong>, không phải báo cáo chung</li>
+        <li>Thanh điều hướng chỉ hiện nhóm bạn mở được</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="spacer-12"></div>
+  <div class="note bad"><strong>Luật của máy chủ, không phải khuyến nghị.</strong> Bị <strong>Từ chối</strong>
+  không xoá gì: người đó thấy yêu cầu đã bị từ chối, và quản trị viên vẫn chấp nhận được sau đó. Chọn vai
+  trò <strong>admin</strong> trong hộp thoại phê duyệt là trao toàn bộ Nền tảng — mọi Nhà máy, mọi Đơn vị tổ
+  chức, và quyền chấp nhận người khác.</div>
+
+  <div class="spacer-12"></div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="name">Vào rồi thì cái gì quyết định bạn làm được gì</div>
+      <div class="sub" style="margin-top:8px">① Vai trò → mã quyền</div>
+      <ul class="list tight">
+        <li>Sáu vai trò tạo sẵn; một Tài khoản <strong>cộng dồn</strong> vai trò của mình</li>
+        <li><span class="badge plain">ROLE_STANDARD</span> mọi Tài khoản đều có, không ai bị bỏ</li>
+        <li><span class="badge plain">ROLE_ADMIN</span> đi qua mọi mã quyền ở máy chủ — gỡ một quyền khỏi vai trò này không làm mất quyền đó</li>
+      </ul>
+      <div class="sub" style="margin-top:8px">② Quyền trên Đơn vị tổ chức</div>
+      <ul class="list tight">
+        <li>Mọi thao tác <strong>ghi</strong> còn phải nằm trong Đơn vị tổ chức được cấp</li>
+        <li>Thiếu phạm vi thì máy chủ từ chối, dù vai trò đúng</li>
+      </ul>
+      <div class="sub" style="margin-top:8px">③ Thẩm quyền Chất lượng / An toàn</div>
+      <ul class="list tight">
+        <li>Không phải vai trò: cấp cho một Tài khoản trên một Đơn vị tổ chức</li>
+        <li>Một người vận hành <em>có thể</em> được cấp; một quản lý <em>có thể</em> không</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="name">Ba câu người dùng hay hỏi</div>
+      <div class="sub" style="margin-top:8px">“Tôi quên mật khẩu”</div>
+      <ul class="list tight"><li>Không có tự phục vụ. Quản trị viên đặt lại trong màn hình Tài khoản.</li></ul>
+      <div class="sub" style="margin-top:8px">“Tôi thấy màn hình nhưng không bấm được nút”</div>
+      <ul class="list tight"><li>Đọc được không có nghĩa là ghi được: thiếu mã quyền ghi, hoặc thiếu phạm vi Đơn vị tổ chức.</li></ul>
+      <div class="sub" style="margin-top:8px">“Tài khoản tôi bị khoá”</div>
+      <ul class="list tight">
+        <li>Vô hiệu hoá chỉ chặn đăng nhập. Không có nút xoá Tài khoản nào; vai trò và quyền giữ nguyên.</li>
+        <li>Sai PIN trên thiết bị Xưởng thì <strong>Nhân viên</strong> đó bị chờ, không phải cái máy (ADR-0047).</li>
+      </ul>
+      <div class="note" style="margin-top:10px"><strong>Đào tạo:</strong> đừng nói “đăng nhập được rồi là
+      xong”. Câu đúng là: đăng nhập được, <em>và</em> quản trị viên đã chấp nhận, <em>và</em> có phạm vi Đơn
+      vị tổ chức.</div>
+    </div>
+  </div>
+
+  <footer class="legend">Màn hình liên quan: <strong>Đăng nhập</strong> (01) · <strong>Chờ phê duyệt</strong> (01) ·
+  <strong>Phê duyệt</strong>, <strong>Tài khoản</strong>, <strong>Vai trò</strong> (09) · bảng 84 mã quyền × 6 vai trò (phụ lục 90).</footer>
+</main>
+</body>
+</html>

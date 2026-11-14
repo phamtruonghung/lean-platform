@@ -6,6 +6,11 @@ Nền tảng. Không có mã quyền nào trong phần này: cái quyết địn
 
 ---
 
+![Sơ đồ 2 — Từ lúc được tạo Tài khoản tới Trang chủ](images/02-vong-doi-tai-khoan.png)
+
+***Sơ đồ 2.** Sáu bước để vào được Nền tảng. Bước 3 — chờ phê duyệt — là bước hay bị bỏ
+qua nhất khi đào tạo: đăng nhập được không có nghĩa là đã được nhận vào.*
+
 ## Đăng nhập
 
 **Việc này để làm gì.** Vào Nền tảng bằng email và mật khẩu của chính bạn.

@@ -16,6 +16,13 @@ vì đó là việc của sàn, và một người vận hành phát hiện hàn
 
 ---
 
+![Sơ đồ 6 — Chất lượng: ba cửa vào, một sổ, một vòng khép kín](images/06-chat-luong-ba-cua-vao.png)
+
+***Sơ đồ 6.** Ba cửa vào (bên trong nhà máy, khách hàng, nhận hàng) nhưng chỉ một sổ kiểm
+soát hàng. Khiếu nại và NCR không tự sinh Sản phẩm không phù hợp — phải làm ở bước tiếp.*
+
+---
+
 ## Sản phẩm
 
 **Việc này để làm gì.** Nhà máy sản xuất gì, và mỗi Sản phẩm được đo bằng gì.
