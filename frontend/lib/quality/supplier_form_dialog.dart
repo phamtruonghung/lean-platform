@@ -24,6 +24,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/app_scan_field.dart';
 import 'supplier.dart';
 import 'suppliers_bloc.dart';
 
@@ -174,17 +175,15 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            AppScanField(
               key: SupplierFormDialog.codeKey,
               controller: _code,
+              label: 'Code',
+              helperText: _isCorrection ? 'A Supplier\'s code cannot be corrected' : null,
               // A code is the one field a correction cannot rewrite.
               enabled: !_isCorrection && !_awaiting,
+              autofocus: true,
               onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                labelText: 'Code',
-                border: const OutlineInputBorder(),
-                helperText: _isCorrection ? 'A Supplier\'s code cannot be corrected' : null,
-              ),
             ),
             const SizedBox(height: Spacing.md),
             TextField(

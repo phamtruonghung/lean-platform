@@ -27,6 +27,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/app_scan_field.dart';
 import 'app_role.dart';
 import 'roles_bloc.dart';
 
@@ -175,19 +176,17 @@ class _RoleFormDialogState extends State<RoleFormDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            AppScanField(
               key: RoleFormDialog.codeKey,
               controller: _code,
+              label: 'Code',
+              helperText: '3–30 characters: A–Z, 0–9 and underscore, e.g. ROLE_STORE_ROOM',
               // Typed once, then the role's identity: a code is what a request
               // for access names, and the server's PATCH does not accept one.
               enabled: !_isCorrection && !_awaiting,
-              onChanged: (_) => setState(() {}),
+              autofocus: true,
               textCapitalization: TextCapitalization.characters,
-              decoration: const InputDecoration(
-                labelText: 'Code',
-                helperText: '3–30 characters: A–Z, 0–9 and underscore, e.g. ROLE_STORE_ROOM',
-                border: OutlineInputBorder(),
-              ),
+              onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: Spacing.md),
             TextField(

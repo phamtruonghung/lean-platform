@@ -26,6 +26,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/app_scan_field.dart';
 import 'body_part.dart';
 import 'body_parts_bloc.dart';
 
@@ -166,16 +167,14 @@ class _BodyPartFormDialogState extends State<BodyPartFormDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            AppScanField(
               key: BodyPartFormDialog.codeKey,
               controller: _code,
+              label: 'Code',
+              helperText: _isCorrection ? "A Body part's code cannot be corrected" : null,
               enabled: !_isCorrection && !_awaiting,
+              autofocus: true,
               onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                labelText: 'Code',
-                border: const OutlineInputBorder(),
-                helperText: _isCorrection ? "A Body part's code cannot be corrected" : null,
-              ),
             ),
             const SizedBox(height: Spacing.md),
             TextField(

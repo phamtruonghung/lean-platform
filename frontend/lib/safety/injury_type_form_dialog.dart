@@ -30,6 +30,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/app_scan_field.dart';
 import 'injury_type.dart';
 import 'injury_types_bloc.dart';
 
@@ -169,16 +170,14 @@ class _InjuryTypeFormDialogState extends State<InjuryTypeFormDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            AppScanField(
               key: InjuryTypeFormDialog.codeKey,
               controller: _code,
+              label: 'Code',
+              helperText: _isCorrection ? "An Injury type's code cannot be corrected" : null,
               enabled: !_isCorrection && !_awaiting,
+              autofocus: true,
               onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                labelText: 'Code',
-                border: const OutlineInputBorder(),
-                helperText: _isCorrection ? "An Injury type's code cannot be corrected" : null,
-              ),
             ),
             const SizedBox(height: Spacing.md),
             TextField(
