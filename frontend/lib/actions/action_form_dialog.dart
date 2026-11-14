@@ -27,6 +27,7 @@ import '../widgets/app_search_field.dart';
 import 'action.dart';
 import 'actions_api.dart';
 import 'actions_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 class ActionFormDialog extends StatefulWidget {
   const ActionFormDialog({super.key, required this.siteId});
@@ -222,7 +223,10 @@ class _ActionFormDialogState extends State<ActionFormDialog> {
                           ),
                           items: [
                             for (final type in ActionType.values)
-                              DropdownMenuItem<ActionType>(value: type, child: Text(type.label)),
+                              DropdownMenuItem<ActionType>(
+                                value: type,
+                                child: Text(actionTypeLabel(l10n, type.wire)),
+                              ),
                           ],
                           onChanged:
                               _awaiting ? null : (value) => setState(() => _type = value ?? _type),
@@ -239,8 +243,8 @@ class _ActionFormDialogState extends State<ActionFormDialog> {
                             border: OutlineInputBorder(),
                           ),
                           items: [
-                            for (final entry in actionPriorityLabels.entries)
-                              DropdownMenuItem<int>(value: entry.key, child: Text(entry.value)),
+                            for (final (priority, label) in actionPriorityChoices(l10n))
+                              DropdownMenuItem<int>(value: priority, child: Text(label)),
                           ],
                           onChanged: _awaiting
                               ? null

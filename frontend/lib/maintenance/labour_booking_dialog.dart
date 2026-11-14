@@ -21,6 +21,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_date_time_field.dart';
@@ -219,7 +220,10 @@ class _LabourBookingDialogState extends State<LabourBookingDialog> {
               ),
               items: [
                 for (final activity in LabourActivity.values)
-                  DropdownMenuItem<String>(value: activity.wire, child: Text(activity.label)),
+                  DropdownMenuItem<String>(
+                    value: activity.wire,
+                    child: Text(labourActivityLabel(l10n, activity.wire)),
+                  ),
               ],
               onChanged: _awaiting ? null : (value) => setState(() => _activity = value),
             ),

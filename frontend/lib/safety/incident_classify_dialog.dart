@@ -54,6 +54,7 @@ import 'incident_detail_bloc.dart';
 import 'injury_type.dart';
 import 'safety_api.dart';
 import 'safety_incident.dart';
+import '../l10n/vocabulary.dart';
 
 /// How the two catalogues are being read — the same three states, and the same
 /// reason, as the record form's own Asset picker.
@@ -447,17 +448,17 @@ class _SafetyIncidentClassifyDialogState extends State<SafetyIncidentClassifyDia
                     }),
                     fetchSuggestions: (term) async => [
                       for (final part in _bodyParts)
-                        if (part.label.toLowerCase().contains(term.toLowerCase())) part,
+                        if (part.label(l10n).toLowerCase().contains(term.toLowerCase())) part,
                     ],
                     suggestionBuilder: (context, part) => Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: Spacing.md,
                         vertical: Spacing.sm,
                       ),
-                      child: Text(part.label),
+                      child: Text(part.label(l10n)),
                     ),
                     idOf: (part) => part.id,
-                    displayStringFor: (part) => part.label,
+                    displayStringFor: (part) => part.label(l10n),
                   ),
                   _ClearRow(
                     clearKey: SafetyIncidentClassifyDialog.clearBodyPartKey,

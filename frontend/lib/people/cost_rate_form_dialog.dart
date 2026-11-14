@@ -44,6 +44,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'cost_rate.dart';
 import 'cost_rates_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 /// Which of the three acts this dialog is performing — see the class header.
 enum CostRateFormMode { add, correct, revise }
@@ -373,7 +374,7 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
                         DropdownMenuItem<String>(
                           value: scopeType,
                           child: Text(
-                            costRateScopeTypeLabel(scopeType),
+                            costRateScopeTypeLabel(l10n, scopeType),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -394,7 +395,7 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
                   const SizedBox(height: Spacing.md),
                   AppSearchField<CostRateScope>(
                     name: CostRateFormDialog._scopeFieldName,
-                    label: l10n.costRateFormWhich(costRateScopeTypeLabel(_scopeType)),
+                    label: l10n.costRateFormWhich(costRateScopeTypeLabel(l10n, _scopeType)),
                     value: _scope,
                     enabled: !_awaiting && widget.scopesFailure == null,
                     onChanged: (scope) => setState(() => _scope = scope),
@@ -436,7 +437,7 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
                         DropdownMenuItem<String>(
                           value: rateType,
                           child: Text(
-                            costRateTypeLabel(rateType),
+                            costRateTypeLabel(l10n, rateType),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -459,7 +460,7 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
                       helperText: l10n.costRateFormARateSScopeAndRateType,
                     ),
                     child: Text(
-                      '${existing!.scopeLabel} · ${costRateTypeLabel(existing.rateType)}',
+                      '${existing!.scopeLabel} · ${costRateTypeLabel(l10n, existing.rateType)}',
                     ),
                   ),
                 const SizedBox(height: Spacing.md),

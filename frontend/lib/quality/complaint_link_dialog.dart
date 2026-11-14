@@ -26,6 +26,7 @@ import 'complaint_detail_bloc.dart';
 import 'customer_complaint.dart';
 import 'nonconformance.dart';
 import 'quality_api.dart';
+import '../l10n/vocabulary.dart';
 
 class ComplaintLinkDialog extends StatefulWidget {
   const ComplaintLinkDialog({super.key, required this.complaint});
@@ -189,7 +190,7 @@ class _ComplaintLinkDialogState extends State<ComplaintLinkDialog> {
                     DropdownMenuItem<String>(
                       value: candidate.id,
                       child: Text(
-                        '${candidate.issueNo} · ${NonconformanceStatus.label(candidate.status)}'
+                        '${candidate.issueNo} · ${nonconformanceStatusLabel(l10n, candidate.status)}'
                         '${candidate.lotRef == null ? '' : ' · ${candidate.lotRef}'}',
                         overflow: TextOverflow.ellipsis,
                       ),

@@ -29,6 +29,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_detail_section.dart';
@@ -200,7 +201,7 @@ class _Loaded extends StatelessWidget {
                       label: l10n.observationDetailActionTaken,
                       value: row.actionTaken ?? 'None recorded yet',
                     ),
-                    _Fact(label: l10n.observationDetailRecordedBy, value: row.recordedByLabel),
+                    _Fact(label: l10n.observationDetailRecordedBy, value: namedOrUnknown(l10n, row.recordedBy)),
               ],
             ),
             // What is being done about it (issue #231). Below the record's
@@ -250,10 +251,10 @@ class _SummaryCard extends StatelessWidget {
               runSpacing: Spacing.xs,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Text(observation.observationTypeLabel, style: theme.textTheme.headlineSmall),
+                Text(observationTypeLabel(l10n, observation.observationType), style: theme.textTheme.headlineSmall),
                 StatusChip(
                   key: SafetyObservationDetailScreen.potentialKey,
-                  label: observation.severityPotentialLabel,
+                  label: severityPotentialLabel(l10n, observation.severityPotential),
                   tone: observation.severityPotentialTone,
                 ),
                 if (observation.isStopWork)
@@ -266,7 +267,7 @@ class _SummaryCard extends StatelessWidget {
             const SizedBox(height: Spacing.md),
             Text(l10n.commonSummary, style: theme.textTheme.titleMedium),
             const SizedBox(height: Spacing.sm),
-            _Fact(label: l10n.commonCategory, value: observation.categoryLabel),
+            _Fact(label: l10n.commonCategory, value: observation.categoryLabel(l10n)),
             _Fact(label: l10n.commonOrgUnit, value: observation.orgUnitName),
             _Fact(
               label: l10n.nonconformanceDetailFiledAgainst,
@@ -354,7 +355,7 @@ class _ActionsCard extends StatelessWidget {
                           ].join(' · '),
                         ),
                         trailing: StatusChip(
-                          label: action.statusLabel,
+                          label: action.statusLabel(l10n),
                           tone: action.statusTone,
                         ),
                       ),

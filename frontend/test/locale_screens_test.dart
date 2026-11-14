@@ -23,6 +23,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lean_platform/home_screen.dart';
+import 'package:lean_platform/l10n/app_localizations.dart';
+import 'package:lean_platform/l10n/notices.dart';
 import 'package:lean_platform/maintenance/work_orders_screen.dart';
 import 'package:lean_platform/people/directory_screen.dart';
 import 'package:lean_platform/platform/change_password_dialog.dart';
@@ -31,16 +33,24 @@ import 'package:lean_platform/platform/locale_cubit.dart';
 import 'package:lean_platform/platform/router.dart';
 import 'package:lean_platform/platform/shell.dart';
 import 'package:lean_platform/quality/nonconformances_screen.dart';
+import 'package:lean_platform/theme.dart';
+import 'package:lean_platform/widgets/failure_state.dart';
 
 import 'harness.dart';
 
 /// One open Work order, one Site, and no queued Requests: enough for Home's
 /// Maintenance group and the Work orders register to have something to say.
-/// [employees] fills the Directory when a case needs a row to read.
-FakeWire _wire({List<Map<String, dynamic>>? employees}) => FakeWire(
+/// [employees] fills the Directory when a case needs a row to read, and
+/// [accounts] the Accounts register when a case needs a role chip.
+FakeWire _wire({
+  List<Map<String, dynamic>>? employees,
+  List<Map<String, dynamic>>? accounts,
+}) =>
+    FakeWire(
       role: Roles.admin,
       sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
       employees: employees ?? const <Map<String, dynamic>>[],
+      accounts: accounts ?? const <Map<String, dynamic>>[],
       workOrders: {
         '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
       },
@@ -76,6 +86,7 @@ Future<RecordingDocumentChrome> _pump(
   required String at,
   String? language,
   List<Map<String, dynamic>>? employees,
+  List<Map<String, dynamic>>? accounts,
 }) async {
   SharedPreferences.setMockInitialValues(
     language == null ? <String, Object>{} : {LocaleCubit.storageKey: language},
@@ -87,7 +98,7 @@ Future<RecordingDocumentChrome> _pump(
   tester.view.physicalSize = const Size(1200, 1000);
   addTearDown(tester.view.reset);
 
-  final wire = _wire(employees: employees);
+  final wire = _wire(employees: employees, accounts: accounts);
   final chrome = RecordingDocumentChrome();
   await pumpApp(
     tester,
@@ -287,5 +298,82 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('Ghi nhận ngày customer'), findsNothing);
+  });
+
+  testWidgets('a status chip, a job-role chip and the signed-out message all speak Vietnamese '
+      '(ADR-0062)', (tester) async {
+    // 1. The Work order's own status chip. `workOrderJson` defaults to
+    // `approved`, a wire token the model keeps and the catalogue names; before
+    // this slice the chip printed the model's English word in both languages.
+    await _pump(tester, at: Routes.workOrders, language: 'vi');
+    expect(find.text('Đã duyệt'), findsOneWidget);
+    expect(find.text('Approved'), findsNothing);
+
+    // The English is still what English gets — the same chip, the same row.
+    await tester.pumpWidget(const SizedBox.shrink());
+    await _pump(tester, at: Routes.workOrders);
+    expect(find.text('Approved'), findsOneWidget);
+    expect(find.text('Đã duyệt'), findsNothing);
+
+    // 2. A job-role chip on the Accounts register: `admissionRoles` used to
+    // carry the English label and description themselves.
+    await tester.pumpWidget(const SizedBox.shrink());
+    await _pump(
+      tester,
+      at: Routes.accounts,
+      language: 'vi',
+      accounts: [accountJson('7', 'sup@b.c', role: Roles.supervisor)],
+    );
+    expect(find.text('Giám sát'), findsWidgets);
+    expect(find.text('Supervisor'), findsNothing);
+  });
+
+  testWidgets('the signed-out sentence renders in the chosen language from the Bloc code it '
+      'travels as', (tester) async {
+    // A Bloc has no `BuildContext`, so the sentence travels as
+    // `BlocNotice.sessionEnded` and the widget that renders a failed read
+    // resolves it (`l10n/notices.dart`). This pumps that seam directly: the
+    // whole-app path signs out and leaves the Screen before the sentence can
+    // be read, which `local_auth_test.dart` already covers.
+    Future<void> show(Locale locale) => tester.pumpWidget(
+          MaterialApp(
+            locale: locale,
+            theme: buildAppTheme(),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Builder(
+              builder: (context) => PlatformFailureState(
+                title: AppLocalizations.of(context).commonStatus,
+                message: BlocNotice.sessionEnded,
+                onRetry: () {},
+              ),
+            ),
+          ),
+        );
+
+    await show(const Locale('vi'));
+    expect(find.text('Phiên làm việc đã kết thúc. Vui lòng đăng nhập lại để tiếp tục.'), findsOneWidget);
+    expect(find.textContaining('This session has ended'), findsNothing);
+
+    await show(const Locale('en'));
+    expect(find.text('This session has ended. Sign in again to continue.'), findsOneWidget);
+
+    // A server's own sentence is prose, not a code: it is never looked up.
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('vi'),
+        theme: buildAppTheme(),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) => PlatformFailureState(
+            title: AppLocalizations.of(context).commonStatus,
+            message: 'The server refused that read.',
+            onRetry: () {},
+          ),
+        ),
+      ),
+    );
+    expect(find.text('The server refused that read.'), findsOneWidget);
   });
 }

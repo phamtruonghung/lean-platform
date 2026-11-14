@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -285,14 +286,17 @@ class _MeterFormDialogState extends State<MeterFormDialog> {
               ),
               items: [
                 for (final type in MeterType.values)
-                  DropdownMenuItem<MeterType>(value: type, child: Text(type.label)),
+                  DropdownMenuItem<MeterType>(
+                    value: type,
+                    child: Text(meterTypeLabel(l10n, type.wire)),
+                  ),
               ],
               onChanged: _awaiting ? null : (value) => setState(() => _type = value!),
             ),
             Padding(
               padding: const EdgeInsets.only(top: Spacing.xs),
               child: Text(
-                _type.explanation,
+                meterTypeExplanation(l10n, _type.wire),
                 style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
               ),
             ),

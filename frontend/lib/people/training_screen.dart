@@ -57,6 +57,7 @@ import 'org_unit_picker_bloc.dart';
 import 'training_bloc.dart';
 import 'training_raise_dialog.dart';
 import 'training_record.dart';
+import '../l10n/vocabulary.dart';
 
 class TrainingScreen extends StatelessWidget {
   const TrainingScreen({super.key, required this.canRaise});
@@ -324,11 +325,11 @@ class _TrainingTableRow extends StatelessWidget {
         if (record.isDraft)
           StatusChip(
             key: TrainingScreen.draftKey(record.id),
-            label: record.statusLabel,
+            label: record.statusLabel(l10n),
             tone: trainingStatusTone(record.status),
           )
         else
-          Text(record.statusLabel, style: dense?.copyWith(color: palette.textMuted)),
+          Text(record.statusLabel(l10n), style: dense?.copyWith(color: palette.textMuted)),
         // The printed form, one tap from the register — a sibling of the row's
         // own tap target so the two never fight over one gesture.
         IconButton(
@@ -549,7 +550,7 @@ class _TrainingRow extends StatelessWidget {
                       if (record.isDraft)
                         StatusChip(
                           key: TrainingScreen.draftKey(record.id),
-                          label: record.statusLabel,
+                          label: record.statusLabel(l10n),
                           tone: trainingStatusTone(record.status),
                         ),
                     ],

@@ -29,6 +29,7 @@ import 'part_booking_dialog.dart';
 import 'task_reading_dialog.dart';
 import 'work_order.dart';
 import 'work_order_detail_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 class WorkOrderDetailScreen extends StatelessWidget {
   const WorkOrderDetailScreen({
@@ -304,7 +305,7 @@ class _SummaryCard extends StatelessWidget {
                 const SizedBox(width: Spacing.sm),
                 // The same `StatusChip` every list uses: the detail read is where
                 // somebody checks what state this job is in (issue #168).
-                StatusChip(label: workOrder.statusLabel, tone: workOrder.statusTone),
+                StatusChip(label: workOrder.statusLabel(l10n), tone: workOrder.statusTone),
               ],
             ),
             const SizedBox(height: Spacing.xs),
@@ -319,7 +320,7 @@ class _SummaryCard extends StatelessWidget {
               children: [
                 fact(l10n.commonAsset, '${workOrder.assetName} (${workOrder.assetCode})'),
                 fact(l10n.commonOrgUnit, workOrder.orgUnitName),
-                fact(l10n.commonWorkType, workOrder.workTypeLabel),
+                fact(l10n.commonWorkType, workOrder.workTypeLabel(l10n)),
                 fact(l10n.commonPriority, '${workOrder.priority}'),
                 fact(l10n.commonAssignee, workOrder.assigneeName ?? l10n.commonUnassigned),
               ],
@@ -432,7 +433,7 @@ class _CostSection extends StatelessWidget {
                   key: WorkOrderDetailScreen.activityKey(activity.activity),
                   padding: const EdgeInsets.only(bottom: Spacing.sm),
                   child: _line(
-                    Text(activity.label, style: dense),
+                    Text(activity.label(l10n), style: dense),
                     Text(
                       activity.overtimeHours > 0
                           ? l10n.workOrderOvertime(_hours(l10n, activity.hours),
@@ -471,7 +472,7 @@ class _CostSection extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(part.name, style: dense),
-                        Text('${_count(part.quantity)} ${part.uomCode} · ${part.sourcedLabel}',
+                        Text('${_count(part.quantity)} ${part.uomCode} · ${part.sourcedLabel(l10n)}',
                             style: note),
                       ],
                     ),
@@ -590,7 +591,7 @@ class _WorkOrderTaskRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: Spacing.sm),
-        StatusChip(label: task.statusLabel, tone: task.statusTone),
+        StatusChip(label: task.statusLabel(l10n), tone: task.statusTone),
       ],
     );
   }

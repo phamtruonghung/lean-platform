@@ -15,6 +15,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'maintenance_api.dart';
 import 'meter.dart';
+import '../l10n/notices.dart';
 
 sealed class MetersEvent {
   const MetersEvent();
@@ -144,8 +145,8 @@ class MetersBloc extends Bloc<MetersEvent, MetersState> {
   final PeopleApi _people;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
-  static const String noSitesMessage = 'There are no Sites you can see, so there is nothing to show.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
+  static const String noSitesMessage = BlocNotice.noSitesNothing;
 
   String? _lastSiteId;
 

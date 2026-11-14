@@ -35,6 +35,7 @@ import 'floor_bloc.dart';
 import 'floor_technician_dialog.dart';
 import 'maintenance_api.dart';
 import 'work_order.dart';
+import '../l10n/vocabulary.dart';
 
 class FloorScreen extends StatelessWidget {
   const FloorScreen({super.key});
@@ -594,7 +595,7 @@ class _FloorWorkOrderCard extends StatelessWidget {
                 // user story 7 names this surface, and it was the last list in
                 // the Platform showing a state as plain text while every other
                 // one painted it.
-                StatusChip(label: workOrder.statusLabel, tone: workOrder.statusTone),
+                StatusChip(label: workOrder.statusLabel(l10n), tone: workOrder.statusTone),
               ],
             ),
             const SizedBox(height: Spacing.sm),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/notices.dart';
 import '../theme.dart';
 
 /// The shared "that failed" state (issue #103): names what broke and offers
@@ -9,12 +10,13 @@ import '../theme.dart';
 /// write already known to have landed — so there is nothing left to say
 /// about safety beyond [message] itself.
 ///
-/// [message] is always something already written for a person —
-/// `PeopleApiException`/`MaintenanceApiException`'s own `.message`, or a
-/// Bloc's own constant such as `signedOutMessage` — never `error.toString()`
-/// or a raw exception. A bare exception string names internals (a stack
-/// trace, a package name) that mean nothing to whoever is looking at the
-/// Screen and sometimes leak more than a UI should show.
+/// [message] is always something already written for a person — a Bloc's own
+/// code (`BlocNotice.sessionEnded` and friends, resolved here through
+/// [noticeText]) or `PeopleApiException`/`MaintenanceApiException`'s own
+/// `.message`, which is prose and passes through untouched — never
+/// `error.toString()` or a raw exception. A bare exception string names
+/// internals (a stack trace, a package name) that mean nothing to whoever is
+/// looking at the Screen and sometimes leak more than a UI should show.
 ///
 /// Carries `Semantics(liveRegion: true)` so a screen reader announces the
 /// failure the moment it replaces loading or list content in place (#99
@@ -43,9 +45,11 @@ class PlatformFailureState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final text = noticeText(l10n, message);
     return Semantics(
       liveRegion: true,
-      label: '$title. $message',
+      label: '$title. $text',
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),
@@ -59,7 +63,7 @@ class PlatformFailureState extends StatelessWidget {
                 Text(title, style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
                 const SizedBox(height: Spacing.sm),
                 Text(
-                  message,
+                  text,
                   textAlign: TextAlign.center,
                   style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
                 ),

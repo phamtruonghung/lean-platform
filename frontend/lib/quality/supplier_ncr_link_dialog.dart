@@ -26,6 +26,7 @@ import 'supplier_ncr_detail_bloc.dart';
 import 'supplier_ncr.dart';
 import 'nonconformance.dart';
 import 'quality_api.dart';
+import '../l10n/vocabulary.dart';
 
 class SupplierNcrLinkDialog extends StatefulWidget {
   const SupplierNcrLinkDialog({super.key, required this.supplierNcr});
@@ -189,7 +190,7 @@ class _SupplierNcrLinkDialogState extends State<SupplierNcrLinkDialog> {
                     DropdownMenuItem<String>(
                       value: candidate.id,
                       child: Text(
-                        '${candidate.issueNo} · ${NonconformanceStatus.label(candidate.status)}'
+                        '${candidate.issueNo} · ${nonconformanceStatusLabel(l10n, candidate.status)}'
                         '${candidate.lotRef == null ? '' : ' · ${candidate.lotRef}'}',
                         overflow: TextOverflow.ellipsis,
                       ),

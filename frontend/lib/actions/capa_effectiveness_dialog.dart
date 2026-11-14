@@ -35,6 +35,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'capa.dart';
 import 'capa_detail_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 /// The keys this one address uses: no CAPA read yet, a CAPA that cannot be
 /// read, an investigation that is over, a caller without Quality authority, a
@@ -107,7 +108,7 @@ Widget? capaEffectivenessAddressRefusal(BuildContext context, CapaDetailState st
         return _EffectivenessRefusal(
           key: CapaEffectivenessKeys.closedKey,
           title: l10n.commonThisInvestigationIsOver,
-          message: l10n.capaEffectivenessIsSoItsEffectivenessIsRecordedAnd(capa.capaNo, capa.statusLabel.toLowerCase()),
+          message: l10n.capaEffectivenessIsSoItsEffectivenessIsRecordedAnd(capa.capaNo, capa.statusLabel(l10n).toLowerCase()),
         );
       }
       if (!holdsQualityAuthority(context, capa.orgUnitId)) {
@@ -260,7 +261,7 @@ class _CapaEffectivenessDialogState extends State<CapaEffectivenessDialog> {
                 for (final outcome in capaEffectivenessOutcomeOrder)
                   DropdownMenuItem<String>(
                     value: outcome,
-                    child: Text(capaEffectivenessOutcomeLabel(outcome)),
+                    child: Text(capaEffectivenessOutcomeLabel(l10n, outcome)),
                   ),
               ],
               onChanged: _awaiting
@@ -275,7 +276,7 @@ class _CapaEffectivenessDialogState extends State<CapaEffectivenessDialog> {
                 key: CapaEffectivenessDialog.chainsOpenKey,
                 padding: const EdgeInsets.only(top: Spacing.sm),
                 child: Text(
-                  l10n.capaEffectivenessAChainOfThisInvestigationHasNo(capaEffectivenessOutcomeLabel('effective')),
+                  l10n.capaEffectivenessAChainOfThisInvestigationHasNo(capaEffectivenessOutcomeLabel(l10n, 'effective')),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),

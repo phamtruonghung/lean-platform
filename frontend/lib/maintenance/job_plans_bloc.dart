@@ -14,6 +14,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../platform/auth_gateway.dart';
 import 'job_plan.dart';
 import 'maintenance_api.dart';
+import '../l10n/notices.dart';
 
 sealed class JobPlansEvent {
   const JobPlansEvent();
@@ -126,7 +127,7 @@ class JobPlansBloc extends Bloc<JobPlansEvent, JobPlansState> {
   final MaintenanceApi _maintenance;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   Future<void> _onStarted(JobPlansStarted event, Emitter<JobPlansState> emit) async {
     emit(const JobPlansLoading());

@@ -26,6 +26,7 @@ import '../maintenance/maintenance.dart';
 import '../people_api.dart';
 import '../platform/floor_device_gateway.dart';
 import 'training_record.dart';
+import '../l10n/notices.dart';
 
 sealed class FloorTrainingEvent {
   const FloorTrainingEvent();
@@ -103,10 +104,9 @@ class FloorTrainingBloc extends Bloc<FloorTrainingEvent, FloorTrainingState> {
   /// Held for this Bloc's (the dialog's) lifetime only; never on a state.
   String? _identification;
 
-  static const String notRegisteredMessage =
-      'This device is not registered. Ask an administrator to register it against an Org Unit.';
+  static const String notRegisteredMessage = BlocNotice.deviceNotRegistered;
 
-  static const String expiredMessage = 'Your identification has expired. Identify yourself again.';
+  static const String expiredMessage = BlocNotice.identificationExpired;
 
   Future<void> _onIdentified(FloorTrainingIdentified event, Emitter<FloorTrainingState> emit) async {
     final current = state;

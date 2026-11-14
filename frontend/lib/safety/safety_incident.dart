@@ -15,7 +15,6 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../actions/actions.dart';
 import '../status_tone.dart';
 
 /// What kind of event a Safety incident was — the baseline's own
@@ -46,24 +45,16 @@ abstract final class IncidentType {
     security,
   ];
 
-  static String label(String type) => switch (type) {
-        injury => 'Injury',
-        nearMiss => 'Near miss',
-        propertyDamage => 'Property damage',
-        environmental => 'Environmental',
-        fire => 'Fire',
-        ergonomic => 'Ergonomic',
-        security => 'Security',
-        _ => type,
-      };
-
   /// The dropdown's own item list — a leading "choose one" placeholder
   /// followed by [values] in their declared order — shared by every form that
   /// picks an incident type (`SafetyIncidentFormDialog` and
   /// `FloorSafetyIncidentDialog`, issue #227), so the set is built once rather
-  /// than duplicated per form.
+  /// than duplicated per form. The words come from the caller
+  /// (`l10n/vocabulary.dart`'s `safetyIncidentTypeLabel`): a model knows a
+  /// code, not a language.
   static List<DropdownMenuItem<String?>> dropdownItems({
-    String placeholder = 'Choose a type',
+    required String Function(String type) label,
+    String placeholder = '',
   }) =>
       [
         DropdownMenuItem<String?>(value: null, child: Text(placeholder)),
@@ -110,25 +101,19 @@ abstract final class SeverityLevel {
 
   static bool isRecordable(String level) => recordableLevels.contains(level);
 
-  static String label(String level) => switch (level) {
-        nearMiss => 'No injury',
-        firstAid => 'First aid',
-        medicalTreatment => 'Medical treatment',
-        restrictedWork => 'Restricted work',
-        lostTime => 'Lost time',
-        fatality => 'Fatality',
-        _ => level,
-      };
-
   /// The dropdown's own item list — a leading "choose one" placeholder
   /// followed by [values] in **ladder order**, each marked "· recordable"
   /// where [isRecordable] is true (the binding design comment on #223) —
   /// shared by every form that picks a severity level
   /// (`SafetyIncidentFormDialog` and `FloorSafetyIncidentDialog`, issue #227),
   /// so the ladder-ordering and recordable-marking logic is built once rather
-  /// than duplicated per form.
+  /// than duplicated per form. The words come from the caller
+  /// (`l10n/vocabulary.dart`'s `safetySeverityLabel` and
+  /// `safetySeverityRecordableSuffix`): a model knows a code, not a language.
   static List<DropdownMenuItem<String?>> dropdownItems({
-    String placeholder = 'Choose a rung',
+    required String Function(String level) label,
+    required String recordableSuffix,
+    String placeholder = '',
   }) =>
       [
         DropdownMenuItem<String?>(value: null, child: Text(placeholder)),
@@ -136,7 +121,7 @@ abstract final class SeverityLevel {
           DropdownMenuItem<String?>(
             value: level,
             child: Text(
-              isRecordable(level) ? '${label(level)} · recordable' : label(level),
+              isRecordable(level) ? '${label(level)}$recordableSuffix' : label(level),
             ),
           ),
       ];
@@ -172,14 +157,6 @@ abstract final class SafetyIncidentStatus {
   static const String closed = 'closed';
 
   static const List<String> values = [open, investigating, actionsPending, closed];
-
-  static String label(String status) => switch (status) {
-        open => 'Open',
-        investigating => 'Investigating',
-        actionsPending => 'Actions pending',
-        closed => 'Closed',
-        _ => status,
-      };
 
   /// Mirrors the Non-conformance register's own status mapping exactly (the
   /// binding design comment on #223): `open` is the one state wanting a
@@ -251,27 +228,19 @@ class SafetyIncidentEvent {
   final String? changedAt;
 
   /// Who made the change, in the words a reader wants — an Account wins where
-  /// one is present, the only door issue #228's own writes have.
-  String get changedBy {
+  /// one is present, the only door issue #228's own writes have. Null when the
+  /// event names nobody; the catalogue's own word for that is the Screen's
+  /// (`l10n/vocabulary.dart`'s `namedOrUnknown`).
+  String? get changedBy {
     final account = changedByAccountName;
     if (account != null && account.isNotEmpty) return account;
     final employee = changedByEmployeeName;
     if (employee != null && employee.isNotEmpty) return employee;
-    return 'Unknown';
+    return null;
   }
 
-  /// What changed, in a sentence — the same "what happened" summary
-  /// `Correction.summary` gives a Non-conformance's own history row.
-  String get summary => switch (kind) {
-        'severity' =>
-          'Severity changed from ${SeverityLevel.label(previousValue)} to ${SeverityLevel.label(newValue)}',
-        'status' =>
-          'Status moved from ${SafetyIncidentStatus.label(previousValue)} to ${SafetyIncidentStatus.label(newValue)}',
-        'days' => 'Days recorded: $newValue',
-        'closure' => 'Closed',
-        'classification' => 'Classified',
-        _ => '$previousValue -> $newValue',
-      };
+  /// What changed, in a sentence — `l10n/vocabulary.dart`'s
+  /// `incidentEventSummary`, because a model knows an event, not a language.
 }
 
 /// The Concern raised from a Safety incident (issue #229), as the incident's
@@ -337,9 +306,7 @@ class SafetyIncidentConcern {
   final String? orgUnitId;
   final String? orgUnitName;
 
-  String get statusLabel => actionStatusLabel(status);
-  StatusTone get statusTone => actionStatusTone(status);
-  String get typeLabel => actionTypeLabel(actionType);
+  StatusTone get statusTone => SafetyIncidentStatus.tone(status);
 }
 
 @immutable
@@ -559,21 +526,20 @@ class SafetyIncident {
   /// further) or already `closed`.
   String? get nextStatus => SafetyIncidentStatus.nextStatus(status);
 
-  String get statusLabel => SafetyIncidentStatus.label(status);
   StatusTone get statusTone => SafetyIncidentStatus.tone(status);
-  String get incidentTypeLabel => IncidentType.label(incidentType);
-  String get severityLabel => SeverityLevel.label(severityLevel);
   StatusTone get severityTone => SeverityLevel.tone(severityLevel);
 
   /// Who reported it, in the words a reader wants. An Account wins where one
   /// is present — the only door this slice has — and an Employee identified
   /// at the floor device (issue #227) is the fallback once that door exists.
-  String get reportedByLabel {
+  /// Null when neither is named; the catalogue's own word for that is the
+  /// Screen's (`l10n/vocabulary.dart`'s `namedOrUnknown`).
+  String? get reportedByLabel {
     final account = recordedByAccountName;
     if (account != null && account.isNotEmpty) return account;
     final employee = reportedByName;
     if (employee != null && employee.isNotEmpty) return employee;
-    return 'Unknown';
+    return null;
   }
 
   /// The production day in the words a reader wants, falling back to the

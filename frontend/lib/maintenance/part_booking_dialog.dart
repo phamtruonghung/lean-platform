@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -266,7 +267,10 @@ class _PartBookingDialogState extends State<PartBookingDialog> {
               ),
               items: [
                 for (final source in PartSource.values)
-                  DropdownMenuItem<String>(value: source.wire, child: Text(source.label)),
+                  DropdownMenuItem<String>(
+                    value: source.wire,
+                    child: Text(partSourceLabel(l10n, source.wire)),
+                  ),
               ],
               onChanged: _awaiting
                   ? null

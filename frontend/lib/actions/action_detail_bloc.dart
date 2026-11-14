@@ -12,6 +12,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../platform/auth_gateway.dart';
 import 'action.dart';
 import 'actions_api.dart';
+import '../l10n/notices.dart';
 
 sealed class ActionDetailEvent {
   const ActionDetailEvent();
@@ -283,7 +284,7 @@ class ActionDetailBloc extends Bloc<ActionDetailEvent, ActionDetailState> {
   final ActionsApi _actions;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   Future<void> _onStarted(ActionDetailStarted event, Emitter<ActionDetailState> emit) async {
     emit(const ActionDetailLoading());
@@ -450,7 +451,7 @@ class ActionDetailBloc extends Bloc<ActionDetailEvent, ActionDetailState> {
           action: refreshed,
           isAddingMeasure: false,
           clearMeasureFailure: true,
-          notice: '${measure.actionNo} answers this — a ${measure.typeLabel.toLowerCase()}.',
+          notice: BlocNotice.measureAnswers(measure.actionNo, measure.actionType),
         ),
       );
     } on ActionsApiException catch (error) {
@@ -594,9 +595,11 @@ class ActionDetailBloc extends Bloc<ActionDetailEvent, ActionDetailState> {
           isCompleting: false,
           clearCompletionFailure: true,
           notice: action.status == 'done'
-              ? '${action.actionNo} is closed — its Act named the standard that now holds it.'
-              : '${action.actionNo} is waiting on its '
-                  '${action.openPhase?.phaseLabel.toLowerCase() ?? 'next'} phase.',
+              ? BlocNotice.actionClosed(action.actionNo)
+              : BlocNotice.actionAwaitingPhase(
+                  action.actionNo,
+                  action.openPhase?.phase ?? 'plan',
+                ),
         ),
       );
     } on ActionsApiException catch (error) {

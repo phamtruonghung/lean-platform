@@ -38,6 +38,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/notices.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_confirm_dialog.dart';
@@ -102,7 +103,7 @@ class ApprovalQueueScreen extends StatelessWidget {
         children: [
           const _Header(),
           if (state is ApprovalQueueLoaded && state.notice != null)
-            _Notice(message: state.notice!),
+            _Notice(message: noticeText(l10n, state.notice!)),
           Expanded(
             child: switch (state) {
               ApprovalQueueLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),

@@ -23,6 +23,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../platform/auth_gateway.dart';
 import 'maintenance_api.dart';
 import 'work_order.dart';
+import '../l10n/notices.dart';
 
 sealed class WorkOrderDetailEvent {
   const WorkOrderDetailEvent();
@@ -175,7 +176,7 @@ class WorkOrderDetailBloc extends Bloc<WorkOrderDetailEvent, WorkOrderDetailStat
   final AuthGateway _auth;
   final String workOrderId;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   Future<void> _onStarted(WorkOrderDetailStarted event, Emitter<WorkOrderDetailState> emit) async {
     emit(const WorkOrderDetailLoading());

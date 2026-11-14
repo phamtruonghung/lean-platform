@@ -62,6 +62,7 @@ import '../widgets/status_chip.dart';
 import 'attendance.dart';
 import 'attendance_to_confirm_bloc.dart';
 import 'org_unit_picker_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 /// The height a `SkeletonList` is given when it stands in for a list inside a
 /// page that is itself scrolling: the placeholder scrolls its own rows, so it
@@ -474,7 +475,7 @@ class _EntryRow extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final missing = entry.sheetState == 'missing';
-    final label = attendanceSheetStateLabel(entry.sheetState);
+    final label = attendanceSheetStateLabel(l10n, entry.sheetState);
     void open() => context.go('${Routes.attendance}/${entry.shiftInstanceId}');
 
     final state = StatusChip(

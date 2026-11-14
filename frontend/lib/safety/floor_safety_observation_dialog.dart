@@ -27,6 +27,7 @@ import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import 'floor_safety_observation_bloc.dart';
 import 'safety_observation.dart';
+import '../l10n/vocabulary.dart';
 
 class FloorSafetyObservationDialog extends StatefulWidget {
   const FloorSafetyObservationDialog({super.key});
@@ -172,7 +173,10 @@ class _FloorSafetyObservationDialogState extends State<FloorSafetyObservationDia
             labelText: l10n.commonType,
             border: const OutlineInputBorder(),
           ),
-          items: ObservationType.dropdownItems(),
+          items: ObservationType.dropdownItems(
+            label: (type) => observationTypeLabel(l10n, type),
+            placeholder: l10n.safetyAnyType,
+          ),
           onChanged: busy ? null : (type) => setState(() => _observationType = type),
         ),
         const SizedBox(height: Spacing.md),
@@ -184,7 +188,10 @@ class _FloorSafetyObservationDialogState extends State<FloorSafetyObservationDia
             labelText: l10n.commonCategory,
             border: const OutlineInputBorder(),
           ),
-          items: ObservationCategory.dropdownItems(),
+          items: ObservationCategory.dropdownItems(
+            label: (category) => observationCategoryLabel(l10n, category),
+            placeholder: l10n.safetyAnyCategory,
+          ),
           onChanged: busy ? null : (category) => setState(() => _category = category),
         ),
         const SizedBox(height: Spacing.md),
@@ -196,7 +203,10 @@ class _FloorSafetyObservationDialogState extends State<FloorSafetyObservationDia
             labelText: l10n.safetySeverityPotential,
             border: const OutlineInputBorder(),
           ),
-          items: SeverityPotential.dropdownItems(),
+          items: SeverityPotential.dropdownItems(
+            label: (potential) => severityPotentialLabel(l10n, potential),
+            placeholder: l10n.safetyAnyPotential,
+          ),
           onChanged: busy ? null : (potential) => setState(() => _severityPotential = potential),
         ),
         const SizedBox(height: Spacing.md),

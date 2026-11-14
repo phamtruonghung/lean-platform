@@ -24,6 +24,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../platform/auth_gateway.dart';
 import 'actions_api.dart';
 import 'capa.dart';
+import '../l10n/notices.dart';
 
 sealed class CapaDetailEvent {
   const CapaDetailEvent();
@@ -225,7 +226,7 @@ class CapaDetailBloc extends Bloc<CapaDetailEvent, CapaDetailState> {
   final ActionsApi _actions;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   String? _capaId;
 

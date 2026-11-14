@@ -15,14 +15,6 @@ import '../status_tone.dart';
 /// them.
 const List<String> leaveRequestStatuses = ['pending', 'approved', 'rejected', 'cancelled'];
 
-String leaveRequestStatusLabel(String status) => switch (status) {
-      'pending' => 'Pending',
-      'approved' => 'Approved',
-      'rejected' => 'Rejected',
-      'cancelled' => 'Cancelled',
-      _ => status,
-    };
-
 StatusTone leaveRequestStatusTone(String status) => switch (status) {
       'pending' => StatusTone.warning,
       'approved' => StatusTone.success,
@@ -107,7 +99,6 @@ class LeaveRequest {
   final bool canDecide;
   final bool canCancel;
 
-  String get statusLabel => leaveRequestStatusLabel(status);
 
   /// "2026-05-04" for a one-day request, "2026-05-04 to 2026-05-06" otherwise.
   String get periodLabel => startsOn == endsOn ? startsOn : '$startsOn to $endsOn';

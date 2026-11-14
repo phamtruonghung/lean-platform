@@ -33,6 +33,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_scan_field.dart';
 import 'defect_code.dart';
 import 'defect_codes_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 class DefectCodeFormDialog extends StatefulWidget {
   const DefectCodeFormDialog({super.key, this.defectCode, this.codes = const []});
@@ -256,7 +257,7 @@ class _DefectCodeFormDialogState extends State<DefectCodeFormDialog> {
                 for (final severity in DefectSeverity.values)
                   DropdownMenuItem<String>(
                     value: severity,
-                    child: Text(DefectSeverity.label(severity)),
+                    child: Text(defectSeverityLabel(l10n, severity)),
                   ),
               ],
               onChanged: _awaiting ? null : (value) => setState(() => _severity = value!),

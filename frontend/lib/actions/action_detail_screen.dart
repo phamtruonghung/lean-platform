@@ -37,6 +37,7 @@ import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'action.dart';
 import 'action_detail_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 class ActionDetailScreen extends StatelessWidget {
   const ActionDetailScreen({super.key, required this.actionId});
@@ -338,10 +339,10 @@ class _SummaryCard extends StatelessWidget {
               runSpacing: Spacing.sm,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                StatusChip(label: action.typeLabel, tone: action.statusTone),
-                StatusChip(label: action.statusLabel, tone: action.statusTone),
+                StatusChip(label: action.typeLabel(l10n), tone: action.statusTone),
+                StatusChip(label: action.statusLabel(l10n), tone: action.statusTone),
                 if (action.pillarCode != null) Chip(label: Text(l10n.actionDetailPillar((action.pillarCode ?? '')))),
-                Chip(label: Text(action.priorityLabel)),
+                Chip(label: Text(action.priorityLabel(l10n))),
                 if (action.isOverdue)
                   StatusChip(label: l10n.commonOverdueByDays((action.daysOverdue ?? 0)), tone: StatusTone.danger),
               ],
@@ -400,7 +401,7 @@ class _Cycle extends StatelessWidget {
                 '${Routes.actions}/${action.id}/phases/${openPhase.phase}/complete',
               ),
               icon: const Icon(Icons.check_circle_outline),
-              label: Text(l10n.actionDetailCompleteThe(openPhase.phaseLabel)),
+              label: Text(l10n.actionDetailCompleteThe(openPhase.phaseLabel(l10n))),
             ),
       children: [
         if (current.isEmpty)
@@ -444,7 +445,7 @@ class _PhaseRow extends StatelessWidget {
           SizedBox(
             width: 90,
             child: Text(
-              historical ? '${phase.phaseLabel} · ${phase.cycle}' : phase.phaseLabel,
+              historical ? '${phase.phaseLabel(l10n)} · ${phase.cycle}' : phase.phaseLabel(l10n),
               style: AppTypography.dense(context)?.copyWith(
                 fontWeight: phase.isOpen ? FontWeight.w600 : FontWeight.w400,
               ),
@@ -465,7 +466,7 @@ class _PhaseRow extends StatelessWidget {
                     if (phase.dueDate != null) l10n.actionDetailDue((phase.dueDate ?? '')),
                     if (phase.completedAt != null)
                       l10n.actionDetailDone(phase.completedAt!.toLocal().toIso8601String().substring(0, 10)),
-                    if (phase.outcomeLabel != null) phase.outcomeLabel!,
+                    if (phase.outcomeLabel(l10n) != null) phase.outcomeLabel(l10n)!,
                   ].join(' · '),
                   style: theme.textTheme.bodySmall?.copyWith(color: muted),
                 ),
@@ -537,7 +538,7 @@ class _Parent extends StatelessWidget {
               ),
             ),
             const SizedBox(width: Spacing.sm),
-            StatusChip(label: parent.statusLabel, tone: parent.statusTone),
+            StatusChip(label: parent.statusLabel(l10n), tone: parent.statusTone),
           ],
         ),
       ),
@@ -605,7 +606,7 @@ class _Capa extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: Spacing.sm),
-                    StatusChip(label: capa.statusLabel, tone: capa.statusTone),
+                    StatusChip(label: capa.statusLabel(l10n), tone: capa.statusTone),
                   ],
                 ),
               ),
@@ -668,7 +669,7 @@ class _Measures extends StatelessWidget {
               PopupMenuItem<String>(
                 key: ActionDetailScreen.addMeasureKindKey(measureType),
                 value: measureType,
-                child: Text(l10n.actionDetailAddA(actionTypeLabel(measureType).toLowerCase())),
+                child: Text(l10n.actionDetailAddA(actionTypeLabel(l10n, measureType).toLowerCase())),
               ),
           ],
           child: Padding(
@@ -739,8 +740,8 @@ class _MeasureRow extends StatelessWidget {
                   const SizedBox(height: Spacing.xxs),
                   Text(
                     [
-                      measure.typeLabel,
-                      measure.statusLabel,
+                      measure.typeLabel(l10n),
+                      measure.statusLabel(l10n),
                       measure.ownerName ?? l10n.commonNobodyYet,
                       // Two different facts, so both: when it is due and what
                       // it is waiting on. (They used to be exclusive, which hid
@@ -748,7 +749,7 @@ class _MeasureRow extends StatelessWidget {
                       // likely to be looking for.)
                       if (measure.isOverdue) l10n.actionDetailOverdueByDays((measure.daysOverdue ?? 0)),
                       if (measure.openPhase != null)
-                        l10n.commonWaitingOnIts(measure.openPhase!.phaseLabel.toLowerCase()),
+                        l10n.commonWaitingOnIts(measure.openPhase!.phaseLabel(l10n).toLowerCase()),
                     ].join(' · '),
                     style: AppTypography.floor(context)?.copyWith(color: muted),
                   ),
@@ -768,7 +769,7 @@ class _MeasureRow extends StatelessWidget {
                 onPressed: () => context.go(
                   '${Routes.actions}/${measure.id}/phases/${measure.openPhase!.phase}/complete',
                 ),
-                child: Text(l10n.actionDetailCompleteThe2(measure.openPhase!.phaseLabel)),
+                child: Text(l10n.actionDetailCompleteThe2(measure.openPhase!.phaseLabel(l10n))),
               ),
           ],
         ),
@@ -890,51 +891,11 @@ class _NonconformanceRow extends StatelessWidget {
   }
 }
 
-/// The words this Screen prints for a Safety incident's severity level (issue
-/// #229) — a deliberate second copy of the Safety Module's own map, the same
-/// trade `capa_report_screen.dart`'s own `_severityLabels` makes and for the
-/// same reason: the ladder's words belong to `safety`, whose client entry
-/// point this Module does not import (the dependency runs one way — see
-/// `actions.dart`).
-const Map<String, String> _severityLabels = {
-  'near_miss': 'No injury',
-  'first_aid': 'First aid',
-  'medical_treatment': 'Medical treatment',
-  'restricted_work': 'Restricted work',
-  'lost_time': 'Lost time',
-  'fatality': 'Fatality',
-};
-
-/// The words this Screen prints for a Safety observation's own fields (issue
-/// #231) — the same deliberate second copy [_severityLabels] above is, and
-/// for the same reason: these sets belong to `safety`, whose client entry
-/// point this Module does not import.
-const Map<String, String> _observationTypeLabels = {
-  'safe_act': 'Safe act',
-  'unsafe_act': 'Unsafe act',
-  'unsafe_condition': 'Unsafe condition',
-};
-
-const Map<String, String> _observationCategoryLabels = {
-  'ppe': 'PPE',
-  'machine_guarding': 'Machine guarding',
-  'housekeeping': 'Housekeeping',
-  'ergonomics': 'Ergonomics',
-  'chemical': 'Chemical',
-  'working_at_height': 'Working at height',
-  'traffic': 'Traffic',
-  'energy_isolation': 'Energy isolation',
-  'procedure': 'Procedure',
-  'other': 'Other',
-};
-
-const Map<String, String> _severityPotentialLabels = {
-  'low': 'Low',
-  'medium': 'Medium',
-  'high': 'High',
-  'fatal': 'Fatal',
-};
-
+/// The words for a Safety incident's severity, observation type, category and
+/// potential come from `l10n/vocabulary.dart` — the same one lookup every other
+/// Screen uses, in the reader's language (ADR-0062). This Screen used to keep a
+/// second copy per set because `actions` did not import `safety`; the catalogue
+/// adapter imports both, so a copy here would only be drift.
 /// The Safety observation this Action was raised from (issue #231) — the
 /// mirror of `_SafetyIncidentSource` for the third source an Action may
 /// carry. One row, linking to the observation's own address, naming what was
@@ -963,10 +924,10 @@ class _SafetyObservationSource extends StatelessWidget {
           ),
           _SourceRow(
             onTap: () => context.go('${Routes.safetyObservations}/${observation.id}'),
-            title: _observationCategoryLabels[observation.category] ?? observation.category,
+            title: observationCategoryLabel(l10n, observation.category),
             subtitle:
-                '${_observationTypeLabels[observation.observationType] ?? observation.observationType} '
-                '· ${_severityPotentialLabels[observation.severityPotential] ?? observation.severityPotential}',
+                '${observationTypeLabel(l10n, observation.observationType)} '
+                '· ${severityPotentialLabel(l10n, observation.severityPotential)}',
           ),
         ],
       ),
@@ -1003,7 +964,7 @@ class _SafetyIncidentSource extends StatelessWidget {
           _SourceRow(
             onTap: () => context.go('${Routes.safetyIncidents}/${incident.id}'),
             title: incident.incidentNo,
-            subtitle: _severityLabels[incident.severityLevel] ?? incident.severityLevel,
+            subtitle: safetySeverityLabel(l10n, incident.severityLevel),
           ),
         ],
       ),

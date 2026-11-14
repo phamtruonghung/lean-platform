@@ -38,6 +38,7 @@ import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 class NonconformanceLinkConcernDialog extends StatefulWidget {
   const NonconformanceLinkConcernDialog({super.key, required this.nonconformance});
@@ -236,7 +237,7 @@ class _NonconformanceLinkConcernDialogState extends State<NonconformanceLinkConc
                             children: [
                               Text(concern.title, style: theme.textTheme.bodyMedium),
                               Text(
-                                '${concern.actionNo} · ${concern.statusLabel} · '
+                                '${concern.actionNo} · ${concern.statusLabel(l10n)} · '
                                 '${concern.orgUnitName}',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,

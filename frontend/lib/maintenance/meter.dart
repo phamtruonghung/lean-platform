@@ -17,24 +17,12 @@ import 'package:flutter/foundation.dart';
 /// The kinds of meter, mirroring the CHECK constraint on
 /// `asset_meters.meter_type` and meters.js's own `METER_TYPES`.
 enum MeterType {
-  cumulative(
-    'cumulative',
-    'Cumulative',
-    'Only ever goes up — an hour counter or a cycle count. Only a cumulative '
-        'meter can drive a PM schedule.',
-  ),
-  gauge(
-    'gauge',
-    'Gauge',
-    'May go either way — a temperature, a pressure, an oil level. Recorded, '
-        'but never scheduled against.',
-  );
+  cumulative('cumulative'),
+  gauge('gauge');
 
-  const MeterType(this.wire, this.label, this.explanation);
+  const MeterType(this.wire);
 
   final String wire;
-  final String label;
-  final String explanation;
 }
 
 /// One unit of measure from the baseline catalogue the meter form chooses
@@ -116,13 +104,6 @@ class AssetMeter {
   final num accumulatedUse;
 
   bool get isCumulative => meterType == 'cumulative';
-
-  String get meterTypeLabel {
-    for (final candidate in MeterType.values) {
-      if (candidate.wire == meterType) return candidate.label;
-    }
-    return meterType;
-  }
 
   /// The latest reading in words, with the unit — or a plain "No reading yet".
   String get latestReadingLabel =>

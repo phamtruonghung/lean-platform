@@ -22,6 +22,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 class NonconformanceDispositionDialog extends StatefulWidget {
   const NonconformanceDispositionDialog({super.key, required this.nonconformance});
@@ -175,7 +176,7 @@ class _NonconformanceDispositionDialogState extends State<NonconformanceDisposit
                 for (final kind in DispositionType.choices)
                   DropdownMenuItem<String>(
                     value: kind,
-                    child: Text(DispositionType.label(kind)),
+                    child: Text(dispositionTypeLabel(l10n, kind)),
                   ),
               ],
               onChanged: _awaiting ? null : (value) => setState(() => _kind = value ?? _kind),

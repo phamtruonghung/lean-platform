@@ -18,6 +18,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../platform/auth_gateway.dart';
 import 'handover.dart';
 import 'production_api.dart';
+import '../l10n/notices.dart';
 
 sealed class ShiftHandoverEvent {
   const ShiftHandoverEvent();
@@ -188,7 +189,7 @@ class ShiftHandoverBloc extends Bloc<ShiftHandoverEvent, ShiftHandoverState> {
   final ProductionApi _api;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   Future<void> _onStarted(ShiftHandoverStarted event, Emitter<ShiftHandoverState> emit) async {
     final token = _auth.currentAccessToken;

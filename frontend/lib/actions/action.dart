@@ -29,17 +29,16 @@ import 'capa.dart';
 /// renames ADR-0032 records, so that the word on screen and the word in the
 /// database are the same word.
 enum ActionType {
-  concern('concern', 'Concern'),
-  containment('containment', 'Containment'),
-  countermeasure('countermeasure', 'Countermeasure'),
-  preventive('preventive', 'Preventive action'),
-  improvement('improvement', 'Improvement'),
-  routine('routine', 'Routine action');
+  concern('concern'),
+  containment('containment'),
+  countermeasure('countermeasure'),
+  preventive('preventive'),
+  improvement('improvement'),
+  routine('routine');
 
-  const ActionType(this.wire, this.label);
+  const ActionType(this.wire);
 
   final String wire;
-  final String label;
 }
 
 /// One of the five SQDCP Pillars an Action can be filed under
@@ -54,14 +53,9 @@ class Pillar {
 }
 
 /// The five priorities, mirroring `action_items_priority_check` — 1 is worst.
-/// Chosen, never typed (ADR-0023): the raise form offers all five.
-const Map<int, String> actionPriorityLabels = {
-  1: 'P1 — worst',
-  2: 'P2',
-  3: 'P3 — normal',
-  4: 'P4',
-  5: 'P5 — least',
-};
+/// Chosen, never typed (ADR-0023): the raise form offers all five. The words
+/// live in `l10n/vocabulary.dart` (`actionPriorityLabel`).
+const List<int> actionPriorities = [1, 2, 3, 4, 5];
 
 /// The five states an Action can be in, mirroring the CHECK constraint on
 /// `action_items.status` and the backend's own `ACTION_STATUSES`.
@@ -78,24 +72,18 @@ const Map<int, String> actionPriorityLabels = {
 /// - `done` is `success`.
 /// - `cancelled` is `neutral`, never `danger`: a cancellation is a decision
 ///   somebody made, not a fault, and red is reserved for faults.
-const Map<String, (String, StatusTone)> actionStatuses = {
-  'open': ('Open', StatusTone.info),
-  'in_progress': ('In progress', StatusTone.info),
-  'blocked': ('Blocked', StatusTone.warning),
-  'done': ('Done', StatusTone.success),
-  'cancelled': ('Cancelled', StatusTone.neutral),
+const Map<String, StatusTone> actionStatusTones = {
+  'open': StatusTone.info,
+  'in_progress': StatusTone.info,
+  'blocked': StatusTone.warning,
+  'done': StatusTone.success,
+  'cancelled': StatusTone.neutral,
 };
 
 /// The four phases of one turn of the cycle (ADR-0033), in the order they are
-/// worked — the labels a person reads on the rail.
+/// worked — the words a person reads on the rail are `l10n/vocabulary.dart`'s
+/// (`actionPhaseLabel`).
 const List<String> actionPhaseOrder = ['plan', 'do', 'check', 'act'];
-
-const Map<String, String> actionPhaseLabels = {
-  'plan': 'Plan',
-  'do': 'Do',
-  'check': 'Check',
-  'act': 'Act',
-};
 
 /// What a Check recorded: whether the countermeasure held. `not_effective` is
 /// the verdict that sends the Action round another cycle, so it is a word a
@@ -104,28 +92,9 @@ const Map<String, String> actionPhaseLabels = {
 /// they are read: the containment first, because it is what stops the bleeding.
 const List<String> actionMeasureTypeOrder = ['containment', 'countermeasure', 'preventive'];
 
-const Map<String, String> actionCheckOutcomeLabels = {
-  'effective': 'It held',
-  'not_effective': 'It did not hold',
-};
-
-String actionPhaseLabel(String wire) => actionPhaseLabels[wire] ?? wire;
-
-String? actionCheckOutcomeLabel(String? wire) =>
-    wire == null ? null : (actionCheckOutcomeLabels[wire] ?? wire);
-
 /// The label for a status this build does not know about is the wire value
 /// itself: a server that gains a state renders it rather than throwing.
-String actionStatusLabel(String wire) => actionStatuses[wire]?.$1 ?? wire;
-
-StatusTone actionStatusTone(String wire) => actionStatuses[wire]?.$2 ?? StatusTone.neutral;
-
-String actionTypeLabel(String wire) {
-  for (final type in ActionType.values) {
-    if (type.wire == wire) return type.label;
-  }
-  return wire;
-}
+StatusTone actionStatusTone(String wire) => actionStatusTones[wire] ?? StatusTone.neutral;
 
 /// One phase of one Action's cycle (issue #177): its own owner, its own due
 /// date, its own note, and — on a Check — the verdict.
@@ -159,9 +128,6 @@ class ActionPhase {
   final String? outcome;
   final String? note;
 
-  String get phaseLabel => actionPhaseLabel(phase);
-  String? get outcomeLabel => actionCheckOutcomeLabel(outcome);
-
   /// Whether this is the phase the Action is waiting on. The server sends one
   /// open phase at most, so this is that row.
   bool get isOpen => completedAt == null;
@@ -186,8 +152,6 @@ class ActionParent {
   final String actionType;
   final String status;
 
-  String get typeLabel => actionTypeLabel(actionType);
-  String get statusLabel => actionStatusLabel(status);
   StatusTone get statusTone => actionStatusTone(status);
 }
 
@@ -623,10 +587,7 @@ class Action {
   List<ActionPhase> get currentCyclePhases =>
       [for (final phase in phases) if (phase.cycle == currentCycle) phase];
 
-  String get typeLabel => actionTypeLabel(actionType);
-  String get statusLabel => actionStatusLabel(status);
   StatusTone get statusTone => actionStatusTone(status);
-  String get priorityLabel => actionPriorityLabels[priority] ?? 'P$priority';
 
   /// Whether this Action answers nothing of its own — a measure stands alone
   /// when it was raised without a Concern behind it.

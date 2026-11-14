@@ -69,6 +69,7 @@ import 'attendance.dart';
 import 'attendance_record_dialog.dart';
 import 'attendance_sheet_bloc.dart';
 import 'employee.dart';
+import '../l10n/vocabulary.dart';
 
 class AttendanceSheetScreen extends StatelessWidget {
   const AttendanceSheetScreen({super.key, required this.shiftInstanceId, required this.canRecord});
@@ -468,7 +469,7 @@ class _RecordCells extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           StatusChip(
-            label: attendanceStatusLabel(record.attendanceStatus),
+            label: attendanceStatusLabel(l10n, record.attendanceStatus),
             tone: attendanceRecordTone(record),
           ),
           if (reason != null && reason.name.isNotEmpty) ...[
@@ -693,7 +694,8 @@ List<AppTableColumn> _columns(
       // reason beside it when the record names one.
       width: sized(
         records.fold<double>(0, (width, record) {
-          final chip = _widthOf(context, attendanceStatusLabel(record.attendanceStatus), labelLarge) +
+          final l10n = AppLocalizations.of(context);
+          final chip = _widthOf(context, attendanceStatusLabel(l10n, record.attendanceStatus), labelLarge) +
               Spacing.xxl;
           final reason = record.absenceReason?.name;
           final withReason = reason == null || reason.isEmpty

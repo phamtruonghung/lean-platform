@@ -30,6 +30,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'work_order.dart';
 import 'work_orders_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 class WorkOrderDialogHost extends StatelessWidget {
   const WorkOrderDialogHost({
@@ -100,7 +101,7 @@ class WorkOrderDialogHost extends StatelessWidget {
         return _refusal(
           context,
           title: l10n.workOrderDialogThatIsNoLongerAvailable,
-          message: l10n.workOrderDialogThisWorkOrderIsNowWhichNo(workOrder.statusLabel),
+          message: l10n.workOrderDialogThisWorkOrderIsNowWhichNo(workOrder.statusLabel(l10n)),
         );
       }
       return builder(workOrder);

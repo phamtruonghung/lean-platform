@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -459,7 +460,10 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
               ),
               items: [
                 for (final anchor in PmScheduleAnchor.values)
-                  DropdownMenuItem<PmScheduleAnchor>(value: anchor, child: Text(anchor.label)),
+                  DropdownMenuItem<PmScheduleAnchor>(
+                    value: anchor,
+                    child: Text(pmScheduleAnchorLabel(l10n, anchor.wire)),
+                  ),
               ],
               onChanged: _awaiting ? null : (value) => setState(() => _anchor = value!),
             ),
@@ -467,7 +471,7 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
               key: PmScheduleFormDialog.anchorExplanationKey,
               padding: const EdgeInsets.only(top: Spacing.xs),
               child: Text(
-                _anchor.explanation,
+                pmScheduleAnchorExplanation(l10n, _anchor.wire),
                 style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
               ),
             ),

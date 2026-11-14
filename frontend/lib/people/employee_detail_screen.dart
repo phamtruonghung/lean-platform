@@ -44,6 +44,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/notices.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -60,9 +61,9 @@ import 'employee_departure_dialog.dart';
 import 'employee_signature_dialog.dart';
 import 'employee_detail_bloc.dart';
 import 'employee_skill_form_dialog.dart';
-import 'employment_type.dart';
 import 'period_format.dart';
 import 'skill.dart';
+import '../l10n/vocabulary.dart';
 
 class EmployeeDetailScreen extends StatelessWidget {
   const EmployeeDetailScreen({
@@ -202,7 +203,7 @@ class _Detail extends StatelessWidget {
                       const SizedBox(width: Spacing.sm),
                       Expanded(
                         child: Text(
-                          state.notice!,
+                          noticeText(l10n, state.notice!),
                           style: AppTypography.dense(context)
                               ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
                         ),
@@ -343,7 +344,7 @@ class _SummaryCard extends StatelessWidget {
       _Fact(label: l10n.commonEmployeeNumber, value: employee.employeeNo),
       _Fact(label: l10n.commonJobRole, value: employee.jobRoleName ?? 'No job role'),
       _Fact(label: l10n.commonOrgUnit, value: _currentOrgUnit(employee)),
-      _Fact(label: l10n.commonEmployment, value: employmentTypeLabel(employee.employmentType)),
+      _Fact(label: l10n.commonEmployment, value: employmentTypeLabel(l10n, employee.employmentType)),
       _Fact(
         label: l10n.employeeDetailHired,
         value: employee.hiredOn == null ? '—' : formatWireDate(employee.hiredOn),

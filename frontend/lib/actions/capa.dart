@@ -40,71 +40,52 @@ class CapaTeamMember {
 /// Action: the fix is in, nobody has proved it held, and a person has to decide
 /// something. `open`, `containment`, `root_cause` and `actions` are all live and
 /// asking nothing of the reader, so they are `info`.
-const Map<String, (String, StatusTone)> capaStatuses = {
-  'open': ('Open', StatusTone.info),
-  'containment': ('Contained', StatusTone.info),
-  'root_cause': ('Root cause', StatusTone.info),
-  'actions': ('Actions', StatusTone.info),
-  'verifying': ('Verifying', StatusTone.warning),
-  'closed': ('Closed', StatusTone.success),
-  'cancelled': ('Cancelled', StatusTone.neutral),
+const Map<String, StatusTone> capaStatusTones = {
+  'open': StatusTone.info,
+  'containment': StatusTone.info,
+  'root_cause': StatusTone.info,
+  'actions': StatusTone.info,
+  'verifying': StatusTone.warning,
+  'closed': StatusTone.success,
+  'cancelled': StatusTone.neutral,
 };
 
-/// A status this build does not know about renders as its own wire value, the
-/// same fallback `actionStatusLabel` takes: a server that gains a state shows
-/// it rather than throwing.
-String capaStatusLabel(String wire) => capaStatuses[wire]?.$1 ?? wire;
-
-StatusTone capaStatusTone(String wire) => capaStatuses[wire]?.$2 ?? StatusTone.neutral;
+/// A status this build does not know about renders as its own wire value: a
+/// server that gains a state shows it rather than throwing. The **words** are
+/// `l10n/vocabulary.dart`'s (`capaStatusLabel`).
+StatusTone capaStatusTone(String wire) => capaStatusTones[wire] ?? StatusTone.neutral;
 
 /// The one method this slice opens a CAPA by (ADR-0034: an 8D). The baseline's
-/// CHECK accepts four; the label map exists so the Screen names the one it has
-/// rather than printing the wire value.
-const Map<String, String> capaMethodLabels = {
-  '8d': '8D',
-  '5why': '5 Why',
-  'a3': 'A3',
-  'simple': 'Simple',
-};
-
-String capaMethodLabel(String wire) => capaMethodLabels[wire] ?? wire;
+/// CHECK accepts four; the words live in `l10n/vocabulary.dart`
+/// (`capaMethodLabel`), so the Screen names the one it has rather than
+/// printing the wire value.
+const List<String> capaMethodOrder = ['8d', '5why', 'a3', 'simple'];
 
 /// The two verdicts an effectiveness check records (issue #211), mirroring the
 /// API's own closed set. They are the plant's words rather than a boolean: a
 /// check that did not hold is not "false", it is the sentence that sends a
 /// Concern round again — which is why the tone travels with the label, the rule
 /// every status set in this client follows.
-const Map<String, (String, StatusTone)> capaEffectivenessOutcomes = {
-  'effective': ('The fix held', StatusTone.success),
-  'not_effective': ('The fix did not hold', StatusTone.warning),
+const Map<String, StatusTone> capaEffectivenessOutcomeTones = {
+  'effective': StatusTone.success,
+  'not_effective': StatusTone.warning,
 };
 
 /// The order the two verdicts are offered in: the one that closes the
 /// investigation first, because that is what a check is usually for.
 const List<String> capaEffectivenessOutcomeOrder = ['effective', 'not_effective'];
 
-String capaEffectivenessOutcomeLabel(String wire) =>
-    capaEffectivenessOutcomes[wire]?.$1 ?? wire;
-
 StatusTone capaEffectivenessOutcomeTone(String wire) =>
-    capaEffectivenessOutcomes[wire]?.$2 ?? StatusTone.neutral;
+    capaEffectivenessOutcomeTones[wire] ?? StatusTone.neutral;
 
-/// The two 5 Why chains a CAPA's team reasons with (issue #210), and the words
-/// this client reads them by.
+/// The two 5 Why chains a CAPA's team reasons with (issue #210), and the
+/// question each answers.
 ///
 /// The wire values are `occurrence` and `escape` — 8D's own names for "why the
 /// problem happened" and "why it was not detected", which is what ADR-0034
-/// calls them. The labels are the question each chain asks, because that is
-/// what a person writing the chain is answering; a chain this build does not
-/// know renders as its own wire value rather than throwing, the same fallback
-/// [capaStatusLabel] takes.
-const Map<String, String> capaChainLabels = {
-  'occurrence': 'Why it happened',
-  'escape': 'Why it was not detected',
-};
-
-String capaChainLabel(String wire) => capaChainLabels[wire] ?? wire;
-
+/// calls them. The words a person reads are `l10n/vocabulary.dart`'s
+/// (`capaChainLabel`); a chain this build does not know renders as its own wire
+/// value rather than throwing.
 /// The order the two chains are read in: why the problem happened before why it
 /// was not detected. The server returns them in this order too (see
 /// `listCapaWhys` in the Actions Module), so a Screen written against this list
@@ -138,29 +119,16 @@ class CapaWhy {
 
   /// Whether this is the chain's confirmed root cause.
   final bool isRoot;
-
-  String get chainLabel => capaChainLabel(chain);
 }
 
 /// The 6M categories a candidate cause is filed under (issue #213), and the
-/// words this client reads them by.
+/// bones an Ishikawa diagram is drawn with.
 ///
 /// The wire values are Ishikawa's own six, which is what the schema's
-/// `capa_root_causes.category` CHECK carries; the labels are the capitalised
-/// words a Screen and a report print, because a fishbone is drawn with "Man",
-/// "Machine" and the rest on its bones and a printed report may not link to a
-/// map. A category this build does not know renders as its own wire value
-/// rather than throwing, the same fallback [capaStatusLabel] takes.
-const Map<String, String> capaCauseCategoryLabels = {
-  'man': 'Man',
-  'machine': 'Machine',
-  'method': 'Method',
-  'material': 'Material',
-  'measurement': 'Measurement',
-  'environment': 'Environment',
-};
-
-String capaCauseCategoryLabel(String wire) => capaCauseCategoryLabels[wire] ?? wire;
+/// `capa_root_causes.category` CHECK carries; the words a Screen and a report
+/// print are `l10n/vocabulary.dart`'s (`capaCauseCategoryLabel`), because a
+/// printed report is read in the reader's language too. A category this build
+/// does not know renders as its own wire value rather than throwing.
 
 /// The order the six are read in: the order an Ishikawa diagram is drawn, not
 /// alphabetical, which would read Machine, Man, Method … and put the bones in
@@ -178,7 +146,8 @@ const List<String> capaCauseCategoryOrder = [
 
 /// The three verdicts a candidate cause can carry (issue #213), mirroring the
 /// API's own closed set, with the tone travelling with the label — the rule
-/// every status set in this client follows.
+/// every status set in this client follows. The **words** are
+/// `l10n/vocabulary.dart`'s (`capaCauseVerdictLabel`).
 ///
 /// `candidate` is `neutral` rather than `warning`: a cause nobody has looked at
 /// yet is the ordinary state of a fishbone being built, and painting every
@@ -187,10 +156,10 @@ const List<String> capaCauseCategoryOrder = [
 /// out. `confirmed` is `success` (the evidence backed it) and `ruled_out` is
 /// `neutral` (the evidence settled it, and the answer was no: a decision
 /// somebody made on purpose is not a fault).
-const Map<String, (String, StatusTone)> capaCauseVerdicts = {
-  'candidate': ('Candidate', StatusTone.neutral),
-  'confirmed': ('Confirmed', StatusTone.success),
-  'ruled_out': ('Ruled out', StatusTone.neutral),
+const Map<String, StatusTone> capaCauseVerdictTones = {
+  'candidate': StatusTone.neutral,
+  'confirmed': StatusTone.success,
+  'ruled_out': StatusTone.neutral,
 };
 
 /// The verdicts a cause can be *decided* with, in the order the dialog offers
@@ -198,9 +167,8 @@ const Map<String, (String, StatusTone)> capaCauseVerdicts = {
 /// with one cause confirmed and several ruled out.
 const List<String> capaCauseDecisions = ['confirmed', 'ruled_out'];
 
-String capaCauseVerdictLabel(String wire) => capaCauseVerdicts[wire]?.$1 ?? wire;
-
-StatusTone capaCauseVerdictTone(String wire) => capaCauseVerdicts[wire]?.$2 ?? StatusTone.neutral;
+StatusTone capaCauseVerdictTone(String wire) =>
+    capaCauseVerdictTones[wire] ?? StatusTone.neutral;
 
 /// One candidate cause on a CAPA's fishbone (issue #213).
 ///
@@ -236,8 +204,6 @@ class CapaCause {
   /// said as a 400.
   final String? evidenceNote;
 
-  String get categoryLabel => capaCauseCategoryLabel(category);
-  String get verdictLabel => capaCauseVerdictLabel(verdict);
   StatusTone get verdictTone => capaCauseVerdictTone(verdict);
 
   /// Whether the evidence backed this cause — the one state a Why chain may be
@@ -266,7 +232,6 @@ class CapaLink {
   final String capaNo;
   final String status;
 
-  String get statusLabel => capaStatusLabel(status);
   StatusTone get statusTone => capaStatusTone(status);
 }
 
@@ -386,8 +351,6 @@ class Capa {
   /// something this client assembles from a second read.
   final Action? concern;
 
-  String get methodLabel => capaMethodLabel(method);
-  String get statusLabel => capaStatusLabel(status);
   StatusTone get statusTone => capaStatusTone(status);
 
   /// Whether the investigation is over. Nothing about a closed or cancelled

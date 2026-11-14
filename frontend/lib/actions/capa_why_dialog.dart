@@ -34,6 +34,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'capa.dart';
 import 'capa_detail_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 /// The keys every one of the three addresses shares, because the refusals are
 /// the same refusals: no CAPA read yet, a CAPA that cannot be read, a chain
@@ -114,10 +115,14 @@ Widget? capaWhyAddressRefusal(
         );
       }
       if (!capa.isOpen) {
+        final l10n = AppLocalizations.of(context);
         return _WhyRefusal(
           key: CapaWhyKeys.closedKey,
-          title: AppLocalizations.of(context).commonThisInvestigationIsOver,
-          message: AppLocalizations.of(context).capaWhyIsSoItsChainsAreARecord(capa.capaNo, capa.statusLabel.toLowerCase()),
+          title: l10n.commonThisInvestigationIsOver,
+          message: l10n.capaWhyIsSoItsChainsAreARecord(
+            capa.capaNo,
+            capa.statusLabel(l10n).toLowerCase(),
+          ),
         );
       }
       if (!mayEditCapaChains(context, capa)) {
@@ -433,7 +438,7 @@ class _WhyFormState extends State<_WhyForm> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              l10n.capaWhyOneStepOfTheReasoningInYour(capaChainLabel(widget.chain)),
+              l10n.capaWhyOneStepOfTheReasoningInYour(capaChainLabel(l10n, widget.chain)),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: Spacing.md),

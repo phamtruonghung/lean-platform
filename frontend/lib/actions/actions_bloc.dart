@@ -17,6 +17,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'action.dart';
 import 'actions_api.dart';
+import '../l10n/notices.dart';
 
 sealed class ActionsEvent {
   const ActionsEvent();
@@ -280,13 +281,12 @@ class ActionsBloc extends Bloc<ActionsEvent, ActionsState> {
   final PeopleApi _people;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
-  static const String noSitesMessage =
-      'There are no Sites you can see, so there is no action log to show.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
+  static const String noSitesMessage = BlocNotice.noSitesActionLog;
 
   /// What a second raise reports, rather than dropping silently, when one is
   /// already in flight — the same guard `AssetsBloc` keeps for its own writes.
-  static const String inFlightMessage = 'Another action is already in progress. Try again in a moment.';
+  static const String inFlightMessage = BlocNotice.actionInFlight;
 
   /// The last Site, the last filter set and the last history setting the caller
   /// actually settled on. `ActionsStarted` is also what "Try again" on

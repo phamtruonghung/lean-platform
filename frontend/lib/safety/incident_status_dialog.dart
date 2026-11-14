@@ -20,6 +20,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'incident_detail_bloc.dart';
 import 'safety_incident.dart';
+import '../l10n/vocabulary.dart';
 
 class SafetyIncidentStatusDialog extends StatefulWidget {
   const SafetyIncidentStatusDialog({super.key, required this.incident});
@@ -86,7 +87,7 @@ class _SafetyIncidentStatusDialogState extends State<SafetyIncidentStatusDialog>
         size: AppDialogSize.decision,
         description: incident.isClosed
             ? l10n.incidentStatusThisSafetyIncidentIsClosedItsStatus
-            : l10n.incidentStatusThisSafetyIncidentIsAlreadyOnlyClosing(incident.statusLabel.toLowerCase()),
+            : l10n.incidentStatusThisSafetyIncidentIsAlreadyOnlyClosing(incident.statusLabel(l10n).toLowerCase()),
         actions: [
           AppDialogAction(
             id: SafetyIncidentStatusDialog._closeId,
@@ -105,7 +106,7 @@ class _SafetyIncidentStatusDialogState extends State<SafetyIncidentStatusDialog>
       child: AppDialog(
         title: l10n.incidentStatusMoveTheStatus,
         size: AppDialogSize.decision,
-        description: l10n.incidentStatusMovesFromTo(incident.incidentNo, incident.statusLabel, SafetyIncidentStatus.label(next)),
+        description: l10n.incidentStatusMovesFromTo(incident.incidentNo, incident.statusLabel(l10n), safetyIncidentStatusLabel(l10n, next)),
         actions: [
           AppDialogAction(
             id: SafetyIncidentStatusDialog._dismissId,
@@ -115,7 +116,7 @@ class _SafetyIncidentStatusDialogState extends State<SafetyIncidentStatusDialog>
           ),
           AppDialogAction(
             id: SafetyIncidentStatusDialog._submitId,
-            label: l10n.incidentStatusMoveTo(SafetyIncidentStatus.label(next)),
+            label: l10n.incidentStatusMoveTo(safetyIncidentStatusLabel(l10n, next)),
             onPressed: _awaiting ? null : () => _submit(next),
           ),
         ],

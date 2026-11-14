@@ -13,6 +13,7 @@ import '../platform/auth_gateway.dart';
 import 'employee.dart';
 import 'employee_ref.dart';
 import 'managed_account.dart';
+import '../l10n/notices.dart';
 
 sealed class AccountsEvent {
   const AccountsEvent();
@@ -172,10 +173,9 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
   final PeopleApi _api;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
-  static const String alreadyMovedMessage =
-      'Another administrator has already changed that Account. The list has been refreshed.';
+  static const String alreadyMovedMessage = BlocNotice.accountAlreadyMoved;
 
   static String correctedMessage(String role, int grantCount) => grantCount == 0
       ? 'Now $role, with no Org Unit Grants.'

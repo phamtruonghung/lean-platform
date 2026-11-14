@@ -55,6 +55,7 @@ import '../widgets/status_chip.dart';
 import 'safety_observation.dart';
 import 'safety_observation_org_unit_filter_dialog.dart';
 import 'safety_observations_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 class SafetyObservationsScreen extends StatelessWidget {
   const SafetyObservationsScreen({super.key});
@@ -271,7 +272,7 @@ class _Filters extends StatelessWidget {
             items: [
               DropdownMenuItem<String?>(value: null, child: Text(l10n.safetyAnyType)),
               for (final type in ObservationType.values)
-                DropdownMenuItem<String?>(value: type, child: Text(ObservationType.label(type))),
+                DropdownMenuItem<String?>(value: type, child: Text(observationTypeLabel(l10n, type))),
             ],
             onChanged: (type) => context
                 .read<SafetyObservationsBloc>()
@@ -294,7 +295,7 @@ class _Filters extends StatelessWidget {
               for (final category in ObservationCategory.values)
                 DropdownMenuItem<String?>(
                   value: category,
-                  child: Text(ObservationCategory.label(category)),
+                  child: Text(observationCategoryLabel(l10n, category)),
                 ),
             ],
             onChanged: (category) => context
@@ -323,7 +324,7 @@ class _Filters extends StatelessWidget {
               for (final potential in SeverityPotential.values)
                 DropdownMenuItem<String?>(
                   value: potential,
-                  child: Text(SeverityPotential.label(potential)),
+                  child: Text(severityPotentialLabel(l10n, potential)),
                 ),
             ],
             onChanged: (potential) => context
@@ -496,7 +497,7 @@ class _Empty extends StatelessWidget {
 List<AppTableColumn> _columns(BuildContext context) {
   final l10n = AppLocalizations.of(context);
   return [
-    AppTableColumn(l10n.safetyPotentialColumn, width: _chipColumnWidth(context, _potentialLabels)),
+    AppTableColumn(l10n.safetyPotentialColumn, width: _chipColumnWidth(context, _potentialLabels(l10n))),
     AppTableColumn(l10n.commonType, flex: 2),
     AppTableColumn(l10n.commonCategory, flex: 3),
     AppTableColumn(l10n.commonOrgUnit, flex: 2),
@@ -508,8 +509,8 @@ List<AppTableColumn> _columns(BuildContext context) {
   ];
 }
 
-List<String> get _potentialLabels =>
-    [for (final potential in SeverityPotential.values) SeverityPotential.label(potential)];
+List<String> _potentialLabels(AppLocalizations l10n) =>
+    [for (final potential in SeverityPotential.values) severityPotentialLabel(l10n, potential)];
 
 /// A chip column's width: the widest label in a compact `Chip`'s own label
 /// style at the reader's text scale, plus the chip's padding and the slot's
@@ -606,13 +607,13 @@ class _SafetyObservationTableRow extends StatelessWidget {
           shrinkWrapTargets(
             StatusChip(
               key: SafetyObservationsScreen.rowPotentialKey(observation.id),
-              label: observation.severityPotentialLabel,
+              label: severityPotentialLabel(l10n, observation.severityPotential),
               tone: observation.severityPotentialTone,
             ),
           ),
-          DisclosingText(observation.observationTypeLabel, style: dense),
+          DisclosingText(observationTypeLabel(l10n, observation.observationType), style: dense),
           DisclosingText(
-            observation.categoryLabel,
+            observation.categoryLabel(l10n),
             style: dense?.copyWith(
               color: palette.textPrimary,
               fontWeight: FontWeight.w500,
@@ -683,7 +684,7 @@ class _SafetyObservationCard extends StatelessWidget {
                       children: [
                         StatusChip(
                           key: SafetyObservationsScreen.rowPotentialKey(row.id),
-                          label: row.severityPotentialLabel,
+                          label: severityPotentialLabel(l10n, row.severityPotential),
                           tone: row.severityPotentialTone,
                         ),
                         // Stop-work is a labelled badge, never a tone (the
@@ -695,14 +696,14 @@ class _SafetyObservationCard extends StatelessWidget {
                             visualDensity: VisualDensity.compact,
                           ),
                         Text(
-                          row.observationTypeLabel,
+                          observationTypeLabel(l10n, row.observationType),
                           style: dense?.copyWith(color: palette.textMuted),
                         ),
                       ],
                     ),
                     const SizedBox(height: Spacing.xs),
                     Text(
-                      row.categoryLabel,
+                      row.categoryLabel(l10n),
                       style: dense?.copyWith(
                         color: palette.textPrimary,
                         fontWeight: FontWeight.w500,

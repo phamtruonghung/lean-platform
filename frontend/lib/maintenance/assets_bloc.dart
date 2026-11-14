@@ -17,6 +17,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'asset.dart';
 import 'maintenance_api.dart';
+import '../l10n/notices.dart';
 
 sealed class AssetsEvent {
   const AssetsEvent();
@@ -232,14 +233,13 @@ class AssetsBloc extends Bloc<AssetsEvent, AssetsState> {
   final PeopleApi _people;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
-  static const String noSitesMessage =
-      'There are no Sites you can see, so there is no register to show.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
+  static const String noSitesMessage = BlocNotice.noSitesRegister;
 
   /// What a second row action reports, rather than dropping silently, when
   /// one mutation is already in flight — same text `AccountsBloc` uses for
   /// exactly the same shape of guard.
-  static const String inFlightMessage = 'Another action is already in progress. Try again in a moment.';
+  static const String inFlightMessage = BlocNotice.actionInFlight;
 
   /// The last Site the caller actually settled on — set wherever a Site is
   /// settled, below. `AssetsStarted` is also what "Try again" on
@@ -400,8 +400,8 @@ class AssetsBloc extends Bloc<AssetsEvent, AssetsState> {
           clearMutatingAssetId: true,
           assets: _applyMutation(settled, asset),
           notice: event.isActive
-              ? '${asset.code} is back on the active register.'
-              : '${asset.code} has been retired.',
+              ? BlocNotice.assetBack(asset.code)
+              : BlocNotice.assetRetired(asset.code),
         ),
       );
     } on MaintenanceApiException catch (error) {

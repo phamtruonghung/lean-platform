@@ -21,6 +21,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
+import '../l10n/notices.dart';
 import '../platform/destinations.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
@@ -42,7 +44,6 @@ import 'account_roles_dialog.dart';
 import 'accounts_bloc.dart';
 import 'managed_account.dart';
 import 'pending_account.dart' show waitingFor;
-import 'role_choice.dart';
 
 class AccountsScreen extends StatelessWidget {
   const AccountsScreen({super.key, required this.selfAccountId});
@@ -171,7 +172,7 @@ class AccountsScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const _Header(),
-          if (state is AccountsLoaded && state.notice != null) _Notice(message: state.notice!),
+          if (state is AccountsLoaded && state.notice != null) _Notice(message: noticeText(l10n, state.notice!)),
           Expanded(
             child: switch (state) {
               AccountsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
@@ -338,17 +339,18 @@ class _AccountsListState extends State<_AccountsList> {
   /// shows, so "supervisor" and "Supervisor" both find it). No ranking and
   /// no fuzzy matching, the same rule the assign dialog's own filter uses
   /// (issue #187).
-  static bool _matches(ManagedAccount account, String term) =>
+  static bool _matches(ManagedAccount account, String term, AppLocalizations l10n) =>
       account.displayName.toLowerCase().contains(term) ||
       account.email.toLowerCase().contains(term) ||
       account.role.toLowerCase().contains(term) ||
-      roleLabel(account.role).toLowerCase().contains(term);
+      admissionRoleLabel(l10n, account.role).toLowerCase().contains(term);
 
   /// The rows actually rendered — every one of them while the term is empty.
   List<ManagedAccount> get _matchingAccounts {
     final term = _term.trim().toLowerCase();
     if (term.isEmpty) return widget.accounts;
-    return widget.accounts.where((account) => _matches(account, term)).toList(growable: false);
+    final l10n = AppLocalizations.of(context);
+    return widget.accounts.where((account) => _matches(account, term, l10n)).toList(growable: false);
   }
 
   @override
@@ -578,6 +580,7 @@ class _AccountTableRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
     final dense = AppTypography.dense(context);
+    final l10n = AppLocalizations.of(context);
 
     return KeyedSubtree(
       key: AccountsScreen.rowKey(account.id),
@@ -602,7 +605,10 @@ class _AccountTableRow extends StatelessWidget {
           // fixed shape is what makes that comparison possible (#392).
           Align(
             alignment: Alignment.centerLeft,
-            child: StatusChip(label: roleLabel(account.role), tone: StatusTone.neutral),
+            child: StatusChip(
+              label: admissionRoleLabel(l10n, account.role),
+              tone: StatusTone.neutral,
+            ),
           ),
           Align(
             alignment: Alignment.centerLeft,
@@ -642,6 +648,7 @@ class _AccountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     return Card(
       key: AccountsScreen.rowKey(account.id),
       margin: EdgeInsets.zero,
@@ -685,7 +692,7 @@ class _AccountCard extends StatelessWidget {
               spacing: Spacing.xs,
               runSpacing: Spacing.xs,
               children: [
-                StatusChip(label: roleLabel(account.role), tone: StatusTone.neutral),
+                StatusChip(label: admissionRoleLabel(l10n, account.role), tone: StatusTone.neutral),
                 StatusChip(label: account.standing, tone: _standingTone(account)),
               ],
             ),

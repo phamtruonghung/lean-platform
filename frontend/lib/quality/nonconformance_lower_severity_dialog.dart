@@ -21,6 +21,7 @@ import '../widgets/app_dialog.dart';
 import 'defect_code.dart';
 import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 class NonconformanceLowerSeverityDialog extends StatefulWidget {
   const NonconformanceLowerSeverityDialog({super.key, required this.nonconformance});
@@ -144,7 +145,7 @@ class _NonconformanceLowerSeverityDialogState extends State<NonconformanceLowerS
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              l10n.nonconformanceLowerSeverityIsSeverityAndItsDefectCodeStarts(record.issueNo, record.severityLabel.toLowerCase(), DefectSeverity.label(record.defectCodeDefaultSeverity).toLowerCase()),
+              l10n.nonconformanceLowerSeverityIsSeverityAndItsDefectCodeStarts(record.issueNo, record.severityLabel(l10n).toLowerCase(), defectSeverityLabel(l10n, record.defectCodeDefaultSeverity).toLowerCase()),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: Spacing.md),
@@ -172,7 +173,7 @@ class _NonconformanceLowerSeverityDialogState extends State<NonconformanceLowerS
                   for (final severity in offerable)
                     DropdownMenuItem<String?>(
                       value: severity,
-                      child: Text(DefectSeverity.label(severity)),
+                      child: Text(defectSeverityLabel(l10n, severity)),
                     ),
                 ],
                 onChanged: _awaiting ? null : (value) => setState(() => _severity = value),

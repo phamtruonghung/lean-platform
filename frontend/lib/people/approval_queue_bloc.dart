@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'pending_account.dart';
+import '../l10n/notices.dart';
 
 sealed class ApprovalQueueEvent {
   const ApprovalQueueEvent();
@@ -109,9 +110,8 @@ class ApprovalQueueBloc extends Bloc<ApprovalQueueEvent, ApprovalQueueState> {
   final PeopleApi _api;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
-  static const String alreadyDecidedMessage =
-      'Another administrator has already dealt with that Account. The queue has been refreshed.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
+  static const String alreadyDecidedMessage = BlocNotice.accountAlreadyDecided;
 
   /// Confirms the outcome, and says what was actually granted: the role, and
   /// how much of the plant it was given — an admission with no Grants at all

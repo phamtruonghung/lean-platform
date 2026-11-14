@@ -34,9 +34,9 @@ import 'package:flutter/services.dart';
 
 import '../l10n/app_localizations.dart';
 import '../theme.dart';
-import 'defect_code.dart';
 import 'floor_nonconformance_bloc.dart';
 import 'nonconformance.dart';
+import '../l10n/vocabulary.dart';
 
 class FloorNonconformanceDialog extends StatefulWidget {
   const FloorNonconformanceDialog({super.key});
@@ -251,7 +251,7 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
             for (final point in DetectionPoint.values)
               DropdownMenuItem<String?>(
                 value: point,
-                child: Text(DetectionPoint.label(point)),
+                child: Text(detectionPointLabel(l10n, point)),
               ),
           ],
           onChanged: busy ? null : (point) => setState(() => _detectionPoint = point),
@@ -260,7 +260,7 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
           Padding(
             padding: const EdgeInsets.only(top: Spacing.sm),
             child: Text(
-              l10n.nonconformanceFloorStartsAt(DefectSeverity.label(defaultSeverity)),
+              l10n.nonconformanceFloorStartsAt(defectSeverityLabel(l10n, defaultSeverity)),
               style: theme.textTheme.bodySmall?.copyWith(color: AppColors.of(context).textMuted),
             ),
           ),

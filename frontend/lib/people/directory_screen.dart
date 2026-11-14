@@ -66,7 +66,7 @@ import 'directory_bloc.dart';
 import 'directory_org_unit_filter_dialog.dart';
 import 'employee.dart';
 import 'employee_form_dialog.dart';
-import 'employment_type.dart';
+import '../l10n/vocabulary.dart';
 
 class DirectoryScreen extends StatelessWidget {
   const DirectoryScreen({super.key, required this.isAdmin});
@@ -550,6 +550,7 @@ class _EmployeeTableRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
     final dense = AppTypography.dense(context);
+    final l10n = AppLocalizations.of(context);
     final row = employee;
 
     return KeyedSubtree(
@@ -580,7 +581,7 @@ class _EmployeeTableRow extends StatelessWidget {
             style: dense?.copyWith(color: palette.textPrimary),
           ),
           DisclosingText(
-            employmentTypeLabel(row.employmentType),
+            employmentTypeLabel(l10n, row.employmentType),
             style: dense?.copyWith(color: palette.textMuted),
           ),
           _stateCell(context, row),
@@ -602,6 +603,7 @@ class _EmployeeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final row = employee;
 
     return Card(
@@ -637,7 +639,7 @@ class _EmployeeCard extends StatelessWidget {
                       ],
                     ),
                     Text(
-                      '${row.employeeNo} · ${employmentTypeLabel(row.employmentType)}',
+                      '${row.employeeNo} · ${employmentTypeLabel(l10n, row.employmentType)}',
                       style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
                     ),
                     Text(

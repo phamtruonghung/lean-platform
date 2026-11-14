@@ -27,12 +27,12 @@ library;
 import 'package:flutter/material.dart' hide Action;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../actions/actions.dart';
 import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'observation_detail_bloc.dart';
 import 'safety_observation.dart';
+import '../l10n/vocabulary.dart';
 
 class SafetyObservationRaiseActionDialog extends StatefulWidget {
   const SafetyObservationRaiseActionDialog({super.key, required this.observation});
@@ -162,8 +162,8 @@ class _SafetyObservationRaiseActionDialogState
               ),
               items: [
                 DropdownMenuItem<String?>(value: null, child: Text(l10n.observationRaiseActionChooseAKind)),
-                for (final type in ActionType.values)
-                  DropdownMenuItem<String?>(value: type.wire, child: Text(type.label)),
+                for (final (type, label) in actionTypeChoices(l10n))
+                  DropdownMenuItem<String?>(value: type, child: Text(label)),
               ],
               onChanged: _awaiting
                   ? null
@@ -206,8 +206,8 @@ class _SafetyObservationRaiseActionDialogState
                 border: OutlineInputBorder(),
               ),
               items: [
-                for (final entry in actionPriorityLabels.entries)
-                  DropdownMenuItem<int>(value: entry.key, child: Text(entry.value)),
+                for (final (priority, label) in actionPriorityChoices(l10n))
+                  DropdownMenuItem<int>(value: priority, child: Text(label)),
               ],
               onChanged: _awaiting ? null : (value) => setState(() => _priority = value ?? 3),
             ),

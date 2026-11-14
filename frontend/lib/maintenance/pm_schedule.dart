@@ -26,27 +26,12 @@ import 'package:flutter/foundation.dart';
 /// - [completed]: the clock starts when the work was actually done, so a
 ///   service done late simply slides.
 enum PmScheduleAnchor {
-  due(
-    'due',
-    'Due date',
-    'The next date is fixed to the calendar: doing the work late does not '
-        'push the following one back.',
-  ),
-  completed(
-    'completed',
-    'Completion',
-    'The clock starts when the work was actually done, so a service done late '
-        'simply slides.',
-  );
+  due('due'),
+  completed('completed');
 
-  const PmScheduleAnchor(this.wire, this.label, this.explanation);
+  const PmScheduleAnchor(this.wire);
 
   final String wire;
-  final String label;
-
-  /// The short explanation of how this choice behaves when work runs late —
-  /// the reason the two options exist at all.
-  final String explanation;
 }
 
 @immutable
@@ -157,14 +142,4 @@ class PmSchedule {
 
   /// `nextDueOn - today`, computed by Postgres — negative once overdue.
   final int? daysUntilDue;
-
-  /// The human label for [anchor] — falls back to the wire string itself for
-  /// an anchor this build does not know about, the same fallback
-  /// `JobPlan.workTypeLabel` follows.
-  String get anchorLabel {
-    for (final candidate in PmScheduleAnchor.values) {
-      if (candidate.wire == anchor) return candidate.label;
-    }
-    return anchor;
-  }
 }

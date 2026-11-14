@@ -65,6 +65,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -289,7 +290,7 @@ class _Loaded extends StatelessWidget {
                           row.assetName == null ? 'None named' : '${row.assetName} · ${row.assetCode}',
                     ),
                     _Fact(label: l10n.incidentDetailReportedAt, value: row.reportedAt ?? 'Not recorded'),
-                    _Fact(label: l10n.downtimeReportedByColumn, value: row.reportedByLabel),
+                    _Fact(label: l10n.downtimeReportedByColumn, value: namedOrUnknown(l10n, row.reportedByLabel)),
                     _Fact(label: l10n.commonDescription, value: row.description ?? 'None given'),
                     _Fact(
                       label: l10n.incidentDetailImmediateAction,
@@ -342,7 +343,7 @@ class _Loaded extends StatelessWidget {
                         ? null
                         : () => context.go('${Routes.safetyIncidents}/${row.id}/status'),
                     icon: const Icon(Icons.trending_flat),
-                    label: Text(l10n.incidentDetailMoveTo(SafetyIncidentStatus.label(row.nextStatus!))),
+                    label: Text(l10n.incidentDetailMoveTo(safetyIncidentStatusLabel(l10n, row.nextStatus!))),
                   ),
                 // The three decisions Safety authority gates (ADR-0039):
                 // correcting the severity, recording the days, and closing.
@@ -446,12 +447,12 @@ class _SummaryCard extends StatelessWidget {
                 Text(incident.incidentNo, style: theme.textTheme.headlineSmall),
                 StatusChip(
                   key: SafetyIncidentDetailScreen.statusKey,
-                  label: incident.statusLabel,
+                  label: incident.statusLabel(l10n),
                   tone: incident.statusTone,
                 ),
                 StatusChip(
                   key: SafetyIncidentDetailScreen.severityKey,
-                  label: incident.severityLabel,
+                  label: incident.severityLabel(l10n),
                   tone: incident.severityTone,
                 ),
               ],
@@ -465,7 +466,7 @@ class _SummaryCard extends StatelessWidget {
             const SizedBox(height: Spacing.md),
             Text(l10n.commonSummary, style: theme.textTheme.titleMedium),
             const SizedBox(height: Spacing.sm),
-            _Fact(label: l10n.safetyIncidentType, value: incident.incidentTypeLabel),
+            _Fact(label: l10n.safetyIncidentType, value: incident.incidentTypeLabel(l10n)),
             _Fact(label: l10n.commonOrgUnit, value: incident.orgUnitName),
             _Fact(
               label: l10n.nonconformanceDetailFiledAgainst,
@@ -540,7 +541,7 @@ class _InjuryCard extends StatelessWidget {
                 value: incident.bodyPartName == null
                     ? 'Not recorded'
                     : '${incident.bodyPartName} · '
-                        '${BodyPartRegion.label(incident.bodyPartRegion ?? BodyPartRegion.other)}',
+                        '${bodyPartRegionLabel(l10n, incident.bodyPartRegion ?? BodyPartRegion.other)}',
               ),
             ],
       ],
@@ -620,7 +621,7 @@ class _ConcernsCard extends StatelessWidget {
                           ].join(' · '),
                         ),
                         trailing: StatusChip(
-                          label: concern.statusLabel,
+                          label: concern.statusLabel(l10n),
                           tone: concern.statusTone,
                         ),
                       ),
@@ -681,9 +682,9 @@ class _EventHistoryCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(event.summary, style: theme.textTheme.bodyMedium),
+                          Text(event.summary(l10n), style: theme.textTheme.bodyMedium),
                           Text(
-                            '${event.changedBy}'
+                            '${namedOrUnknown(l10n, event.changedBy)}'
                             '${event.changedAt == null ? '' : ' · ${event.changedAt}'}'
                             '${event.note == null ? '' : ' · ${event.note}'}',
                             style: theme.textTheme.bodySmall

@@ -26,6 +26,7 @@ import '../actions/actions.dart';
 import '../platform/auth_gateway.dart';
 import 'safety_api.dart';
 import 'safety_observation.dart';
+import '../l10n/notices.dart';
 
 sealed class SafetyObservationDetailEvent {
   const SafetyObservationDetailEvent();
@@ -138,7 +139,7 @@ class SafetyObservationDetailBloc
   final AuthGateway _auth;
   String? _id;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   Future<void> _onStarted(
     SafetyObservationDetailStarted event,

@@ -32,6 +32,7 @@ import '../platform/floor_device_gateway.dart';
 import 'defect_code.dart';
 import 'product.dart';
 import 'quality_api.dart';
+import '../l10n/notices.dart';
 
 sealed class FloorNonconformanceEvent {
   const FloorNonconformanceEvent();
@@ -149,8 +150,7 @@ class FloorNonconformanceBloc
   /// a device can never be talked into recording somewhere else.
   final String orgUnitId;
 
-  static const String notRegisteredMessage =
-      'This device is not registered. Ask an administrator to register it against an Org Unit.';
+  static const String notRegisteredMessage = BlocNotice.deviceNotRegistered;
 
   Future<void> _onStarted(
     FloorNonconformanceStarted event,

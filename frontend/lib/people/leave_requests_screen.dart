@@ -21,6 +21,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_list_card.dart';
@@ -188,7 +189,7 @@ class _LeaveRequestRow extends StatelessWidget {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             StatusChip(
-              label: request.statusLabel,
+              label: request.statusLabel(l10n),
               tone: leaveRequestStatusTone(request.status),
             ),
             Text('${request.periodLabel} · ${request.daysLabel}', style: muted),

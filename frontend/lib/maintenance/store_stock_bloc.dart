@@ -14,6 +14,7 @@ import 'maintenance_api.dart';
 import 'part.dart';
 import 'stock_level.dart';
 import 'store.dart';
+import '../l10n/notices.dart';
 
 sealed class StoreStockEvent {
   const StoreStockEvent();
@@ -100,7 +101,7 @@ class StoreStockBloc extends Bloc<StoreStockEvent, StoreStockState> {
   final AuthGateway _auth;
   final String storeId;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   Future<void> _onStarted(StoreStockStarted event, Emitter<StoreStockState> emit) async {
     emit(const StoreStockLoading());

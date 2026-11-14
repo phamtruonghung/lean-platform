@@ -25,12 +25,12 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../actions/actions.dart';
 import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 class NonconformanceRaiseConcernDialog extends StatefulWidget {
   const NonconformanceRaiseConcernDialog({super.key, required this.nonconformance});
@@ -178,8 +178,8 @@ class _NonconformanceRaiseConcernDialogState extends State<NonconformanceRaiseCo
                 border: OutlineInputBorder(),
               ),
               items: [
-                for (final entry in actionPriorityLabels.entries)
-                  DropdownMenuItem<int>(value: entry.key, child: Text(entry.value)),
+                for (final (priority, label) in actionPriorityChoices(l10n))
+                  DropdownMenuItem<int>(value: priority, child: Text(label)),
               ],
               onChanged: _awaiting ? null : (value) => setState(() => _priority = value ?? 3),
             ),

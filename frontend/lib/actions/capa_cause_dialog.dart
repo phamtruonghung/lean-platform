@@ -53,6 +53,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'capa.dart';
 import 'capa_detail_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 /// The keys every one of the five addresses shares, because the refusals are
 /// the same refusals: no CAPA read yet, a CAPA that cannot be read, a category
@@ -134,10 +135,14 @@ Widget? capaCauseAddressRefusal(
         );
       }
       if (!capa.isOpen) {
+        final l10n = AppLocalizations.of(context);
         return _CauseRefusal(
           key: CapaCauseKeys.closedKey,
-          title: AppLocalizations.of(context).commonThisInvestigationIsOver,
-          message: AppLocalizations.of(context).capaCauseIsSoItsFishboneIsARecord(capa.capaNo, capa.statusLabel.toLowerCase()),
+          title: l10n.commonThisInvestigationIsOver,
+          message: l10n.capaCauseIsSoItsFishboneIsARecord(
+            capa.capaNo,
+            capa.statusLabel(l10n).toLowerCase(),
+          ),
         );
       }
       if (!mayEditCapaChains(context, capa)) {
@@ -181,7 +186,7 @@ class CapaCauseDialog extends StatelessWidget {
 
     return _CauseForm(
       title: l10n.capaCauseRecordACandidateCause,
-      blurb: l10n.capaCauseSomethingThatCouldBeBehind(capaCauseCategoryLabel(category)),
+      blurb: l10n.capaCauseSomethingThatCouldBeBehind(capaCauseCategoryLabel(l10n, category)),
       submitLabel: l10n.capaCauseRecordIt,
       submitId: 'record-it',
       category: category,
@@ -375,7 +380,7 @@ class _CapaCauseRemoveDialogState extends State<CapaCauseRemoveDialog> {
             ),
             const SizedBox(height: Spacing.md),
             Text(
-              l10n.capaCauseItIsTakenOffTheBoneFor(cause.categoryLabel, cause.isConfirmed ? ', including the verdict your evidence backed' : ''),
+              l10n.capaCauseItIsTakenOffTheBoneFor(cause.categoryLabel(l10n), cause.isConfirmed ? ', including the verdict your evidence backed' : ''),
               style: theme.textTheme.bodyMedium,
             ),
             if (_failure != null)
@@ -584,7 +589,7 @@ class _CauseFormState extends State<_CauseForm> {
                   for (final category in capaCauseCategoryOrder)
                     ChoiceChip(
                       key: CapaCauseEditDialog.categoryKey(category),
-                      label: Text(capaCauseCategoryLabel(category)),
+                      label: Text(capaCauseCategoryLabel(l10n, category)),
                       selected: _category == category,
                       onSelected:
                           _awaiting ? null : (_) => setState(() => _category = category),
@@ -734,7 +739,7 @@ class _VerdictFormState extends State<_VerdictForm> {
                 for (final decision in capaCauseDecisions)
                   ChoiceChip(
                     key: CapaCauseVerdictDialog.verdictKey(decision),
-                    label: Text(capaCauseVerdictLabel(decision)),
+                    label: Text(capaCauseVerdictLabel(l10n, decision)),
                     selected: _verdict == decision,
                     onSelected: _awaiting ? null : (_) => setState(() => _verdict = decision),
                   ),
@@ -877,7 +882,7 @@ class _StartChainFormState extends State<_StartChainForm> {
                   for (final chain in widget.chains)
                     ChoiceChip(
                       key: CapaWhyFromCauseDialog.chainKey(chain),
-                      label: Text(capaChainLabel(chain)),
+                      label: Text(capaChainLabel(l10n, chain)),
                       selected: _chain == chain,
                       onSelected: _awaiting ? null : (_) => setState(() => _chain = chain),
                     ),

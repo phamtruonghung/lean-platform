@@ -18,17 +18,16 @@ import '../status_tone.dart';
 /// The kinds of work a Work order can be, mirroring the CHECK constraint on
 /// `work_orders.work_type` and the backend's own `WORK_TYPES`.
 enum WorkType {
-  corrective('corrective', 'Corrective'),
-  preventive('preventive', 'Preventive'),
-  predictive('predictive', 'Predictive'),
-  inspection('inspection', 'Inspection'),
-  improvement('improvement', 'Improvement'),
-  calibration('calibration', 'Calibration');
+  corrective('corrective'),
+  preventive('preventive'),
+  predictive('predictive'),
+  inspection('inspection'),
+  improvement('improvement'),
+  calibration('calibration');
 
-  const WorkType(this.wire, this.label);
+  const WorkType(this.wire);
 
   final String wire;
-  final String label;
 }
 
 /// The kinds of state a Work order can be in, mirroring the CHECK constraint
@@ -57,15 +56,15 @@ enum WorkType {
 ///   decision somebody made, not a fault; `danger` is reserved for something
 ///   actually wrong (see `StatusTone`), and spending it here would make an
 ///   ordinary cancellation look like an error on every list that shows one.
-const Map<String, (String, StatusTone)> _statuses = {
-  'draft': ('Draft', StatusTone.neutral),
-  'approved': ('Approved', StatusTone.info),
-  'scheduled': ('Scheduled', StatusTone.info),
-  'in_progress': ('In progress', StatusTone.info),
-  'on_hold': ('On hold', StatusTone.warning),
-  'completed': ('Completed', StatusTone.success),
-  'closed': ('Closed', StatusTone.success),
-  'cancelled': ('Cancelled', StatusTone.neutral),
+const Map<String, StatusTone> _statusTones = {
+  'draft': StatusTone.neutral,
+  'approved': StatusTone.info,
+  'scheduled': StatusTone.info,
+  'in_progress': StatusTone.info,
+  'on_hold': StatusTone.warning,
+  'completed': StatusTone.success,
+  'closed': StatusTone.success,
+  'cancelled': StatusTone.neutral,
 };
 
 @immutable
@@ -150,37 +149,12 @@ class WorkOrder {
   /// read, the same way [tasks] is.
   final WorkOrderCost? cost;
 
-  String get workTypeLabel =>
-      _labelFor(workType, [for (final t in WorkType.values) (t.wire, t.label)]);
-
-  /// The human label for [status] — falls back to the wire string itself for
-  /// a status this build does not know about, the same fallback
-  /// [workTypeLabel] follows.
-  String get statusLabel => _statuses[status]?.$1 ?? status;
-
   /// What [status] means to somebody scanning this list (issue #168) — the
   /// tone `widgets/status_chip.dart` paints. Falls back to [StatusTone.neutral]
-  /// for a status this build does not know about, matching [statusLabel]'s own
-  /// fallback: an unknown state is shown plainly rather than shouted about.
-  StatusTone get statusTone => _statuses[status]?.$2 ?? StatusTone.neutral;
-
-  /// Every label [statusLabel] can produce for a status this build knows
-  /// about (issue #105) — the wide table's own Status column reads this to
-  /// size itself to the longest one, rather than a width tuned to whichever
-  /// label happens to be longest today, so a status added to
-  /// [_statuses] later is sized for automatically rather than clipped.
-  /// The wire-string fallback [statusLabel] falls back to for an unknown
-  /// status is deliberately not included: that string is unbounded, and
-  /// only known labels are worth sizing a fixed column against.
-  static List<String> get knownStatusLabels =>
-      [for (final (label, _) in _statuses.values) label];
-
-  static String _labelFor(String wire, List<(String, String)> known) {
-    for (final (value, label) in known) {
-      if (value == wire) return label;
-    }
-    return wire;
-  }
+  /// for a status this build does not know about: an unknown state is shown
+  /// plainly rather than shouted about. The **words** are `l10n/vocabulary.dart`'s
+  /// (`workOrderStatusLabel`), because a model knows a code, not a language.
+  StatusTone get statusTone => _statusTones[status] ?? StatusTone.neutral;
 }
 
 /// The states one step inside a Work order can be in, mirroring the CHECK
@@ -194,11 +168,11 @@ class WorkOrder {
 /// than a stage or a decision. `skipped` is `neutral` rather than a warning —
 /// somebody chose to step over it, and a finished Work order full of amber
 /// would be noise.
-const Map<String, (String, StatusTone)> _taskStatuses = {
-  'pending': ('Pending', StatusTone.neutral),
-  'done': ('Done', StatusTone.success),
-  'skipped': ('Skipped', StatusTone.neutral),
-  'failed': ('Failed', StatusTone.danger),
+const Map<String, StatusTone> _taskStatusTones = {
+  'pending': StatusTone.neutral,
+  'done': StatusTone.success,
+  'skipped': StatusTone.neutral,
+  'failed': StatusTone.danger,
 };
 
 /// One step copied onto a Work order from the Job plan that raised it, as
@@ -249,11 +223,9 @@ class WorkOrderTask {
   /// Whether this step records a meter reading a technician can enter.
   bool get hasMeter => assetMeterId != null;
 
-  String get statusLabel => _taskStatuses[status]?.$1 ?? status;
-
   /// What [status] means to somebody reading a Work order's steps (issue
-  /// #168) — see [_taskStatuses].
-  StatusTone get statusTone => _taskStatuses[status]?.$2 ?? StatusTone.neutral;
+  /// #168) — see [_taskStatusTones]. The words are `l10n/vocabulary.dart`'s.
+  StatusTone get statusTone => _taskStatusTones[status] ?? StatusTone.neutral;
 }
 
 /// The transitions offered from a status (issue #63) — `approved` offers
@@ -279,45 +251,29 @@ bool offersCancel(String status) => status == 'approved' || status == 'in_progre
 /// spend a third of the job waiting for a permit has a scheduling problem,
 /// not a staffing one, so `waiting` is worth keeping honest.
 enum LabourActivity {
-  work('work', 'Work'),
-  travel('travel', 'Travel'),
-  waiting('waiting', 'Waiting'),
-  diagnosis('diagnosis', 'Diagnosis'),
-  documentation('documentation', 'Documentation');
+  work('work'),
+  travel('travel'),
+  waiting('waiting'),
+  diagnosis('diagnosis'),
+  documentation('documentation');
 
-  const LabourActivity(this.wire, this.label);
+  const LabourActivity(this.wire);
 
   final String wire;
-  final String label;
-
-  static String labelFor(String wire) {
-    for (final activity in LabourActivity.values) {
-      if (activity.wire == wire) return activity.label;
-    }
-    return wire;
-  }
 }
 
 /// How a fitted part reached the job, mirroring the CHECK on
 /// `work_order_parts.sourced`. Only `stores` draws down inventory (ADR-0015);
 /// the other three are a cost line with no shelf behind them.
 enum PartSource {
-  stores('stores', 'Stores'),
-  purchased('purchased', 'Purchased'),
-  refurbished('refurbished', 'Refurbished'),
-  cannibalised('cannibalised', 'Cannibalised');
+  stores('stores'),
+  purchased('purchased'),
+  refurbished('refurbished'),
+  cannibalised('cannibalised');
 
-  const PartSource(this.wire, this.label);
+  const PartSource(this.wire);
 
   final String wire;
-  final String label;
-
-  static String labelFor(String wire) {
-    for (final source in PartSource.values) {
-      if (source.wire == wire) return source.label;
-    }
-    return wire;
-  }
 }
 
 /// One activity's booked hours on a Work order, with overtime split out so it
@@ -333,8 +289,6 @@ class WorkOrderLabourActivity {
   final String activity;
   final num hours;
   final num overtimeHours;
-
-  String get label => LabourActivity.labelFor(activity);
 }
 
 /// One part fitted to a Work order (issue #75) — mirrors `toBookedPart`
@@ -363,8 +317,6 @@ class WorkOrderPartLine {
   final String currency;
   final num? totalCost;
   final String sourced;
-
-  String get sourcedLabel => PartSource.labelFor(sourced);
 
   String get name => partNo == null || partNo!.isEmpty ? description : '$partNo · $description';
 }

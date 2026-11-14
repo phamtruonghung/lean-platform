@@ -11,6 +11,7 @@ import '../platform/auth_gateway.dart';
 import 'employee.dart';
 import 'job_role.dart';
 import 'skill.dart';
+import '../l10n/notices.dart';
 
 sealed class EmployeeDetailEvent {
   const EmployeeDetailEvent();
@@ -210,7 +211,7 @@ class EmployeeDetailBloc extends Bloc<EmployeeDetailEvent, EmployeeDetailState> 
   final PeopleApi _api;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   /// The `employeeId` this Screen was last asked to show — null for "my own
   /// record". Remembered so a write's own re-read (`_reload`) asks the same
@@ -349,7 +350,7 @@ class EmployeeDetailBloc extends Bloc<EmployeeDetailEvent, EmployeeDetailState> 
       );
       await _reload(
         emit,
-        notice: '${current.employee.displayName} has left.',
+        notice: BlocNotice.employeeLeft(current.employee.displayName),
         departureLinkedAccount: linkedAccount,
       );
     } on PeopleApiException catch (error) {
@@ -409,7 +410,7 @@ class EmployeeDetailBloc extends Bloc<EmployeeDetailEvent, EmployeeDetailState> 
     emit(current.copyWith(isMutating: true, notice: null));
     try {
       await _api.reinstateEmployee(token, current.employee.id);
-      await _reload(emit, notice: '${current.employee.displayName} is back.');
+      await _reload(emit, notice: BlocNotice.employeeBack(current.employee.displayName));
     } on PeopleApiException catch (error) {
       final settled = state;
       if (settled is! EmployeeDetailLoaded) return;

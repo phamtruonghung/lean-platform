@@ -17,6 +17,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../platform/auth_gateway.dart';
 import 'body_part.dart';
 import 'safety_api.dart';
+import '../l10n/notices.dart';
 
 sealed class BodyPartsEvent {
   const BodyPartsEvent();
@@ -117,7 +118,7 @@ class BodyPartsBloc extends Bloc<BodyPartsEvent, BodyPartsState> {
   final SafetyApi _api;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   Future<void> _onStarted(BodyPartsStarted event, Emitter<BodyPartsState> emit) async {
     emit(const BodyPartsLoading());

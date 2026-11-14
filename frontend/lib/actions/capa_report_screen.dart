@@ -62,6 +62,7 @@ import '../widgets/status_chip.dart';
 import 'action.dart';
 import 'capa.dart';
 import 'capa_detail_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 /// The words this report prints for a Disposition's kind.
 ///
@@ -75,34 +76,11 @@ import 'capa_detail_bloc.dart';
 ///
 /// `use_as_is` is labelled by [LinkedDisposition.isConcession] rather than by
 /// its wire value, the same way Quality's own model labels it.
-const Map<String, String> _dispositionLabels = {
-  'scrap': 'Scrap',
-  'rework': 'Rework',
-  'return_to_supplier': 'Return to supplier',
-};
-
-String _dispositionLabel(LinkedDisposition disposition) =>
-    disposition.isConcession
-        ? 'Concession'
-        : (_dispositionLabels[disposition.dispositionType] ?? disposition.dispositionType);
-
-/// The words this report prints for a Safety incident's severity level (issue
-/// #229) — the same trade as [_dispositionLabels] above and for the same
-/// reason: the ladder's own words belong to the Safety Module, whose client
-/// entry point this one does not import (`actions` imports neither `quality`
-/// nor `safety` — see `actions.dart`), and this is the one Screen that has to
-/// print rather than link to them.
-const Map<String, String> _severityLabels = {
-  'near_miss': 'No injury',
-  'first_aid': 'First aid',
-  'medical_treatment': 'Medical treatment',
-  'restricted_work': 'Restricted work',
-  'lost_time': 'Lost time',
-  'fatality': 'Fatality',
-};
-
-String _severityLabel(String severityLevel) => _severityLabels[severityLevel] ?? severityLevel;
-
+// The words a report prints for a Disposition and for a Safety incident's
+// severity are `l10n/vocabulary.dart`'s (`dispositionTypeLabel`,
+// `safetySeverityLabel`) — one lookup for the whole tree, in the reader's
+// language (ADR-0062). Two copies used to live here because a printed report
+// cannot link to the record that owns them; a catalogue can be printed.
 class CapaReportScreen extends StatelessWidget {
   const CapaReportScreen({super.key, required this.capaId});
 
@@ -265,9 +243,9 @@ class _Report extends StatelessWidget {
     for (final chain in capaChainOrder) {
       final whys = capa.whysIn(chain);
       if (whys.isEmpty) {
-        missing.add(l10n.capaReportChainHasNotBeenStarted(capaChainLabel(chain)));
+        missing.add(l10n.capaReportChainHasNotBeenStarted(capaChainLabel(l10n, chain)));
       } else if (capa.rootCauseOf(chain) == null) {
-        missing.add(l10n.capaReportChainHasNoConfirmedRootCause(capaChainLabel(chain)));
+        missing.add(l10n.capaReportChainHasNoConfirmedRootCause(capaChainLabel(l10n, chain)));
       }
     }
     if (absent('countermeasure')) missing.add(l10n.capaReportNoCountermeasureIsRecorded);
@@ -292,11 +270,11 @@ class _Report extends StatelessWidget {
     // ruled line of facts reads the same on a screen and on a printed page
     // (issue #396). Every value a chip carried is still printed.
     final meta = [
-      '${capa.methodLabel} investigation',
+      '${capa.methodLabel(l10n)} investigation',
       capa.orgUnitName,
       if (opened != null) 'opened $opened',
       if (capa.dueDate != null) 'due ${capa.dueDate}',
-      capa.statusLabel,
+      capa.statusLabel(l10n),
     ].join(' · ');
 
     return Center(
@@ -483,7 +461,7 @@ class _Report extends StatelessWidget {
           children: [
             Text(
               '${concern!.safetyIncident!.incidentNo} · '
-              '${_severityLabel(concern.safetyIncident!.severityLevel)}',
+              '${safetySeverityLabel(l10n, concern.safetyIncident!.severityLevel)}',
               style: theme.textTheme.bodyMedium,
             ),
           ],
@@ -619,8 +597,8 @@ class _Measure extends StatelessWidget {
           Text(
             [
               measure.actionNo,
-              measure.typeLabel,
-              measure.statusLabel,
+              measure.typeLabel(l10n),
+              measure.statusLabel(l10n),
               measure.ownerName ?? l10n.commonNobodyYet,
             ].join(' · '),
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
@@ -631,9 +609,9 @@ class _Measure extends StatelessWidget {
               padding: const EdgeInsets.only(top: Spacing.xxs),
               child: Text(
                 [
-                  l10n.commonCycle(phase.cycle, phase.phaseLabel),
+                  l10n.commonCycle(phase.cycle, phase.phaseLabel(l10n)),
                   if (phase.completedAt != null) l10n.commonDone else l10n.commonOpen2,
-                  if (phase.outcomeLabel != null) phase.outcomeLabel!,
+                  if (phase.outcomeLabel(l10n) != null) phase.outcomeLabel(l10n)!,
                   if (phase.note != null) phase.note!,
                 ].join(' · '),
                 style: theme.textTheme.bodySmall,
@@ -699,7 +677,7 @@ class _ReportFishbone extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(capaCauseCategoryLabel(category), style: theme.textTheme.labelLarge),
+                Text(capaCauseCategoryLabel(l10n, category), style: theme.textTheme.labelLarge),
                 for (final cause in capa.causesIn(category))
                   Padding(
                     key: CapaReportScreen.causeKey(cause.id),
@@ -720,7 +698,7 @@ class _ReportFishbone extends StatelessWidget {
                             children: [
                               StatusChip(
                                 key: CapaReportScreen.causeVerdictKey(cause.id),
-                                label: cause.verdictLabel,
+                                label: cause.verdictLabel(l10n),
                                 tone: cause.verdictTone,
                               ),
                               if (cause.evidenceNote != null)
@@ -762,7 +740,7 @@ class _Chain extends StatelessWidget {
       key: CapaReportScreen.chainKey(chain),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(capaChainLabel(chain), style: theme.textTheme.titleSmall),
+        Text(capaChainLabel(l10n, chain), style: theme.textTheme.titleSmall),
         const SizedBox(height: Spacing.xs),
         if (whys.isEmpty)
           Text(
@@ -829,7 +807,7 @@ class _Effectiveness extends StatelessWidget {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   StatusChip(
-                    label: capaEffectivenessOutcomeLabel(capa.effectivenessOutcome!),
+                    label: capaEffectivenessOutcomeLabel(l10n, capa.effectivenessOutcome!),
                     tone: capaEffectivenessOutcomeTone(capa.effectivenessOutcome!),
                   ),
                   Text(
@@ -926,7 +904,7 @@ class _Occurrence extends StatelessWidget {
                 for (final disposition in dispositions)
                   Text(
                     [
-                      _dispositionLabel(disposition),
+                      dispositionTypeLabel(l10n, disposition.dispositionType, isConcession: disposition.isConcession),
                       disposition.quantityLabel,
                       if (disposition.reworkMinutes != null && disposition.reworkMinutes != 0)
                         l10n.capaReportMinRework(disposition.reworkMinutes!.toStringAsFixed(0)),

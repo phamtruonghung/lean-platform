@@ -29,6 +29,7 @@ import '../platform/auth_gateway.dart';
 import 'issue_image.dart';
 import 'quality_api.dart';
 import 'quality_photo.dart';
+import '../l10n/notices.dart';
 
 sealed class IssueImagesEvent {
   const IssueImagesEvent();
@@ -133,7 +134,7 @@ class IssueImagesBloc extends Bloc<IssueImagesEvent, IssueImagesState> {
   /// The record the pictures belong to.
   final String issueId;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   Future<void> _onStarted(IssueImagesStarted event, Emitter<IssueImagesState> emit) async {
     final token = _auth.currentAccessToken;

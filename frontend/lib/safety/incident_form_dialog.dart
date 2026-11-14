@@ -50,6 +50,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'safety_incident.dart';
 import 'safety_incidents_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 /// How the optional Asset list is being read — the same three states, and
 /// the same reason, as the Non-conformance form's own Asset picker.
@@ -282,7 +283,10 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                             helperText: l10n.incidentFormWhatKindOfEventThisWas,
                             border: OutlineInputBorder(),
                           ),
-                          items: IncidentType.dropdownItems(),
+                          items: IncidentType.dropdownItems(
+            label: (type) => safetyIncidentTypeLabel(l10n, type),
+            placeholder: l10n.safetyAnyType,
+          ),
                           onChanged: _awaiting
                               ? null
                               : (type) => setState(() => _incidentType = type),
@@ -304,7 +308,11 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                           // design comment on #223) — built once by
                           // SeverityLevel.dropdownItems and shared with
                           // FloorSafetyIncidentDialog.
-                          items: SeverityLevel.dropdownItems(),
+                          items: SeverityLevel.dropdownItems(
+            label: (level) => safetySeverityLabel(l10n, level),
+            recordableSuffix: l10n.safetySeverityRecordableSuffix,
+            placeholder: l10n.safetyAnySeverity,
+          ),
                           onChanged: _awaiting
                               ? null
                               : (level) => setState(() => _severityLevel = level),

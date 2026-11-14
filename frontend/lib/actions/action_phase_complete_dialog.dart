@@ -22,6 +22,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'action.dart';
 import 'action_detail_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 /// Resolves the Action the address names out of the detail read this Screen
 /// already holds, and refuses the address when the phase it names is no longer
@@ -79,7 +80,7 @@ class ActionPhaseCompleteDialogHost extends StatelessWidget {
       title: l10n.actionPhaseCompleteThatIsNotTheOpenPhase,
       description: waitingOn == null
           ? l10n.actionPhaseCompleteThisActionHasNoOpenPhaseLeft
-          : l10n.actionPhaseCompleteThisActionIsWaitingOnItsPhase(waitingOn.phaseLabel.toLowerCase(), actionPhaseLabel(phase).toLowerCase()),
+          : l10n.actionPhaseCompleteThisActionIsWaitingOnItsPhase(waitingOn.phaseLabel(l10n).toLowerCase(), actionPhaseLabel(l10n, phase).toLowerCase()),
       size: AppDialogSize.decision,
       actions: [
         AppDialogAction(
@@ -162,7 +163,7 @@ class _ActionPhaseCompleteDialogState extends State<ActionPhaseCompleteDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final label = _phase.phaseLabel;
+    final label = _phase.phaseLabel(l10n);
     return BlocListener<ActionDetailBloc, ActionDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
@@ -232,11 +233,11 @@ class _ActionPhaseCompleteDialogState extends State<ActionPhaseCompleteDialog> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      for (final entry in actionCheckOutcomeLabels.entries)
+                      for (final (outcome, label) in actionCheckOutcomeChoices(l10n))
                         RadioListTile<String>(
-                          key: ActionPhaseCompleteDialog.outcomeOptionKey(entry.key),
-                          value: entry.key,
-                          title: Text(entry.value),
+                          key: ActionPhaseCompleteDialog.outcomeOptionKey(outcome),
+                          value: outcome,
+                          title: Text(label),
                           enabled: !_awaiting,
                           contentPadding: EdgeInsets.zero,
                         ),

@@ -51,3 +51,34 @@ If the concept you need isn't in the glossary yet, that's a signal: either you'r
 If your output contradicts an existing ADR, surface it explicitly rather than silently overriding:
 
 > _Contradicts ADR-0007 (event-sourced orders), but worth reopening because…_
+
+## Words, codes and the catalogue (ADR-0062)
+
+A status, a type, a severity, a role or a Bloc's notice is a **code**; the word
+a person reads for it is a catalogue entry. The lookup lives in one place,
+`frontend/lib/l10n/vocabulary.dart` (codes) and `frontend/lib/l10n/notices.dart`
+(Bloc-held copy), and the models carry codes and tones only. Add a code by
+adding it to the model's own constants, to **both** ARB catalogues, and to one
+arm of the lookup — the `_ => code` arm is what makes a forgotten one visible.
+
+### Codes this build has no catalogue word for yet
+
+These still render as their own English/code value in every language, in the
+vocabulary's own fallback. They are the residue of the sweep, not a decision
+that they need no translation:
+
+| Code set | Where | Codes |
+| --- | --- | --- |
+| KPI measurement outcome | `lib/kpi/kpi_catalogue.dart` | `met`, `missed`, `not_measured` |
+| An Account's standing | `lib/people/managed_account.dart` | `rejected`, `approved` (active / deactivated), awaiting approval |
+| A Trainee's answer | `lib/people/training_form_screen.dart` | `declined` |
+| Skill coverage legend | `lib/people/skill_coverage_screen.dart` | "Nobody qualified", "Partly qualified", "Short" |
+| Form-mode titles | `lib/people/{product_cost, cost_rate}_form_dialog.dart` | add / correct / revise |
+| A filter's count line | `lib/widgets/app_filter_field.dart` | "Showing N of M" |
+| The measure dialog's help text | `lib/actions/action_measure_dialog.dart` | per measure type |
+
+A **Bloc's interpolated notices** (`'${action.actionNo} was called off.'`) are
+the other half: `notices.dart` covers the constant messages and the parameterised
+ones the sweep converted (`BlocNotice.employeeLeft`, `assetBack`, …); a notice a
+Bloc still composes inline is English until a later slice turns it into a code.
+

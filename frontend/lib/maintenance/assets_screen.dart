@@ -31,6 +31,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/notices.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_confirm_dialog.dart';
@@ -135,7 +136,7 @@ class AssetsScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _Header(state: state, canPlaceAnAsset: canPlaceAnAsset),
-          if (state is AssetsLoaded && state.notice != null) _Notice(message: state.notice!),
+          if (state is AssetsLoaded && state.notice != null) _Notice(message: noticeText(l10n, state.notice!)),
           Expanded(
             child: switch (state) {
               AssetsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),

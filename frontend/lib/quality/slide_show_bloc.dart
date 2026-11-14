@@ -39,6 +39,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'issue_image.dart';
 import 'quality_api.dart';
+import '../l10n/notices.dart';
 
 /// One picture and the issue it belongs to: what the wall actually draws.
 class Slide {
@@ -236,7 +237,7 @@ class SlideShowBloc extends Bloc<SlideShowEvent, SlideShowState> {
 
   Timer? _timer;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   @override
   Future<void> close() {

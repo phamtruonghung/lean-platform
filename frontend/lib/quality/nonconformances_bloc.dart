@@ -26,6 +26,7 @@ import 'issue_image.dart';
 import 'nonconformance.dart';
 import 'product.dart';
 import 'quality_api.dart';
+import '../l10n/notices.dart';
 
 sealed class NonconformancesEvent {
   const NonconformancesEvent();
@@ -266,7 +267,7 @@ class NonconformancesBloc extends Bloc<NonconformancesEvent, NonconformancesStat
   final PeopleApi _people;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   Future<void> _onStarted(NonconformancesStarted event, Emitter<NonconformancesState> emit) async {
     emit(const NonconformancesLoading());
