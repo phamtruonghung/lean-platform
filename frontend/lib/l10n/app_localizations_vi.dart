@@ -1857,4 +1857,32 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get routerBackToList => 'Về danh sách';
+
+  @override
+  String get cameraScanButton => 'Quét bằng camera';
+
+  @override
+  String get cameraScanTitle => 'Quét mã';
+
+  @override
+  String get cameraScanPointAtCode =>
+      'Hướng camera vào mã — hệ thống đọc ngay khi nhận ra.';
+
+  @override
+  String get cameraScanClose => 'Đóng';
+
+  @override
+  String get cameraScanRefusedTitle => 'Không mở được camera';
+
+  @override
+  String get cameraScanRefusedBody =>
+      'Hãy cho phép trang này dùng camera trong trình duyệt rồi thử lại.';
+
+  @override
+  String get cameraScanUnsupportedTitle =>
+      'Trình duyệt này không đọc được mã bằng camera';
+
+  @override
+  String get cameraScanUnsupportedBody =>
+      'Hãy nhập mã bằng tay, hoặc dùng đầu đọc ở xưởng.';
 }

@@ -24,6 +24,13 @@ dependencies:
   # Pinned to the version `flutter_localizations` itself resolves; `gen-l10n`'s
   # generated code imports it.
   intl: ^0.20.2
+  # A phone's camera as the Platform's second reader. A dedicated shop-floor
+  # reader is a keyboard and needs no library; a phone is a camera and does.
+  # `mobile_scanner` decodes with ZXing on web (its own JS, bundled into the
+  # build — no CDN, the same rule as CanvasKit and Roboto) and with ML Kit /
+  # Apple Vision on the native builds, so the same widget serves whichever
+  # device a person carries.
+  mobile_scanner: ^7.5.0
   shared_preferences: ^2.5.5
   web: ^1.1.1
 
