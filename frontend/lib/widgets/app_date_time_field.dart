@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
+
 /// The shared date-and-time control for a Postgres `timestamptz` (issue #73):
 /// the same "a value with a known set is chosen, never typed" rule ADR-0023
 /// applies to `DATE`, widened by the one thing a `DATE` field does not have —
@@ -113,6 +115,7 @@ class _AppDateTimeFieldState extends State<AppDateTimeField> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final hasValue = widget.value != null;
     final showClear = widget.optional && hasValue && widget.enabled;
 
@@ -130,13 +133,13 @@ class _AppDateTimeFieldState extends State<AppDateTimeField> {
             ? IconButton(
                 key: AppDateTimeField.clearKey(widget.name),
                 icon: const Icon(Icons.close),
-                tooltip: 'Clear',
+                tooltip: l10n.commonClear,
                 onPressed: () => widget.onChanged(null),
               )
             : IconButton(
                 key: AppDateTimeField.calendarIconKey(widget.name),
                 icon: const Icon(Icons.event_outlined),
-                tooltip: 'Choose a date and time',
+                tooltip: l10n.appDateTimeFieldChooseADateAndTime,
                 onPressed: widget.enabled ? _openPicker : null,
               ),
       ),

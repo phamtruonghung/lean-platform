@@ -5979,6 +5979,1885 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose a reason for this absence.'**
   String get attendanceRecordChooseAReasonForThisAbsence;
+
+  /// No description provided for @commonThatActionCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'That Action could not be read'**
+  String get commonThatActionCouldNotBeRead;
+
+  /// No description provided for @commonThatActionHasEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'That Action has ended'**
+  String get commonThatActionHasEnded;
+
+  /// No description provided for @commonDone.
+  ///
+  /// In en, this message translates to:
+  /// **'done'**
+  String get commonDone;
+
+  /// No description provided for @actionCancelItIsClosedSoThereIsNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'It is closed, so there is nothing left to call off.'**
+  String get actionCancelItIsClosedSoThereIsNothing;
+
+  /// No description provided for @actionCancelItWasAlreadyCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'It was already cancelled.'**
+  String get actionCancelItWasAlreadyCancelled;
+
+  /// No description provided for @actionCancelCallOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Call off {actionNo}?'**
+  String actionCancelCallOff(Object actionNo);
+
+  /// No description provided for @actionCancelLeaveItAlone.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave it alone'**
+  String get actionCancelLeaveItAlone;
+
+  /// No description provided for @actionCancelCallItOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Call it off'**
+  String get actionCancelCallItOff;
+
+  /// No description provided for @actionCancelCallingItOffEndsTheRecordWithout.
+  ///
+  /// In en, this message translates to:
+  /// **'Calling it off ends the record without claiming anything was done about it. The row stays, with the reason you give it.'**
+  String get actionCancelCallingItOffEndsTheRecordWithout;
+
+  /// No description provided for @actionCancelWhyOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Why (optional)'**
+  String get actionCancelWhyOptional;
+
+  /// No description provided for @actionCancelRaisedInErrorADuplicateOvertakenBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Raised in error, a duplicate, overtaken by events.'**
+  String get actionCancelRaisedInErrorADuplicateOvertakenBy;
+
+  /// No description provided for @commonBackToTheActionLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the action log'**
+  String get commonBackToTheActionLog;
+
+  /// No description provided for @actionDetailHandItUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand it up…'**
+  String get actionDetailHandItUp;
+
+  /// No description provided for @actionDetailCallItOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Call it off…'**
+  String get actionDetailCallItOff;
+
+  /// No description provided for @actionDetailWhereItStands.
+  ///
+  /// In en, this message translates to:
+  /// **'Where it stands'**
+  String get actionDetailWhereItStands;
+
+  /// No description provided for @commonOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get commonOwner;
+
+  /// No description provided for @actionDetailEscalatedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Escalated to'**
+  String get actionDetailEscalatedTo;
+
+  /// No description provided for @actionDetailClosingNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Closing note'**
+  String get actionDetailClosingNote;
+
+  /// No description provided for @actionDetailPillar.
+  ///
+  /// In en, this message translates to:
+  /// **'Pillar {pillarCode}'**
+  String actionDetailPillar(Object pillarCode);
+
+  /// No description provided for @commonOverdueByDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue by {daysOverdue} days'**
+  String commonOverdueByDays(Object daysOverdue);
+
+  /// No description provided for @actionDetailCycle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cycle {currentCycle}'**
+  String actionDetailCycle(Object currentCycle);
+
+  /// No description provided for @actionDetailCompleteThe.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete the {phaseLabel}'**
+  String actionDetailCompleteThe(Object phaseLabel);
+
+  /// No description provided for @actionDetailThisActionHasNoPhasesLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'This Action has no phases left.'**
+  String get actionDetailThisActionHasNoPhasesLeft;
+
+  /// No description provided for @actionDetailEarlierRounds.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier rounds'**
+  String get actionDetailEarlierRounds;
+
+  /// No description provided for @actionDetailOpenWaitingOnThis.
+  ///
+  /// In en, this message translates to:
+  /// **'Open — waiting on this'**
+  String get actionDetailOpenWaitingOnThis;
+
+  /// No description provided for @actionDetailNoNoteRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'No note recorded'**
+  String get actionDetailNoNoteRecorded;
+
+  /// No description provided for @actionDetailDue.
+  ///
+  /// In en, this message translates to:
+  /// **'due {dueDate}'**
+  String actionDetailDue(Object dueDate);
+
+  /// No description provided for @actionDetailDone.
+  ///
+  /// In en, this message translates to:
+  /// **'done {value}'**
+  String actionDetailDone(Object value);
+
+  /// No description provided for @actionDetailAnswers.
+  ///
+  /// In en, this message translates to:
+  /// **'Answers {actionNo}'**
+  String actionDetailAnswers(Object actionNo);
+
+  /// No description provided for @commonCapa.
+  ///
+  /// In en, this message translates to:
+  /// **'CAPA'**
+  String get commonCapa;
+
+  /// No description provided for @actionDetailAFormal8dInvestigationOpenedOnThis.
+  ///
+  /// In en, this message translates to:
+  /// **'A formal 8D investigation opened on this Concern: its team, its problem description and — as those slices land — its root causes and its effectiveness check. Its actions are the ones below, recorded once in the action log and read there.'**
+  String get actionDetailAFormal8dInvestigationOpenedOnThis;
+
+  /// No description provided for @actionDetailUnderInvestigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Under investigation: {capaNo}'**
+  String actionDetailUnderInvestigation(Object capaNo);
+
+  /// No description provided for @actionDetailOpenACapa.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a CAPA…'**
+  String get actionDetailOpenACapa;
+
+  /// No description provided for @actionDetailNobodyHasOpenedACapaOnThis.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody has opened a CAPA on this Concern. Opening one needs Quality authority at this Concern\'s Org Unit.'**
+  String get actionDetailNobodyHasOpenedACapaOnThis;
+
+  /// No description provided for @actionDetailMeasures.
+  ///
+  /// In en, this message translates to:
+  /// **'Measures'**
+  String get actionDetailMeasures;
+
+  /// No description provided for @actionDetailMeasuresOfThemCountermeasures.
+  ///
+  /// In en, this message translates to:
+  /// **'Measures ({length}, {countermeasureCount} of them countermeasures)'**
+  String actionDetailMeasuresOfThemCountermeasures(
+    Object length,
+    Object countermeasureCount,
+  );
+
+  /// No description provided for @actionDetailAddAMeasure.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a measure'**
+  String get actionDetailAddAMeasure;
+
+  /// No description provided for @actionDetailAddA.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a {value}…'**
+  String actionDetailAddA(Object value);
+
+  /// No description provided for @actionDetailEachMeasureIsAnActionOfIts.
+  ///
+  /// In en, this message translates to:
+  /// **'Each measure is an Action of its own: open one and run its own cycle to its Act, and it counts as closed.'**
+  String get actionDetailEachMeasureIsAnActionOfIts;
+
+  /// No description provided for @actionDetailThisActionAnswersNoConcernOfIts.
+  ///
+  /// In en, this message translates to:
+  /// **'This Action answers no Concern of its own.'**
+  String get actionDetailThisActionAnswersNoConcernOfIts;
+
+  /// No description provided for @actionDetailNothingAnswersThisYetAContainmentStops.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing answers this yet. A containment stops the effect now; a countermeasure removes the cause.'**
+  String get actionDetailNothingAnswersThisYetAContainmentStops;
+
+  /// No description provided for @commonNobodyYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody yet'**
+  String get commonNobodyYet;
+
+  /// No description provided for @actionDetailOverdueByDays.
+  ///
+  /// In en, this message translates to:
+  /// **'overdue by {daysOverdue} days'**
+  String actionDetailOverdueByDays(Object daysOverdue);
+
+  /// No description provided for @commonWaitingOnIts.
+  ///
+  /// In en, this message translates to:
+  /// **'waiting on its {value}'**
+  String commonWaitingOnIts(Object value);
+
+  /// No description provided for @actionDetailCompleteThe2.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete the {value}…'**
+  String actionDetailCompleteThe2(Object value);
+
+  /// No description provided for @actionDetailNonConformances.
+  ///
+  /// In en, this message translates to:
+  /// **'Non-conformances ({length})'**
+  String actionDetailNonConformances(Object length);
+
+  /// No description provided for @actionDetailTheOccurrencesThisConcernAnswersOneProblem.
+  ///
+  /// In en, this message translates to:
+  /// **'The occurrences this Concern answers. One problem that shows up several times stays one Concern, so a further occurrence is linked here rather than raised as another.'**
+  String get actionDetailTheOccurrencesThisConcernAnswersOneProblem;
+
+  /// No description provided for @actionDetailNoNonConformanceIsLinkedToThis.
+  ///
+  /// In en, this message translates to:
+  /// **'No Non-conformance is linked to this Concern.'**
+  String get actionDetailNoNonConformanceIsLinkedToThis;
+
+  /// No description provided for @actionDetailRaisedFromThis.
+  ///
+  /// In en, this message translates to:
+  /// **'Raised from this'**
+  String get actionDetailRaisedFromThis;
+
+  /// No description provided for @actionDetailUnlink.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlink…'**
+  String get actionDetailUnlink;
+
+  /// No description provided for @actionDetailTheObservationThisActionWasRaisedFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'The observation this Action was raised from — what was seen, and how bad it could have been.'**
+  String get actionDetailTheObservationThisActionWasRaisedFrom;
+
+  /// No description provided for @actionDetailTheIncidentThisConcernWasRaisedFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'The incident this Concern was raised from — its number and its severity, never who was hurt or their diagnosis.'**
+  String get actionDetailTheIncidentThisConcernWasRaisedFrom;
+
+  /// No description provided for @actionEscalateItIsClosedWhoeverNeededToKnow.
+  ///
+  /// In en, this message translates to:
+  /// **'It is closed. Whoever needed to know about it was told before it was.'**
+  String get actionEscalateItIsClosedWhoeverNeededToKnow;
+
+  /// No description provided for @actionEscalateItWasCalledOffSoThereIs.
+  ///
+  /// In en, this message translates to:
+  /// **'It was called off, so there is nothing to hand up.'**
+  String get actionEscalateItWasCalledOffSoThereIs;
+
+  /// No description provided for @actionEscalateNowhereToHandItUpTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Nowhere to hand it up to'**
+  String get actionEscalateNowhereToHandItUpTo;
+
+  /// No description provided for @actionEscalateThereIsNobodyAboveThis.
+  ///
+  /// In en, this message translates to:
+  /// **'There is nobody above this'**
+  String get actionEscalateThereIsNobodyAboveThis;
+
+  /// No description provided for @actionEscalateSitsAtWhichIsAlreadyTheTop.
+  ///
+  /// In en, this message translates to:
+  /// **'{actionNo} sits at {orgUnitName}, which is already the top of this Site. Nothing above it can be told.'**
+  String actionEscalateSitsAtWhichIsAlreadyTheTop(
+    Object actionNo,
+    Object orgUnitName,
+  );
+
+  /// No description provided for @actionEscalateHandUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand {actionNo} up'**
+  String actionEscalateHandUp(Object actionNo);
+
+  /// No description provided for @actionEscalateHandItUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand it up'**
+  String get actionEscalateHandItUp;
+
+  /// No description provided for @actionEscalateRaisingThisTellsTheOrgUnitYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Raising this tells the Org Unit you choose. It stays where it is and keeps its owner and its cycle — this asks somebody above to know about it, not to take it over.'**
+  String get actionEscalateRaisingThisTellsTheOrgUnitYou;
+
+  /// No description provided for @actionEscalateNearestAboveIt.
+  ///
+  /// In en, this message translates to:
+  /// **'{code} · nearest above it'**
+  String actionEscalateNearestAboveIt(Object code);
+
+  /// No description provided for @actionEscalatedToFilterFilterByWhatWasHandedUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by what was handed up'**
+  String get actionEscalatedToFilterFilterByWhatWasHandedUp;
+
+  /// No description provided for @actionEscalatedToFilterAnyone.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone'**
+  String get actionEscalatedToFilterAnyone;
+
+  /// No description provided for @actionEscalatedToFilterWhoseQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Whose queue'**
+  String get actionEscalatedToFilterWhoseQueue;
+
+  /// No description provided for @actionEscalatedToFilterChooseTheOrgUnitThatConcernsWere.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the Org Unit that concerns were handed up to — what is waiting on the area, not what sits at the line — or clear back to everything.'**
+  String get actionEscalatedToFilterChooseTheOrgUnitThatConcernsWere;
+
+  /// No description provided for @commonRaiseAConcern.
+  ///
+  /// In en, this message translates to:
+  /// **'Raise a concern'**
+  String get commonRaiseAConcern;
+
+  /// No description provided for @actionFormRaiseIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Raise it'**
+  String get actionFormRaiseIt;
+
+  /// No description provided for @actionFormOneLineTheCauseGoesInThe.
+  ///
+  /// In en, this message translates to:
+  /// **'One line. The cause goes in the Plan phase, not here.'**
+  String get actionFormOneLineTheCauseGoesInThe;
+
+  /// No description provided for @commonKindOfAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Kind of Action'**
+  String get commonKindOfAction;
+
+  /// No description provided for @actionFormThePillarCatalogueCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The Pillar catalogue could not be read, so no Pillar can be chosen.'**
+  String get actionFormThePillarCatalogueCouldNotBeRead;
+
+  /// No description provided for @actionFormPillarOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Pillar (optional)'**
+  String get actionFormPillarOptional;
+
+  /// No description provided for @actionFormWhichSqdcpNumberDoesThisThreaten.
+  ///
+  /// In en, this message translates to:
+  /// **'Which SQDCP number does this threaten?'**
+  String get actionFormWhichSqdcpNumberDoesThisThreaten;
+
+  /// No description provided for @actionFormNoPillar.
+  ///
+  /// In en, this message translates to:
+  /// **'No Pillar'**
+  String get actionFormNoPillar;
+
+  /// No description provided for @commonOwnerOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner (optional)'**
+  String get commonOwnerOptional;
+
+  /// No description provided for @actionFormWhoWillDoItAnActionNobody.
+  ///
+  /// In en, this message translates to:
+  /// **'Who will do it. An Action nobody owns is visibly nobody\'s.'**
+  String get actionFormWhoWillDoItAnActionNobody;
+
+  /// No description provided for @commonDueOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Due (optional)'**
+  String get commonDueOptional;
+
+  /// No description provided for @actionFormChooseTheOrgUnitThisConcernIs.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the Org Unit this concern is about. This is what decides who may act on it.'**
+  String get actionFormChooseTheOrgUnitThisConcernIs;
+
+  /// No description provided for @actionFormThisConcernWillBeRecordedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'This concern will be recorded at {value}.'**
+  String actionFormThisConcernWillBeRecordedAt(Object value);
+
+  /// No description provided for @actionMeasureAddA.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a {value}'**
+  String actionMeasureAddA(Object value);
+
+  /// No description provided for @actionMeasureAddThe.
+  ///
+  /// In en, this message translates to:
+  /// **'Add the {value}'**
+  String actionMeasureAddThe(Object value);
+
+  /// No description provided for @actionMeasureAnswering.
+  ///
+  /// In en, this message translates to:
+  /// **'Answering {actionNo}: {title}'**
+  String actionMeasureAnswering(Object actionNo, Object title);
+
+  /// No description provided for @actionMeasureWhatWillBeDone.
+  ///
+  /// In en, this message translates to:
+  /// **'What will be done'**
+  String get actionMeasureWhatWillBeDone;
+
+  /// No description provided for @actionMeasureWhoWillDoIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Who will do it.'**
+  String get actionMeasureWhoWillDoIt;
+
+  /// No description provided for @actionMeasureWhereThisWorkHappens.
+  ///
+  /// In en, this message translates to:
+  /// **'Where this work happens'**
+  String get actionMeasureWhereThisWorkHappens;
+
+  /// No description provided for @actionMeasureLeaveItAloneToRecordTheMeasure.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave it alone to record the measure at {orgUnitName}, where the concern sits. A fix that belongs somewhere else — a store, a supplier — can name that instead.'**
+  String actionMeasureLeaveItAloneToRecordTheMeasure(Object orgUnitName);
+
+  /// No description provided for @actionOrgUnitFilterNarrowTheLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Narrow the log'**
+  String get actionOrgUnitFilterNarrowTheLog;
+
+  /// No description provided for @actionOrgUnitFilterChooseTheOrgUnitWhoseActionsAnd.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the Org Unit whose Actions and everything beneath it you want to read, or clear back to the whole Site.'**
+  String get actionOrgUnitFilterChooseTheOrgUnitWhoseActionsAnd;
+
+  /// No description provided for @actionPhaseCompleteThatIsNotTheOpenPhase.
+  ///
+  /// In en, this message translates to:
+  /// **'That is not the open phase'**
+  String get actionPhaseCompleteThatIsNotTheOpenPhase;
+
+  /// No description provided for @actionPhaseCompleteThisActionHasNoOpenPhaseLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'This Action has no open phase left.'**
+  String get actionPhaseCompleteThisActionHasNoOpenPhaseLeft;
+
+  /// No description provided for @actionPhaseCompleteThisActionIsWaitingOnItsPhase.
+  ///
+  /// In en, this message translates to:
+  /// **'This Action is waiting on its {value} phase, not its {value2}.'**
+  String actionPhaseCompleteThisActionIsWaitingOnItsPhase(
+    Object value,
+    Object value2,
+  );
+
+  /// No description provided for @actionPhaseCompleteCompleteThe.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete the {label}'**
+  String actionPhaseCompleteCompleteThe(Object label);
+
+  /// No description provided for @actionPhaseCompleteWhatWasMeasured.
+  ///
+  /// In en, this message translates to:
+  /// **'What was measured'**
+  String get actionPhaseCompleteWhatWasMeasured;
+
+  /// No description provided for @actionPhaseCompleteWhatWasDone.
+  ///
+  /// In en, this message translates to:
+  /// **'What was done'**
+  String get actionPhaseCompleteWhatWasDone;
+
+  /// No description provided for @actionPhaseCompleteDidItHold.
+  ///
+  /// In en, this message translates to:
+  /// **'Did it hold?'**
+  String get actionPhaseCompleteDidItHold;
+
+  /// No description provided for @actionPhaseCompleteAnsweringThatItDidNotOpensThe.
+  ///
+  /// In en, this message translates to:
+  /// **'Answering that it did not opens the next cycle rather than closing the Action, and keeps this round on the record.'**
+  String get actionPhaseCompleteAnsweringThatItDidNotOpensThe;
+
+  /// No description provided for @actionUnlinkNonconformanceThatConcernCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'That Concern could not be read'**
+  String get actionUnlinkNonconformanceThatConcernCouldNotBeRead;
+
+  /// No description provided for @actionUnlinkNonconformanceThatNonConformanceIsNotLinkedHere.
+  ///
+  /// In en, this message translates to:
+  /// **'That Non-conformance is not linked here'**
+  String get actionUnlinkNonconformanceThatNonConformanceIsNotLinkedHere;
+
+  /// No description provided for @actionUnlinkNonconformanceThisConcernAnswersNothingByThatId.
+  ///
+  /// In en, this message translates to:
+  /// **'This Concern answers nothing by that id. It may have been unlinked already, or the address may be wrong.'**
+  String get actionUnlinkNonconformanceThisConcernAnswersNothingByThatId;
+
+  /// No description provided for @actionUnlinkNonconformanceBackToTheConcern.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the Concern'**
+  String get actionUnlinkNonconformanceBackToTheConcern;
+
+  /// No description provided for @actionUnlinkNonconformanceUnlinkThisNonConformance.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlink this Non-conformance'**
+  String get actionUnlinkNonconformanceUnlinkThisNonConformance;
+
+  /// No description provided for @actionUnlinkNonconformanceKeepItLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep it linked'**
+  String get actionUnlinkNonconformanceKeepItLinked;
+
+  /// No description provided for @actionUnlinkNonconformanceUnlinkIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlink it'**
+  String get actionUnlinkNonconformanceUnlinkIt;
+
+  /// No description provided for @actionUnlinkNonconformanceItStopsBeingOneOfTheOccurrences.
+  ///
+  /// In en, this message translates to:
+  /// **'It stops being one of the occurrences this Concern answers. The Non-conformance itself is untouched — it keeps its number, its Dispositions and its quantity.'**
+  String get actionUnlinkNonconformanceItStopsBeingOneOfTheOccurrences;
+
+  /// No description provided for @actionsTheActionLogCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The action log could not be read'**
+  String get actionsTheActionLogCouldNotBeRead;
+
+  /// No description provided for @actionsWhatThePlantOwesAtThisSite.
+  ///
+  /// In en, this message translates to:
+  /// **'What the plant owes at this Site: what was found, who owns it, and when it is due. Overdue first.'**
+  String get actionsWhatThePlantOwesAtThisSite;
+
+  /// No description provided for @actionsEscalatedToAnyone.
+  ///
+  /// In en, this message translates to:
+  /// **'Escalated to anyone'**
+  String get actionsEscalatedToAnyone;
+
+  /// No description provided for @actionsEscalatedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Escalated to {escalatedToOrgUnitFilterName}'**
+  String actionsEscalatedTo(Object escalatedToOrgUnitFilterName);
+
+  /// No description provided for @actionsEveryKind.
+  ///
+  /// In en, this message translates to:
+  /// **'Every kind'**
+  String get actionsEveryKind;
+
+  /// No description provided for @actionsShowClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Show closed'**
+  String get actionsShowClosed;
+
+  /// No description provided for @actionsThereAreMoreActionsThanThisList.
+  ///
+  /// In en, this message translates to:
+  /// **'There are more Actions than this list shows. Narrow it by Org Unit, by status or by kind to see the rest.'**
+  String get actionsThereAreMoreActionsThanThisList;
+
+  /// No description provided for @actionsTheLogHasActionsButNoneOf.
+  ///
+  /// In en, this message translates to:
+  /// **'The log has Actions, but none of them is in the Org Unit, status or kind you picked.'**
+  String get actionsTheLogHasActionsButNoneOf;
+
+  /// No description provided for @actionsNothingOnTheLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing on the log'**
+  String get actionsNothingOnTheLog;
+
+  /// No description provided for @actionsNoActionHasBeenRaisedAtThis.
+  ///
+  /// In en, this message translates to:
+  /// **'No Action has been raised at this Site yet.'**
+  String get actionsNoActionHasBeenRaisedAtThis;
+
+  /// No description provided for @actionsSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get actionsSource;
+
+  /// No description provided for @actionsOfThemCountermeasures.
+  ///
+  /// In en, this message translates to:
+  /// **'{measureCount, plural, =1{1 measure} other{{measureCount} measures}}, {countermeasureCount} of them countermeasures'**
+  String actionsOfThemCountermeasures(
+    int measureCount,
+    int countermeasureCount,
+  );
+
+  /// No description provided for @actionsEscalatedTo2.
+  ///
+  /// In en, this message translates to:
+  /// **'Escalated to {escalatedToOrgUnitName}'**
+  String actionsEscalatedTo2(Object escalatedToOrgUnitName);
+
+  /// No description provided for @actionsNoDueDate.
+  ///
+  /// In en, this message translates to:
+  /// **'No due date'**
+  String get actionsNoDueDate;
+
+  /// No description provided for @actionsDue.
+  ///
+  /// In en, this message translates to:
+  /// **'Due {dueDate}'**
+  String actionsDue(Object dueDate);
+
+  /// No description provided for @commonBackToTheCapa.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the CAPA'**
+  String get commonBackToTheCapa;
+
+  /// No description provided for @commonThatCapaCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'That CAPA could not be read'**
+  String get commonThatCapaCouldNotBeRead;
+
+  /// No description provided for @capaCauseThatIsNotA6mCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'That is not a 6M category'**
+  String get capaCauseThatIsNotA6mCategory;
+
+  /// No description provided for @capaCauseAFishboneHasSixBonesManMachine.
+  ///
+  /// In en, this message translates to:
+  /// **'A fishbone has six bones: Man, Machine, Method, Material, Measurement and Environment.'**
+  String get capaCauseAFishboneHasSixBonesManMachine;
+
+  /// No description provided for @commonThisInvestigationIsOver.
+  ///
+  /// In en, this message translates to:
+  /// **'This investigation is over'**
+  String get commonThisInvestigationIsOver;
+
+  /// No description provided for @capaCauseIsSoItsFishboneIsARecord.
+  ///
+  /// In en, this message translates to:
+  /// **'{capaNo} is {value}, so its fishbone is a record rather than a worklist.'**
+  String capaCauseIsSoItsFishboneIsARecord(Object capaNo, Object value);
+
+  /// No description provided for @commonNotYoursToWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Not yours to write'**
+  String get commonNotYoursToWrite;
+
+  /// No description provided for @commonWritingACapaSRootCausesNeeds.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing a CAPA\'s root causes needs edit access at its Org Unit, or a place on its team.'**
+  String get commonWritingACapaSRootCausesNeeds;
+
+  /// No description provided for @capaCauseThatCauseIsNotOnThisBone.
+  ///
+  /// In en, this message translates to:
+  /// **'That cause is not on this bone'**
+  String get capaCauseThatCauseIsNotOnThisBone;
+
+  /// No description provided for @commonItMayHaveBeenRemovedAMoment.
+  ///
+  /// In en, this message translates to:
+  /// **'It may have been removed a moment ago by somebody else.'**
+  String get commonItMayHaveBeenRemovedAMoment;
+
+  /// No description provided for @capaCauseRecordACandidateCause.
+  ///
+  /// In en, this message translates to:
+  /// **'Record a candidate cause'**
+  String get capaCauseRecordACandidateCause;
+
+  /// No description provided for @capaCauseReviseTheCause.
+  ///
+  /// In en, this message translates to:
+  /// **'Revise the cause'**
+  String get capaCauseReviseTheCause;
+
+  /// No description provided for @capaCauseRemoveThisCause.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this cause?'**
+  String get capaCauseRemoveThisCause;
+
+  /// No description provided for @commonRemoveIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove it'**
+  String get commonRemoveIt;
+
+  /// No description provided for @capaCauseItIsTakenOffTheBoneFor.
+  ///
+  /// In en, this message translates to:
+  /// **'It is taken off the {categoryLabel} bone for good{value}. A chain started from it keeps the Why it began with.'**
+  String capaCauseItIsTakenOffTheBoneFor(Object categoryLabel, Object value);
+
+  /// No description provided for @capaCauseBothChainsHaveBeenStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Both chains have been started'**
+  String get capaCauseBothChainsHaveBeenStarted;
+
+  /// No description provided for @capaCauseAlreadyReasonsBothWhyTheProblemHappened.
+  ///
+  /// In en, this message translates to:
+  /// **'{capaNo} already reasons both why the problem happened and why it was not detected, so the Why for this cause belongs in one of them rather than at the head of a chain.'**
+  String capaCauseAlreadyReasonsBothWhyTheProblemHappened(Object capaNo);
+
+  /// No description provided for @capaCauseTheBoneItHangsFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'The bone it hangs from'**
+  String get capaCauseTheBoneItHangsFrom;
+
+  /// No description provided for @capaCauseTheCandidateCause.
+  ///
+  /// In en, this message translates to:
+  /// **'The candidate cause'**
+  String get capaCauseTheCandidateCause;
+
+  /// No description provided for @capaCauseWhatYouSuspectSaidSoTheNext.
+  ///
+  /// In en, this message translates to:
+  /// **'What you suspect, said so the next person can check it.'**
+  String get capaCauseWhatYouSuspectSaidSoTheNext;
+
+  /// No description provided for @capaCauseDecideThisCause.
+  ///
+  /// In en, this message translates to:
+  /// **'Decide this cause'**
+  String get capaCauseDecideThisCause;
+
+  /// No description provided for @capaCauseRecordTheVerdict.
+  ///
+  /// In en, this message translates to:
+  /// **'Record the verdict'**
+  String get capaCauseRecordTheVerdict;
+
+  /// No description provided for @capaCauseAVerdictIsADecisionTheReport.
+  ///
+  /// In en, this message translates to:
+  /// **'A verdict is a decision the report reads back, so it is recorded with the evidence for it.'**
+  String get capaCauseAVerdictIsADecisionTheReport;
+
+  /// No description provided for @capaCauseTheEvidence.
+  ///
+  /// In en, this message translates to:
+  /// **'The evidence'**
+  String get capaCauseTheEvidence;
+
+  /// No description provided for @capaCauseWhatYouLookedAtAndWhatIt.
+  ///
+  /// In en, this message translates to:
+  /// **'What you looked at, and what it showed.'**
+  String get capaCauseWhatYouLookedAtAndWhatIt;
+
+  /// No description provided for @capaCauseStartAChainFromThisCause.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a chain from this cause'**
+  String get capaCauseStartAChainFromThisCause;
+
+  /// No description provided for @capaCauseStartTheChain.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the chain'**
+  String get capaCauseStartTheChain;
+
+  /// No description provided for @capaCauseTheEvidenceConfirmedThisCauseSoA.
+  ///
+  /// In en, this message translates to:
+  /// **'The evidence confirmed this cause, so a chain may begin with it. What it says is the first Why.'**
+  String get capaCauseTheEvidenceConfirmedThisCauseSoA;
+
+  /// No description provided for @capaCauseWhichChainItBegins.
+  ///
+  /// In en, this message translates to:
+  /// **'Which chain it begins'**
+  String get capaCauseWhichChainItBegins;
+
+  /// No description provided for @capaCauseTheFirstWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'The first Why'**
+  String get capaCauseTheFirstWhy;
+
+  /// No description provided for @capaCauseTheConfirmedCauseSaidTheWayThe.
+  ///
+  /// In en, this message translates to:
+  /// **'The confirmed cause, said the way the chain should read.'**
+  String get capaCauseTheConfirmedCauseSaidTheWayThe;
+
+  /// No description provided for @capaDetailBackTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to {actionNo}'**
+  String capaDetailBackTo(Object actionNo);
+
+  /// No description provided for @capaDetailTheReport.
+  ///
+  /// In en, this message translates to:
+  /// **'The report'**
+  String get capaDetailTheReport;
+
+  /// No description provided for @capaDetailInvestigation.
+  ///
+  /// In en, this message translates to:
+  /// **'{methodLabel} investigation'**
+  String capaDetailInvestigation(Object methodLabel);
+
+  /// No description provided for @capaDetailDue.
+  ///
+  /// In en, this message translates to:
+  /// **'due {dueDate}'**
+  String capaDetailDue(Object dueDate);
+
+  /// No description provided for @capaDetailEffectiveness.
+  ///
+  /// In en, this message translates to:
+  /// **'Effectiveness'**
+  String get capaDetailEffectiveness;
+
+  /// No description provided for @commonACapaClosesOnlyWhenBothChains.
+  ///
+  /// In en, this message translates to:
+  /// **'A CAPA closes only when both chains have a confirmed root cause, its Concern is closed, and somebody holding Quality authority other than its team lead has verified, some time later, that the problem has not come back.'**
+  String get commonACapaClosesOnlyWhenBothChains;
+
+  /// No description provided for @capaDetailRecordedByOn.
+  ///
+  /// In en, this message translates to:
+  /// **'recorded by {value} on {value2}'**
+  String capaDetailRecordedByOn(Object value, Object value2);
+
+  /// No description provided for @capaDetailTheCheckDidNotHoldSoThe.
+  ///
+  /// In en, this message translates to:
+  /// **'The check did not hold, so the Concern is open again in its next cycle: the work is on its Screen, in the Concern this investigation answers.'**
+  String get capaDetailTheCheckDidNotHoldSoThe;
+
+  /// No description provided for @commonTheConcernHasClosedSoTheEffectiveness.
+  ///
+  /// In en, this message translates to:
+  /// **'The Concern has closed, so the effectiveness check is due on {dueAt}.'**
+  String commonTheConcernHasClosedSoTheEffectiveness(Object dueAt);
+
+  /// No description provided for @commonOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue'**
+  String get commonOverdue;
+
+  /// No description provided for @commonRecordTheEffectivenessCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Record the effectiveness check'**
+  String get commonRecordTheEffectivenessCheck;
+
+  /// No description provided for @capaDetailYouLeadThisInvestigationSoSomebodyElse.
+  ///
+  /// In en, this message translates to:
+  /// **'You lead this investigation, so somebody else records the check: a holder of Quality authority who is not on the team lead\'s Account.'**
+  String get capaDetailYouLeadThisInvestigationSoSomebodyElse;
+
+  /// No description provided for @capaDetailRecordingTheCheckNeedsQualityAuthorityAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording the check needs Quality authority at this Org Unit.'**
+  String get capaDetailRecordingTheCheckNeedsQualityAuthorityAt;
+
+  /// No description provided for @capaDetailTheCheckFallsDueDaysAfterThe.
+  ///
+  /// In en, this message translates to:
+  /// **'The check falls due {effectivenessCheckDelayDays} days after the Concern closes, and the Concern has not closed yet.'**
+  String capaDetailTheCheckFallsDueDaysAfterThe(
+    Object effectivenessCheckDelayDays,
+  );
+
+  /// No description provided for @capaDetailTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Team'**
+  String get capaDetailTeam;
+
+  /// No description provided for @commonNobodyIsOnThisInvestigationYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody is on this investigation yet.'**
+  String get commonNobodyIsOnThisInvestigationYet;
+
+  /// No description provided for @commonTeamLead.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} · team lead'**
+  String commonTeamLead(Object name);
+
+  /// No description provided for @capaDetailTheProblem.
+  ///
+  /// In en, this message translates to:
+  /// **'The problem'**
+  String get capaDetailTheProblem;
+
+  /// No description provided for @commonNobodyHasWrittenTheProblemDescriptionYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody has written the problem description yet.'**
+  String get commonNobodyHasWrittenTheProblemDescriptionYet;
+
+  /// No description provided for @capaDetailCandidateCauses.
+  ///
+  /// In en, this message translates to:
+  /// **'Candidate causes'**
+  String get capaDetailCandidateCauses;
+
+  /// No description provided for @capaDetailTheFishboneWhatTheTeamSuspectedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'The fishbone: what the team suspected, by 6M category, and what the evidence said about each one. The chain that follows begins with the cause it confirmed.'**
+  String get capaDetailTheFishboneWhatTheTeamSuspectedBy;
+
+  /// No description provided for @capaDetailThisInvestigationIsOverSoItsFishbone.
+  ///
+  /// In en, this message translates to:
+  /// **'This investigation is over, so its fishbone is a record rather than a worklist.'**
+  String get capaDetailThisInvestigationIsOverSoItsFishbone;
+
+  /// No description provided for @capaDetailRecordACause.
+  ///
+  /// In en, this message translates to:
+  /// **'Record a cause'**
+  String get capaDetailRecordACause;
+
+  /// No description provided for @capaDetailNothingIsRecordedUnder.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is recorded under {value}.'**
+  String capaDetailNothingIsRecordedUnder(Object value);
+
+  /// No description provided for @capaDetailCause.
+  ///
+  /// In en, this message translates to:
+  /// **'Cause {sequence}'**
+  String capaDetailCause(Object sequence);
+
+  /// No description provided for @commonEvidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Evidence: {evidenceNote}'**
+  String commonEvidence(Object evidenceNote);
+
+  /// No description provided for @capaDetailChangeTheVerdict.
+  ///
+  /// In en, this message translates to:
+  /// **'Change the verdict'**
+  String get capaDetailChangeTheVerdict;
+
+  /// No description provided for @capaDetailDecideIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Decide it'**
+  String get capaDetailDecideIt;
+
+  /// No description provided for @capaDetailStartAChainFromIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a chain from it'**
+  String get capaDetailStartAChainFromIt;
+
+  /// No description provided for @capaDetailRootCause.
+  ///
+  /// In en, this message translates to:
+  /// **'Root cause'**
+  String get capaDetailRootCause;
+
+  /// No description provided for @capaDetailTwoChainsEachEndingAtOneConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Two chains, each ending at one confirmed root cause: why the problem happened, and why it was not detected.'**
+  String get capaDetailTwoChainsEachEndingAtOneConfirmed;
+
+  /// No description provided for @capaDetailThisInvestigationIsOverSoItsChains.
+  ///
+  /// In en, this message translates to:
+  /// **'This investigation is over, so its chains are a record rather than a worklist.'**
+  String get capaDetailThisInvestigationIsOverSoItsChains;
+
+  /// No description provided for @commonAddAWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a Why'**
+  String get commonAddAWhy;
+
+  /// No description provided for @capaDetailOccurrence.
+  ///
+  /// In en, this message translates to:
+  /// **'occurrence'**
+  String get capaDetailOccurrence;
+
+  /// No description provided for @capaDetailWhyTheProblemHappenedOneStepAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Why the problem happened, one step at a time.'**
+  String get capaDetailWhyTheProblemHappenedOneStepAt;
+
+  /// No description provided for @capaDetailWhyItWasNotDetectedOneStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Why it was not detected, one step at a time.'**
+  String get capaDetailWhyItWasNotDetectedOneStep;
+
+  /// No description provided for @commonNobodyHasStartedThisChainYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody has started this chain yet.'**
+  String get commonNobodyHasStartedThisChainYet;
+
+  /// No description provided for @commonThisChainHasNoConfirmedRootCause.
+  ///
+  /// In en, this message translates to:
+  /// **'This chain has no confirmed root cause yet.'**
+  String get commonThisChainHasNoConfirmedRootCause;
+
+  /// No description provided for @commonConfirmedRootCause.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmed root cause: {statement}'**
+  String commonConfirmedRootCause(Object statement);
+
+  /// No description provided for @capaDetailWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Why {sequence}'**
+  String capaDetailWhy(Object sequence);
+
+  /// No description provided for @capaDetailConfirmedRootCause.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmed root cause'**
+  String get capaDetailConfirmedRootCause;
+
+  /// No description provided for @capaDetailClearTheRootCause.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear the root cause'**
+  String get capaDetailClearTheRootCause;
+
+  /// No description provided for @capaDetailThisIsTheRootCause.
+  ///
+  /// In en, this message translates to:
+  /// **'This is the root cause'**
+  String get capaDetailThisIsTheRootCause;
+
+  /// No description provided for @capaDetailMoveItEarlierInTheChain.
+  ///
+  /// In en, this message translates to:
+  /// **'Move it earlier in the chain'**
+  String get capaDetailMoveItEarlierInTheChain;
+
+  /// No description provided for @capaDetailMoveItLaterInTheChain.
+  ///
+  /// In en, this message translates to:
+  /// **'Move it later in the chain'**
+  String get capaDetailMoveItLaterInTheChain;
+
+  /// No description provided for @capaDetailTheConcern.
+  ///
+  /// In en, this message translates to:
+  /// **'The Concern'**
+  String get capaDetailTheConcern;
+
+  /// No description provided for @capaDetailTheConcern2.
+  ///
+  /// In en, this message translates to:
+  /// **'The Concern: {actionNo}'**
+  String capaDetailTheConcern2(Object actionNo);
+
+  /// No description provided for @capaDetailWhatTheConcernHasDone.
+  ///
+  /// In en, this message translates to:
+  /// **'What the Concern has done'**
+  String get capaDetailWhatTheConcernHasDone;
+
+  /// No description provided for @capaDetailWhatTheConcernHasDone2.
+  ///
+  /// In en, this message translates to:
+  /// **'What the Concern has done ({length})'**
+  String capaDetailWhatTheConcernHasDone2(Object length);
+
+  /// No description provided for @capaDetailTheContainmentD3TheCountermeasuresD5D6.
+  ///
+  /// In en, this message translates to:
+  /// **'The containment (D3), the countermeasures (D5-D6) and the preventive actions (D7) are the Concern\'s own, recorded once in the action log — this is where they are read, not where they are recorded again.'**
+  String get capaDetailTheContainmentD3TheCountermeasuresD5D6;
+
+  /// No description provided for @capaDetailNothingAnswersThisConcernYetSoThere.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing answers this Concern yet, so there is no work to show.'**
+  String get capaDetailNothingAnswersThisConcernYetSoThere;
+
+  /// No description provided for @commonCycle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cycle {cycle} · {phaseLabel}'**
+  String commonCycle(Object cycle, Object phaseLabel);
+
+  /// No description provided for @commonOpen2.
+  ///
+  /// In en, this message translates to:
+  /// **'open'**
+  String get commonOpen2;
+
+  /// No description provided for @capaEffectivenessIsSoItsEffectivenessIsRecordedAnd.
+  ///
+  /// In en, this message translates to:
+  /// **'{capaNo} is {value}, so its effectiveness is recorded and the record is read rather than changed.'**
+  String capaEffectivenessIsSoItsEffectivenessIsRecordedAnd(
+    Object capaNo,
+    Object value,
+  );
+
+  /// No description provided for @capaEffectivenessNotYoursToDecide.
+  ///
+  /// In en, this message translates to:
+  /// **'Not yours to decide'**
+  String get capaEffectivenessNotYoursToDecide;
+
+  /// No description provided for @capaEffectivenessRecordingACapaSEffectivenessCheckNeeds.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording a CAPA\'s effectiveness check needs Quality authority at its Org Unit.'**
+  String get capaEffectivenessRecordingACapaSEffectivenessCheckNeeds;
+
+  /// No description provided for @capaEffectivenessSomebodyElseHasToCheckThis.
+  ///
+  /// In en, this message translates to:
+  /// **'Somebody else has to check this'**
+  String get capaEffectivenessSomebodyElseHasToCheckThis;
+
+  /// No description provided for @capaEffectivenessYouLeadTheInvestigationOnSoYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You lead the investigation on {capaNo}, so you are the one person whose judgement about this fix is not evidence. A holder of Quality authority who is not on the team lead\'s Account records the check.'**
+  String capaEffectivenessYouLeadTheInvestigationOnSoYou(Object capaNo);
+
+  /// No description provided for @capaEffectivenessTheCheckFallsDueDaysAfterThe.
+  ///
+  /// In en, this message translates to:
+  /// **'The check falls due {effectivenessCheckDelayDays} days after the Concern closes.'**
+  String capaEffectivenessTheCheckFallsDueDaysAfterThe(
+    Object effectivenessCheckDelayDays,
+  );
+
+  /// No description provided for @capaEffectivenessTheConcernClosedAndTheCheckFell.
+  ///
+  /// In en, this message translates to:
+  /// **'The Concern closed, and the check fell due on {effectivenessCheckDueAt}.'**
+  String capaEffectivenessTheConcernClosedAndTheCheckFell(
+    Object effectivenessCheckDueAt,
+  );
+
+  /// No description provided for @capaEffectivenessWhatTheCheckFound.
+  ///
+  /// In en, this message translates to:
+  /// **'What the check found'**
+  String get capaEffectivenessWhatTheCheckFound;
+
+  /// No description provided for @capaEffectivenessAChainOfThisInvestigationHasNo.
+  ///
+  /// In en, this message translates to:
+  /// **'A chain of this investigation has no confirmed root cause yet, so \"{value}\" cannot close it: the investigation has to have finished before the fix is judged to have held.'**
+  String capaEffectivenessAChainOfThisInvestigationHasNo(Object value);
+
+  /// No description provided for @capaEffectivenessWhatYouCheckedAndWhatYouFound.
+  ///
+  /// In en, this message translates to:
+  /// **'What you checked, and what you found'**
+  String get capaEffectivenessWhatYouCheckedAndWhatYouFound;
+
+  /// No description provided for @capaEffectivenessTheEvidenceForTheVerdictSoThe.
+  ///
+  /// In en, this message translates to:
+  /// **'The evidence for the verdict, so the next reader can weigh it.'**
+  String get capaEffectivenessTheEvidenceForTheVerdictSoThe;
+
+  /// No description provided for @capaOrgUnitFilterChooseTheOrgUnitWhoseInvestigationsAnd.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the Org Unit whose investigations and everything beneath it you want to read, or clear back to every one of them.'**
+  String get capaOrgUnitFilterChooseTheOrgUnitWhoseInvestigationsAnd;
+
+  /// No description provided for @capaReportThatCapaReportCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'That CAPA report could not be read'**
+  String get capaReportThatCapaReportCouldNotBeRead;
+
+  /// No description provided for @capaReportThe8dRecordOfThisInvestigationIts.
+  ///
+  /// In en, this message translates to:
+  /// **'The 8D record of this investigation: its team, the problem it answers, what was done about it, and whether the fix held.'**
+  String get capaReportThe8dRecordOfThisInvestigationIts;
+
+  /// No description provided for @capaReportAnswersTheConcern.
+  ///
+  /// In en, this message translates to:
+  /// **'Answers the Concern {actionNo} · {title}'**
+  String capaReportAnswersTheConcern(Object actionNo, Object title);
+
+  /// No description provided for @capaReportNotYetDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Not yet done'**
+  String get capaReportNotYetDone;
+
+  /// No description provided for @capaReportWhatThisReportIsStillWaitingFor.
+  ///
+  /// In en, this message translates to:
+  /// **'What this report is still waiting for.'**
+  String get capaReportWhatThisReportIsStillWaitingFor;
+
+  /// No description provided for @capaReportD1Team.
+  ///
+  /// In en, this message translates to:
+  /// **'D1 · Team'**
+  String get capaReportD1Team;
+
+  /// No description provided for @capaReportWhoInvestigatedThisProblemAndWhoLed.
+  ///
+  /// In en, this message translates to:
+  /// **'Who investigated this problem, and who led it.'**
+  String get capaReportWhoInvestigatedThisProblemAndWhoLed;
+
+  /// No description provided for @capaReportD2TheProblem.
+  ///
+  /// In en, this message translates to:
+  /// **'D2 · The problem'**
+  String get capaReportD2TheProblem;
+
+  /// No description provided for @capaReportWhatTheTeamIsInvestigatingInThe.
+  ///
+  /// In en, this message translates to:
+  /// **'What the team is investigating, in the investigation\'s own words.'**
+  String get capaReportWhatTheTeamIsInvestigatingInThe;
+
+  /// No description provided for @capaReportD3Containment.
+  ///
+  /// In en, this message translates to:
+  /// **'D3 · Containment'**
+  String get capaReportD3Containment;
+
+  /// No description provided for @capaReportWhatWasDoneToStopTheBad.
+  ///
+  /// In en, this message translates to:
+  /// **'What was done to stop the bad product going any further.'**
+  String get capaReportWhatWasDoneToStopTheBad;
+
+  /// No description provided for @capaReportD4RootCause.
+  ///
+  /// In en, this message translates to:
+  /// **'D4 · Root cause'**
+  String get capaReportD4RootCause;
+
+  /// No description provided for @capaReportTheCandidateCausesTheTeamConsideredAnd.
+  ///
+  /// In en, this message translates to:
+  /// **'The candidate causes the team considered and the verdict on each, then two chains ending at one confirmed root cause: why the problem happened, and why it was not detected.'**
+  String get capaReportTheCandidateCausesTheTeamConsideredAnd;
+
+  /// No description provided for @capaReportD5D6Countermeasures.
+  ///
+  /// In en, this message translates to:
+  /// **'D5–D6 · Countermeasures'**
+  String get capaReportD5D6Countermeasures;
+
+  /// No description provided for @capaReportWhatWasDoneAboutTheCauseAnd.
+  ///
+  /// In en, this message translates to:
+  /// **'What was done about the cause, and whether its Check held.'**
+  String get capaReportWhatWasDoneAboutTheCauseAnd;
+
+  /// No description provided for @capaReportD7PreventiveActions.
+  ///
+  /// In en, this message translates to:
+  /// **'D7 · Preventive actions'**
+  String get capaReportD7PreventiveActions;
+
+  /// No description provided for @capaReportWhatStopsItHappeningOnThisLine.
+  ///
+  /// In en, this message translates to:
+  /// **'What stops it happening on this line again, with the outcome of every round.'**
+  String get capaReportWhatStopsItHappeningOnThisLine;
+
+  /// No description provided for @capaReportTheSafetyIncidentThisInvestigationAnswers.
+  ///
+  /// In en, this message translates to:
+  /// **'The Safety incident this investigation answers'**
+  String get capaReportTheSafetyIncidentThisInvestigationAnswers;
+
+  /// No description provided for @capaReportTheIncidentTheConcernWasRaisedFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'The incident the Concern was raised from, with its number and severity — never the injury details, which the incident\'s own record restricts.'**
+  String get capaReportTheIncidentTheConcernWasRaisedFrom;
+
+  /// No description provided for @capaReportTheNonConformancesThisInvestigationAnswers.
+  ///
+  /// In en, this message translates to:
+  /// **'The Non-conformances this investigation answers'**
+  String get capaReportTheNonConformancesThisInvestigationAnswers;
+
+  /// No description provided for @capaReportTheOccurrencesTheConcernAnswersWithThe.
+  ///
+  /// In en, this message translates to:
+  /// **'The occurrences the Concern answers, with the number, the Product, the Defect code, the quantity and what was decided about the product.'**
+  String get capaReportTheOccurrencesTheConcernAnswersWithThe;
+
+  /// No description provided for @capaReportNoNonConformanceIsLinkedToThis.
+  ///
+  /// In en, this message translates to:
+  /// **'No Non-conformance is linked to this Concern, so the report has no evidence to list.'**
+  String get capaReportNoNonConformanceIsLinkedToThis;
+
+  /// No description provided for @capaReportNoPhaseOfThisActionHasBeen.
+  ///
+  /// In en, this message translates to:
+  /// **'No phase of this Action has been completed yet.'**
+  String get capaReportNoPhaseOfThisActionHasBeen;
+
+  /// No description provided for @capaReportTheCandidateCausesConsidered.
+  ///
+  /// In en, this message translates to:
+  /// **'The candidate causes considered'**
+  String get capaReportTheCandidateCausesConsidered;
+
+  /// No description provided for @capaReportNoCandidateCauseIsRecordedSoNo.
+  ///
+  /// In en, this message translates to:
+  /// **'No candidate cause is recorded, so no fishbone was worked.'**
+  String get capaReportNoCandidateCauseIsRecordedSoNo;
+
+  /// No description provided for @capaReportWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Why {sequence} · {statement}'**
+  String capaReportWhy(Object sequence, Object statement);
+
+  /// No description provided for @capaReportD8Effectiveness.
+  ///
+  /// In en, this message translates to:
+  /// **'D8 · Effectiveness'**
+  String get capaReportD8Effectiveness;
+
+  /// No description provided for @capaReportVerifiedByOn.
+  ///
+  /// In en, this message translates to:
+  /// **'verified by {value} on {value2}'**
+  String capaReportVerifiedByOn(Object value, Object value2);
+
+  /// No description provided for @capaReportTheCheckFallsDueDaysAfterThe.
+  ///
+  /// In en, this message translates to:
+  /// **'The check falls due {effectivenessCheckDelayDays} days after the Concern closes, and the Concern has not closed yet, so nothing has been verified.'**
+  String capaReportTheCheckFallsDueDaysAfterThe(
+    Object effectivenessCheckDelayDays,
+  );
+
+  /// No description provided for @capaReportRaisedFromThis.
+  ///
+  /// In en, this message translates to:
+  /// **'raised from this'**
+  String get capaReportRaisedFromThis;
+
+  /// No description provided for @capaReportLinkedToThisConcern.
+  ///
+  /// In en, this message translates to:
+  /// **'linked to this Concern'**
+  String get capaReportLinkedToThisConcern;
+
+  /// No description provided for @capaReportNoProductFromThisOccurrenceHasA.
+  ///
+  /// In en, this message translates to:
+  /// **'No product from this occurrence has a Disposition yet.'**
+  String get capaReportNoProductFromThisOccurrenceHasA;
+
+  /// No description provided for @capaReportMinRework.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} min rework'**
+  String capaReportMinRework(Object value);
+
+  /// No description provided for @capaReportDecidedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'decided by {decidedBy}'**
+  String capaReportDecidedBy(Object decidedBy);
+
+  /// No description provided for @capaWhyThatIsNotAChain.
+  ///
+  /// In en, this message translates to:
+  /// **'That is not a chain'**
+  String get capaWhyThatIsNotAChain;
+
+  /// No description provided for @capaWhyACapaReasonsWithTwoChainsWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'A CAPA reasons with two chains: why the problem happened, and why it was not detected.'**
+  String get capaWhyACapaReasonsWithTwoChainsWhy;
+
+  /// No description provided for @capaWhyIsSoItsChainsAreARecord.
+  ///
+  /// In en, this message translates to:
+  /// **'{capaNo} is {value}, so its chains are a record rather than a worklist.'**
+  String capaWhyIsSoItsChainsAreARecord(Object capaNo, Object value);
+
+  /// No description provided for @capaWhyThatWhyIsNotInThisChain.
+  ///
+  /// In en, this message translates to:
+  /// **'That Why is not in this chain'**
+  String get capaWhyThatWhyIsNotInThisChain;
+
+  /// No description provided for @capaWhyReviseWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Revise Why {sequence}'**
+  String capaWhyReviseWhy(Object sequence);
+
+  /// No description provided for @capaWhyRemoveWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Why {sequence}?'**
+  String capaWhyRemoveWhy(Object sequence);
+
+  /// No description provided for @capaWhyItIsTakenOutOfTheChain.
+  ///
+  /// In en, this message translates to:
+  /// **'It is taken out of the chain for good, and the Whys after it move up one. The rest of the investigation is not touched.'**
+  String get capaWhyItIsTakenOutOfTheChain;
+
+  /// No description provided for @capaWhyOneStepOfTheReasoningInYour.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} — one step of the reasoning, in your own words.'**
+  String capaWhyOneStepOfTheReasoningInYour(Object value);
+
+  /// No description provided for @capaWhyTheWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'The Why'**
+  String get capaWhyTheWhy;
+
+  /// No description provided for @capaWhyWhatYouFoundSaidSoTheNext.
+  ///
+  /// In en, this message translates to:
+  /// **'What you found, said so the next person can follow it.'**
+  String get capaWhyWhatYouFoundSaidSoTheNext;
+
+  /// No description provided for @capasTheCapaListCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The CAPA list could not be read'**
+  String get capasTheCapaListCouldNotBeRead;
+
+  /// No description provided for @capasTheInvestigationsOpenedOnAConcernAnd.
+  ///
+  /// In en, this message translates to:
+  /// **'The investigations opened on a Concern, and the effectiveness check each one is waiting on.'**
+  String get capasTheInvestigationsOpenedOnAConcernAnd;
+
+  /// No description provided for @capasOverdueChecks.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue checks'**
+  String get capasOverdueChecks;
+
+  /// No description provided for @capasThereAreMoreInvestigationsThanThisList.
+  ///
+  /// In en, this message translates to:
+  /// **'There are more investigations than this list shows. Narrow it by Org Unit or status.'**
+  String get capasThereAreMoreInvestigationsThanThisList;
+
+  /// No description provided for @capasNoInvestigationMatchesTheOrgUnitStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'No investigation matches the Org Unit, status or overdue check you asked for.'**
+  String get capasNoInvestigationMatchesTheOrgUnitStatus;
+
+  /// No description provided for @capasNoInvestigationsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No investigations yet'**
+  String get capasNoInvestigationsYet;
+
+  /// No description provided for @capasACapaIsOpenedFromAConcern.
+  ///
+  /// In en, this message translates to:
+  /// **'A CAPA is opened from a Concern, when somebody decides that the problem needs a root cause and a fix that holds.'**
+  String get capasACapaIsOpenedFromAConcern;
+
+  /// No description provided for @capasInvestigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Investigation'**
+  String get capasInvestigation;
+
+  /// No description provided for @capasEffectivenessCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Effectiveness check'**
+  String get capasEffectivenessCheck;
+
+  /// No description provided for @capasOverdueCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue check'**
+  String get capasOverdueCheck;
+
+  /// No description provided for @capasRecordedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'{value}, recorded by {value2}.'**
+  String capasRecordedBy(Object value, Object value2);
+
+  /// No description provided for @capasTheEffectivenessCheckWasDueOn.
+  ///
+  /// In en, this message translates to:
+  /// **'The effectiveness check was due on {effectivenessCheckDueAt}.'**
+  String capasTheEffectivenessCheckWasDueOn(Object effectivenessCheckDueAt);
+
+  /// No description provided for @capasTheEffectivenessCheckIsDueOn.
+  ///
+  /// In en, this message translates to:
+  /// **'The effectiveness check is due on {effectivenessCheckDueAt}.'**
+  String capasTheEffectivenessCheckIsDueOn(Object effectivenessCheckDueAt);
+
+  /// No description provided for @capasTheEffectivenessCheckFallsDueDaysAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'The effectiveness check falls due {effectivenessCheckDelayDays} days after the Concern closes.'**
+  String capasTheEffectivenessCheckFallsDueDaysAfter(
+    Object effectivenessCheckDelayDays,
+  );
+
+  /// No description provided for @capasOnTheTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'{length} on the team'**
+  String capasOnTheTeam(Object length);
+
+  /// No description provided for @openCapaOpeningACapaNeedsAuthority.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening a CAPA needs authority'**
+  String get openCapaOpeningACapaNeedsAuthority;
+
+  /// No description provided for @openCapaOpeningACapaNeedsQualityAuthorityAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening a CAPA needs Quality authority at this Concern\'s Org Unit.'**
+  String get openCapaOpeningACapaNeedsQualityAuthorityAt;
+
+  /// No description provided for @openCapaOpenACapaOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a CAPA on {actionNo}'**
+  String openCapaOpenACapaOn(Object actionNo);
+
+  /// No description provided for @openCapaOpenTheCapa.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the CAPA'**
+  String get openCapaOpenTheCapa;
+
+  /// No description provided for @openCapaAn8dInvestigationInTheActionLog.
+  ///
+  /// In en, this message translates to:
+  /// **'{title} — an 8D investigation, in the action log, on this Concern. Its containments, countermeasures and preventive actions are the Concern\\u2019s own and are read on the CAPA rather than recorded again.'**
+  String openCapaAn8dInvestigationInTheActionLog(Object title);
+
+  /// No description provided for @openCapaTheProblemOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'The problem (optional)'**
+  String get openCapaTheProblemOptional;
+
+  /// No description provided for @openCapaD2WhatTheInvestigationIsAboutIn.
+  ///
+  /// In en, this message translates to:
+  /// **'D2 — what the investigation is about, in the words a team will work from.'**
+  String get openCapaD2WhatTheInvestigationIsAboutIn;
+
+  /// No description provided for @openCapaTheTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'The team'**
+  String get openCapaTheTeam;
+
+  /// No description provided for @openCapaChosenFromTheEmployeeDirectoryLeaveIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Chosen from the Employee directory. Leave it empty to decide the team later — the investigation is what is being opened here.'**
+  String get openCapaChosenFromTheEmployeeDirectoryLeaveIt;
+
+  /// No description provided for @openCapaTeamLeadOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Team lead (optional)'**
+  String get openCapaTeamLeadOptional;
+
+  /// No description provided for @openCapaWhoIsAnswerableForTheInvestigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Who is answerable for the investigation.'**
+  String get openCapaWhoIsAnswerableForTheInvestigation;
+
+  /// No description provided for @openCapaAddATeamMemberOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a team member (optional)'**
+  String get openCapaAddATeamMemberOptional;
+
+  /// No description provided for @openCapaNobodyElseIsOnThisInvestigationYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody else is on this investigation yet.'**
+  String get openCapaNobodyElseIsOnThisInvestigationYet;
+
+  /// No description provided for @awaitingApprovalYouReSignedInAsButAn.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re signed in as {email}, but an administrator hasn\'t admitted you to the Platform yet. Check back once they have.'**
+  String awaitingApprovalYouReSignedInAsButAn(Object email);
+
+  /// No description provided for @awaitingApprovalCheckAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Check again'**
+  String get awaitingApprovalCheckAgain;
+
+  /// No description provided for @signInPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get signInPassword;
+
+  /// No description provided for @signInCreateAnAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Create an account'**
+  String get signInCreateAnAccount;
+
+  /// No description provided for @signInContinueWithGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Google'**
+  String get signInContinueWithGoogle;
+
+  /// No description provided for @signInOneApplicationForRunningSeveralManufacturingPlants.
+  ///
+  /// In en, this message translates to:
+  /// **'One application for running several manufacturing plants.'**
+  String get signInOneApplicationForRunningSeveralManufacturingPlants;
+
+  /// No description provided for @accessDeniedNotAvailableToYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available to you'**
+  String get accessDeniedNotAvailableToYou;
+
+  /// No description provided for @accessDeniedThisPartOfThePlatformIsFor.
+  ///
+  /// In en, this message translates to:
+  /// **'This part of the Platform is for administrators. Ask one if you need what is here.'**
+  String get accessDeniedThisPartOfThePlatformIsFor;
+
+  /// No description provided for @commonBackToHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Home'**
+  String get commonBackToHome;
+
+  /// No description provided for @changePasswordAnAdministratorResetYourPasswordSoThe.
+  ///
+  /// In en, this message translates to:
+  /// **'An administrator reset your password, so the one you were given is temporary. Choose your own to continue.'**
+  String get changePasswordAnAdministratorResetYourPasswordSoThe;
+
+  /// No description provided for @notFoundScreenNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen not found'**
+  String get notFoundScreenNotFound;
+
+  /// No description provided for @notFoundThereIsNothingAt.
+  ///
+  /// In en, this message translates to:
+  /// **'There is nothing at {location}.'**
+  String notFoundThereIsNothingAt(Object location);
+
+  /// No description provided for @sessionErrorTheSessionCouldNotBeChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'The session could not be checked'**
+  String get sessionErrorTheSessionCouldNotBeChecked;
+
+  /// No description provided for @sessionErrorCouldNotCheckThisAccountSStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not check this Account\'s status: {message}'**
+  String sessionErrorCouldNotCheckThisAccountSStatus(Object message);
+
+  /// No description provided for @appDateFieldChooseADate.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a date'**
+  String get appDateFieldChooseADate;
+
+  /// No description provided for @appDateTimeFieldChooseADateAndTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a date and time'**
+  String get appDateTimeFieldChooseADateAndTime;
+
+  /// No description provided for @appSearchFieldNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get appSearchFieldNoMatches;
+
+  /// No description provided for @appSearchFieldNothingMatchedTryADifferentTerm.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matched \"{lastQueriedTerm}\" — try a different term.'**
+  String appSearchFieldNothingMatchedTryADifferentTerm(Object lastQueriedTerm);
+
+  /// No description provided for @appSearchFieldSearchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Search failed'**
+  String get appSearchFieldSearchFailed;
+
+  /// No description provided for @appSearchFieldThereAreMoreMatchesThanAreShown.
+  ///
+  /// In en, this message translates to:
+  /// **'There are more matches than are shown — keep typing to narrow the list.'**
+  String get appSearchFieldThereAreMoreMatchesThanAreShown;
+
+  /// No description provided for @failureStateNotVisibleToYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Not visible to you. {message}'**
+  String failureStateNotVisibleToYou(Object message);
+
+  /// No description provided for @failureStateNotVisibleToYou2.
+  ///
+  /// In en, this message translates to:
+  /// **'Not visible to you'**
+  String get failureStateNotVisibleToYou2;
+
+  /// No description provided for @signaturePadSignatureDrawingArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Signature drawing area'**
+  String get signaturePadSignatureDrawingArea;
 }
 
 class _AppLocalizationsDelegate

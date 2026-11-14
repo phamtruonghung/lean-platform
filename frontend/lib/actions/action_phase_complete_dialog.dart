@@ -17,6 +17,7 @@ import 'package:flutter/material.dart' hide Action;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'action.dart';
@@ -38,6 +39,7 @@ class ActionPhaseCompleteDialogHost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<ActionDetailBloc>().state;
 
     return switch (state) {
@@ -47,13 +49,13 @@ class ActionPhaseCompleteDialogHost extends StatelessWidget {
         ),
       ActionDetailUnavailable(message: final message) => AppDialog(
           key: notLoadedKey,
-          title: 'That Action could not be read',
+          title: l10n.commonThatActionCouldNotBeRead,
           description: message,
           size: AppDialogSize.decision,
           actions: [
             AppDialogAction(
               id: 'close',
-              label: 'Back',
+              label: l10n.commonBack,
               kind: AppDialogActionKind.dismiss,
               onPressed: () => context.pop(),
             ),
@@ -70,19 +72,19 @@ class ActionPhaseCompleteDialogHost extends StatelessWidget {
   /// rather than silently redirected, and the same wording the server's own
   /// 409 uses.
   Widget _refusal(BuildContext context, Action action) {
+    final l10n = AppLocalizations.of(context);
     final waitingOn = action.openPhase;
     return AppDialog(
       key: notOpenKey,
-      title: 'That is not the open phase',
+      title: l10n.actionPhaseCompleteThatIsNotTheOpenPhase,
       description: waitingOn == null
-          ? 'This Action has no open phase left.'
-          : 'This Action is waiting on its ${waitingOn.phaseLabel.toLowerCase()} phase, not its '
-              '${actionPhaseLabel(phase).toLowerCase()}.',
+          ? l10n.actionPhaseCompleteThisActionHasNoOpenPhaseLeft
+          : l10n.actionPhaseCompleteThisActionIsWaitingOnItsPhase(waitingOn.phaseLabel.toLowerCase(), actionPhaseLabel(phase).toLowerCase()),
       size: AppDialogSize.decision,
       actions: [
         AppDialogAction(
           id: 'close',
-          label: 'Back to the Action',
+          label: l10n.routerBackToAction,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => context.pop(),
         ),
@@ -158,24 +160,25 @@ class _ActionPhaseCompleteDialogState extends State<ActionPhaseCompleteDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final label = _phase.phaseLabel;
     return BlocListener<ActionDetailBloc, ActionDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Complete the $label',
+        title: l10n.actionPhaseCompleteCompleteThe(label),
         // A short form with a radio pair on a Check (issue #398's four widths).
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: 'cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => context.pop(),
           ),
           AppDialogAction(
             id: 'complete',
-            label: 'Complete the $label',
+            label: l10n.actionPhaseCompleteCompleteThe(label),
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -204,17 +207,16 @@ class _ActionPhaseCompleteDialogState extends State<ActionPhaseCompleteDialog> {
                 maxLines: 5,
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
-                  labelText: _isCheck ? 'What was measured' : 'What was done',
+                  labelText: _isCheck ? l10n.actionPhaseCompleteWhatWasMeasured : l10n.actionPhaseCompleteWhatWasDone,
                   border: const OutlineInputBorder(),
                 ),
               ),
               if (_isCheck) ...[
                 const SizedBox(height: Spacing.md),
-                Text('Did it hold?', style: theme.textTheme.titleSmall),
+                Text(l10n.actionPhaseCompleteDidItHold, style: theme.textTheme.titleSmall),
                 const SizedBox(height: Spacing.xxs),
                 Text(
-                  'Answering that it did not opens the next cycle rather than closing the '
-                  'Action, and keeps this round on the record.',
+                  l10n.actionPhaseCompleteAnsweringThatItDidNotOpensThe,
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),

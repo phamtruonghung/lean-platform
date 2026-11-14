@@ -22,6 +22,7 @@ import 'package:flutter/material.dart' hide Action;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
@@ -118,6 +119,7 @@ class _OpenCapaDialogState extends State<OpenCapaDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     // Quality authority is read here, in a build (ADR-0035), rather than passed
@@ -130,36 +132,36 @@ class _OpenCapaDialogState extends State<OpenCapaDialog> {
       // (the trap `docs/design-language.md` §11 records).
       return AppDialog(
         key: OpenCapaDialog.refusedKey,
-        title: 'Opening a CAPA needs authority',
+        title: l10n.openCapaOpeningACapaNeedsAuthority,
         size: AppDialogSize.decision,
         actions: [
           AppDialogAction(
             id: 'close',
-            label: 'Close',
+            label: l10n.downtimeClose,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => context.pop(),
           ),
         ],
-        child: const Text("Opening a CAPA needs Quality authority at this Concern's Org Unit."),
+        child: Text(l10n.openCapaOpeningACapaNeedsQualityAuthorityAt),
       );
     }
 
     return BlocListener<ActionDetailBloc, ActionDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Open a CAPA on ${widget.concern.actionNo}',
+        title: l10n.openCapaOpenACapaOn(widget.concern.actionNo),
         // A long form with two pickers and a chip row (issue #398's widths).
         size: AppDialogSize.wide,
         actions: [
           AppDialogAction(
             id: 'cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => context.pop(),
           ),
           AppDialogAction(
             id: 'open',
-            label: 'Open the CAPA',
+            label: l10n.openCapaOpenTheCapa,
             // Anything is enough: an investigation with no team and no
             // description yet is a real state, so nothing here blocks a caller
             // who has decided the problem needs one.
@@ -172,9 +174,7 @@ class _OpenCapaDialogState extends State<OpenCapaDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
                 Text(
-                  '${widget.concern.title} — an 8D investigation, in the action log, on this '
-                  'Concern. Its containments, countermeasures and preventive actions are the '
-                  'Concern\u2019s own and are read on the CAPA rather than recorded again.',
+                  l10n.openCapaAn8dInvestigationInTheActionLog(widget.concern.title),
                   style: theme.textTheme.bodyMedium
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
@@ -185,19 +185,17 @@ class _OpenCapaDialogState extends State<OpenCapaDialog> {
                   enabled: !_awaiting,
                   minLines: 2,
                   maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'The problem (optional)',
-                    helperText: 'D2 — what the investigation is about, in the words a team will '
-                        'work from.',
+                  decoration: InputDecoration(
+                    labelText: l10n.openCapaTheProblemOptional,
+                    helperText: l10n.openCapaD2WhatTheInvestigationIsAboutIn,
                     border: OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: Spacing.lg),
-                Text('The team', style: theme.textTheme.titleSmall),
+                Text(l10n.openCapaTheTeam, style: theme.textTheme.titleSmall),
                 const SizedBox(height: Spacing.xs),
                 Text(
-                  'Chosen from the Employee directory. Leave it empty to decide the team later — '
-                  'the investigation is what is being opened here.',
+                  l10n.openCapaChosenFromTheEmployeeDirectoryLeaveIt,
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
@@ -205,8 +203,8 @@ class _OpenCapaDialogState extends State<OpenCapaDialog> {
                 AppSearchField<Employee>(
                   key: OpenCapaDialog.teamLeadKey,
                   name: 'open-capa-team-lead',
-                  label: 'Team lead (optional)',
-                  helperText: 'Who is answerable for the investigation.',
+                  label: l10n.openCapaTeamLeadOptional,
+                  helperText: l10n.openCapaWhoIsAnswerableForTheInvestigation,
                   value: _lead,
                   enabled: !_awaiting,
                   onChanged: (employee) => setState(() => _lead = employee),
@@ -220,7 +218,7 @@ class _OpenCapaDialogState extends State<OpenCapaDialog> {
                 AppSearchField<Employee>(
                   key: OpenCapaDialog.memberSearchKey(_members.length),
                   name: OpenCapaDialog.memberSearchName(_members.length),
-                  label: 'Add a team member (optional)',
+                  label: l10n.openCapaAddATeamMemberOptional,
                   value: null,
                   enabled: !_awaiting,
                   // Nothing here is a *chosen value* to be retired — a pick
@@ -239,7 +237,7 @@ class _OpenCapaDialogState extends State<OpenCapaDialog> {
                     key: OpenCapaDialog.noMembersKey,
                     padding: const EdgeInsets.only(top: Spacing.sm),
                     child: Text(
-                      'Nobody else is on this investigation yet.',
+                      l10n.openCapaNobodyElseIsOnThisInvestigationYet,
                       style: theme.textTheme.bodySmall
                           ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),

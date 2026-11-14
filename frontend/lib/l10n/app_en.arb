@@ -2966,5 +2966,699 @@
   "commonDecline": "Decline",
   "commonOvertime": "Overtime",
   "commonSessionEnded": "This session has ended. Sign in again to continue.",
-  "attendanceRecordChooseAReasonForThisAbsence": "Choose a reason for this absence."
+  "attendanceRecordChooseAReasonForThisAbsence": "Choose a reason for this absence.",
+  "commonThatActionCouldNotBeRead": "That Action could not be read",
+  "commonThatActionHasEnded": "That Action has ended",
+  "commonDone": "done",
+  "actionCancelItIsClosedSoThereIsNothing": "It is closed, so there is nothing left to call off.",
+  "actionCancelItWasAlreadyCancelled": "It was already cancelled.",
+  "actionCancelCallOff": "Call off {actionNo}?",
+  "@actionCancelCallOff": {
+    "placeholders": {
+      "actionNo": {"type": "Object"}
+    }
+  },
+  "actionCancelLeaveItAlone": "Leave it alone",
+  "actionCancelCallItOff": "Call it off",
+  "actionCancelCallingItOffEndsTheRecordWithout": "Calling it off ends the record without claiming anything was done about it. The row stays, with the reason you give it.",
+  "actionCancelWhyOptional": "Why (optional)",
+  "actionCancelRaisedInErrorADuplicateOvertakenBy": "Raised in error, a duplicate, overtaken by events.",
+  "commonBackToTheActionLog": "Back to the action log",
+  "actionDetailHandItUp": "Hand it up…",
+  "actionDetailCallItOff": "Call it off…",
+  "actionDetailWhereItStands": "Where it stands",
+  "commonOwner": "Owner",
+  "actionDetailEscalatedTo": "Escalated to",
+  "actionDetailClosingNote": "Closing note",
+  "actionDetailPillar": "Pillar {pillarCode}",
+  "@actionDetailPillar": {
+    "placeholders": {
+      "pillarCode": {"type": "Object"}
+    }
+  },
+  "commonOverdueByDays": "Overdue by {daysOverdue} days",
+  "@commonOverdueByDays": {
+    "placeholders": {
+      "daysOverdue": {"type": "Object"}
+    }
+  },
+  "actionDetailCycle": "Cycle {currentCycle}",
+  "@actionDetailCycle": {
+    "placeholders": {
+      "currentCycle": {"type": "Object"}
+    }
+  },
+  "actionDetailCompleteThe": "Complete the {phaseLabel}",
+  "@actionDetailCompleteThe": {
+    "placeholders": {
+      "phaseLabel": {"type": "Object"}
+    }
+  },
+  "actionDetailThisActionHasNoPhasesLeft": "This Action has no phases left.",
+  "actionDetailEarlierRounds": "Earlier rounds",
+  "actionDetailOpenWaitingOnThis": "Open — waiting on this",
+  "actionDetailNoNoteRecorded": "No note recorded",
+  "actionDetailDue": "due {dueDate}",
+  "@actionDetailDue": {
+    "placeholders": {
+      "dueDate": {"type": "Object"}
+    }
+  },
+  "actionDetailDone": "done {value}",
+  "@actionDetailDone": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "actionDetailAnswers": "Answers {actionNo}",
+  "@actionDetailAnswers": {
+    "placeholders": {
+      "actionNo": {"type": "Object"}
+    }
+  },
+  "commonCapa": "CAPA",
+  "actionDetailAFormal8dInvestigationOpenedOnThis": "A formal 8D investigation opened on this Concern: its team, its problem description and — as those slices land — its root causes and its effectiveness check. Its actions are the ones below, recorded once in the action log and read there.",
+  "actionDetailUnderInvestigation": "Under investigation: {capaNo}",
+  "@actionDetailUnderInvestigation": {
+    "placeholders": {
+      "capaNo": {"type": "Object"}
+    }
+  },
+  "actionDetailOpenACapa": "Open a CAPA…",
+  "actionDetailNobodyHasOpenedACapaOnThis": "Nobody has opened a CAPA on this Concern. Opening one needs Quality authority at this Concern's Org Unit.",
+  "actionDetailMeasures": "Measures",
+  "actionDetailMeasuresOfThemCountermeasures": "Measures ({length}, {countermeasureCount} of them countermeasures)",
+  "@actionDetailMeasuresOfThemCountermeasures": {
+    "placeholders": {
+      "length": {"type": "Object"},
+      "countermeasureCount": {"type": "Object"}
+    }
+  },
+  "actionDetailAddAMeasure": "Add a measure",
+  "actionDetailAddA": "Add a {value}…",
+  "@actionDetailAddA": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "actionDetailEachMeasureIsAnActionOfIts": "Each measure is an Action of its own: open one and run its own cycle to its Act, and it counts as closed.",
+  "actionDetailThisActionAnswersNoConcernOfIts": "This Action answers no Concern of its own.",
+  "actionDetailNothingAnswersThisYetAContainmentStops": "Nothing answers this yet. A containment stops the effect now; a countermeasure removes the cause.",
+  "commonNobodyYet": "Nobody yet",
+  "actionDetailOverdueByDays": "overdue by {daysOverdue} days",
+  "@actionDetailOverdueByDays": {
+    "placeholders": {
+      "daysOverdue": {"type": "Object"}
+    }
+  },
+  "commonWaitingOnIts": "waiting on its {value}",
+  "@commonWaitingOnIts": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "actionDetailCompleteThe2": "Complete the {value}…",
+  "@actionDetailCompleteThe2": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "actionDetailNonConformances": "Non-conformances ({length})",
+  "@actionDetailNonConformances": {
+    "placeholders": {
+      "length": {"type": "Object"}
+    }
+  },
+  "actionDetailTheOccurrencesThisConcernAnswersOneProblem": "The occurrences this Concern answers. One problem that shows up several times stays one Concern, so a further occurrence is linked here rather than raised as another.",
+  "actionDetailNoNonConformanceIsLinkedToThis": "No Non-conformance is linked to this Concern.",
+  "actionDetailRaisedFromThis": "Raised from this",
+  "actionDetailUnlink": "Unlink…",
+  "actionDetailTheObservationThisActionWasRaisedFrom": "The observation this Action was raised from — what was seen, and how bad it could have been.",
+  "actionDetailTheIncidentThisConcernWasRaisedFrom": "The incident this Concern was raised from — its number and its severity, never who was hurt or their diagnosis.",
+  "actionEscalateItIsClosedWhoeverNeededToKnow": "It is closed. Whoever needed to know about it was told before it was.",
+  "actionEscalateItWasCalledOffSoThereIs": "It was called off, so there is nothing to hand up.",
+  "actionEscalateNowhereToHandItUpTo": "Nowhere to hand it up to",
+  "actionEscalateThereIsNobodyAboveThis": "There is nobody above this",
+  "actionEscalateSitsAtWhichIsAlreadyTheTop": "{actionNo} sits at {orgUnitName}, which is already the top of this Site. Nothing above it can be told.",
+  "@actionEscalateSitsAtWhichIsAlreadyTheTop": {
+    "placeholders": {
+      "actionNo": {"type": "Object"},
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "actionEscalateHandUp": "Hand {actionNo} up",
+  "@actionEscalateHandUp": {
+    "placeholders": {
+      "actionNo": {"type": "Object"}
+    }
+  },
+  "actionEscalateHandItUp": "Hand it up",
+  "actionEscalateRaisingThisTellsTheOrgUnitYou": "Raising this tells the Org Unit you choose. It stays where it is and keeps its owner and its cycle — this asks somebody above to know about it, not to take it over.",
+  "actionEscalateNearestAboveIt": "{code} · nearest above it",
+  "@actionEscalateNearestAboveIt": {
+    "placeholders": {
+      "code": {"type": "Object"}
+    }
+  },
+  "actionEscalatedToFilterFilterByWhatWasHandedUp": "Filter by what was handed up",
+  "actionEscalatedToFilterAnyone": "Anyone",
+  "actionEscalatedToFilterWhoseQueue": "Whose queue",
+  "actionEscalatedToFilterChooseTheOrgUnitThatConcernsWere": "Choose the Org Unit that concerns were handed up to — what is waiting on the area, not what sits at the line — or clear back to everything.",
+  "commonRaiseAConcern": "Raise a concern",
+  "actionFormRaiseIt": "Raise it",
+  "actionFormOneLineTheCauseGoesInThe": "One line. The cause goes in the Plan phase, not here.",
+  "commonKindOfAction": "Kind of Action",
+  "actionFormThePillarCatalogueCouldNotBeRead": "The Pillar catalogue could not be read, so no Pillar can be chosen.",
+  "actionFormPillarOptional": "Pillar (optional)",
+  "actionFormWhichSqdcpNumberDoesThisThreaten": "Which SQDCP number does this threaten?",
+  "actionFormNoPillar": "No Pillar",
+  "commonOwnerOptional": "Owner (optional)",
+  "actionFormWhoWillDoItAnActionNobody": "Who will do it. An Action nobody owns is visibly nobody's.",
+  "commonDueOptional": "Due (optional)",
+  "actionFormChooseTheOrgUnitThisConcernIs": "Choose the Org Unit this concern is about. This is what decides who may act on it.",
+  "actionFormThisConcernWillBeRecordedAt": "This concern will be recorded at {value}.",
+  "@actionFormThisConcernWillBeRecordedAt": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "actionMeasureAddA": "Add a {value}",
+  "@actionMeasureAddA": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "actionMeasureAddThe": "Add the {value}",
+  "@actionMeasureAddThe": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "actionMeasureAnswering": "Answering {actionNo}: {title}",
+  "@actionMeasureAnswering": {
+    "placeholders": {
+      "actionNo": {"type": "Object"},
+      "title": {"type": "Object"}
+    }
+  },
+  "actionMeasureWhatWillBeDone": "What will be done",
+  "actionMeasureWhoWillDoIt": "Who will do it.",
+  "actionMeasureWhereThisWorkHappens": "Where this work happens",
+  "actionMeasureLeaveItAloneToRecordTheMeasure": "Leave it alone to record the measure at {orgUnitName}, where the concern sits. A fix that belongs somewhere else — a store, a supplier — can name that instead.",
+  "@actionMeasureLeaveItAloneToRecordTheMeasure": {
+    "placeholders": {
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "actionOrgUnitFilterNarrowTheLog": "Narrow the log",
+  "actionOrgUnitFilterChooseTheOrgUnitWhoseActionsAnd": "Choose the Org Unit whose Actions and everything beneath it you want to read, or clear back to the whole Site.",
+  "actionPhaseCompleteThatIsNotTheOpenPhase": "That is not the open phase",
+  "actionPhaseCompleteThisActionHasNoOpenPhaseLeft": "This Action has no open phase left.",
+  "actionPhaseCompleteThisActionIsWaitingOnItsPhase": "This Action is waiting on its {value} phase, not its {value2}.",
+  "@actionPhaseCompleteThisActionIsWaitingOnItsPhase": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "actionPhaseCompleteCompleteThe": "Complete the {label}",
+  "@actionPhaseCompleteCompleteThe": {
+    "placeholders": {
+      "label": {"type": "Object"}
+    }
+  },
+  "actionPhaseCompleteWhatWasMeasured": "What was measured",
+  "actionPhaseCompleteWhatWasDone": "What was done",
+  "actionPhaseCompleteDidItHold": "Did it hold?",
+  "actionPhaseCompleteAnsweringThatItDidNotOpensThe": "Answering that it did not opens the next cycle rather than closing the Action, and keeps this round on the record.",
+  "actionUnlinkNonconformanceThatConcernCouldNotBeRead": "That Concern could not be read",
+  "actionUnlinkNonconformanceThatNonConformanceIsNotLinkedHere": "That Non-conformance is not linked here",
+  "actionUnlinkNonconformanceThisConcernAnswersNothingByThatId": "This Concern answers nothing by that id. It may have been unlinked already, or the address may be wrong.",
+  "actionUnlinkNonconformanceBackToTheConcern": "Back to the Concern",
+  "actionUnlinkNonconformanceUnlinkThisNonConformance": "Unlink this Non-conformance",
+  "actionUnlinkNonconformanceKeepItLinked": "Keep it linked",
+  "actionUnlinkNonconformanceUnlinkIt": "Unlink it",
+  "actionUnlinkNonconformanceItStopsBeingOneOfTheOccurrences": "It stops being one of the occurrences this Concern answers. The Non-conformance itself is untouched — it keeps its number, its Dispositions and its quantity.",
+  "actionsTheActionLogCouldNotBeRead": "The action log could not be read",
+  "actionsWhatThePlantOwesAtThisSite": "What the plant owes at this Site: what was found, who owns it, and when it is due. Overdue first.",
+  "actionsEscalatedToAnyone": "Escalated to anyone",
+  "actionsEscalatedTo": "Escalated to {escalatedToOrgUnitFilterName}",
+  "@actionsEscalatedTo": {
+    "placeholders": {
+      "escalatedToOrgUnitFilterName": {"type": "Object"}
+    }
+  },
+  "actionsEveryKind": "Every kind",
+  "actionsShowClosed": "Show closed",
+  "actionsThereAreMoreActionsThanThisList": "There are more Actions than this list shows. Narrow it by Org Unit, by status or by kind to see the rest.",
+  "actionsTheLogHasActionsButNoneOf": "The log has Actions, but none of them is in the Org Unit, status or kind you picked.",
+  "actionsNothingOnTheLog": "Nothing on the log",
+  "actionsNoActionHasBeenRaisedAtThis": "No Action has been raised at this Site yet.",
+  "actionsSource": "Source",
+  "actionsOfThemCountermeasures": "{measureCount, plural, =1{1 measure} other{{measureCount} measures}}, {countermeasureCount} of them countermeasures",
+  "@actionsOfThemCountermeasures": {
+    "placeholders": {
+      "measureCount": {"type": "int"},
+      "countermeasureCount": {"type": "int"}
+    }
+  },
+  "actionsEscalatedTo2": "Escalated to {escalatedToOrgUnitName}",
+  "@actionsEscalatedTo2": {
+    "placeholders": {
+      "escalatedToOrgUnitName": {"type": "Object"}
+    }
+  },
+  "actionsNoDueDate": "No due date",
+  "actionsDue": "Due {dueDate}",
+  "@actionsDue": {
+    "placeholders": {
+      "dueDate": {"type": "Object"}
+    }
+  },
+  "commonBackToTheCapa": "Back to the CAPA",
+  "commonThatCapaCouldNotBeRead": "That CAPA could not be read",
+  "capaCauseThatIsNotA6mCategory": "That is not a 6M category",
+  "capaCauseAFishboneHasSixBonesManMachine": "A fishbone has six bones: Man, Machine, Method, Material, Measurement and Environment.",
+  "commonThisInvestigationIsOver": "This investigation is over",
+  "capaCauseIsSoItsFishboneIsARecord": "{capaNo} is {value}, so its fishbone is a record rather than a worklist.",
+  "@capaCauseIsSoItsFishboneIsARecord": {
+    "placeholders": {
+      "capaNo": {"type": "Object"},
+      "value": {"type": "Object"}
+    }
+  },
+  "commonNotYoursToWrite": "Not yours to write",
+  "commonWritingACapaSRootCausesNeeds": "Writing a CAPA's root causes needs edit access at its Org Unit, or a place on its team.",
+  "capaCauseThatCauseIsNotOnThisBone": "That cause is not on this bone",
+  "commonItMayHaveBeenRemovedAMoment": "It may have been removed a moment ago by somebody else.",
+  "capaCauseRecordACandidateCause": "Record a candidate cause",
+  "capaCauseReviseTheCause": "Revise the cause",
+  "capaCauseRemoveThisCause": "Remove this cause?",
+  "commonRemoveIt": "Remove it",
+  "capaCauseItIsTakenOffTheBoneFor": "It is taken off the {categoryLabel} bone for good{value}. A chain started from it keeps the Why it began with.",
+  "@capaCauseItIsTakenOffTheBoneFor": {
+    "placeholders": {
+      "categoryLabel": {"type": "Object"},
+      "value": {"type": "Object"}
+    }
+  },
+  "capaCauseBothChainsHaveBeenStarted": "Both chains have been started",
+  "capaCauseAlreadyReasonsBothWhyTheProblemHappened": "{capaNo} already reasons both why the problem happened and why it was not detected, so the Why for this cause belongs in one of them rather than at the head of a chain.",
+  "@capaCauseAlreadyReasonsBothWhyTheProblemHappened": {
+    "placeholders": {
+      "capaNo": {"type": "Object"}
+    }
+  },
+  "capaCauseTheBoneItHangsFrom": "The bone it hangs from",
+  "capaCauseTheCandidateCause": "The candidate cause",
+  "capaCauseWhatYouSuspectSaidSoTheNext": "What you suspect, said so the next person can check it.",
+  "capaCauseDecideThisCause": "Decide this cause",
+  "capaCauseRecordTheVerdict": "Record the verdict",
+  "capaCauseAVerdictIsADecisionTheReport": "A verdict is a decision the report reads back, so it is recorded with the evidence for it.",
+  "capaCauseTheEvidence": "The evidence",
+  "capaCauseWhatYouLookedAtAndWhatIt": "What you looked at, and what it showed.",
+  "capaCauseStartAChainFromThisCause": "Start a chain from this cause",
+  "capaCauseStartTheChain": "Start the chain",
+  "capaCauseTheEvidenceConfirmedThisCauseSoA": "The evidence confirmed this cause, so a chain may begin with it. What it says is the first Why.",
+  "capaCauseWhichChainItBegins": "Which chain it begins",
+  "capaCauseTheFirstWhy": "The first Why",
+  "capaCauseTheConfirmedCauseSaidTheWayThe": "The confirmed cause, said the way the chain should read.",
+  "capaDetailBackTo": "Back to {actionNo}",
+  "@capaDetailBackTo": {
+    "placeholders": {
+      "actionNo": {"type": "Object"}
+    }
+  },
+  "capaDetailTheReport": "The report",
+  "capaDetailInvestigation": "{methodLabel} investigation",
+  "@capaDetailInvestigation": {
+    "placeholders": {
+      "methodLabel": {"type": "Object"}
+    }
+  },
+  "capaDetailDue": "due {dueDate}",
+  "@capaDetailDue": {
+    "placeholders": {
+      "dueDate": {"type": "Object"}
+    }
+  },
+  "capaDetailEffectiveness": "Effectiveness",
+  "commonACapaClosesOnlyWhenBothChains": "A CAPA closes only when both chains have a confirmed root cause, its Concern is closed, and somebody holding Quality authority other than its team lead has verified, some time later, that the problem has not come back.",
+  "capaDetailRecordedByOn": "recorded by {value} on {value2}",
+  "@capaDetailRecordedByOn": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "capaDetailTheCheckDidNotHoldSoThe": "The check did not hold, so the Concern is open again in its next cycle: the work is on its Screen, in the Concern this investigation answers.",
+  "commonTheConcernHasClosedSoTheEffectiveness": "The Concern has closed, so the effectiveness check is due on {dueAt}.",
+  "@commonTheConcernHasClosedSoTheEffectiveness": {
+    "placeholders": {
+      "dueAt": {"type": "Object"}
+    }
+  },
+  "commonOverdue": "Overdue",
+  "commonRecordTheEffectivenessCheck": "Record the effectiveness check",
+  "capaDetailYouLeadThisInvestigationSoSomebodyElse": "You lead this investigation, so somebody else records the check: a holder of Quality authority who is not on the team lead's Account.",
+  "capaDetailRecordingTheCheckNeedsQualityAuthorityAt": "Recording the check needs Quality authority at this Org Unit.",
+  "capaDetailTheCheckFallsDueDaysAfterThe": "The check falls due {effectivenessCheckDelayDays} days after the Concern closes, and the Concern has not closed yet.",
+  "@capaDetailTheCheckFallsDueDaysAfterThe": {
+    "placeholders": {
+      "effectivenessCheckDelayDays": {"type": "Object"}
+    }
+  },
+  "capaDetailTeam": "Team",
+  "commonNobodyIsOnThisInvestigationYet": "Nobody is on this investigation yet.",
+  "commonTeamLead": "{name} · team lead",
+  "@commonTeamLead": {
+    "placeholders": {
+      "name": {"type": "Object"}
+    }
+  },
+  "capaDetailTheProblem": "The problem",
+  "commonNobodyHasWrittenTheProblemDescriptionYet": "Nobody has written the problem description yet.",
+  "capaDetailCandidateCauses": "Candidate causes",
+  "capaDetailTheFishboneWhatTheTeamSuspectedBy": "The fishbone: what the team suspected, by 6M category, and what the evidence said about each one. The chain that follows begins with the cause it confirmed.",
+  "capaDetailThisInvestigationIsOverSoItsFishbone": "This investigation is over, so its fishbone is a record rather than a worklist.",
+  "capaDetailRecordACause": "Record a cause",
+  "capaDetailNothingIsRecordedUnder": "Nothing is recorded under {value}.",
+  "@capaDetailNothingIsRecordedUnder": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "capaDetailCause": "Cause {sequence}",
+  "@capaDetailCause": {
+    "placeholders": {
+      "sequence": {"type": "Object"}
+    }
+  },
+  "commonEvidence": "Evidence: {evidenceNote}",
+  "@commonEvidence": {
+    "placeholders": {
+      "evidenceNote": {"type": "Object"}
+    }
+  },
+  "capaDetailChangeTheVerdict": "Change the verdict",
+  "capaDetailDecideIt": "Decide it",
+  "capaDetailStartAChainFromIt": "Start a chain from it",
+  "capaDetailRootCause": "Root cause",
+  "capaDetailTwoChainsEachEndingAtOneConfirmed": "Two chains, each ending at one confirmed root cause: why the problem happened, and why it was not detected.",
+  "capaDetailThisInvestigationIsOverSoItsChains": "This investigation is over, so its chains are a record rather than a worklist.",
+  "commonAddAWhy": "Add a Why",
+  "capaDetailOccurrence": "occurrence",
+  "capaDetailWhyTheProblemHappenedOneStepAt": "Why the problem happened, one step at a time.",
+  "capaDetailWhyItWasNotDetectedOneStep": "Why it was not detected, one step at a time.",
+  "commonNobodyHasStartedThisChainYet": "Nobody has started this chain yet.",
+  "commonThisChainHasNoConfirmedRootCause": "This chain has no confirmed root cause yet.",
+  "commonConfirmedRootCause": "Confirmed root cause: {statement}",
+  "@commonConfirmedRootCause": {
+    "placeholders": {
+      "statement": {"type": "Object"}
+    }
+  },
+  "capaDetailWhy": "Why {sequence}",
+  "@capaDetailWhy": {
+    "placeholders": {
+      "sequence": {"type": "Object"}
+    }
+  },
+  "capaDetailConfirmedRootCause": "Confirmed root cause",
+  "capaDetailClearTheRootCause": "Clear the root cause",
+  "capaDetailThisIsTheRootCause": "This is the root cause",
+  "capaDetailMoveItEarlierInTheChain": "Move it earlier in the chain",
+  "capaDetailMoveItLaterInTheChain": "Move it later in the chain",
+  "capaDetailTheConcern": "The Concern",
+  "capaDetailTheConcern2": "The Concern: {actionNo}",
+  "@capaDetailTheConcern2": {
+    "placeholders": {
+      "actionNo": {"type": "Object"}
+    }
+  },
+  "capaDetailWhatTheConcernHasDone": "What the Concern has done",
+  "capaDetailWhatTheConcernHasDone2": "What the Concern has done ({length})",
+  "@capaDetailWhatTheConcernHasDone2": {
+    "placeholders": {
+      "length": {"type": "Object"}
+    }
+  },
+  "capaDetailTheContainmentD3TheCountermeasuresD5D6": "The containment (D3), the countermeasures (D5-D6) and the preventive actions (D7) are the Concern's own, recorded once in the action log — this is where they are read, not where they are recorded again.",
+  "capaDetailNothingAnswersThisConcernYetSoThere": "Nothing answers this Concern yet, so there is no work to show.",
+  "commonCycle": "Cycle {cycle} · {phaseLabel}",
+  "@commonCycle": {
+    "placeholders": {
+      "cycle": {"type": "Object"},
+      "phaseLabel": {"type": "Object"}
+    }
+  },
+  "commonOpen2": "open",
+  "capaEffectivenessIsSoItsEffectivenessIsRecordedAnd": "{capaNo} is {value}, so its effectiveness is recorded and the record is read rather than changed.",
+  "@capaEffectivenessIsSoItsEffectivenessIsRecordedAnd": {
+    "placeholders": {
+      "capaNo": {"type": "Object"},
+      "value": {"type": "Object"}
+    }
+  },
+  "capaEffectivenessNotYoursToDecide": "Not yours to decide",
+  "capaEffectivenessRecordingACapaSEffectivenessCheckNeeds": "Recording a CAPA's effectiveness check needs Quality authority at its Org Unit.",
+  "capaEffectivenessSomebodyElseHasToCheckThis": "Somebody else has to check this",
+  "capaEffectivenessYouLeadTheInvestigationOnSoYou": "You lead the investigation on {capaNo}, so you are the one person whose judgement about this fix is not evidence. A holder of Quality authority who is not on the team lead's Account records the check.",
+  "@capaEffectivenessYouLeadTheInvestigationOnSoYou": {
+    "placeholders": {
+      "capaNo": {"type": "Object"}
+    }
+  },
+  "capaEffectivenessTheCheckFallsDueDaysAfterThe": "The check falls due {effectivenessCheckDelayDays} days after the Concern closes.",
+  "@capaEffectivenessTheCheckFallsDueDaysAfterThe": {
+    "placeholders": {
+      "effectivenessCheckDelayDays": {"type": "Object"}
+    }
+  },
+  "capaEffectivenessTheConcernClosedAndTheCheckFell": "The Concern closed, and the check fell due on {effectivenessCheckDueAt}.",
+  "@capaEffectivenessTheConcernClosedAndTheCheckFell": {
+    "placeholders": {
+      "effectivenessCheckDueAt": {"type": "Object"}
+    }
+  },
+  "capaEffectivenessWhatTheCheckFound": "What the check found",
+  "capaEffectivenessAChainOfThisInvestigationHasNo": "A chain of this investigation has no confirmed root cause yet, so \"{value}\" cannot close it: the investigation has to have finished before the fix is judged to have held.",
+  "@capaEffectivenessAChainOfThisInvestigationHasNo": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "capaEffectivenessWhatYouCheckedAndWhatYouFound": "What you checked, and what you found",
+  "capaEffectivenessTheEvidenceForTheVerdictSoThe": "The evidence for the verdict, so the next reader can weigh it.",
+  "capaOrgUnitFilterChooseTheOrgUnitWhoseInvestigationsAnd": "Choose the Org Unit whose investigations and everything beneath it you want to read, or clear back to every one of them.",
+  "capaReportThatCapaReportCouldNotBeRead": "That CAPA report could not be read",
+  "capaReportThe8dRecordOfThisInvestigationIts": "The 8D record of this investigation: its team, the problem it answers, what was done about it, and whether the fix held.",
+  "capaReportAnswersTheConcern": "Answers the Concern {actionNo} · {title}",
+  "@capaReportAnswersTheConcern": {
+    "placeholders": {
+      "actionNo": {"type": "Object"},
+      "title": {"type": "Object"}
+    }
+  },
+  "capaReportNotYetDone": "Not yet done",
+  "capaReportWhatThisReportIsStillWaitingFor": "What this report is still waiting for.",
+  "capaReportD1Team": "D1 · Team",
+  "capaReportWhoInvestigatedThisProblemAndWhoLed": "Who investigated this problem, and who led it.",
+  "capaReportD2TheProblem": "D2 · The problem",
+  "capaReportWhatTheTeamIsInvestigatingInThe": "What the team is investigating, in the investigation's own words.",
+  "capaReportD3Containment": "D3 · Containment",
+  "capaReportWhatWasDoneToStopTheBad": "What was done to stop the bad product going any further.",
+  "capaReportD4RootCause": "D4 · Root cause",
+  "capaReportTheCandidateCausesTheTeamConsideredAnd": "The candidate causes the team considered and the verdict on each, then two chains ending at one confirmed root cause: why the problem happened, and why it was not detected.",
+  "capaReportD5D6Countermeasures": "D5–D6 · Countermeasures",
+  "capaReportWhatWasDoneAboutTheCauseAnd": "What was done about the cause, and whether its Check held.",
+  "capaReportD7PreventiveActions": "D7 · Preventive actions",
+  "capaReportWhatStopsItHappeningOnThisLine": "What stops it happening on this line again, with the outcome of every round.",
+  "capaReportTheSafetyIncidentThisInvestigationAnswers": "The Safety incident this investigation answers",
+  "capaReportTheIncidentTheConcernWasRaisedFrom": "The incident the Concern was raised from, with its number and severity — never the injury details, which the incident's own record restricts.",
+  "capaReportTheNonConformancesThisInvestigationAnswers": "The Non-conformances this investigation answers",
+  "capaReportTheOccurrencesTheConcernAnswersWithThe": "The occurrences the Concern answers, with the number, the Product, the Defect code, the quantity and what was decided about the product.",
+  "capaReportNoNonConformanceIsLinkedToThis": "No Non-conformance is linked to this Concern, so the report has no evidence to list.",
+  "capaReportNoPhaseOfThisActionHasBeen": "No phase of this Action has been completed yet.",
+  "capaReportTheCandidateCausesConsidered": "The candidate causes considered",
+  "capaReportNoCandidateCauseIsRecordedSoNo": "No candidate cause is recorded, so no fishbone was worked.",
+  "capaReportWhy": "Why {sequence} · {statement}",
+  "@capaReportWhy": {
+    "placeholders": {
+      "sequence": {"type": "Object"},
+      "statement": {"type": "Object"}
+    }
+  },
+  "capaReportD8Effectiveness": "D8 · Effectiveness",
+  "capaReportVerifiedByOn": "verified by {value} on {value2}",
+  "@capaReportVerifiedByOn": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "capaReportTheCheckFallsDueDaysAfterThe": "The check falls due {effectivenessCheckDelayDays} days after the Concern closes, and the Concern has not closed yet, so nothing has been verified.",
+  "@capaReportTheCheckFallsDueDaysAfterThe": {
+    "placeholders": {
+      "effectivenessCheckDelayDays": {"type": "Object"}
+    }
+  },
+  "capaReportRaisedFromThis": "raised from this",
+  "capaReportLinkedToThisConcern": "linked to this Concern",
+  "capaReportNoProductFromThisOccurrenceHasA": "No product from this occurrence has a Disposition yet.",
+  "capaReportMinRework": "{value} min rework",
+  "@capaReportMinRework": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "capaReportDecidedBy": "decided by {decidedBy}",
+  "@capaReportDecidedBy": {
+    "placeholders": {
+      "decidedBy": {"type": "Object"}
+    }
+  },
+  "capaWhyThatIsNotAChain": "That is not a chain",
+  "capaWhyACapaReasonsWithTwoChainsWhy": "A CAPA reasons with two chains: why the problem happened, and why it was not detected.",
+  "capaWhyIsSoItsChainsAreARecord": "{capaNo} is {value}, so its chains are a record rather than a worklist.",
+  "@capaWhyIsSoItsChainsAreARecord": {
+    "placeholders": {
+      "capaNo": {"type": "Object"},
+      "value": {"type": "Object"}
+    }
+  },
+  "capaWhyThatWhyIsNotInThisChain": "That Why is not in this chain",
+  "capaWhyReviseWhy": "Revise Why {sequence}",
+  "@capaWhyReviseWhy": {
+    "placeholders": {
+      "sequence": {"type": "Object"}
+    }
+  },
+  "capaWhyRemoveWhy": "Remove Why {sequence}?",
+  "@capaWhyRemoveWhy": {
+    "placeholders": {
+      "sequence": {"type": "Object"}
+    }
+  },
+  "capaWhyItIsTakenOutOfTheChain": "It is taken out of the chain for good, and the Whys after it move up one. The rest of the investigation is not touched.",
+  "capaWhyOneStepOfTheReasoningInYour": "{value} — one step of the reasoning, in your own words.",
+  "@capaWhyOneStepOfTheReasoningInYour": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "capaWhyTheWhy": "The Why",
+  "capaWhyWhatYouFoundSaidSoTheNext": "What you found, said so the next person can follow it.",
+  "capasTheCapaListCouldNotBeRead": "The CAPA list could not be read",
+  "capasTheInvestigationsOpenedOnAConcernAnd": "The investigations opened on a Concern, and the effectiveness check each one is waiting on.",
+  "capasOverdueChecks": "Overdue checks",
+  "capasThereAreMoreInvestigationsThanThisList": "There are more investigations than this list shows. Narrow it by Org Unit or status.",
+  "capasNoInvestigationMatchesTheOrgUnitStatus": "No investigation matches the Org Unit, status or overdue check you asked for.",
+  "capasNoInvestigationsYet": "No investigations yet",
+  "capasACapaIsOpenedFromAConcern": "A CAPA is opened from a Concern, when somebody decides that the problem needs a root cause and a fix that holds.",
+  "capasInvestigation": "Investigation",
+  "capasEffectivenessCheck": "Effectiveness check",
+  "capasOverdueCheck": "Overdue check",
+  "capasRecordedBy": "{value}, recorded by {value2}.",
+  "@capasRecordedBy": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "value2": {"type": "Object"}
+    }
+  },
+  "capasTheEffectivenessCheckWasDueOn": "The effectiveness check was due on {effectivenessCheckDueAt}.",
+  "@capasTheEffectivenessCheckWasDueOn": {
+    "placeholders": {
+      "effectivenessCheckDueAt": {"type": "Object"}
+    }
+  },
+  "capasTheEffectivenessCheckIsDueOn": "The effectiveness check is due on {effectivenessCheckDueAt}.",
+  "@capasTheEffectivenessCheckIsDueOn": {
+    "placeholders": {
+      "effectivenessCheckDueAt": {"type": "Object"}
+    }
+  },
+  "capasTheEffectivenessCheckFallsDueDaysAfter": "The effectiveness check falls due {effectivenessCheckDelayDays} days after the Concern closes.",
+  "@capasTheEffectivenessCheckFallsDueDaysAfter": {
+    "placeholders": {
+      "effectivenessCheckDelayDays": {"type": "Object"}
+    }
+  },
+  "capasOnTheTeam": "{length} on the team",
+  "@capasOnTheTeam": {
+    "placeholders": {
+      "length": {"type": "Object"}
+    }
+  },
+  "openCapaOpeningACapaNeedsAuthority": "Opening a CAPA needs authority",
+  "openCapaOpeningACapaNeedsQualityAuthorityAt": "Opening a CAPA needs Quality authority at this Concern's Org Unit.",
+  "openCapaOpenACapaOn": "Open a CAPA on {actionNo}",
+  "@openCapaOpenACapaOn": {
+    "placeholders": {
+      "actionNo": {"type": "Object"}
+    }
+  },
+  "openCapaOpenTheCapa": "Open the CAPA",
+  "openCapaAn8dInvestigationInTheActionLog": "{title} — an 8D investigation, in the action log, on this Concern. Its containments, countermeasures and preventive actions are the Concern\\u2019s own and are read on the CAPA rather than recorded again.",
+  "@openCapaAn8dInvestigationInTheActionLog": {
+    "placeholders": {
+      "title": {"type": "Object"}
+    }
+  },
+  "openCapaTheProblemOptional": "The problem (optional)",
+  "openCapaD2WhatTheInvestigationIsAboutIn": "D2 — what the investigation is about, in the words a team will work from.",
+  "openCapaTheTeam": "The team",
+  "openCapaChosenFromTheEmployeeDirectoryLeaveIt": "Chosen from the Employee directory. Leave it empty to decide the team later — the investigation is what is being opened here.",
+  "openCapaTeamLeadOptional": "Team lead (optional)",
+  "openCapaWhoIsAnswerableForTheInvestigation": "Who is answerable for the investigation.",
+  "openCapaAddATeamMemberOptional": "Add a team member (optional)",
+  "openCapaNobodyElseIsOnThisInvestigationYet": "Nobody else is on this investigation yet.",
+  "awaitingApprovalYouReSignedInAsButAn": "You're signed in as {email}, but an administrator hasn't admitted you to the Platform yet. Check back once they have.",
+  "@awaitingApprovalYouReSignedInAsButAn": {
+    "placeholders": {
+      "email": {"type": "Object"}
+    }
+  },
+  "awaitingApprovalCheckAgain": "Check again",
+  "signInPassword": "Password",
+  "signInCreateAnAccount": "Create an account",
+  "signInContinueWithGoogle": "Continue with Google",
+  "signInOneApplicationForRunningSeveralManufacturingPlants": "One application for running several manufacturing plants.",
+  "accessDeniedNotAvailableToYou": "Not available to you",
+  "accessDeniedThisPartOfThePlatformIsFor": "This part of the Platform is for administrators. Ask one if you need what is here.",
+  "commonBackToHome": "Back to Home",
+  "changePasswordAnAdministratorResetYourPasswordSoThe": "An administrator reset your password, so the one you were given is temporary. Choose your own to continue.",
+  "notFoundScreenNotFound": "Screen not found",
+  "notFoundThereIsNothingAt": "There is nothing at {location}.",
+  "@notFoundThereIsNothingAt": {
+    "placeholders": {
+      "location": {"type": "Object"}
+    }
+  },
+  "sessionErrorTheSessionCouldNotBeChecked": "The session could not be checked",
+  "sessionErrorCouldNotCheckThisAccountSStatus": "Could not check this Account's status: {message}",
+  "@sessionErrorCouldNotCheckThisAccountSStatus": {
+    "placeholders": {
+      "message": {"type": "Object"}
+    }
+  },
+  "appDateFieldChooseADate": "Choose a date",
+  "appDateTimeFieldChooseADateAndTime": "Choose a date and time",
+  "appSearchFieldNoMatches": "No matches",
+  "appSearchFieldNothingMatchedTryADifferentTerm": "Nothing matched \"{lastQueriedTerm}\" — try a different term.",
+  "@appSearchFieldNothingMatchedTryADifferentTerm": {
+    "placeholders": {
+      "lastQueriedTerm": {"type": "Object"}
+    }
+  },
+  "appSearchFieldSearchFailed": "Search failed",
+  "appSearchFieldThereAreMoreMatchesThanAreShown": "There are more matches than are shown — keep typing to narrow the list.",
+  "failureStateNotVisibleToYou": "Not visible to you. {message}",
+  "@failureStateNotVisibleToYou": {
+    "placeholders": {
+      "message": {"type": "Object"}
+    }
+  },
+  "failureStateNotVisibleToYou2": "Not visible to you",
+  "signaturePadSignatureDrawingArea": "Signature drawing area"
 }

@@ -169,6 +169,7 @@ class _PlatformAppState extends State<PlatformApp> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider<AuthGateway>.value(value: widget.authGateway),
@@ -209,7 +210,7 @@ class _PlatformAppState extends State<PlatformApp> {
               // word `index.html` and `manifest.json` carry. Every address's own
               // title is written through `DocumentChrome` (see
               // `_applyDocumentTitle`); issue #399.
-              title: 'Platform',
+              title: l10n.shellBrand,
               debugShowCheckedModeBanner: false,
               theme: _lightTheme,
               darkTheme: _darkTheme,

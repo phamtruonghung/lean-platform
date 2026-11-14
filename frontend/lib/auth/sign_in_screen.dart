@@ -32,6 +32,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_form_submit.dart';
@@ -195,6 +196,7 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Widget _form(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     const buttonSize = Size.fromHeight(_touchTarget);
     // `Enter` in either field signs in (issue #401): the form's primary
     // action is the one a reader has typed toward, and the rule lives in the
@@ -217,7 +219,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 Expanded(
                   child: Semantics(
                     header: true,
-                    child: Text('Sign in', style: Theme.of(context).textTheme.headlineSmall),
+                    child: Text(l10n.titleSignIn, style: Theme.of(context).textTheme.headlineSmall),
                   ),
                 ),
                 PaletteToggle(
@@ -229,7 +231,7 @@ class _SignInScreenState extends State<SignInScreen> {
             const SizedBox(height: Spacing.lg),
             TextFormField(
               controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
+              decoration: InputDecoration(labelText: l10n.accountsEmail),
               keyboardType: TextInputType.emailAddress,
               autofillHints: const [AutofillHints.email],
               validator: (value) =>
@@ -238,7 +240,7 @@ class _SignInScreenState extends State<SignInScreen> {
             const SizedBox(height: Spacing.md),
             TextFormField(
               controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
+              decoration: InputDecoration(labelText: l10n.signInPassword),
               obscureText: true,
               autofillHints: const [AutofillHints.password],
               validator: (value) =>
@@ -252,13 +254,13 @@ class _SignInScreenState extends State<SignInScreen> {
             FilledButton(
               style: FilledButton.styleFrom(minimumSize: buttonSize),
               onPressed: _submitting ? null : _signIn,
-              child: const Text('Sign in'),
+              child: Text(l10n.titleSignIn),
             ),
             const SizedBox(height: Spacing.sm),
             OutlinedButton(
               style: OutlinedButton.styleFrom(minimumSize: buttonSize),
               onPressed: _submitting ? null : _signUp,
-              child: const Text('Create an account'),
+              child: Text(l10n.signInCreateAnAccount),
             ),
             const SizedBox(height: Spacing.md),
             const Row(
@@ -276,7 +278,7 @@ class _SignInScreenState extends State<SignInScreen> {
               style: OutlinedButton.styleFrom(minimumSize: buttonSize),
               onPressed: _submitting ? null : _signInWithGoogle,
               icon: const Icon(Icons.login),
-              label: const Text('Continue with Google'),
+              label: Text(l10n.signInContinueWithGoogle),
             ),
             if (_submitting) ...[
               const SizedBox(height: Spacing.md),
@@ -321,6 +323,7 @@ class _Wordmark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     // A Wrap, not a Row: "Platform" is one unbreakable word, and at 320px with
     // the reader's text at 200% it is wider than the row has left beside the
@@ -335,7 +338,7 @@ class _Wordmark extends StatelessWidget {
       runSpacing: Spacing.xs,
       children: [
         Icon(Icons.dashboard_outlined, color: palette.actionPrimary),
-        Text('Platform', style: Theme.of(context).textTheme.titleLarge),
+        Text(l10n.shellBrand, style: Theme.of(context).textTheme.titleLarge),
       ],
     );
   }
@@ -347,6 +350,7 @@ class _IdentityPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final theme = Theme.of(context);
     return DecoratedBox(
@@ -369,7 +373,7 @@ class _IdentityPanel extends StatelessWidget {
                 const _Wordmark(),
                 const SizedBox(height: Spacing.xl),
                 Text(
-                  'One application for running several manufacturing plants.',
+                  l10n.signInOneApplicationForRunningSeveralManufacturingPlants,
                   style: theme.textTheme.titleMedium,
                 ),
                 const SizedBox(height: Spacing.xl),

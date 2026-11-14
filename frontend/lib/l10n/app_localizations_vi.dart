@@ -3466,4 +3466,1221 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get attendanceRecordChooseAReasonForThisAbsence =>
       'Hãy chọn lý do cho lần vắng này.';
+
+  @override
+  String get commonThatActionCouldNotBeRead => 'Không đọc được Hành động đó';
+
+  @override
+  String get commonThatActionHasEnded => 'Hành động đó đã kết thúc';
+
+  @override
+  String get commonDone => 'xong';
+
+  @override
+  String get actionCancelItIsClosedSoThereIsNothing =>
+      'Hành động đã đóng nên không còn gì để huỷ.';
+
+  @override
+  String get actionCancelItWasAlreadyCancelled =>
+      'Hành động đã bị huỷ trước đó.';
+
+  @override
+  String actionCancelCallOff(Object actionNo) {
+    return 'Huỷ $actionNo?';
+  }
+
+  @override
+  String get actionCancelLeaveItAlone => 'Để nguyên';
+
+  @override
+  String get actionCancelCallItOff => 'Huỷ hành động';
+
+  @override
+  String get actionCancelCallingItOffEndsTheRecordWithout =>
+      'Huỷ sẽ kết thúc hồ sơ mà không khẳng định đã làm được gì. Dòng vẫn còn, kèm lý do bạn ghi.';
+
+  @override
+  String get actionCancelWhyOptional => 'Lý do (không bắt buộc)';
+
+  @override
+  String get actionCancelRaisedInErrorADuplicateOvertakenBy =>
+      'Nêu nhầm, bị trùng, hoặc đã bị việc khác vượt qua.';
+
+  @override
+  String get commonBackToTheActionLog => 'Về nhật ký hành động';
+
+  @override
+  String get actionDetailHandItUp => 'Chuyển lên trên…';
+
+  @override
+  String get actionDetailCallItOff => 'Huỷ hành động…';
+
+  @override
+  String get actionDetailWhereItStands => 'Tình trạng hiện tại';
+
+  @override
+  String get commonOwner => 'Người phụ trách';
+
+  @override
+  String get actionDetailEscalatedTo => 'Đã chuyển tới';
+
+  @override
+  String get actionDetailClosingNote => 'Ghi chú khi đóng';
+
+  @override
+  String actionDetailPillar(Object pillarCode) {
+    return 'Trụ cột $pillarCode';
+  }
+
+  @override
+  String commonOverdueByDays(Object daysOverdue) {
+    return 'Quá hạn $daysOverdue ngày';
+  }
+
+  @override
+  String actionDetailCycle(Object currentCycle) {
+    return 'Chu kỳ $currentCycle';
+  }
+
+  @override
+  String actionDetailCompleteThe(Object phaseLabel) {
+    return 'Hoàn thành $phaseLabel';
+  }
+
+  @override
+  String get actionDetailThisActionHasNoPhasesLeft =>
+      'Hành động này không còn giai đoạn nào.';
+
+  @override
+  String get actionDetailEarlierRounds => 'Các vòng trước';
+
+  @override
+  String get actionDetailOpenWaitingOnThis =>
+      'Đang mở — chờ chính hành động này';
+
+  @override
+  String get actionDetailNoNoteRecorded => 'Chưa ghi chú nào';
+
+  @override
+  String actionDetailDue(Object dueDate) {
+    return 'đến hạn $dueDate';
+  }
+
+  @override
+  String actionDetailDone(Object value) {
+    return 'xong $value';
+  }
+
+  @override
+  String actionDetailAnswers(Object actionNo) {
+    return 'Trả lời $actionNo';
+  }
+
+  @override
+  String get commonCapa => 'CAPA';
+
+  @override
+  String get actionDetailAFormal8dInvestigationOpenedOnThis =>
+      'Một cuộc điều tra 8D chính thức đã mở trên Concern này: nhóm của nó, mô tả vấn đề và — khi các phần đó hoàn thành — nguyên nhân gốc và bước kiểm tra hiệu quả. Các hành động của nó là những hành động bên dưới, được ghi một lần trong nhật ký hành động và đọc ở đó.';
+
+  @override
+  String actionDetailUnderInvestigation(Object capaNo) {
+    return 'Đang điều tra: $capaNo';
+  }
+
+  @override
+  String get actionDetailOpenACapa => 'Mở một CAPA…';
+
+  @override
+  String get actionDetailNobodyHasOpenedACapaOnThis =>
+      'Chưa ai mở CAPA trên Concern này. Mở CAPA cần thẩm quyền Chất lượng tại Đơn vị tổ chức của Concern.';
+
+  @override
+  String get actionDetailMeasures => 'Biện pháp';
+
+  @override
+  String actionDetailMeasuresOfThemCountermeasures(
+    Object length,
+    Object countermeasureCount,
+  ) {
+    return 'Biện pháp ($length, trong đó $countermeasureCount là biện pháp khắc phục)';
+  }
+
+  @override
+  String get actionDetailAddAMeasure => 'Thêm biện pháp';
+
+  @override
+  String actionDetailAddA(Object value) {
+    return 'Thêm $value…';
+  }
+
+  @override
+  String get actionDetailEachMeasureIsAnActionOfIts =>
+      'Mỗi biện pháp là một Hành động riêng: mở nó và chạy chu kỳ của chính nó đến bước Act, và nó được tính là đã đóng.';
+
+  @override
+  String get actionDetailThisActionAnswersNoConcernOfIts =>
+      'Hành động này không trả lời Concern nào của riêng nó.';
+
+  @override
+  String get actionDetailNothingAnswersThisYetAContainmentStops =>
+      'Chưa có gì trả lời vấn đề này. Biện pháp ngăn chặn chặn hậu quả ngay; biện pháp khắc phục loại bỏ nguyên nhân.';
+
+  @override
+  String get commonNobodyYet => 'Chưa có ai';
+
+  @override
+  String actionDetailOverdueByDays(Object daysOverdue) {
+    return 'quá hạn $daysOverdue ngày';
+  }
+
+  @override
+  String commonWaitingOnIts(Object value) {
+    return 'đang chờ $value của nó';
+  }
+
+  @override
+  String actionDetailCompleteThe2(Object value) {
+    return 'Hoàn thành $value…';
+  }
+
+  @override
+  String actionDetailNonConformances(Object length) {
+    return 'Sản phẩm không phù hợp ($length)';
+  }
+
+  @override
+  String get actionDetailTheOccurrencesThisConcernAnswersOneProblem =>
+      'Những lần xuất hiện mà Concern này trả lời. Một vấn đề lặp lại nhiều lần vẫn là một Concern, nên lần xuất hiện sau được liên kết vào đây chứ không nêu thành Concern khác.';
+
+  @override
+  String get actionDetailNoNonConformanceIsLinkedToThis =>
+      'Chưa có Sản phẩm không phù hợp nào được liên kết với Concern này.';
+
+  @override
+  String get actionDetailRaisedFromThis => 'Nêu từ đây';
+
+  @override
+  String get actionDetailUnlink => 'Bỏ liên kết…';
+
+  @override
+  String get actionDetailTheObservationThisActionWasRaisedFrom =>
+      'Quan sát mà Hành động này được nêu từ đó — đã thấy gì, và hậu quả có thể nặng tới đâu.';
+
+  @override
+  String get actionDetailTheIncidentThisConcernWasRaisedFrom =>
+      'Sự cố mà Concern này được nêu từ đó — số hiệu và mức độ của nó, không bao giờ là ai bị thương hay chẩn đoán.';
+
+  @override
+  String get actionEscalateItIsClosedWhoeverNeededToKnow =>
+      'Hành động đã đóng. Những ai cần biết đã được báo trước khi đóng.';
+
+  @override
+  String get actionEscalateItWasCalledOffSoThereIs =>
+      'Hành động đã bị huỷ nên không có gì để chuyển lên.';
+
+  @override
+  String get actionEscalateNowhereToHandItUpTo =>
+      'Không có nơi nào để chuyển lên';
+
+  @override
+  String get actionEscalateThereIsNobodyAboveThis =>
+      'Không có ai ở trên đơn vị này';
+
+  @override
+  String actionEscalateSitsAtWhichIsAlreadyTheTop(
+    Object actionNo,
+    Object orgUnitName,
+  ) {
+    return '$actionNo nằm tại $orgUnitName, vốn đã là cấp cao nhất của Nhà máy này. Không thể báo cho ai ở trên nữa.';
+  }
+
+  @override
+  String actionEscalateHandUp(Object actionNo) {
+    return 'Chuyển $actionNo lên trên';
+  }
+
+  @override
+  String get actionEscalateHandItUp => 'Chuyển lên trên';
+
+  @override
+  String get actionEscalateRaisingThisTellsTheOrgUnitYou =>
+      'Việc này báo cho Đơn vị tổ chức bạn chọn. Hành động vẫn ở nguyên chỗ cũ, giữ người phụ trách và chu kỳ — đây là yêu cầu cấp trên biết về nó, không phải chuyển giao.';
+
+  @override
+  String actionEscalateNearestAboveIt(Object code) {
+    return '$code · đơn vị gần nhất ở trên';
+  }
+
+  @override
+  String get actionEscalatedToFilterFilterByWhatWasHandedUp =>
+      'Lọc theo nơi đã chuyển lên';
+
+  @override
+  String get actionEscalatedToFilterAnyone => 'Bất kỳ ai';
+
+  @override
+  String get actionEscalatedToFilterWhoseQueue => 'Hàng chờ của ai';
+
+  @override
+  String get actionEscalatedToFilterChooseTheOrgUnitThatConcernsWere =>
+      'Chọn Đơn vị tổ chức mà các Concern đã được chuyển lên — tức là thứ đang chờ ở khu vực, không phải thứ nằm ở chuyền — hoặc xoá về tất cả.';
+
+  @override
+  String get commonRaiseAConcern => 'Nêu một Concern';
+
+  @override
+  String get actionFormRaiseIt => 'Nêu';
+
+  @override
+  String get actionFormOneLineTheCauseGoesInThe =>
+      'Một dòng. Nguyên nhân ghi ở giai đoạn Plan, không phải ở đây.';
+
+  @override
+  String get commonKindOfAction => 'Loại hành động';
+
+  @override
+  String get actionFormThePillarCatalogueCouldNotBeRead =>
+      'Không đọc được danh mục Trụ cột nên không chọn được Trụ cột.';
+
+  @override
+  String get actionFormPillarOptional => 'Trụ cột (không bắt buộc)';
+
+  @override
+  String get actionFormWhichSqdcpNumberDoesThisThreaten =>
+      'Chỉ số SQDCP nào bị đe doạ?';
+
+  @override
+  String get actionFormNoPillar => 'Không có trụ cột';
+
+  @override
+  String get commonOwnerOptional => 'Người phụ trách (không bắt buộc)';
+
+  @override
+  String get actionFormWhoWillDoItAnActionNobody =>
+      'Ai sẽ làm. Một Hành động không có người phụ trách thì rõ ràng là của không ai.';
+
+  @override
+  String get commonDueOptional => 'Đến hạn (không bắt buộc)';
+
+  @override
+  String get actionFormChooseTheOrgUnitThisConcernIs =>
+      'Chọn Đơn vị tổ chức mà concern này liên quan. Đây là điều quyết định ai được thao tác trên nó.';
+
+  @override
+  String actionFormThisConcernWillBeRecordedAt(Object value) {
+    return 'Concern này sẽ được ghi nhận tại $value.';
+  }
+
+  @override
+  String actionMeasureAddA(Object value) {
+    return 'Thêm $value';
+  }
+
+  @override
+  String actionMeasureAddThe(Object value) {
+    return 'Thêm $value';
+  }
+
+  @override
+  String actionMeasureAnswering(Object actionNo, Object title) {
+    return 'Trả lời $actionNo: $title';
+  }
+
+  @override
+  String get actionMeasureWhatWillBeDone => 'Sẽ làm gì';
+
+  @override
+  String get actionMeasureWhoWillDoIt => 'Ai sẽ làm.';
+
+  @override
+  String get actionMeasureWhereThisWorkHappens => 'Công việc này diễn ra ở đâu';
+
+  @override
+  String actionMeasureLeaveItAloneToRecordTheMeasure(Object orgUnitName) {
+    return 'Để trống thì biện pháp được ghi tại $orgUnitName, nơi concern đang nằm. Một sửa đổi thuộc nơi khác — kho, nhà cung cấp — có thể nêu đơn vị đó thay vào.';
+  }
+
+  @override
+  String get actionOrgUnitFilterNarrowTheLog => 'Thu hẹp nhật ký';
+
+  @override
+  String get actionOrgUnitFilterChooseTheOrgUnitWhoseActionsAnd =>
+      'Chọn Đơn vị tổ chức mà bạn muốn đọc Hành động và mọi thứ bên dưới nó, hoặc xoá về toàn bộ Nhà máy.';
+
+  @override
+  String get actionPhaseCompleteThatIsNotTheOpenPhase =>
+      'Đó không phải giai đoạn đang mở';
+
+  @override
+  String get actionPhaseCompleteThisActionHasNoOpenPhaseLeft =>
+      'Hành động này không còn giai đoạn nào đang mở.';
+
+  @override
+  String actionPhaseCompleteThisActionIsWaitingOnItsPhase(
+    Object value,
+    Object value2,
+  ) {
+    return 'Hành động này đang chờ giai đoạn $value của nó, không phải $value2.';
+  }
+
+  @override
+  String actionPhaseCompleteCompleteThe(Object label) {
+    return 'Hoàn thành $label';
+  }
+
+  @override
+  String get actionPhaseCompleteWhatWasMeasured => 'Đã đo được gì';
+
+  @override
+  String get actionPhaseCompleteWhatWasDone => 'Đã làm gì';
+
+  @override
+  String get actionPhaseCompleteDidItHold => 'Có giữ được kết quả không?';
+
+  @override
+  String get actionPhaseCompleteAnsweringThatItDidNotOpensThe =>
+      'Trả lời là không sẽ mở chu kỳ tiếp theo thay vì đóng Hành động, và giữ vòng này trong hồ sơ.';
+
+  @override
+  String get actionUnlinkNonconformanceThatConcernCouldNotBeRead =>
+      'Không đọc được Concern đó';
+
+  @override
+  String get actionUnlinkNonconformanceThatNonConformanceIsNotLinkedHere =>
+      'Sản phẩm không phù hợp đó không được liên kết ở đây';
+
+  @override
+  String get actionUnlinkNonconformanceThisConcernAnswersNothingByThatId =>
+      'Concern này không trả lời gì với mã đó. Có thể nó đã được bỏ liên kết, hoặc địa chỉ sai.';
+
+  @override
+  String get actionUnlinkNonconformanceBackToTheConcern => 'Về Concern';
+
+  @override
+  String get actionUnlinkNonconformanceUnlinkThisNonConformance =>
+      'Bỏ liên kết Sản phẩm không phù hợp này?';
+
+  @override
+  String get actionUnlinkNonconformanceKeepItLinked => 'Giữ liên kết';
+
+  @override
+  String get actionUnlinkNonconformanceUnlinkIt => 'Bỏ liên kết';
+
+  @override
+  String get actionUnlinkNonconformanceItStopsBeingOneOfTheOccurrences =>
+      'Nó không còn là một trong những lần xuất hiện mà Concern này trả lời. Bản thân Sản phẩm không phù hợp không bị đụng tới — nó vẫn giữ số hiệu, các Phương án xử lý và số lượng.';
+
+  @override
+  String get actionsTheActionLogCouldNotBeRead =>
+      'Không đọc được nhật ký hành động';
+
+  @override
+  String get actionsWhatThePlantOwesAtThisSite =>
+      'Những gì nhà máy còn nợ tại Nhà máy này: đã phát hiện gì, ai phụ trách, và khi nào đến hạn. Quá hạn trước.';
+
+  @override
+  String get actionsEscalatedToAnyone => 'Đã chuyển cho bất kỳ ai';
+
+  @override
+  String actionsEscalatedTo(Object escalatedToOrgUnitFilterName) {
+    return 'Đã chuyển tới $escalatedToOrgUnitFilterName';
+  }
+
+  @override
+  String get actionsEveryKind => 'Mọi loại';
+
+  @override
+  String get actionsShowClosed => 'Hiện cả việc đã đóng';
+
+  @override
+  String get actionsThereAreMoreActionsThanThisList =>
+      'Còn nhiều Hành động hơn danh sách này hiển thị. Hãy thu hẹp theo Đơn vị tổ chức, trạng thái hoặc loại để xem phần còn lại.';
+
+  @override
+  String get actionsTheLogHasActionsButNoneOf =>
+      'Nhật ký có Hành động, nhưng không cái nào thuộc Đơn vị tổ chức, trạng thái hay loại bạn đã chọn.';
+
+  @override
+  String get actionsNothingOnTheLog => 'Nhật ký trống';
+
+  @override
+  String get actionsNoActionHasBeenRaisedAtThis =>
+      'Chưa có Hành động nào được nêu tại Nhà máy này.';
+
+  @override
+  String get actionsSource => 'Nguồn';
+
+  @override
+  String actionsOfThemCountermeasures(
+    int measureCount,
+    int countermeasureCount,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      measureCount,
+      locale: localeName,
+      other: '$measureCount biện pháp',
+      one: '1 biện pháp',
+    );
+    return '$_temp0, trong đó $countermeasureCount là biện pháp khắc phục';
+  }
+
+  @override
+  String actionsEscalatedTo2(Object escalatedToOrgUnitName) {
+    return 'Đã chuyển tới $escalatedToOrgUnitName';
+  }
+
+  @override
+  String get actionsNoDueDate => 'Không có hạn';
+
+  @override
+  String actionsDue(Object dueDate) {
+    return 'Đến hạn $dueDate';
+  }
+
+  @override
+  String get commonBackToTheCapa => 'Về CAPA';
+
+  @override
+  String get commonThatCapaCouldNotBeRead => 'Không đọc được CAPA đó';
+
+  @override
+  String get capaCauseThatIsNotA6mCategory => 'Đó không phải một hạng mục 6M';
+
+  @override
+  String get capaCauseAFishboneHasSixBonesManMachine =>
+      'Biểu đồ xương cá có sáu nhánh: Man, Machine, Method, Material, Measurement và Environment.';
+
+  @override
+  String get commonThisInvestigationIsOver => 'Cuộc điều tra này đã kết thúc';
+
+  @override
+  String capaCauseIsSoItsFishboneIsARecord(Object capaNo, Object value) {
+    return '$capaNo đang $value, nên biểu đồ xương cá của nó là hồ sơ chứ không phải danh sách việc.';
+  }
+
+  @override
+  String get commonNotYoursToWrite => 'Không phải phần bạn được ghi';
+
+  @override
+  String get commonWritingACapaSRootCausesNeeds =>
+      'Ghi nguyên nhân gốc của CAPA cần quyền sửa tại Đơn vị tổ chức của nó, hoặc một chỗ trong nhóm.';
+
+  @override
+  String get capaCauseThatCauseIsNotOnThisBone =>
+      'Nguyên nhân đó không nằm trên nhánh này';
+
+  @override
+  String get commonItMayHaveBeenRemovedAMoment =>
+      'Có thể người khác vừa xoá nó cách đây ít phút.';
+
+  @override
+  String get capaCauseRecordACandidateCause => 'Ghi một nguyên nhân ứng viên';
+
+  @override
+  String get capaCauseReviseTheCause => 'Sửa nguyên nhân';
+
+  @override
+  String get capaCauseRemoveThisCause => 'Xoá nguyên nhân này?';
+
+  @override
+  String get commonRemoveIt => 'Xoá';
+
+  @override
+  String capaCauseItIsTakenOffTheBoneFor(Object categoryLabel, Object value) {
+    return 'Nó bị bỏ khỏi nhánh $categoryLabel vĩnh viễn$value. Một chuỗi bắt đầu từ nó vẫn giữ Why mà nó khởi đầu.';
+  }
+
+  @override
+  String get capaCauseBothChainsHaveBeenStarted =>
+      'Cả hai chuỗi đều đã bắt đầu';
+
+  @override
+  String capaCauseAlreadyReasonsBothWhyTheProblemHappened(Object capaNo) {
+    return '$capaNo đã lý giải cả vì sao vấn đề xảy ra và vì sao nó không được phát hiện, nên Why cho nguyên nhân này phải nằm trong một trong hai chuỗi chứ không đứng đầu chuỗi mới.';
+  }
+
+  @override
+  String get capaCauseTheBoneItHangsFrom => 'Nhánh mà nó treo vào';
+
+  @override
+  String get capaCauseTheCandidateCause => 'Nguyên nhân ứng viên';
+
+  @override
+  String get capaCauseWhatYouSuspectSaidSoTheNext =>
+      'Điều bạn nghi ngờ, nói sao cho người sau kiểm tra được.';
+
+  @override
+  String get capaCauseDecideThisCause => 'Kết luận nguyên nhân này';
+
+  @override
+  String get capaCauseRecordTheVerdict => 'Ghi kết luận';
+
+  @override
+  String get capaCauseAVerdictIsADecisionTheReport =>
+      'Kết luận là một quyết định mà báo cáo đọc lại, nên nó được ghi kèm bằng chứng.';
+
+  @override
+  String get capaCauseTheEvidence => 'Bằng chứng';
+
+  @override
+  String get capaCauseWhatYouLookedAtAndWhatIt =>
+      'Bạn đã xem gì, và nó cho thấy gì.';
+
+  @override
+  String get capaCauseStartAChainFromThisCause =>
+      'Bắt đầu một chuỗi từ nguyên nhân này';
+
+  @override
+  String get capaCauseStartTheChain => 'Bắt đầu chuỗi';
+
+  @override
+  String get capaCauseTheEvidenceConfirmedThisCauseSoA =>
+      'Bằng chứng đã xác nhận nguyên nhân này, nên một chuỗi có thể bắt đầu từ nó. Điều nó nói là Why đầu tiên.';
+
+  @override
+  String get capaCauseWhichChainItBegins => 'Nó bắt đầu chuỗi nào';
+
+  @override
+  String get capaCauseTheFirstWhy => 'Why đầu tiên';
+
+  @override
+  String get capaCauseTheConfirmedCauseSaidTheWayThe =>
+      'Nguyên nhân đã xác nhận, nói theo cách chuỗi nên đọc.';
+
+  @override
+  String capaDetailBackTo(Object actionNo) {
+    return 'Về $actionNo';
+  }
+
+  @override
+  String get capaDetailTheReport => 'Báo cáo';
+
+  @override
+  String capaDetailInvestigation(Object methodLabel) {
+    return 'Điều tra $methodLabel';
+  }
+
+  @override
+  String capaDetailDue(Object dueDate) {
+    return 'đến hạn $dueDate';
+  }
+
+  @override
+  String get capaDetailEffectiveness => 'Hiệu quả';
+
+  @override
+  String get commonACapaClosesOnlyWhenBothChains =>
+      'CAPA chỉ đóng khi cả hai chuỗi đều có nguyên nhân gốc đã xác nhận, Concern của nó đã đóng, và một người có thẩm quyền Chất lượng không phải trưởng nhóm điều tra đã xác minh, sau một thời gian, rằng vấn đề không quay lại.';
+
+  @override
+  String capaDetailRecordedByOn(Object value, Object value2) {
+    return 'ghi bởi $value ngày $value2';
+  }
+
+  @override
+  String get capaDetailTheCheckDidNotHoldSoThe =>
+      'Bước kiểm tra không giữ được kết quả, nên Concern mở lại ở chu kỳ tiếp theo: công việc nằm trên màn hình của nó, trong Concern mà cuộc điều tra này trả lời.';
+
+  @override
+  String commonTheConcernHasClosedSoTheEffectiveness(Object dueAt) {
+    return 'Concern đã đóng, nên bước kiểm tra hiệu quả đến hạn vào $dueAt.';
+  }
+
+  @override
+  String get commonOverdue => 'Quá hạn';
+
+  @override
+  String get commonRecordTheEffectivenessCheck => 'Ghi bước kiểm tra hiệu quả';
+
+  @override
+  String get capaDetailYouLeadThisInvestigationSoSomebodyElse =>
+      'Bạn là người dẫn cuộc điều tra này, nên người khác ghi bước kiểm tra: một người có thẩm quyền Chất lượng không thuộc tài khoản trưởng nhóm.';
+
+  @override
+  String get capaDetailRecordingTheCheckNeedsQualityAuthorityAt =>
+      'Ghi bước kiểm tra cần thẩm quyền Chất lượng tại Đơn vị tổ chức này.';
+
+  @override
+  String capaDetailTheCheckFallsDueDaysAfterThe(
+    Object effectivenessCheckDelayDays,
+  ) {
+    return 'Bước kiểm tra đến hạn $effectivenessCheckDelayDays ngày sau khi Concern đóng, và Concern chưa đóng.';
+  }
+
+  @override
+  String get capaDetailTeam => 'Nhóm';
+
+  @override
+  String get commonNobodyIsOnThisInvestigationYet =>
+      'Chưa có ai trong cuộc điều tra này.';
+
+  @override
+  String commonTeamLead(Object name) {
+    return '$name · trưởng nhóm';
+  }
+
+  @override
+  String get capaDetailTheProblem => 'Vấn đề';
+
+  @override
+  String get commonNobodyHasWrittenTheProblemDescriptionYet =>
+      'Chưa ai viết mô tả vấn đề.';
+
+  @override
+  String get capaDetailCandidateCauses => 'Nguyên nhân ứng viên';
+
+  @override
+  String get capaDetailTheFishboneWhatTheTeamSuspectedBy =>
+      'Biểu đồ xương cá: những gì nhóm nghi ngờ, theo hạng mục 6M, và bằng chứng nói gì về từng cái. Chuỗi tiếp theo bắt đầu từ nguyên nhân đã được xác nhận.';
+
+  @override
+  String get capaDetailThisInvestigationIsOverSoItsFishbone =>
+      'Cuộc điều tra này đã kết thúc, nên biểu đồ xương cá của nó là hồ sơ chứ không phải danh sách việc.';
+
+  @override
+  String get capaDetailRecordACause => 'Ghi một nguyên nhân';
+
+  @override
+  String capaDetailNothingIsRecordedUnder(Object value) {
+    return 'Chưa ghi gì dưới $value.';
+  }
+
+  @override
+  String capaDetailCause(Object sequence) {
+    return 'Nguyên nhân $sequence';
+  }
+
+  @override
+  String commonEvidence(Object evidenceNote) {
+    return 'Bằng chứng: $evidenceNote';
+  }
+
+  @override
+  String get capaDetailChangeTheVerdict => 'Đổi kết luận';
+
+  @override
+  String get capaDetailDecideIt => 'Kết luận';
+
+  @override
+  String get capaDetailStartAChainFromIt => 'Bắt đầu chuỗi từ đó';
+
+  @override
+  String get capaDetailRootCause => 'Nguyên nhân gốc';
+
+  @override
+  String get capaDetailTwoChainsEachEndingAtOneConfirmed =>
+      'Hai chuỗi, mỗi chuỗi kết thúc ở một nguyên nhân gốc đã xác nhận: vì sao vấn đề xảy ra, và vì sao nó không được phát hiện.';
+
+  @override
+  String get capaDetailThisInvestigationIsOverSoItsChains =>
+      'Cuộc điều tra này đã kết thúc, nên các chuỗi của nó là hồ sơ chứ không phải danh sách việc.';
+
+  @override
+  String get commonAddAWhy => 'Thêm một Why';
+
+  @override
+  String get capaDetailOccurrence => 'lần xuất hiện';
+
+  @override
+  String get capaDetailWhyTheProblemHappenedOneStepAt =>
+      'Vì sao vấn đề xảy ra, từng bước một.';
+
+  @override
+  String get capaDetailWhyItWasNotDetectedOneStep =>
+      'Vì sao nó không được phát hiện, từng bước một.';
+
+  @override
+  String get commonNobodyHasStartedThisChainYet => 'Chưa ai bắt đầu chuỗi này.';
+
+  @override
+  String get commonThisChainHasNoConfirmedRootCause =>
+      'Chuỗi này chưa có nguyên nhân gốc đã xác nhận.';
+
+  @override
+  String commonConfirmedRootCause(Object statement) {
+    return 'Nguyên nhân gốc đã xác nhận: $statement';
+  }
+
+  @override
+  String capaDetailWhy(Object sequence) {
+    return 'Why $sequence';
+  }
+
+  @override
+  String get capaDetailConfirmedRootCause => 'Nguyên nhân gốc đã xác nhận';
+
+  @override
+  String get capaDetailClearTheRootCause => 'Bỏ đánh dấu nguyên nhân gốc';
+
+  @override
+  String get capaDetailThisIsTheRootCause => 'Đây là nguyên nhân gốc';
+
+  @override
+  String get capaDetailMoveItEarlierInTheChain =>
+      'Chuyển lên trước trong chuỗi';
+
+  @override
+  String get capaDetailMoveItLaterInTheChain => 'Chuyển ra sau trong chuỗi';
+
+  @override
+  String get capaDetailTheConcern => 'Concern';
+
+  @override
+  String capaDetailTheConcern2(Object actionNo) {
+    return 'Concern: $actionNo';
+  }
+
+  @override
+  String get capaDetailWhatTheConcernHasDone => 'Những gì Concern đã làm';
+
+  @override
+  String capaDetailWhatTheConcernHasDone2(Object length) {
+    return 'Những gì Concern đã làm ($length)';
+  }
+
+  @override
+  String get capaDetailTheContainmentD3TheCountermeasuresD5D6 =>
+      'Biện pháp ngăn chặn (D3), biện pháp khắc phục (D5-D6) và hành động phòng ngừa (D7) là của chính Concern, được ghi một lần trong nhật ký hành động — ở đây là nơi đọc chúng, không phải nơi ghi lại.';
+
+  @override
+  String get capaDetailNothingAnswersThisConcernYetSoThere =>
+      'Chưa có gì trả lời Concern này nên chưa có việc để hiển thị.';
+
+  @override
+  String commonCycle(Object cycle, Object phaseLabel) {
+    return 'Chu kỳ $cycle · $phaseLabel';
+  }
+
+  @override
+  String get commonOpen2 => 'mở';
+
+  @override
+  String capaEffectivenessIsSoItsEffectivenessIsRecordedAnd(
+    Object capaNo,
+    Object value,
+  ) {
+    return '$capaNo đang $value, nên hiệu quả của nó đã được ghi và hồ sơ được đọc chứ không sửa.';
+  }
+
+  @override
+  String get capaEffectivenessNotYoursToDecide =>
+      'Không phải phần bạn được quyết';
+
+  @override
+  String get capaEffectivenessRecordingACapaSEffectivenessCheckNeeds =>
+      'Ghi bước kiểm tra hiệu quả của CAPA cần thẩm quyền Chất lượng tại Đơn vị tổ chức của nó.';
+
+  @override
+  String get capaEffectivenessSomebodyElseHasToCheckThis =>
+      'Người khác phải kiểm tra việc này';
+
+  @override
+  String capaEffectivenessYouLeadTheInvestigationOnSoYou(Object capaNo) {
+    return 'Bạn dẫn cuộc điều tra trên $capaNo, nên bạn là người duy nhất mà đánh giá về bản sửa này không phải bằng chứng. Một người có thẩm quyền Chất lượng không thuộc tài khoản trưởng nhóm sẽ ghi bước kiểm tra.';
+  }
+
+  @override
+  String capaEffectivenessTheCheckFallsDueDaysAfterThe(
+    Object effectivenessCheckDelayDays,
+  ) {
+    return 'Bước kiểm tra đến hạn $effectivenessCheckDelayDays ngày sau khi Concern đóng.';
+  }
+
+  @override
+  String capaEffectivenessTheConcernClosedAndTheCheckFell(
+    Object effectivenessCheckDueAt,
+  ) {
+    return 'Concern đã đóng, và bước kiểm tra đến hạn vào $effectivenessCheckDueAt.';
+  }
+
+  @override
+  String get capaEffectivenessWhatTheCheckFound => 'Bước kiểm tra tìm thấy gì';
+
+  @override
+  String capaEffectivenessAChainOfThisInvestigationHasNo(Object value) {
+    return 'Một chuỗi của cuộc điều tra này chưa có nguyên nhân gốc đã xác nhận, nên không thể đóng với “$value”: cuộc điều tra phải kết thúc trước khi đánh giá bản sửa có giữ được kết quả hay không.';
+  }
+
+  @override
+  String get capaEffectivenessWhatYouCheckedAndWhatYouFound =>
+      'Bạn đã kiểm tra gì, và tìm thấy gì';
+
+  @override
+  String get capaEffectivenessTheEvidenceForTheVerdictSoThe =>
+      'Bằng chứng cho kết luận, để người đọc sau cân nhắc được.';
+
+  @override
+  String get capaOrgUnitFilterChooseTheOrgUnitWhoseInvestigationsAnd =>
+      'Chọn Đơn vị tổ chức mà bạn muốn đọc các cuộc điều tra cùng mọi thứ bên dưới nó, hoặc xoá về tất cả.';
+
+  @override
+  String get capaReportThatCapaReportCouldNotBeRead =>
+      'Không đọc được báo cáo CAPA đó';
+
+  @override
+  String get capaReportThe8dRecordOfThisInvestigationIts =>
+      'Hồ sơ 8D của cuộc điều tra này: nhóm của nó, vấn đề nó trả lời, đã làm gì, và bản sửa có giữ được kết quả hay không.';
+
+  @override
+  String capaReportAnswersTheConcern(Object actionNo, Object title) {
+    return 'Trả lời Concern $actionNo · $title';
+  }
+
+  @override
+  String get capaReportNotYetDone => 'Chưa làm';
+
+  @override
+  String get capaReportWhatThisReportIsStillWaitingFor =>
+      'Báo cáo này còn đang chờ gì.';
+
+  @override
+  String get capaReportD1Team => 'D1 · Nhóm';
+
+  @override
+  String get capaReportWhoInvestigatedThisProblemAndWhoLed =>
+      'Ai đã điều tra vấn đề này, và ai dẫn dắt.';
+
+  @override
+  String get capaReportD2TheProblem => 'D2 · Vấn đề';
+
+  @override
+  String get capaReportWhatTheTeamIsInvestigatingInThe =>
+      'Nhóm đang điều tra gì, bằng chính lời của cuộc điều tra.';
+
+  @override
+  String get capaReportD3Containment => 'D3 · Ngăn chặn';
+
+  @override
+  String get capaReportWhatWasDoneToStopTheBad =>
+      'Đã làm gì để chặn sản phẩm lỗi lan tiếp.';
+
+  @override
+  String get capaReportD4RootCause => 'D4 · Nguyên nhân gốc';
+
+  @override
+  String get capaReportTheCandidateCausesTheTeamConsideredAnd =>
+      'Các nguyên nhân ứng viên nhóm đã xem xét và kết luận cho từng cái, rồi hai chuỗi kết thúc ở một nguyên nhân gốc đã xác nhận: vì sao vấn đề xảy ra, và vì sao nó không được phát hiện.';
+
+  @override
+  String get capaReportD5D6Countermeasures => 'D5–D6 · Biện pháp khắc phục';
+
+  @override
+  String get capaReportWhatWasDoneAboutTheCauseAnd =>
+      'Đã làm gì về nguyên nhân, và bước Check của nó có giữ được kết quả hay không.';
+
+  @override
+  String get capaReportD7PreventiveActions => 'D7 · Hành động phòng ngừa';
+
+  @override
+  String get capaReportWhatStopsItHappeningOnThisLine =>
+      'Điều gì chặn nó tái diễn trên chuyền này, kèm kết quả của từng vòng.';
+
+  @override
+  String get capaReportTheSafetyIncidentThisInvestigationAnswers =>
+      'Sự cố an toàn mà cuộc điều tra này trả lời';
+
+  @override
+  String get capaReportTheIncidentTheConcernWasRaisedFrom =>
+      'Sự cố mà Concern được nêu từ đó, kèm số hiệu và mức độ — không bao giờ là chi tiết thương tích, thứ hồ sơ sự cố tự giới hạn.';
+
+  @override
+  String get capaReportTheNonConformancesThisInvestigationAnswers =>
+      'Các Sản phẩm không phù hợp mà cuộc điều tra này trả lời';
+
+  @override
+  String get capaReportTheOccurrencesTheConcernAnswersWithThe =>
+      'Những lần xuất hiện mà Concern trả lời, kèm số hiệu, Sản phẩm, Mã lỗi, số lượng và quyết định về sản phẩm.';
+
+  @override
+  String get capaReportNoNonConformanceIsLinkedToThis =>
+      'Chưa có Sản phẩm không phù hợp nào được liên kết với Concern này, nên báo cáo không có bằng chứng để liệt kê.';
+
+  @override
+  String get capaReportNoPhaseOfThisActionHasBeen =>
+      'Chưa giai đoạn nào của Hành động này được hoàn thành.';
+
+  @override
+  String get capaReportTheCandidateCausesConsidered =>
+      'Các nguyên nhân ứng viên đã xem xét';
+
+  @override
+  String get capaReportNoCandidateCauseIsRecordedSoNo =>
+      'Chưa ghi nguyên nhân ứng viên nào nên chưa làm biểu đồ xương cá.';
+
+  @override
+  String capaReportWhy(Object sequence, Object statement) {
+    return 'Why $sequence · $statement';
+  }
+
+  @override
+  String get capaReportD8Effectiveness => 'D8 · Hiệu quả';
+
+  @override
+  String capaReportVerifiedByOn(Object value, Object value2) {
+    return 'xác minh bởi $value ngày $value2';
+  }
+
+  @override
+  String capaReportTheCheckFallsDueDaysAfterThe(
+    Object effectivenessCheckDelayDays,
+  ) {
+    return 'Bước kiểm tra đến hạn $effectivenessCheckDelayDays ngày sau khi Concern đóng, và Concern chưa đóng, nên chưa xác minh gì.';
+  }
+
+  @override
+  String get capaReportRaisedFromThis => 'nêu từ đây';
+
+  @override
+  String get capaReportLinkedToThisConcern => 'liên kết với Concern này';
+
+  @override
+  String get capaReportNoProductFromThisOccurrenceHasA =>
+      'Chưa sản phẩm nào của lần xuất hiện này có Phương án xử lý.';
+
+  @override
+  String capaReportMinRework(Object value) {
+    return '$value phút làm lại';
+  }
+
+  @override
+  String capaReportDecidedBy(Object decidedBy) {
+    return 'quyết định bởi $decidedBy';
+  }
+
+  @override
+  String get capaWhyThatIsNotAChain => 'Đó không phải một chuỗi';
+
+  @override
+  String get capaWhyACapaReasonsWithTwoChainsWhy =>
+      'CAPA lý luận bằng hai chuỗi: vì sao vấn đề xảy ra, và vì sao nó không được phát hiện.';
+
+  @override
+  String capaWhyIsSoItsChainsAreARecord(Object capaNo, Object value) {
+    return '$capaNo đang $value, nên các chuỗi của nó là hồ sơ chứ không phải danh sách việc.';
+  }
+
+  @override
+  String get capaWhyThatWhyIsNotInThisChain =>
+      'Why đó không nằm trong chuỗi này';
+
+  @override
+  String capaWhyReviseWhy(Object sequence) {
+    return 'Sửa Why $sequence';
+  }
+
+  @override
+  String capaWhyRemoveWhy(Object sequence) {
+    return 'Xoá Why $sequence?';
+  }
+
+  @override
+  String get capaWhyItIsTakenOutOfTheChain =>
+      'Nó bị bỏ khỏi chuỗi vĩnh viễn, và các Why sau nó dồn lên một bậc. Phần còn lại của cuộc điều tra không bị đụng tới.';
+
+  @override
+  String capaWhyOneStepOfTheReasoningInYour(Object value) {
+    return '$value — một bước lập luận, bằng lời của bạn.';
+  }
+
+  @override
+  String get capaWhyTheWhy => 'Why';
+
+  @override
+  String get capaWhyWhatYouFoundSaidSoTheNext =>
+      'Điều bạn tìm ra, nói sao cho người sau theo được.';
+
+  @override
+  String get capasTheCapaListCouldNotBeRead => 'Không đọc được danh sách CAPA';
+
+  @override
+  String get capasTheInvestigationsOpenedOnAConcernAnd =>
+      'Các cuộc điều tra đã mở trên một Concern, và bước kiểm tra hiệu quả mà mỗi cuộc đang chờ.';
+
+  @override
+  String get capasOverdueChecks => 'Kiểm tra quá hạn';
+
+  @override
+  String get capasThereAreMoreInvestigationsThanThisList =>
+      'Còn nhiều cuộc điều tra hơn danh sách này hiển thị. Hãy thu hẹp theo Đơn vị tổ chức hoặc trạng thái.';
+
+  @override
+  String get capasNoInvestigationMatchesTheOrgUnitStatus =>
+      'Không cuộc điều tra nào khớp Đơn vị tổ chức, trạng thái hay bước kiểm tra quá hạn bạn chọn.';
+
+  @override
+  String get capasNoInvestigationsYet => 'Chưa có cuộc điều tra nào';
+
+  @override
+  String get capasACapaIsOpenedFromAConcern =>
+      'CAPA được mở từ một Concern, khi có người quyết định vấn đề cần nguyên nhân gốc và một bản sửa giữ được kết quả.';
+
+  @override
+  String get capasInvestigation => 'Cuộc điều tra';
+
+  @override
+  String get capasEffectivenessCheck => 'Kiểm tra hiệu quả';
+
+  @override
+  String get capasOverdueCheck => 'Kiểm tra quá hạn';
+
+  @override
+  String capasRecordedBy(Object value, Object value2) {
+    return '$value, ghi bởi $value2.';
+  }
+
+  @override
+  String capasTheEffectivenessCheckWasDueOn(Object effectivenessCheckDueAt) {
+    return 'Bước kiểm tra hiệu quả đã đến hạn vào $effectivenessCheckDueAt.';
+  }
+
+  @override
+  String capasTheEffectivenessCheckIsDueOn(Object effectivenessCheckDueAt) {
+    return 'Bước kiểm tra hiệu quả đến hạn vào $effectivenessCheckDueAt.';
+  }
+
+  @override
+  String capasTheEffectivenessCheckFallsDueDaysAfter(
+    Object effectivenessCheckDelayDays,
+  ) {
+    return 'Bước kiểm tra hiệu quả đến hạn $effectivenessCheckDelayDays ngày sau khi Concern đóng.';
+  }
+
+  @override
+  String capasOnTheTeam(Object length) {
+    return '$length người trong nhóm';
+  }
+
+  @override
+  String get openCapaOpeningACapaNeedsAuthority => 'Mở CAPA cần thẩm quyền';
+
+  @override
+  String get openCapaOpeningACapaNeedsQualityAuthorityAt =>
+      'Mở CAPA cần thẩm quyền Chất lượng tại Đơn vị tổ chức của Concern này.';
+
+  @override
+  String openCapaOpenACapaOn(Object actionNo) {
+    return 'Mở CAPA trên $actionNo';
+  }
+
+  @override
+  String get openCapaOpenTheCapa => 'Mở CAPA';
+
+  @override
+  String openCapaAn8dInvestigationInTheActionLog(Object title) {
+    return '$title — một cuộc điều tra 8D, trong nhật ký hành động, trên Concern này. Biện pháp ngăn chặn, khắc phục và phòng ngừa là của chính Concern và được đọc trên CAPA chứ không ghi lại.';
+  }
+
+  @override
+  String get openCapaTheProblemOptional => 'Vấn đề (không bắt buộc)';
+
+  @override
+  String get openCapaD2WhatTheInvestigationIsAboutIn =>
+      'D2 — cuộc điều tra nói về điều gì, bằng lời mà nhóm sẽ làm việc theo.';
+
+  @override
+  String get openCapaTheTeam => 'Nhóm';
+
+  @override
+  String get openCapaChosenFromTheEmployeeDirectoryLeaveIt =>
+      'Chọn từ Danh bạ Nhân viên. Để trống để quyết định nhóm sau — việc đang mở ở đây là cuộc điều tra.';
+
+  @override
+  String get openCapaTeamLeadOptional => 'Trưởng nhóm (không bắt buộc)';
+
+  @override
+  String get openCapaWhoIsAnswerableForTheInvestigation =>
+      'Ai chịu trách nhiệm về cuộc điều tra.';
+
+  @override
+  String get openCapaAddATeamMemberOptional =>
+      'Thêm thành viên nhóm (không bắt buộc)';
+
+  @override
+  String get openCapaNobodyElseIsOnThisInvestigationYet =>
+      'Chưa có ai khác trong cuộc điều tra này.';
+
+  @override
+  String awaitingApprovalYouReSignedInAsButAn(Object email) {
+    return 'Bạn đã đăng nhập với $email, nhưng quản trị viên chưa chấp nhận bạn vào Nền tảng. Hãy quay lại kiểm tra sau khi được chấp nhận.';
+  }
+
+  @override
+  String get awaitingApprovalCheckAgain => 'Kiểm tra lại';
+
+  @override
+  String get signInPassword => 'Mật khẩu';
+
+  @override
+  String get signInCreateAnAccount => 'Tạo tài khoản';
+
+  @override
+  String get signInContinueWithGoogle => 'Tiếp tục với Google';
+
+  @override
+  String get signInOneApplicationForRunningSeveralManufacturingPlants =>
+      'Một ứng dụng để vận hành nhiều nhà máy sản xuất.';
+
+  @override
+  String get accessDeniedNotAvailableToYou => 'Bạn không có quyền xem mục này';
+
+  @override
+  String get accessDeniedThisPartOfThePlatformIsFor =>
+      'Phần này của Nền tảng dành cho quản trị viên. Hãy hỏi một quản trị viên nếu bạn cần những gì ở đây.';
+
+  @override
+  String get commonBackToHome => 'Về Trang chủ';
+
+  @override
+  String get changePasswordAnAdministratorResetYourPasswordSoThe =>
+      'Quản trị viên đã đặt lại mật khẩu của bạn, nên mật khẩu bạn nhận được là tạm thời. Hãy chọn mật khẩu của riêng bạn để tiếp tục.';
+
+  @override
+  String get notFoundScreenNotFound => 'Không tìm thấy màn hình';
+
+  @override
+  String notFoundThereIsNothingAt(Object location) {
+    return 'Không có gì ở $location.';
+  }
+
+  @override
+  String get sessionErrorTheSessionCouldNotBeChecked =>
+      'Không kiểm tra được phiên làm việc';
+
+  @override
+  String sessionErrorCouldNotCheckThisAccountSStatus(Object message) {
+    return 'Không kiểm tra được trạng thái của Tài khoản này: $message';
+  }
+
+  @override
+  String get appDateFieldChooseADate => 'Chọn một ngày';
+
+  @override
+  String get appDateTimeFieldChooseADateAndTime => 'Chọn ngày và giờ';
+
+  @override
+  String get appSearchFieldNoMatches => 'Không có kết quả';
+
+  @override
+  String appSearchFieldNothingMatchedTryADifferentTerm(Object lastQueriedTerm) {
+    return 'Không có gì khớp “$lastQueriedTerm” — hãy thử từ khoá khác.';
+  }
+
+  @override
+  String get appSearchFieldSearchFailed => 'Tìm kiếm không thành công';
+
+  @override
+  String get appSearchFieldThereAreMoreMatchesThanAreShown =>
+      'Còn nhiều kết quả hơn số đang hiện — hãy gõ tiếp để thu hẹp danh sách.';
+
+  @override
+  String failureStateNotVisibleToYou(Object message) {
+    return 'Bạn không có quyền xem. $message';
+  }
+
+  @override
+  String get failureStateNotVisibleToYou2 => 'Bạn không có quyền xem';
+
+  @override
+  String get signaturePadSignatureDrawingArea => 'Vùng vẽ chữ ký';
 }

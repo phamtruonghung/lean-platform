@@ -3483,4 +3483,1220 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get attendanceRecordChooseAReasonForThisAbsence =>
       'Choose a reason for this absence.';
+
+  @override
+  String get commonThatActionCouldNotBeRead => 'That Action could not be read';
+
+  @override
+  String get commonThatActionHasEnded => 'That Action has ended';
+
+  @override
+  String get commonDone => 'done';
+
+  @override
+  String get actionCancelItIsClosedSoThereIsNothing =>
+      'It is closed, so there is nothing left to call off.';
+
+  @override
+  String get actionCancelItWasAlreadyCancelled => 'It was already cancelled.';
+
+  @override
+  String actionCancelCallOff(Object actionNo) {
+    return 'Call off $actionNo?';
+  }
+
+  @override
+  String get actionCancelLeaveItAlone => 'Leave it alone';
+
+  @override
+  String get actionCancelCallItOff => 'Call it off';
+
+  @override
+  String get actionCancelCallingItOffEndsTheRecordWithout =>
+      'Calling it off ends the record without claiming anything was done about it. The row stays, with the reason you give it.';
+
+  @override
+  String get actionCancelWhyOptional => 'Why (optional)';
+
+  @override
+  String get actionCancelRaisedInErrorADuplicateOvertakenBy =>
+      'Raised in error, a duplicate, overtaken by events.';
+
+  @override
+  String get commonBackToTheActionLog => 'Back to the action log';
+
+  @override
+  String get actionDetailHandItUp => 'Hand it up…';
+
+  @override
+  String get actionDetailCallItOff => 'Call it off…';
+
+  @override
+  String get actionDetailWhereItStands => 'Where it stands';
+
+  @override
+  String get commonOwner => 'Owner';
+
+  @override
+  String get actionDetailEscalatedTo => 'Escalated to';
+
+  @override
+  String get actionDetailClosingNote => 'Closing note';
+
+  @override
+  String actionDetailPillar(Object pillarCode) {
+    return 'Pillar $pillarCode';
+  }
+
+  @override
+  String commonOverdueByDays(Object daysOverdue) {
+    return 'Overdue by $daysOverdue days';
+  }
+
+  @override
+  String actionDetailCycle(Object currentCycle) {
+    return 'Cycle $currentCycle';
+  }
+
+  @override
+  String actionDetailCompleteThe(Object phaseLabel) {
+    return 'Complete the $phaseLabel';
+  }
+
+  @override
+  String get actionDetailThisActionHasNoPhasesLeft =>
+      'This Action has no phases left.';
+
+  @override
+  String get actionDetailEarlierRounds => 'Earlier rounds';
+
+  @override
+  String get actionDetailOpenWaitingOnThis => 'Open — waiting on this';
+
+  @override
+  String get actionDetailNoNoteRecorded => 'No note recorded';
+
+  @override
+  String actionDetailDue(Object dueDate) {
+    return 'due $dueDate';
+  }
+
+  @override
+  String actionDetailDone(Object value) {
+    return 'done $value';
+  }
+
+  @override
+  String actionDetailAnswers(Object actionNo) {
+    return 'Answers $actionNo';
+  }
+
+  @override
+  String get commonCapa => 'CAPA';
+
+  @override
+  String get actionDetailAFormal8dInvestigationOpenedOnThis =>
+      'A formal 8D investigation opened on this Concern: its team, its problem description and — as those slices land — its root causes and its effectiveness check. Its actions are the ones below, recorded once in the action log and read there.';
+
+  @override
+  String actionDetailUnderInvestigation(Object capaNo) {
+    return 'Under investigation: $capaNo';
+  }
+
+  @override
+  String get actionDetailOpenACapa => 'Open a CAPA…';
+
+  @override
+  String get actionDetailNobodyHasOpenedACapaOnThis =>
+      'Nobody has opened a CAPA on this Concern. Opening one needs Quality authority at this Concern\'s Org Unit.';
+
+  @override
+  String get actionDetailMeasures => 'Measures';
+
+  @override
+  String actionDetailMeasuresOfThemCountermeasures(
+    Object length,
+    Object countermeasureCount,
+  ) {
+    return 'Measures ($length, $countermeasureCount of them countermeasures)';
+  }
+
+  @override
+  String get actionDetailAddAMeasure => 'Add a measure';
+
+  @override
+  String actionDetailAddA(Object value) {
+    return 'Add a $value…';
+  }
+
+  @override
+  String get actionDetailEachMeasureIsAnActionOfIts =>
+      'Each measure is an Action of its own: open one and run its own cycle to its Act, and it counts as closed.';
+
+  @override
+  String get actionDetailThisActionAnswersNoConcernOfIts =>
+      'This Action answers no Concern of its own.';
+
+  @override
+  String get actionDetailNothingAnswersThisYetAContainmentStops =>
+      'Nothing answers this yet. A containment stops the effect now; a countermeasure removes the cause.';
+
+  @override
+  String get commonNobodyYet => 'Nobody yet';
+
+  @override
+  String actionDetailOverdueByDays(Object daysOverdue) {
+    return 'overdue by $daysOverdue days';
+  }
+
+  @override
+  String commonWaitingOnIts(Object value) {
+    return 'waiting on its $value';
+  }
+
+  @override
+  String actionDetailCompleteThe2(Object value) {
+    return 'Complete the $value…';
+  }
+
+  @override
+  String actionDetailNonConformances(Object length) {
+    return 'Non-conformances ($length)';
+  }
+
+  @override
+  String get actionDetailTheOccurrencesThisConcernAnswersOneProblem =>
+      'The occurrences this Concern answers. One problem that shows up several times stays one Concern, so a further occurrence is linked here rather than raised as another.';
+
+  @override
+  String get actionDetailNoNonConformanceIsLinkedToThis =>
+      'No Non-conformance is linked to this Concern.';
+
+  @override
+  String get actionDetailRaisedFromThis => 'Raised from this';
+
+  @override
+  String get actionDetailUnlink => 'Unlink…';
+
+  @override
+  String get actionDetailTheObservationThisActionWasRaisedFrom =>
+      'The observation this Action was raised from — what was seen, and how bad it could have been.';
+
+  @override
+  String get actionDetailTheIncidentThisConcernWasRaisedFrom =>
+      'The incident this Concern was raised from — its number and its severity, never who was hurt or their diagnosis.';
+
+  @override
+  String get actionEscalateItIsClosedWhoeverNeededToKnow =>
+      'It is closed. Whoever needed to know about it was told before it was.';
+
+  @override
+  String get actionEscalateItWasCalledOffSoThereIs =>
+      'It was called off, so there is nothing to hand up.';
+
+  @override
+  String get actionEscalateNowhereToHandItUpTo => 'Nowhere to hand it up to';
+
+  @override
+  String get actionEscalateThereIsNobodyAboveThis =>
+      'There is nobody above this';
+
+  @override
+  String actionEscalateSitsAtWhichIsAlreadyTheTop(
+    Object actionNo,
+    Object orgUnitName,
+  ) {
+    return '$actionNo sits at $orgUnitName, which is already the top of this Site. Nothing above it can be told.';
+  }
+
+  @override
+  String actionEscalateHandUp(Object actionNo) {
+    return 'Hand $actionNo up';
+  }
+
+  @override
+  String get actionEscalateHandItUp => 'Hand it up';
+
+  @override
+  String get actionEscalateRaisingThisTellsTheOrgUnitYou =>
+      'Raising this tells the Org Unit you choose. It stays where it is and keeps its owner and its cycle — this asks somebody above to know about it, not to take it over.';
+
+  @override
+  String actionEscalateNearestAboveIt(Object code) {
+    return '$code · nearest above it';
+  }
+
+  @override
+  String get actionEscalatedToFilterFilterByWhatWasHandedUp =>
+      'Filter by what was handed up';
+
+  @override
+  String get actionEscalatedToFilterAnyone => 'Anyone';
+
+  @override
+  String get actionEscalatedToFilterWhoseQueue => 'Whose queue';
+
+  @override
+  String get actionEscalatedToFilterChooseTheOrgUnitThatConcernsWere =>
+      'Choose the Org Unit that concerns were handed up to — what is waiting on the area, not what sits at the line — or clear back to everything.';
+
+  @override
+  String get commonRaiseAConcern => 'Raise a concern';
+
+  @override
+  String get actionFormRaiseIt => 'Raise it';
+
+  @override
+  String get actionFormOneLineTheCauseGoesInThe =>
+      'One line. The cause goes in the Plan phase, not here.';
+
+  @override
+  String get commonKindOfAction => 'Kind of Action';
+
+  @override
+  String get actionFormThePillarCatalogueCouldNotBeRead =>
+      'The Pillar catalogue could not be read, so no Pillar can be chosen.';
+
+  @override
+  String get actionFormPillarOptional => 'Pillar (optional)';
+
+  @override
+  String get actionFormWhichSqdcpNumberDoesThisThreaten =>
+      'Which SQDCP number does this threaten?';
+
+  @override
+  String get actionFormNoPillar => 'No Pillar';
+
+  @override
+  String get commonOwnerOptional => 'Owner (optional)';
+
+  @override
+  String get actionFormWhoWillDoItAnActionNobody =>
+      'Who will do it. An Action nobody owns is visibly nobody\'s.';
+
+  @override
+  String get commonDueOptional => 'Due (optional)';
+
+  @override
+  String get actionFormChooseTheOrgUnitThisConcernIs =>
+      'Choose the Org Unit this concern is about. This is what decides who may act on it.';
+
+  @override
+  String actionFormThisConcernWillBeRecordedAt(Object value) {
+    return 'This concern will be recorded at $value.';
+  }
+
+  @override
+  String actionMeasureAddA(Object value) {
+    return 'Add a $value';
+  }
+
+  @override
+  String actionMeasureAddThe(Object value) {
+    return 'Add the $value';
+  }
+
+  @override
+  String actionMeasureAnswering(Object actionNo, Object title) {
+    return 'Answering $actionNo: $title';
+  }
+
+  @override
+  String get actionMeasureWhatWillBeDone => 'What will be done';
+
+  @override
+  String get actionMeasureWhoWillDoIt => 'Who will do it.';
+
+  @override
+  String get actionMeasureWhereThisWorkHappens => 'Where this work happens';
+
+  @override
+  String actionMeasureLeaveItAloneToRecordTheMeasure(Object orgUnitName) {
+    return 'Leave it alone to record the measure at $orgUnitName, where the concern sits. A fix that belongs somewhere else — a store, a supplier — can name that instead.';
+  }
+
+  @override
+  String get actionOrgUnitFilterNarrowTheLog => 'Narrow the log';
+
+  @override
+  String get actionOrgUnitFilterChooseTheOrgUnitWhoseActionsAnd =>
+      'Choose the Org Unit whose Actions and everything beneath it you want to read, or clear back to the whole Site.';
+
+  @override
+  String get actionPhaseCompleteThatIsNotTheOpenPhase =>
+      'That is not the open phase';
+
+  @override
+  String get actionPhaseCompleteThisActionHasNoOpenPhaseLeft =>
+      'This Action has no open phase left.';
+
+  @override
+  String actionPhaseCompleteThisActionIsWaitingOnItsPhase(
+    Object value,
+    Object value2,
+  ) {
+    return 'This Action is waiting on its $value phase, not its $value2.';
+  }
+
+  @override
+  String actionPhaseCompleteCompleteThe(Object label) {
+    return 'Complete the $label';
+  }
+
+  @override
+  String get actionPhaseCompleteWhatWasMeasured => 'What was measured';
+
+  @override
+  String get actionPhaseCompleteWhatWasDone => 'What was done';
+
+  @override
+  String get actionPhaseCompleteDidItHold => 'Did it hold?';
+
+  @override
+  String get actionPhaseCompleteAnsweringThatItDidNotOpensThe =>
+      'Answering that it did not opens the next cycle rather than closing the Action, and keeps this round on the record.';
+
+  @override
+  String get actionUnlinkNonconformanceThatConcernCouldNotBeRead =>
+      'That Concern could not be read';
+
+  @override
+  String get actionUnlinkNonconformanceThatNonConformanceIsNotLinkedHere =>
+      'That Non-conformance is not linked here';
+
+  @override
+  String get actionUnlinkNonconformanceThisConcernAnswersNothingByThatId =>
+      'This Concern answers nothing by that id. It may have been unlinked already, or the address may be wrong.';
+
+  @override
+  String get actionUnlinkNonconformanceBackToTheConcern =>
+      'Back to the Concern';
+
+  @override
+  String get actionUnlinkNonconformanceUnlinkThisNonConformance =>
+      'Unlink this Non-conformance';
+
+  @override
+  String get actionUnlinkNonconformanceKeepItLinked => 'Keep it linked';
+
+  @override
+  String get actionUnlinkNonconformanceUnlinkIt => 'Unlink it';
+
+  @override
+  String get actionUnlinkNonconformanceItStopsBeingOneOfTheOccurrences =>
+      'It stops being one of the occurrences this Concern answers. The Non-conformance itself is untouched — it keeps its number, its Dispositions and its quantity.';
+
+  @override
+  String get actionsTheActionLogCouldNotBeRead =>
+      'The action log could not be read';
+
+  @override
+  String get actionsWhatThePlantOwesAtThisSite =>
+      'What the plant owes at this Site: what was found, who owns it, and when it is due. Overdue first.';
+
+  @override
+  String get actionsEscalatedToAnyone => 'Escalated to anyone';
+
+  @override
+  String actionsEscalatedTo(Object escalatedToOrgUnitFilterName) {
+    return 'Escalated to $escalatedToOrgUnitFilterName';
+  }
+
+  @override
+  String get actionsEveryKind => 'Every kind';
+
+  @override
+  String get actionsShowClosed => 'Show closed';
+
+  @override
+  String get actionsThereAreMoreActionsThanThisList =>
+      'There are more Actions than this list shows. Narrow it by Org Unit, by status or by kind to see the rest.';
+
+  @override
+  String get actionsTheLogHasActionsButNoneOf =>
+      'The log has Actions, but none of them is in the Org Unit, status or kind you picked.';
+
+  @override
+  String get actionsNothingOnTheLog => 'Nothing on the log';
+
+  @override
+  String get actionsNoActionHasBeenRaisedAtThis =>
+      'No Action has been raised at this Site yet.';
+
+  @override
+  String get actionsSource => 'Source';
+
+  @override
+  String actionsOfThemCountermeasures(
+    int measureCount,
+    int countermeasureCount,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      measureCount,
+      locale: localeName,
+      other: '$measureCount measures',
+      one: '1 measure',
+    );
+    return '$_temp0, $countermeasureCount of them countermeasures';
+  }
+
+  @override
+  String actionsEscalatedTo2(Object escalatedToOrgUnitName) {
+    return 'Escalated to $escalatedToOrgUnitName';
+  }
+
+  @override
+  String get actionsNoDueDate => 'No due date';
+
+  @override
+  String actionsDue(Object dueDate) {
+    return 'Due $dueDate';
+  }
+
+  @override
+  String get commonBackToTheCapa => 'Back to the CAPA';
+
+  @override
+  String get commonThatCapaCouldNotBeRead => 'That CAPA could not be read';
+
+  @override
+  String get capaCauseThatIsNotA6mCategory => 'That is not a 6M category';
+
+  @override
+  String get capaCauseAFishboneHasSixBonesManMachine =>
+      'A fishbone has six bones: Man, Machine, Method, Material, Measurement and Environment.';
+
+  @override
+  String get commonThisInvestigationIsOver => 'This investigation is over';
+
+  @override
+  String capaCauseIsSoItsFishboneIsARecord(Object capaNo, Object value) {
+    return '$capaNo is $value, so its fishbone is a record rather than a worklist.';
+  }
+
+  @override
+  String get commonNotYoursToWrite => 'Not yours to write';
+
+  @override
+  String get commonWritingACapaSRootCausesNeeds =>
+      'Writing a CAPA\'s root causes needs edit access at its Org Unit, or a place on its team.';
+
+  @override
+  String get capaCauseThatCauseIsNotOnThisBone =>
+      'That cause is not on this bone';
+
+  @override
+  String get commonItMayHaveBeenRemovedAMoment =>
+      'It may have been removed a moment ago by somebody else.';
+
+  @override
+  String get capaCauseRecordACandidateCause => 'Record a candidate cause';
+
+  @override
+  String get capaCauseReviseTheCause => 'Revise the cause';
+
+  @override
+  String get capaCauseRemoveThisCause => 'Remove this cause?';
+
+  @override
+  String get commonRemoveIt => 'Remove it';
+
+  @override
+  String capaCauseItIsTakenOffTheBoneFor(Object categoryLabel, Object value) {
+    return 'It is taken off the $categoryLabel bone for good$value. A chain started from it keeps the Why it began with.';
+  }
+
+  @override
+  String get capaCauseBothChainsHaveBeenStarted =>
+      'Both chains have been started';
+
+  @override
+  String capaCauseAlreadyReasonsBothWhyTheProblemHappened(Object capaNo) {
+    return '$capaNo already reasons both why the problem happened and why it was not detected, so the Why for this cause belongs in one of them rather than at the head of a chain.';
+  }
+
+  @override
+  String get capaCauseTheBoneItHangsFrom => 'The bone it hangs from';
+
+  @override
+  String get capaCauseTheCandidateCause => 'The candidate cause';
+
+  @override
+  String get capaCauseWhatYouSuspectSaidSoTheNext =>
+      'What you suspect, said so the next person can check it.';
+
+  @override
+  String get capaCauseDecideThisCause => 'Decide this cause';
+
+  @override
+  String get capaCauseRecordTheVerdict => 'Record the verdict';
+
+  @override
+  String get capaCauseAVerdictIsADecisionTheReport =>
+      'A verdict is a decision the report reads back, so it is recorded with the evidence for it.';
+
+  @override
+  String get capaCauseTheEvidence => 'The evidence';
+
+  @override
+  String get capaCauseWhatYouLookedAtAndWhatIt =>
+      'What you looked at, and what it showed.';
+
+  @override
+  String get capaCauseStartAChainFromThisCause =>
+      'Start a chain from this cause';
+
+  @override
+  String get capaCauseStartTheChain => 'Start the chain';
+
+  @override
+  String get capaCauseTheEvidenceConfirmedThisCauseSoA =>
+      'The evidence confirmed this cause, so a chain may begin with it. What it says is the first Why.';
+
+  @override
+  String get capaCauseWhichChainItBegins => 'Which chain it begins';
+
+  @override
+  String get capaCauseTheFirstWhy => 'The first Why';
+
+  @override
+  String get capaCauseTheConfirmedCauseSaidTheWayThe =>
+      'The confirmed cause, said the way the chain should read.';
+
+  @override
+  String capaDetailBackTo(Object actionNo) {
+    return 'Back to $actionNo';
+  }
+
+  @override
+  String get capaDetailTheReport => 'The report';
+
+  @override
+  String capaDetailInvestigation(Object methodLabel) {
+    return '$methodLabel investigation';
+  }
+
+  @override
+  String capaDetailDue(Object dueDate) {
+    return 'due $dueDate';
+  }
+
+  @override
+  String get capaDetailEffectiveness => 'Effectiveness';
+
+  @override
+  String get commonACapaClosesOnlyWhenBothChains =>
+      'A CAPA closes only when both chains have a confirmed root cause, its Concern is closed, and somebody holding Quality authority other than its team lead has verified, some time later, that the problem has not come back.';
+
+  @override
+  String capaDetailRecordedByOn(Object value, Object value2) {
+    return 'recorded by $value on $value2';
+  }
+
+  @override
+  String get capaDetailTheCheckDidNotHoldSoThe =>
+      'The check did not hold, so the Concern is open again in its next cycle: the work is on its Screen, in the Concern this investigation answers.';
+
+  @override
+  String commonTheConcernHasClosedSoTheEffectiveness(Object dueAt) {
+    return 'The Concern has closed, so the effectiveness check is due on $dueAt.';
+  }
+
+  @override
+  String get commonOverdue => 'Overdue';
+
+  @override
+  String get commonRecordTheEffectivenessCheck =>
+      'Record the effectiveness check';
+
+  @override
+  String get capaDetailYouLeadThisInvestigationSoSomebodyElse =>
+      'You lead this investigation, so somebody else records the check: a holder of Quality authority who is not on the team lead\'s Account.';
+
+  @override
+  String get capaDetailRecordingTheCheckNeedsQualityAuthorityAt =>
+      'Recording the check needs Quality authority at this Org Unit.';
+
+  @override
+  String capaDetailTheCheckFallsDueDaysAfterThe(
+    Object effectivenessCheckDelayDays,
+  ) {
+    return 'The check falls due $effectivenessCheckDelayDays days after the Concern closes, and the Concern has not closed yet.';
+  }
+
+  @override
+  String get capaDetailTeam => 'Team';
+
+  @override
+  String get commonNobodyIsOnThisInvestigationYet =>
+      'Nobody is on this investigation yet.';
+
+  @override
+  String commonTeamLead(Object name) {
+    return '$name · team lead';
+  }
+
+  @override
+  String get capaDetailTheProblem => 'The problem';
+
+  @override
+  String get commonNobodyHasWrittenTheProblemDescriptionYet =>
+      'Nobody has written the problem description yet.';
+
+  @override
+  String get capaDetailCandidateCauses => 'Candidate causes';
+
+  @override
+  String get capaDetailTheFishboneWhatTheTeamSuspectedBy =>
+      'The fishbone: what the team suspected, by 6M category, and what the evidence said about each one. The chain that follows begins with the cause it confirmed.';
+
+  @override
+  String get capaDetailThisInvestigationIsOverSoItsFishbone =>
+      'This investigation is over, so its fishbone is a record rather than a worklist.';
+
+  @override
+  String get capaDetailRecordACause => 'Record a cause';
+
+  @override
+  String capaDetailNothingIsRecordedUnder(Object value) {
+    return 'Nothing is recorded under $value.';
+  }
+
+  @override
+  String capaDetailCause(Object sequence) {
+    return 'Cause $sequence';
+  }
+
+  @override
+  String commonEvidence(Object evidenceNote) {
+    return 'Evidence: $evidenceNote';
+  }
+
+  @override
+  String get capaDetailChangeTheVerdict => 'Change the verdict';
+
+  @override
+  String get capaDetailDecideIt => 'Decide it';
+
+  @override
+  String get capaDetailStartAChainFromIt => 'Start a chain from it';
+
+  @override
+  String get capaDetailRootCause => 'Root cause';
+
+  @override
+  String get capaDetailTwoChainsEachEndingAtOneConfirmed =>
+      'Two chains, each ending at one confirmed root cause: why the problem happened, and why it was not detected.';
+
+  @override
+  String get capaDetailThisInvestigationIsOverSoItsChains =>
+      'This investigation is over, so its chains are a record rather than a worklist.';
+
+  @override
+  String get commonAddAWhy => 'Add a Why';
+
+  @override
+  String get capaDetailOccurrence => 'occurrence';
+
+  @override
+  String get capaDetailWhyTheProblemHappenedOneStepAt =>
+      'Why the problem happened, one step at a time.';
+
+  @override
+  String get capaDetailWhyItWasNotDetectedOneStep =>
+      'Why it was not detected, one step at a time.';
+
+  @override
+  String get commonNobodyHasStartedThisChainYet =>
+      'Nobody has started this chain yet.';
+
+  @override
+  String get commonThisChainHasNoConfirmedRootCause =>
+      'This chain has no confirmed root cause yet.';
+
+  @override
+  String commonConfirmedRootCause(Object statement) {
+    return 'Confirmed root cause: $statement';
+  }
+
+  @override
+  String capaDetailWhy(Object sequence) {
+    return 'Why $sequence';
+  }
+
+  @override
+  String get capaDetailConfirmedRootCause => 'Confirmed root cause';
+
+  @override
+  String get capaDetailClearTheRootCause => 'Clear the root cause';
+
+  @override
+  String get capaDetailThisIsTheRootCause => 'This is the root cause';
+
+  @override
+  String get capaDetailMoveItEarlierInTheChain =>
+      'Move it earlier in the chain';
+
+  @override
+  String get capaDetailMoveItLaterInTheChain => 'Move it later in the chain';
+
+  @override
+  String get capaDetailTheConcern => 'The Concern';
+
+  @override
+  String capaDetailTheConcern2(Object actionNo) {
+    return 'The Concern: $actionNo';
+  }
+
+  @override
+  String get capaDetailWhatTheConcernHasDone => 'What the Concern has done';
+
+  @override
+  String capaDetailWhatTheConcernHasDone2(Object length) {
+    return 'What the Concern has done ($length)';
+  }
+
+  @override
+  String get capaDetailTheContainmentD3TheCountermeasuresD5D6 =>
+      'The containment (D3), the countermeasures (D5-D6) and the preventive actions (D7) are the Concern\'s own, recorded once in the action log — this is where they are read, not where they are recorded again.';
+
+  @override
+  String get capaDetailNothingAnswersThisConcernYetSoThere =>
+      'Nothing answers this Concern yet, so there is no work to show.';
+
+  @override
+  String commonCycle(Object cycle, Object phaseLabel) {
+    return 'Cycle $cycle · $phaseLabel';
+  }
+
+  @override
+  String get commonOpen2 => 'open';
+
+  @override
+  String capaEffectivenessIsSoItsEffectivenessIsRecordedAnd(
+    Object capaNo,
+    Object value,
+  ) {
+    return '$capaNo is $value, so its effectiveness is recorded and the record is read rather than changed.';
+  }
+
+  @override
+  String get capaEffectivenessNotYoursToDecide => 'Not yours to decide';
+
+  @override
+  String get capaEffectivenessRecordingACapaSEffectivenessCheckNeeds =>
+      'Recording a CAPA\'s effectiveness check needs Quality authority at its Org Unit.';
+
+  @override
+  String get capaEffectivenessSomebodyElseHasToCheckThis =>
+      'Somebody else has to check this';
+
+  @override
+  String capaEffectivenessYouLeadTheInvestigationOnSoYou(Object capaNo) {
+    return 'You lead the investigation on $capaNo, so you are the one person whose judgement about this fix is not evidence. A holder of Quality authority who is not on the team lead\'s Account records the check.';
+  }
+
+  @override
+  String capaEffectivenessTheCheckFallsDueDaysAfterThe(
+    Object effectivenessCheckDelayDays,
+  ) {
+    return 'The check falls due $effectivenessCheckDelayDays days after the Concern closes.';
+  }
+
+  @override
+  String capaEffectivenessTheConcernClosedAndTheCheckFell(
+    Object effectivenessCheckDueAt,
+  ) {
+    return 'The Concern closed, and the check fell due on $effectivenessCheckDueAt.';
+  }
+
+  @override
+  String get capaEffectivenessWhatTheCheckFound => 'What the check found';
+
+  @override
+  String capaEffectivenessAChainOfThisInvestigationHasNo(Object value) {
+    return 'A chain of this investigation has no confirmed root cause yet, so \"$value\" cannot close it: the investigation has to have finished before the fix is judged to have held.';
+  }
+
+  @override
+  String get capaEffectivenessWhatYouCheckedAndWhatYouFound =>
+      'What you checked, and what you found';
+
+  @override
+  String get capaEffectivenessTheEvidenceForTheVerdictSoThe =>
+      'The evidence for the verdict, so the next reader can weigh it.';
+
+  @override
+  String get capaOrgUnitFilterChooseTheOrgUnitWhoseInvestigationsAnd =>
+      'Choose the Org Unit whose investigations and everything beneath it you want to read, or clear back to every one of them.';
+
+  @override
+  String get capaReportThatCapaReportCouldNotBeRead =>
+      'That CAPA report could not be read';
+
+  @override
+  String get capaReportThe8dRecordOfThisInvestigationIts =>
+      'The 8D record of this investigation: its team, the problem it answers, what was done about it, and whether the fix held.';
+
+  @override
+  String capaReportAnswersTheConcern(Object actionNo, Object title) {
+    return 'Answers the Concern $actionNo · $title';
+  }
+
+  @override
+  String get capaReportNotYetDone => 'Not yet done';
+
+  @override
+  String get capaReportWhatThisReportIsStillWaitingFor =>
+      'What this report is still waiting for.';
+
+  @override
+  String get capaReportD1Team => 'D1 · Team';
+
+  @override
+  String get capaReportWhoInvestigatedThisProblemAndWhoLed =>
+      'Who investigated this problem, and who led it.';
+
+  @override
+  String get capaReportD2TheProblem => 'D2 · The problem';
+
+  @override
+  String get capaReportWhatTheTeamIsInvestigatingInThe =>
+      'What the team is investigating, in the investigation\'s own words.';
+
+  @override
+  String get capaReportD3Containment => 'D3 · Containment';
+
+  @override
+  String get capaReportWhatWasDoneToStopTheBad =>
+      'What was done to stop the bad product going any further.';
+
+  @override
+  String get capaReportD4RootCause => 'D4 · Root cause';
+
+  @override
+  String get capaReportTheCandidateCausesTheTeamConsideredAnd =>
+      'The candidate causes the team considered and the verdict on each, then two chains ending at one confirmed root cause: why the problem happened, and why it was not detected.';
+
+  @override
+  String get capaReportD5D6Countermeasures => 'D5–D6 · Countermeasures';
+
+  @override
+  String get capaReportWhatWasDoneAboutTheCauseAnd =>
+      'What was done about the cause, and whether its Check held.';
+
+  @override
+  String get capaReportD7PreventiveActions => 'D7 · Preventive actions';
+
+  @override
+  String get capaReportWhatStopsItHappeningOnThisLine =>
+      'What stops it happening on this line again, with the outcome of every round.';
+
+  @override
+  String get capaReportTheSafetyIncidentThisInvestigationAnswers =>
+      'The Safety incident this investigation answers';
+
+  @override
+  String get capaReportTheIncidentTheConcernWasRaisedFrom =>
+      'The incident the Concern was raised from, with its number and severity — never the injury details, which the incident\'s own record restricts.';
+
+  @override
+  String get capaReportTheNonConformancesThisInvestigationAnswers =>
+      'The Non-conformances this investigation answers';
+
+  @override
+  String get capaReportTheOccurrencesTheConcernAnswersWithThe =>
+      'The occurrences the Concern answers, with the number, the Product, the Defect code, the quantity and what was decided about the product.';
+
+  @override
+  String get capaReportNoNonConformanceIsLinkedToThis =>
+      'No Non-conformance is linked to this Concern, so the report has no evidence to list.';
+
+  @override
+  String get capaReportNoPhaseOfThisActionHasBeen =>
+      'No phase of this Action has been completed yet.';
+
+  @override
+  String get capaReportTheCandidateCausesConsidered =>
+      'The candidate causes considered';
+
+  @override
+  String get capaReportNoCandidateCauseIsRecordedSoNo =>
+      'No candidate cause is recorded, so no fishbone was worked.';
+
+  @override
+  String capaReportWhy(Object sequence, Object statement) {
+    return 'Why $sequence · $statement';
+  }
+
+  @override
+  String get capaReportD8Effectiveness => 'D8 · Effectiveness';
+
+  @override
+  String capaReportVerifiedByOn(Object value, Object value2) {
+    return 'verified by $value on $value2';
+  }
+
+  @override
+  String capaReportTheCheckFallsDueDaysAfterThe(
+    Object effectivenessCheckDelayDays,
+  ) {
+    return 'The check falls due $effectivenessCheckDelayDays days after the Concern closes, and the Concern has not closed yet, so nothing has been verified.';
+  }
+
+  @override
+  String get capaReportRaisedFromThis => 'raised from this';
+
+  @override
+  String get capaReportLinkedToThisConcern => 'linked to this Concern';
+
+  @override
+  String get capaReportNoProductFromThisOccurrenceHasA =>
+      'No product from this occurrence has a Disposition yet.';
+
+  @override
+  String capaReportMinRework(Object value) {
+    return '$value min rework';
+  }
+
+  @override
+  String capaReportDecidedBy(Object decidedBy) {
+    return 'decided by $decidedBy';
+  }
+
+  @override
+  String get capaWhyThatIsNotAChain => 'That is not a chain';
+
+  @override
+  String get capaWhyACapaReasonsWithTwoChainsWhy =>
+      'A CAPA reasons with two chains: why the problem happened, and why it was not detected.';
+
+  @override
+  String capaWhyIsSoItsChainsAreARecord(Object capaNo, Object value) {
+    return '$capaNo is $value, so its chains are a record rather than a worklist.';
+  }
+
+  @override
+  String get capaWhyThatWhyIsNotInThisChain => 'That Why is not in this chain';
+
+  @override
+  String capaWhyReviseWhy(Object sequence) {
+    return 'Revise Why $sequence';
+  }
+
+  @override
+  String capaWhyRemoveWhy(Object sequence) {
+    return 'Remove Why $sequence?';
+  }
+
+  @override
+  String get capaWhyItIsTakenOutOfTheChain =>
+      'It is taken out of the chain for good, and the Whys after it move up one. The rest of the investigation is not touched.';
+
+  @override
+  String capaWhyOneStepOfTheReasoningInYour(Object value) {
+    return '$value — one step of the reasoning, in your own words.';
+  }
+
+  @override
+  String get capaWhyTheWhy => 'The Why';
+
+  @override
+  String get capaWhyWhatYouFoundSaidSoTheNext =>
+      'What you found, said so the next person can follow it.';
+
+  @override
+  String get capasTheCapaListCouldNotBeRead =>
+      'The CAPA list could not be read';
+
+  @override
+  String get capasTheInvestigationsOpenedOnAConcernAnd =>
+      'The investigations opened on a Concern, and the effectiveness check each one is waiting on.';
+
+  @override
+  String get capasOverdueChecks => 'Overdue checks';
+
+  @override
+  String get capasThereAreMoreInvestigationsThanThisList =>
+      'There are more investigations than this list shows. Narrow it by Org Unit or status.';
+
+  @override
+  String get capasNoInvestigationMatchesTheOrgUnitStatus =>
+      'No investigation matches the Org Unit, status or overdue check you asked for.';
+
+  @override
+  String get capasNoInvestigationsYet => 'No investigations yet';
+
+  @override
+  String get capasACapaIsOpenedFromAConcern =>
+      'A CAPA is opened from a Concern, when somebody decides that the problem needs a root cause and a fix that holds.';
+
+  @override
+  String get capasInvestigation => 'Investigation';
+
+  @override
+  String get capasEffectivenessCheck => 'Effectiveness check';
+
+  @override
+  String get capasOverdueCheck => 'Overdue check';
+
+  @override
+  String capasRecordedBy(Object value, Object value2) {
+    return '$value, recorded by $value2.';
+  }
+
+  @override
+  String capasTheEffectivenessCheckWasDueOn(Object effectivenessCheckDueAt) {
+    return 'The effectiveness check was due on $effectivenessCheckDueAt.';
+  }
+
+  @override
+  String capasTheEffectivenessCheckIsDueOn(Object effectivenessCheckDueAt) {
+    return 'The effectiveness check is due on $effectivenessCheckDueAt.';
+  }
+
+  @override
+  String capasTheEffectivenessCheckFallsDueDaysAfter(
+    Object effectivenessCheckDelayDays,
+  ) {
+    return 'The effectiveness check falls due $effectivenessCheckDelayDays days after the Concern closes.';
+  }
+
+  @override
+  String capasOnTheTeam(Object length) {
+    return '$length on the team';
+  }
+
+  @override
+  String get openCapaOpeningACapaNeedsAuthority =>
+      'Opening a CAPA needs authority';
+
+  @override
+  String get openCapaOpeningACapaNeedsQualityAuthorityAt =>
+      'Opening a CAPA needs Quality authority at this Concern\'s Org Unit.';
+
+  @override
+  String openCapaOpenACapaOn(Object actionNo) {
+    return 'Open a CAPA on $actionNo';
+  }
+
+  @override
+  String get openCapaOpenTheCapa => 'Open the CAPA';
+
+  @override
+  String openCapaAn8dInvestigationInTheActionLog(Object title) {
+    return '$title — an 8D investigation, in the action log, on this Concern. Its containments, countermeasures and preventive actions are the Concern\\u2019s own and are read on the CAPA rather than recorded again.';
+  }
+
+  @override
+  String get openCapaTheProblemOptional => 'The problem (optional)';
+
+  @override
+  String get openCapaD2WhatTheInvestigationIsAboutIn =>
+      'D2 — what the investigation is about, in the words a team will work from.';
+
+  @override
+  String get openCapaTheTeam => 'The team';
+
+  @override
+  String get openCapaChosenFromTheEmployeeDirectoryLeaveIt =>
+      'Chosen from the Employee directory. Leave it empty to decide the team later — the investigation is what is being opened here.';
+
+  @override
+  String get openCapaTeamLeadOptional => 'Team lead (optional)';
+
+  @override
+  String get openCapaWhoIsAnswerableForTheInvestigation =>
+      'Who is answerable for the investigation.';
+
+  @override
+  String get openCapaAddATeamMemberOptional => 'Add a team member (optional)';
+
+  @override
+  String get openCapaNobodyElseIsOnThisInvestigationYet =>
+      'Nobody else is on this investigation yet.';
+
+  @override
+  String awaitingApprovalYouReSignedInAsButAn(Object email) {
+    return 'You\'re signed in as $email, but an administrator hasn\'t admitted you to the Platform yet. Check back once they have.';
+  }
+
+  @override
+  String get awaitingApprovalCheckAgain => 'Check again';
+
+  @override
+  String get signInPassword => 'Password';
+
+  @override
+  String get signInCreateAnAccount => 'Create an account';
+
+  @override
+  String get signInContinueWithGoogle => 'Continue with Google';
+
+  @override
+  String get signInOneApplicationForRunningSeveralManufacturingPlants =>
+      'One application for running several manufacturing plants.';
+
+  @override
+  String get accessDeniedNotAvailableToYou => 'Not available to you';
+
+  @override
+  String get accessDeniedThisPartOfThePlatformIsFor =>
+      'This part of the Platform is for administrators. Ask one if you need what is here.';
+
+  @override
+  String get commonBackToHome => 'Back to Home';
+
+  @override
+  String get changePasswordAnAdministratorResetYourPasswordSoThe =>
+      'An administrator reset your password, so the one you were given is temporary. Choose your own to continue.';
+
+  @override
+  String get notFoundScreenNotFound => 'Screen not found';
+
+  @override
+  String notFoundThereIsNothingAt(Object location) {
+    return 'There is nothing at $location.';
+  }
+
+  @override
+  String get sessionErrorTheSessionCouldNotBeChecked =>
+      'The session could not be checked';
+
+  @override
+  String sessionErrorCouldNotCheckThisAccountSStatus(Object message) {
+    return 'Could not check this Account\'s status: $message';
+  }
+
+  @override
+  String get appDateFieldChooseADate => 'Choose a date';
+
+  @override
+  String get appDateTimeFieldChooseADateAndTime => 'Choose a date and time';
+
+  @override
+  String get appSearchFieldNoMatches => 'No matches';
+
+  @override
+  String appSearchFieldNothingMatchedTryADifferentTerm(Object lastQueriedTerm) {
+    return 'Nothing matched \"$lastQueriedTerm\" — try a different term.';
+  }
+
+  @override
+  String get appSearchFieldSearchFailed => 'Search failed';
+
+  @override
+  String get appSearchFieldThereAreMoreMatchesThanAreShown =>
+      'There are more matches than are shown — keep typing to narrow the list.';
+
+  @override
+  String failureStateNotVisibleToYou(Object message) {
+    return 'Not visible to you. $message';
+  }
+
+  @override
+  String get failureStateNotVisibleToYou2 => 'Not visible to you';
+
+  @override
+  String get signaturePadSignatureDrawingArea => 'Signature drawing area';
 }

@@ -1,3 +1,4 @@
+import '../l10n/app_localizations.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -462,6 +463,7 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -502,14 +504,14 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
           _SuggestStatus.empty => Padding(
               padding: const EdgeInsets.symmetric(vertical: Spacing.md),
               child: PlatformEmptyState.noneMatched(
-                title: 'No matches',
-                message: 'Nothing matched "$_lastQueriedTerm" — try a different term.',
+                title: l10n.appSearchFieldNoMatches,
+                message: l10n.appSearchFieldNothingMatchedTryADifferentTerm(_lastQueriedTerm),
               ),
             ),
           _SuggestStatus.failure => Padding(
               padding: const EdgeInsets.symmetric(vertical: Spacing.md),
               child: PlatformFailureState(
-                title: 'Search failed',
+                title: l10n.appSearchFieldSearchFailed,
                 message: _failureMessage,
                 retryKey: AppSearchField.retryKey(widget.name),
                 onRetry: _retry,
@@ -550,7 +552,7 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
           Padding(
             padding: const EdgeInsets.only(top: Spacing.xs, bottom: Spacing.sm),
             child: Text(
-              'There are more matches than are shown — keep typing to narrow the list.',
+              AppLocalizations.of(context).appSearchFieldThereAreMoreMatchesThanAreShown,
               key: AppSearchField.truncatedKey(widget.name),
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),

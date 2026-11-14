@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
+
 /// The shared date control ADR-0023 introduces (issue #124): a field backed
 /// by a Postgres `DATE` is chosen from a picker, never typed. This is the
 /// first `showDatePicker` call anywhere under `frontend/lib/` — the four
@@ -153,6 +155,7 @@ class _AppDateFieldState extends State<AppDateField> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final hasValue = widget.value != null && widget.value!.isNotEmpty;
     final showClear = widget.optional && hasValue && widget.enabled;
 
@@ -178,7 +181,7 @@ class _AppDateFieldState extends State<AppDateField> {
               ? IconButton(
                   key: AppDateField.clearKey(widget.name),
                   icon: const Icon(Icons.close),
-                  tooltip: 'Clear',
+                  tooltip: l10n.commonClear,
                   // Reports genuine empty, not today and not a default — the
                   // whole reason ADR-0023 asks for an explicit clear affordance
                   // rather than letting a picker-only field get stuck on
@@ -192,7 +195,7 @@ class _AppDateFieldState extends State<AppDateField> {
               : IconButton(
                   key: AppDateField.calendarIconKey(widget.name),
                   icon: const Icon(Icons.calendar_today_outlined),
-                  tooltip: 'Choose a date',
+                  tooltip: l10n.appDateFieldChooseADate,
                   onPressed: widget.enabled ? _openPicker : null,
                 ),
         ),
