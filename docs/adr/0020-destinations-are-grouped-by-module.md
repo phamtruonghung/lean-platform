@@ -116,3 +116,14 @@ The 700px rail breakpoint and the 260px/64px widths are unchanged. Group
 headings do not render into the 64px rail, where there is no room for text; a
 hairline rule marks each boundary there instead, so the grouping survives as
 rhythm rather than as a truncated label.
+
+## Amended by ADR-0064
+
+The table above records the ten destinations that existed when grouping was
+decided. The list has since grown to **44** (`platformDestinations` in
+`frontend/lib/platform/destinations.dart`), and ADR-0064 records what that growth
+changed: nothing in this ADR. The grouping stays, and so does the prohibition this
+ADR's "What this costs" section names — a heading gains no address and never
+becomes a landing page. Discoverability is answered by the TWI guide's index in
+`docs/user-guide/README.md` §2, not by a new navigation surface or by collapsing a
+group behind a click.
