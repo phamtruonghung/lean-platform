@@ -24,6 +24,8 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'incident_detail_bloc.dart';
 import 'safety_incident.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class SafetyIncidentSeverityDialog extends StatefulWidget {
   const SafetyIncidentSeverityDialog({super.key, required this.incident});
@@ -129,7 +131,7 @@ class _SafetyIncidentSeverityDialogState extends State<SafetyIncidentSeverityDia
       child: AppDialog(
         title: l10n.commonCorrectTheSeverity,
         size: AppDialogSize.form,
-        description: l10n.incidentSeverityIsCorrectingItRestatesThePeriodIt(incident.incidentNo, incident.severityLabel.toLowerCase()),
+        description: l10n.incidentSeverityIsCorrectingItRestatesThePeriodIt(incident.incidentNo, incident.severityLabel(l10n).toLowerCase()),
         actions: [
           AppDialogAction(
             id: SafetyIncidentSeverityDialog._dismissId,
@@ -163,7 +165,7 @@ class _SafetyIncidentSeverityDialogState extends State<SafetyIncidentSeverityDia
                 for (final level in _offerableSeverities)
                   DropdownMenuItem<String?>(
                     value: level,
-                    child: Text(SeverityLevel.label(level)),
+                    child: Text(safetySeverityLabel(l10n, level)),
                   ),
               ],
               onChanged: _awaiting ? null : (value) => setState(() => _severity = value),
@@ -186,7 +188,7 @@ class _SafetyIncidentSeverityDialogState extends State<SafetyIncidentSeverityDia
               Padding(
                 key: SafetyIncidentSeverityDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

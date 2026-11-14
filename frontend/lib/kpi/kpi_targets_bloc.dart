@@ -19,6 +19,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'kpi_api.dart';
 import 'kpi_catalogue.dart';
+import '../l10n/notices.dart';
 
 sealed class KpiTargetsEvent {
   const KpiTargetsEvent();
@@ -105,8 +106,8 @@ class KpiTargetsBloc extends Bloc<KpiTargetsEvent, KpiTargetsState> {
   final KpiApi _api;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
-  static const String noSitesMessage = 'There are no Sites you can see, so there are no Targets to show.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
+  static const String noSitesMessage = BlocNotice.noSitesKpiTargets;
 
   int? _kpiId;
   String? _lastSiteId;

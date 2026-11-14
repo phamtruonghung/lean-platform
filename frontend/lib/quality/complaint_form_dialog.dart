@@ -32,6 +32,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'complaints_bloc.dart';
 import 'defect_code.dart';
+import '../widgets/notice_text.dart';
 
 class ComplaintFormDialog extends StatefulWidget {
   const ComplaintFormDialog({super.key, required this.siteId});
@@ -296,7 +297,7 @@ class _ComplaintFormDialogState extends State<ComplaintFormDialog> {
               Padding(
                 key: ComplaintFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

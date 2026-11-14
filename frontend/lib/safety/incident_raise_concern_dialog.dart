@@ -25,12 +25,13 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../actions/actions.dart';
 import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'incident_detail_bloc.dart';
 import 'safety_incident.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class SafetyIncidentRaiseConcernDialog extends StatefulWidget {
   const SafetyIncidentRaiseConcernDialog({super.key, required this.incident});
@@ -178,8 +179,8 @@ class _SafetyIncidentRaiseConcernDialogState extends State<SafetyIncidentRaiseCo
                 border: OutlineInputBorder(),
               ),
               items: [
-                for (final entry in actionPriorityLabels.entries)
-                  DropdownMenuItem<int>(value: entry.key, child: Text(entry.value)),
+                for (final (priority, label) in actionPriorityChoices(l10n))
+                  DropdownMenuItem<int>(value: priority, child: Text(label)),
               ],
               onChanged: _awaiting ? null : (value) => setState(() => _priority = value ?? 3),
             ),
@@ -187,7 +188,7 @@ class _SafetyIncidentRaiseConcernDialogState extends State<SafetyIncidentRaiseCo
               Padding(
                 key: SafetyIncidentRaiseConcernDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

@@ -31,6 +31,7 @@ import '../widgets/app_date_field.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/failure_state.dart';
 import 'leave_requests_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class LeaveRequestFormDialog extends StatefulWidget {
   const LeaveRequestFormDialog({super.key});
@@ -171,7 +172,7 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
                     Padding(
                       key: LeaveRequestFormDialog.failureKey,
                       padding: const EdgeInsets.only(top: Spacing.md),
-                      child: Text(
+                      child: NoticeText(
                         _failure!,
                         style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                       ),

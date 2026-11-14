@@ -33,6 +33,7 @@ import '../widgets/app_dialog.dart';
 import 'downtime_bloc.dart';
 import 'downtime_event.dart';
 import 'maintenance_api.dart';
+import '../widgets/notice_text.dart';
 
 class DowntimeClassifyDialog extends StatefulWidget {
   const DowntimeClassifyDialog({super.key, required this.downtimeEvent});
@@ -205,7 +206,7 @@ class _DowntimeClassifyDialogState extends State<DowntimeClassifyDialog> {
               Padding(
                 key: DowntimeClassifyDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),
@@ -257,7 +258,7 @@ class _ReasonField extends StatelessWidget {
           key: DowntimeClassifyDialog.reasonsFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.downtimeClassifyTheDowntimeReasonsCouldNotBeRead,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),

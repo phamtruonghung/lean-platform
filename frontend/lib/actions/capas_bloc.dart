@@ -24,6 +24,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../platform/auth_gateway.dart';
 import 'actions_api.dart';
 import 'capa.dart';
+import '../l10n/notices.dart';
 
 sealed class CapasEvent {
   const CapasEvent();
@@ -176,7 +177,7 @@ class CapasBloc extends Bloc<CapasEvent, CapasState> {
   final ActionsApi _actions;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   /// The last filter set the caller settled on. `CapasStarted` is also what
   /// "Try again" on [CapasUnavailable] dispatches, and that retry must re-open

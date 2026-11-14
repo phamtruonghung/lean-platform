@@ -38,6 +38,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/notices.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_confirm_dialog.dart';
@@ -53,6 +54,7 @@ import '../widgets/status_chip.dart';
 import 'admission_dialog.dart';
 import 'approval_queue_bloc.dart';
 import 'pending_account.dart';
+import '../widgets/notice_text.dart';
 
 class ApprovalQueueScreen extends StatelessWidget {
   const ApprovalQueueScreen({super.key});
@@ -102,7 +104,7 @@ class ApprovalQueueScreen extends StatelessWidget {
         children: [
           const _Header(),
           if (state is ApprovalQueueLoaded && state.notice != null)
-            _Notice(message: state.notice!),
+            _Notice(message: noticeText(l10n, state.notice!)),
           Expanded(
             child: switch (state) {
               ApprovalQueueLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
@@ -189,7 +191,7 @@ class _Notice extends StatelessWidget {
                 Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
                 const SizedBox(width: Spacing.sm),
                 Expanded(
-                  child: Text(
+                  child: NoticeText(
                     message,
                     style: AppTypography.dense(context)
                         ?.copyWith(color: theme.colorScheme.onSecondaryContainer),

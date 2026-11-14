@@ -63,6 +63,7 @@ import 'complaint_org_unit_filter_dialog.dart';
 import 'complaints_bloc.dart';
 import 'customer_complaint.dart';
 import 'slide_show_toggle.dart';
+import '../l10n/vocabulary.dart';
 
 class ComplaintsScreen extends StatelessWidget {
   const ComplaintsScreen({super.key});
@@ -280,7 +281,7 @@ class _Filters extends StatelessWidget {
               for (final status in ComplaintStatus.values)
                 DropdownMenuItem<String?>(
                   value: status,
-                  child: Text(ComplaintStatus.label(status)),
+                  child: Text(complaintStatusLabel(l10n, status)),
                 ),
             ],
             onChanged: (status) =>
@@ -387,7 +388,7 @@ double _chipWidth(BuildContext context, String label) {
 double _stateColumnWidth(BuildContext context) {
   var widestStatus = 0.0;
   for (final status in ComplaintStatus.values) {
-    final width = _chipWidth(context, ComplaintStatus.label(status));
+    final width = _chipWidth(context, complaintStatusLabel(AppLocalizations.of(context), status));
     if (width > widestStatus) widestStatus = width;
   }
   final overdue = _chipWidth(context, 'Past due');
@@ -439,7 +440,7 @@ String _control(CustomerComplaint row) => row.nonconformance == null
 List<Widget> _marks(BuildContext context, CustomerComplaint row) => [
       StatusChip(
         key: ComplaintsScreen.rowStatusKey(row.id),
-        label: row.statusLabel,
+        label: row.statusLabel(AppLocalizations.of(context)),
         tone: row.statusTone,
       ),
       if (row.isOverdue)

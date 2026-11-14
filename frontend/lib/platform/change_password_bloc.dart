@@ -12,6 +12,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../people_api.dart';
 import 'auth_gateway.dart';
+import '../l10n/notices.dart';
 
 sealed class ChangePasswordEvent {
   const ChangePasswordEvent();
@@ -56,7 +57,7 @@ class ChangePasswordBloc extends Bloc<ChangePasswordEvent, ChangePasswordState> 
   final PeopleApi _api;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   Future<void> _onSubmitted(
     ChangePasswordSubmitted event,

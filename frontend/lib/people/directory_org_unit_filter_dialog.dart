@@ -21,6 +21,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'directory_bloc.dart';
 import 'org_unit_picker_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class DirectoryOrgUnitFilterDialog extends StatelessWidget {
   const DirectoryOrgUnitFilterDialog({super.key});
@@ -207,7 +208,7 @@ class _Failure extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(message, key: DirectoryOrgUnitFilterDialog.failureKey),
+        NoticeText(message, key: DirectoryOrgUnitFilterDialog.failureKey),
         const SizedBox(height: Spacing.xs),
         TextButton(onPressed: onRetry, child: Text(l10n.commonTryAgain)),
       ],

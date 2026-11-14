@@ -27,6 +27,7 @@ import '../widgets/app_scan_field.dart';
 import 'floor_training_bloc.dart';
 import 'training_answer_dialog.dart';
 import 'training_record.dart';
+import '../widgets/notice_text.dart';
 
 class FloorTrainingDialog extends StatefulWidget {
   const FloorTrainingDialog({super.key});
@@ -119,7 +120,7 @@ class _FloorTrainingDialogState extends State<FloorTrainingDialog> {
     return Padding(
       key: FloorTrainingDialog.failureKey,
       padding: const EdgeInsets.only(top: Spacing.md),
-      child: Text(state.failure!, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error)),
+      child: NoticeText(state.failure!, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error)),
     );
   }
 

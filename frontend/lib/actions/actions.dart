@@ -56,8 +56,5 @@ export 'action.dart'
         LinkedNonconformance,
         LinkedSafetyIncident,
         LinkedSafetyObservation,
-        actionPriorityLabels,
-        actionStatusLabel,
-        actionStatusTone,
-        actionTypeLabel;
+        actionStatusTone;
 export 'actions_api.dart' show ActionsApi, ActionsApiException;

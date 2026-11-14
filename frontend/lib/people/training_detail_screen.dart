@@ -74,6 +74,8 @@ import 'training_detail_bloc.dart';
 import 'training_raise_dialog.dart';
 import 'training_record.dart';
 import 'training_trainee_dialog.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class TrainingDetailScreen extends StatelessWidget {
   const TrainingDetailScreen({
@@ -288,7 +290,7 @@ class _Loaded extends StatelessWidget {
                             const SizedBox(width: Spacing.sm),
                             StatusChip(
                               key: TrainingDetailScreen.statusKey,
-                              label: record.statusLabel,
+                              label: record.statusLabel(l10n),
                               tone: trainingStatusTone(record.status),
                             ),
                           ],
@@ -578,7 +580,7 @@ class _TraineeRow extends StatelessWidget {
                   _EvaluationPicker(trainee: trainee, isWriting: isWriting)
                 else if (trainee.evaluation != null)
                   Text(
-                    l10n.trainingDetailEvaluated(trainingEvaluationLabel(trainee.evaluation!)),
+                    l10n.trainingDetailEvaluated(trainingEvaluationLabel(l10n, trainee.evaluation!)),
                     key: TrainingDetailScreen.evaluationKey(trainee.id),
                     style: muted,
                   ),
@@ -641,7 +643,7 @@ class _FailureText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: Spacing.sm),
-      child: Text(
+      child: NoticeText(
         message,
         style: AppTypography.dense(context)
             ?.copyWith(color: AppColors.of(context).statusForeground(StatusTone.danger)),
@@ -733,7 +735,7 @@ class _EvaluationPicker extends StatelessWidget {
           for (final evaluation in trainingEvaluations)
             ChoiceChip(
               key: TrainingDetailScreen.evaluationChoiceKey(trainee.id, evaluation),
-              label: Text(trainingEvaluationLabel(evaluation)),
+              label: Text(trainingEvaluationLabel(l10n, evaluation)),
               selected: current == evaluation,
               onSelected: isWriting || current == evaluation
                   ? null

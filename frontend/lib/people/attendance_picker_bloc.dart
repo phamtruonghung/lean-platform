@@ -12,6 +12,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'attendance.dart';
+import '../l10n/notices.dart';
 
 sealed class AttendancePickerEvent {
   const AttendancePickerEvent();
@@ -98,7 +99,7 @@ class AttendancePickerBloc extends Bloc<AttendancePickerEvent, AttendancePickerS
 
     final token = _auth.currentAccessToken;
     if (token == null) {
-      emit(state.copyWith(failure: 'This session has ended. Sign in again to continue.'));
+      emit(state.copyWith(failure: BlocNotice.sessionEnded));
       return;
     }
 

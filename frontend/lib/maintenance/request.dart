@@ -18,15 +18,14 @@ import '../status_tone.dart';
 /// `priority`: accepting a Request lets maintenance set that separately
 /// (issue #72's own Implementation Decisions).
 enum RequestUrgency {
-  low('low', 'Low'),
-  normal('normal', 'Normal'),
-  high('high', 'High'),
-  immediate('immediate', 'Immediate');
+  low('low'),
+  normal('normal'),
+  high('high'),
+  immediate('immediate');
 
-  const RequestUrgency(this.wire, this.label);
+  const RequestUrgency(this.wire);
 
   final String wire;
-  final String label;
 }
 
 /// The states a Request can be in, mirroring the CHECK constraint on
@@ -42,12 +41,12 @@ enum RequestUrgency {
 /// Work order), and `rejected`/`duplicate` are `neutral` — both are decisions
 /// somebody made, and painting either red would make an ordinary triage
 /// outcome look like a failure.
-const Map<String, (String, StatusTone)> _statuses = {
-  'new': ('New', StatusTone.warning),
-  'triaged': ('Triaged', StatusTone.info),
-  'accepted': ('Accepted', StatusTone.success),
-  'rejected': ('Rejected', StatusTone.neutral),
-  'duplicate': ('Duplicate', StatusTone.neutral),
+const Map<String, StatusTone> _statusTones = {
+  'new': StatusTone.warning,
+  'triaged': StatusTone.info,
+  'accepted': StatusTone.success,
+  'rejected': StatusTone.neutral,
+  'duplicate': StatusTone.neutral,
 };
 
 /// The Work order an accepted Request produced, as the nested `workOrder` map
@@ -62,13 +61,6 @@ class RequestWorkOrder {
   /// Issued by the Site's own sequence — the client never sends one.
   final String workOrderNo;
   final String status;
-
-  /// The nested Work order's own state. Looked up in the Request's map, which
-  /// is a latent bug rather than a decision (a Work order status is not a
-  /// Request status, so this falls back to the raw wire string today) — but
-  /// nothing renders it (issue #168 verified that by grep), so it is left for
-  /// a ticket that can fix it with a test rather than fixed blind here.
-  String get statusLabel => _statuses[status]?.$1 ?? status;
 }
 
 @immutable
@@ -143,24 +135,11 @@ class Request {
   /// The Work order this Request became, or null when it is not accepted.
   final RequestWorkOrder? workOrder;
 
-  String get urgencyLabel => _labelFor(urgency, [
-        for (final urgency in RequestUrgency.values) (urgency.wire, urgency.label),
-      ]);
-
-  String get statusLabel => _statuses[status]?.$1 ?? status;
-
   /// What [status] means to whoever is reading the queue (issue #168) — the
-  /// tone `widgets/status_chip.dart` paints. Falls back to
-  /// [StatusTone.neutral] for a status this build does not know about, the
-  /// same way [statusLabel] falls back to the wire string.
-  StatusTone get statusTone => _statuses[status]?.$2 ?? StatusTone.neutral;
-
-  static String _labelFor(String wire, List<(String, String)> known) {
-    for (final (value, label) in known) {
-      if (value == wire) return label;
-    }
-    return wire;
-  }
+  /// tone `widgets/status_chip.dart` paints. Falls back to [StatusTone.neutral]
+  /// for a status this build does not know about. The **words** are
+  /// `l10n/vocabulary.dart`'s (`requestStatusLabel`, `requestUrgencyLabel`).
+  StatusTone get statusTone => _statusTones[status] ?? StatusTone.neutral;
 }
 
 const List<String> _monthNames = [

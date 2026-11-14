@@ -13,6 +13,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/notices.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -29,6 +30,8 @@ import 'action.dart';
 import 'action_escalated_to_filter_dialog.dart';
 import 'action_org_unit_filter_dialog.dart';
 import 'actions_bloc.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class ActionsScreen extends StatelessWidget {
   const ActionsScreen({super.key});
@@ -75,7 +78,7 @@ class ActionsScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _Header(state: state),
-            if (state is ActionsLoaded && state.notice != null) _Notice(message: state.notice!),
+            if (state is ActionsLoaded && state.notice != null) _Notice(message: noticeText(l10n, state.notice!)),
             if (state is ActionsLoaded && state.truncated) const _Truncated(),
             Expanded(
               child: switch (state) {
@@ -240,8 +243,8 @@ class _Filters extends StatelessWidget {
                 decoration: InputDecoration(labelText: l10n.commonStatus, border: OutlineInputBorder()),
                 items: [
                   DropdownMenuItem<String?>(value: null, child: Text(l10n.nonconformancesAnyStatus)),
-                  for (final entry in actionStatuses.entries)
-                    DropdownMenuItem<String?>(value: entry.key, child: Text(entry.value.$1)),
+                  for (final (status, label) in actionStatusChoices(l10n))
+                    DropdownMenuItem<String?>(value: status, child: Text(label)),
                 ],
                 onChanged: (status) =>
                     context.read<ActionsBloc>().add(ActionsStatusFilterChanged(status)),
@@ -258,8 +261,8 @@ class _Filters extends StatelessWidget {
                     InputDecoration(labelText: l10n.commonKindOfAction, border: OutlineInputBorder()),
                 items: [
                   DropdownMenuItem<String?>(value: null, child: Text(l10n.actionsEveryKind)),
-                  for (final type in ActionType.values)
-                    DropdownMenuItem<String?>(value: type.wire, child: Text(type.label)),
+                  for (final (type, label) in actionTypeChoices(l10n))
+                    DropdownMenuItem<String?>(value: type, child: Text(label)),
                 ],
                 onChanged: (type) => context.read<ActionsBloc>().add(ActionsTypeFilterChanged(type)),
               ),
@@ -304,7 +307,7 @@ class _Notice extends StatelessWidget {
         child: Padding(
           key: ActionsScreen.noticeKey,
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.sm),
-          child: Text(message, style: theme.textTheme.bodyMedium),
+          child: NoticeText(message, style: theme.textTheme.bodyMedium),
         ),
       ),
     );
@@ -404,8 +407,9 @@ double _statusColumnWidth(BuildContext context) {
     textScaler: MediaQuery.textScalerOf(context),
   );
   var widest = 0.0;
-  for (final entry in actionStatuses.values) {
-    painter.text = TextSpan(text: entry.$1, style: Theme.of(context).textTheme.labelLarge);
+  final l10n = AppLocalizations.of(context);
+  for (final (_, label) in actionStatusChoices(l10n)) {
+    painter.text = TextSpan(text: label, style: Theme.of(context).textTheme.labelLarge);
     painter.layout();
     if (painter.width > widest) widest = painter.width;
   }
@@ -523,13 +527,13 @@ class _ActionTableRow extends StatelessWidget {
       shrinkWrapTargets(
         StatusChip(
           key: ActionsScreen.rowStatusKey(action.id),
-          label: action.typeLabel,
+          label: action.typeLabel(l10n),
           tone: StatusTone.info,
         ),
       ),
       if (action.priority <= 2)
         Text(
-          action.priorityLabel,
+          action.priorityLabel(l10n),
           style: floor?.copyWith(color: palette.statusWarning),
         ),
       if (action.measureCount > 0)
@@ -595,7 +599,7 @@ class _ActionTableRow extends StatelessWidget {
           ),
           shrinkWrapTargets(
             StatusChip(
-              label: action.statusLabel,
+              label: action.statusLabel(l10n),
               tone: action.statusTone,
             ),
           ),
@@ -637,12 +641,12 @@ class _ActionRow extends StatelessWidget {
                         Text(action.actionNo, style: theme.textTheme.labelMedium),
                         StatusChip(
                           key: ActionsScreen.rowStatusKey(action.id),
-                          label: action.typeLabel,
+                          label: action.typeLabel(l10n),
                           tone: StatusTone.info,
                         ),
-                        StatusChip(label: action.statusLabel, tone: action.statusTone),
+                        StatusChip(label: action.statusLabel(l10n), tone: action.statusTone),
                         if (action.priority <= 2)
-                          StatusChip(label: action.priorityLabel, tone: StatusTone.warning),
+                          StatusChip(label: action.priorityLabel(l10n), tone: StatusTone.warning),
                       ],
                     ),
                     const SizedBox(height: Spacing.xs),

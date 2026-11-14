@@ -22,6 +22,7 @@ import '../l10n/app_localizations.dart';
 import '../widgets/app_dialog.dart';
 import 'leave_request.dart';
 import 'leave_requests_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class LeaveRequestCancelDialog extends StatefulWidget {
   const LeaveRequestCancelDialog({super.key, required this.request});
@@ -90,7 +91,7 @@ class _LeaveRequestCancelDialogState extends State<LeaveRequestCancelDialog> {
         ],
         child: _failure == null
             ? null
-            : Text(
+            : NoticeText(
                 _failure!,
                 key: LeaveRequestCancelDialog.failureKey,
                 style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),

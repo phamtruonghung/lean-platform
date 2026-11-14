@@ -31,6 +31,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_date_time_field.dart';
 import 'downtime_bloc.dart';
 import 'downtime_event.dart';
+import '../widgets/notice_text.dart';
 
 class DowntimeCloseDialog extends StatefulWidget {
   const DowntimeCloseDialog({super.key, required this.downtimeEvent});
@@ -128,7 +129,7 @@ class _DowntimeCloseDialogState extends State<DowntimeCloseDialog> {
               Padding(
                 key: DowntimeCloseDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),

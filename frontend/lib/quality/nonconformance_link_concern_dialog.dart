@@ -38,6 +38,9 @@ import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
+import '../l10n/notices.dart';
 
 class NonconformanceLinkConcernDialog extends StatefulWidget {
   const NonconformanceLinkConcernDialog({super.key, required this.nonconformance});
@@ -92,7 +95,7 @@ class _NonconformanceLinkConcernDialogState extends State<NonconformanceLinkConc
   Future<void> _load() async {
     final token = context.read<AuthGateway>().currentAccessToken;
     if (token == null) {
-      setState(() => _loadFailure = 'This session has ended. Sign in again to continue.');
+      setState(() => _loadFailure = BlocNotice.sessionEnded);
       return;
     }
     setState(() {
@@ -236,7 +239,7 @@ class _NonconformanceLinkConcernDialogState extends State<NonconformanceLinkConc
                             children: [
                               Text(concern.title, style: theme.textTheme.bodyMedium),
                               Text(
-                                '${concern.actionNo} · ${concern.statusLabel} · '
+                                '${concern.actionNo} · ${concern.statusLabel(l10n)} · '
                                 '${concern.orgUnitName}',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
@@ -251,7 +254,7 @@ class _NonconformanceLinkConcernDialogState extends State<NonconformanceLinkConc
                         Padding(
                           key: NonconformanceLinkConcernDialog.failureKey,
                           padding: const EdgeInsets.only(top: Spacing.md),
-                          child: Text(
+                          child: NoticeText(
                             _failure!,
                             style: theme.textTheme.bodyMedium
                                 ?.copyWith(color: theme.colorScheme.error),

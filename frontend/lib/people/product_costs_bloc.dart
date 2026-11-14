@@ -13,6 +13,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'product_cost.dart';
+import '../l10n/notices.dart';
 
 sealed class ProductCostsEvent {
   const ProductCostsEvent();
@@ -106,7 +107,7 @@ class ProductCostsBloc extends Bloc<ProductCostsEvent, ProductCostsState> {
   final PeopleApi _api;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   Future<void> _onStarted(ProductCostsStarted event, Emitter<ProductCostsState> emit) async {
     emit(const ProductCostsLoading());

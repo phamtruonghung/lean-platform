@@ -45,6 +45,8 @@ import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'issue_image.dart';
 import 'slide_show_bloc.dart';
+import '../widgets/notice_text.dart';
+import '../l10n/vocabulary.dart';
 
 class SlideShowScreen extends StatelessWidget {
   const SlideShowScreen({super.key});
@@ -383,7 +385,7 @@ class _Picture extends StatelessWidget {
         context.read<SlideShowBloc>().add(const SlideShowPreviousRequested());
 
     final body = Semantics(
-      label: '${slide!.issue.number}, ${IssueKind.label(slide!.issue.kind)}',
+      label: '${slide!.issue.number}, ${issueKindLabel(l10n, slide!.issue.kind)}',
       child: ColoredBox(color: palette.surfaceMuted, child: Center(child: image)),
     );
 
@@ -421,8 +423,8 @@ class _Overlay extends StatelessWidget {
       runSpacing: Spacing.xs,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        StatusChip(label: issue.typeLabel, tone: IssueKind.tone(issue.kind)),
-        StatusChip(label: issue.status, tone: StatusTone.neutral),
+        StatusChip(label: issue.shortTypeLabel(AppLocalizations.of(context)), tone: IssueKind.tone(issue.kind)),
+        StatusChip(label: issue.statusLabel(AppLocalizations.of(context)), tone: StatusTone.neutral),
         Text(
           issueAgeLabel(issue.occurredAt),
           style: theme.textTheme.bodySmall?.copyWith(color: palette.textMuted),
@@ -581,7 +583,7 @@ class _OrderDialog extends StatelessWidget {
                     contentPadding: EdgeInsets.zero,
                     title: Text(
                       '${index + 1}. ${issues[index].number} '
-                      '(${IssueKind.label(issues[index].kind)})',
+                      '(${issueKindLabel(l10n, issues[index].kind)})',
                     ),
                     subtitle: Text(
                       issues[index].hasPicture
@@ -642,7 +644,7 @@ class _OrderDialog extends StatelessWidget {
                 Padding(
                   key: SlideShowScreen.orderSaveFailedKey,
                   padding: const EdgeInsets.only(top: Spacing.md),
-                  child: Text(
+                  child: NoticeText(
                     state.failure!,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.error,

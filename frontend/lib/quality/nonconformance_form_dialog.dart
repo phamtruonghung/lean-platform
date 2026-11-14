@@ -49,6 +49,8 @@ import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
 import 'nonconformances_bloc.dart';
 import 'product.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 /// How the optional Asset list is being read — the same three states, and the
 /// same reason, as the Work order form's own Asset picker.
@@ -402,7 +404,7 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                             for (final point in DetectionPoint.values)
                               DropdownMenuItem<String?>(
                                 value: point,
-                                child: Text(DetectionPoint.label(point)),
+                                child: Text(detectionPointLabel(l10n, point)),
                               ),
                           ],
                           onChanged: _awaiting
@@ -421,7 +423,7 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                             helperText: _defectCode == null
                                 ? l10n.nonconformanceFormSeverityHelpUnset
                                 : l10n.nonconformanceFormSeverityHelpSet(
-                                    DefectSeverity.label(_defectCode!.defaultSeverity),
+                                    defectSeverityLabel(l10n, _defectCode!.defaultSeverity),
                                   ),
                             border: const OutlineInputBorder(),
                           ),
@@ -432,14 +434,14 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                                 _defectCode == null
                                     ? l10n.nonconformanceFormChooseCodeFirst
                                     : l10n.nonconformanceFormStartsAt(
-                                        DefectSeverity.label(_defectCode!.defaultSeverity),
+                                        defectSeverityLabel(l10n, _defectCode!.defaultSeverity),
                                       ),
                               ),
                             ),
                             for (final severity in _offerableSeverities)
                               DropdownMenuItem<String?>(
                                 value: severity,
-                                child: Text(DefectSeverity.label(severity)),
+                                child: Text(defectSeverityLabel(l10n, severity)),
                               ),
                           ],
                           onChanged: _awaiting || _defectCode == null
@@ -547,7 +549,7 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                     Padding(
                       key: NonconformanceFormDialog.failureKey,
                       padding: const EdgeInsets.only(top: Spacing.md),
-                      child: Text(
+                      child: NoticeText(
                         _failure!,
                         style: theme.textTheme.bodyMedium
                             ?.copyWith(color: theme.colorScheme.error),
@@ -611,7 +613,7 @@ class _AssetField extends StatelessWidget {
           key: NonconformanceFormDialog.assetsFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.commonAssetsFailed,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
             ),

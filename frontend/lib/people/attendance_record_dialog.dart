@@ -33,6 +33,8 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'attendance.dart';
 import 'attendance_sheet_bloc.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class AttendanceRecordDialog extends StatefulWidget {
   const AttendanceRecordDialog({
@@ -169,7 +171,7 @@ class _AttendanceRecordDialogState extends State<AttendanceRecordDialog> {
               decoration: InputDecoration(labelText: l10n.commonStatus),
               items: [
                 for (final status in attendanceStatuses)
-                  DropdownMenuItem(value: status, child: Text(attendanceStatusLabel(status))),
+                  DropdownMenuItem(value: status, child: Text(attendanceStatusLabel(l10n, status))),
               ],
               onChanged: _awaiting ? null : (value) => setState(() => _status = value!),
             ),
@@ -214,7 +216,7 @@ class _AttendanceRecordDialogState extends State<AttendanceRecordDialog> {
               Padding(
                 key: AttendanceRecordDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

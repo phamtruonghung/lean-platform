@@ -394,7 +394,7 @@ void main() {
         'immediateContainment': 'Quarantined the bin.',
       });
       expect(recorded.issueNo, 'NC-HCM-2026-00002');
-      expect(recorded.statusLabel, 'Contained');
+      expect(recorded.status, 'contained');
     });
 
     test('carries a raised severity, and a refusal reaches the caller with the API\'s own words', () async {
@@ -468,7 +468,7 @@ void main() {
       expect(raised.severity, 'critical');
       // The whole record comes back from every write — the Screen never
       // patches its own copy.
-      expect(contained.statusLabel, 'Contained');
+      expect(contained.status, 'contained');
       expect(contained.quantityAffected, 12);
     });
   });

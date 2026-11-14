@@ -32,6 +32,8 @@ import 'handover.dart';
 import 'handover_vocabulary.dart';
 import 'production_api.dart';
 import 'section_board_bloc.dart';
+import '../widgets/notice_text.dart';
+import '../l10n/vocabulary.dart';
 
 class HandoverAcknowledgeDialog extends StatefulWidget {
   const HandoverAcknowledgeDialog({super.key, required this.handoverId});
@@ -150,7 +152,7 @@ class _HandoverAcknowledgeDialogState extends State<HandoverAcknowledgeDialog> {
 
     final Widget content;
     if (_readFailure != null) {
-      content = Text(
+      content = NoticeText(
         _readFailure!,
         key: HandoverAcknowledgeDialog.readFailureKey,
         style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
@@ -188,7 +190,7 @@ class _HandoverAcknowledgeDialogState extends State<HandoverAcknowledgeDialog> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      '${HandoverVocabulary.dimensionLabel(point.dimension)} · ${point.description}',
+                      '${handoverDimensionLabel(l10n, point.dimension)} · ${point.description}',
                       style: theme.textTheme.bodyMedium,
                     ),
                     Text(
@@ -204,7 +206,7 @@ class _HandoverAcknowledgeDialogState extends State<HandoverAcknowledgeDialog> {
                       items: [
                         DropdownMenuItem<String?>(value: null, child: Text(l10n.handoverAcknowledgeNotAnswered)),
                         for (final choice in HandoverVocabulary.watchResults)
-                          DropdownMenuItem<String?>(value: choice.wire, child: Text(choice.label)),
+                          DropdownMenuItem<String?>(value: choice, child: Text(handoverWatchResultLabel(l10n, choice))),
                       ],
                       onChanged: _awaiting ? null : (value) => setState(() => _results[point.id] = value),
                     ),
@@ -231,7 +233,7 @@ class _HandoverAcknowledgeDialogState extends State<HandoverAcknowledgeDialog> {
             Padding(
               key: HandoverAcknowledgeDialog.failureKey,
               padding: const EdgeInsets.only(top: Spacing.md),
-              child: Text(_failure!, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error)),
+              child: NoticeText(_failure!, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error)),
             ),
         ],
       );

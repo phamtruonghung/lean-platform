@@ -55,6 +55,7 @@ import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../theme.dart';
 import '../widgets/app_detail_section.dart';
 import '../widgets/app_page_frame.dart';
@@ -63,7 +64,6 @@ import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
-import 'defect_code.dart';
 import 'issue_image.dart';
 import 'issue_images_bloc.dart';
 import 'issue_images_section.dart';
@@ -72,6 +72,7 @@ import 'nonconformance_detail_bloc.dart';
 import 'quality_api.dart';
 import 'quality_photo_picker.dart';
 import 'slide_show_toggle.dart';
+import '../widgets/notice_text.dart';
 
 class NonconformanceDetailScreen extends StatelessWidget {
   const NonconformanceDetailScreen({super.key, required this.nonconformanceId});
@@ -319,7 +320,7 @@ class _Loaded extends StatelessWidget {
                         Padding(
                           key: NonconformanceDetailScreen.failureKey,
                           padding: const EdgeInsets.only(top: Spacing.md),
-                          child: Text(
+                          child: NoticeText(
                             state.mutationFailure!,
                             style: AppTypography.dense(context)
                                 ?.copyWith(color: palette.statusDanger),
@@ -446,12 +447,12 @@ class _SummaryCard extends StatelessWidget {
                 ),
                 StatusChip(
                   key: NonconformanceDetailScreen.statusKey,
-                  label: row.statusLabel,
+                  label: row.statusLabel(l10n),
                   tone: row.statusTone,
                 ),
                 StatusChip(
                   key: NonconformanceDetailScreen.severityKey,
-                  label: l10n.nonconformanceDetailSeverityChip(row.severityLabel),
+                  label: l10n.nonconformanceDetailSeverityChip(row.severityLabel(l10n)),
                   tone: _severityTone(row.severity),
                 ),
                 if (row.closedAt != null)
@@ -481,7 +482,7 @@ class _SummaryCard extends StatelessWidget {
                 _Fact(label: l10n.commonOrgUnit, value: row.orgUnitName),
                 _Fact(
                   label: l10n.nonconformanceFormDetectionPoint,
-                  value: row.detectionPointLabel,
+                  value: detectionPointLabel(l10n, row.detectionPoint),
                 ),
                 _Fact(
                   label: l10n.nonconformanceDetailQuantityAffected,
@@ -540,7 +541,7 @@ class _FoundSection extends StatelessWidget {
               value: l10n.nonconformanceDetailDefectCodeValue(
                 row.defectCodeName,
                 row.defectCodeCode,
-                DefectSeverity.label(row.defectCodeDefaultSeverity),
+                defectSeverityLabel(l10n, row.defectCodeDefaultSeverity),
               ),
             ),
             _Fact(
@@ -771,7 +772,7 @@ class _DispositionsSection extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${disposition.label} · ${_number(disposition.quantity)} '
+                        '${disposition.label(l10n)} · ${_number(disposition.quantity)} '
                         '${disposition.uomCode}'
                         '${disposition.reworkMinutes > 0 ? ' · ${l10n.nonconformanceDetailReworkMinutes(disposition.reworkMinutes.round())}' : ''}',
                         style: AppTypography.dense(context)
@@ -835,11 +836,11 @@ class _CorrectionsSection extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        correction.summary,
+                        correction.summary(l10n),
                         style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
                       ),
                       Text(
-                        '${correction.correctedBy}'
+                        '${namedOrUnknown(l10n, correction.correctedByAccountDisplayName)}'
                         '${correction.correctedAt == null ? '' : ' · ${correction.correctedAt}'}'
                         '${correction.note == null ? '' : ' · ${correction.note}'}',
                         style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
@@ -898,7 +899,7 @@ class _ConcernsSection extends StatelessWidget {
           style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
         ),
         if (notice != null)
-          Text(
+          NoticeText(
             key: NonconformanceDetailScreen.concernNoticeKey,
             notice!,
             style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
@@ -961,7 +962,7 @@ class _ConcernsSection extends StatelessWidget {
                             ),
                             const SizedBox(width: Spacing.sm),
                             StatusChip(
-                              label: concern.statusLabel,
+                              label: concern.statusLabel(l10n),
                               tone: concern.statusTone,
                             ),
                           ],

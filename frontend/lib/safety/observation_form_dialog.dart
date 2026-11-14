@@ -35,6 +35,8 @@ import '../widgets/app_date_time_field.dart';
 import '../widgets/app_dialog.dart';
 import 'safety_observation.dart';
 import 'safety_observations_bloc.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class SafetyObservationFormDialog extends StatefulWidget {
   const SafetyObservationFormDialog({super.key, required this.siteId});
@@ -188,7 +190,10 @@ class _SafetyObservationFormDialogState extends State<SafetyObservationFormDialo
                       helperText: l10n.observationFormASafeActAnUnsafeActOr,
                       border: OutlineInputBorder(),
                     ),
-                    items: ObservationType.dropdownItems(),
+                    items: ObservationType.dropdownItems(
+            label: (type) => observationTypeLabel(l10n, type),
+            placeholder: l10n.safetyAnyType,
+          ),
                     onChanged: _awaiting
                         ? null
                         : (type) => setState(() => _observationType = type),
@@ -204,7 +209,10 @@ class _SafetyObservationFormDialogState extends State<SafetyObservationFormDialo
                       labelText: l10n.commonCategory,
                       border: OutlineInputBorder(),
                     ),
-                    items: ObservationCategory.dropdownItems(),
+                    items: ObservationCategory.dropdownItems(
+            label: (category) => observationCategoryLabel(l10n, category),
+            placeholder: l10n.safetyAnyCategory,
+          ),
                     onChanged:
                         _awaiting ? null : (category) => setState(() => _category = category),
                   ),
@@ -221,7 +229,10 @@ class _SafetyObservationFormDialogState extends State<SafetyObservationFormDialo
                 helperText: l10n.observationFormTheWorstCredibleOutcomeNotWhatActually,
                 border: OutlineInputBorder(),
               ),
-              items: SeverityPotential.dropdownItems(),
+              items: SeverityPotential.dropdownItems(
+            label: (potential) => severityPotentialLabel(l10n, potential),
+            placeholder: l10n.safetyAnyPotential,
+          ),
               onChanged: _awaiting
                   ? null
                   : (potential) => setState(() => _severityPotential = potential),
@@ -298,7 +309,7 @@ class _SafetyObservationFormDialogState extends State<SafetyObservationFormDialo
               Padding(
                 key: SafetyObservationFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

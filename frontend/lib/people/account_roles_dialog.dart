@@ -34,6 +34,7 @@ import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'app_role.dart';
+import '../widgets/notice_text.dart';
 
 class AccountRolesDialog extends StatefulWidget {
   const AccountRolesDialog({
@@ -201,7 +202,7 @@ class _AccountRolesDialogState extends State<AccountRolesDialog> {
               padding: const EdgeInsets.symmetric(vertical: Spacing.lg),
               child: failure == null
                   ? const Center(child: CircularProgressIndicator())
-                  : Text(
+                  : NoticeText(
                       failure,
                       key: AccountRolesDialog.failureKey,
                       style: AppTypography.dense(context)
@@ -260,7 +261,7 @@ class _AccountRolesDialogState extends State<AccountRolesDialog> {
                   Padding(
                     key: AccountRolesDialog.failureKey,
                     padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
+                    child: NoticeText(
                       failure,
                       style: AppTypography.dense(context)
                           ?.copyWith(color: palette.statusForeground(StatusTone.danger)),

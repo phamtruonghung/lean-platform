@@ -62,8 +62,8 @@ import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'handover.dart';
 import 'handover_format.dart';
-import 'handover_vocabulary.dart';
 import 'section_board_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 class SectionBoardScreen extends StatelessWidget {
   const SectionBoardScreen({super.key, this.orgUnitId, this.date, this.now});
@@ -339,12 +339,7 @@ class _ShiftRow extends StatelessWidget {
                 if (handover != null)
                   StatusChip(
                     key: SectionBoardScreen.handoverStatusKey(id),
-                    label: switch (handover.status) {
-                      'draft' => 'Draft',
-                      'submitted' => 'Submitted',
-                      'acknowledged' => 'Acknowledged',
-                      _ => handover.status,
-                    },
+                    label: handoverStatusLabel(AppLocalizations.of(context), handover.status),
                     tone: switch (handover.status) {
                       'acknowledged' => StatusTone.success,
                       'submitted' => StatusTone.info,
@@ -356,7 +351,7 @@ class _ShiftRow extends StatelessWidget {
                 for (final exception in shift.exceptions)
                   StatusChip(
                     key: SectionBoardScreen.exceptionKey(id, exception),
-                    label: HandoverVocabulary.exceptionLabel(exception),
+                    label: handoverExceptionLabel(AppLocalizations.of(context), exception),
                     tone: StatusTone.danger,
                   ),
               ],
@@ -525,7 +520,7 @@ class _MachineTiles extends StatelessWidget {
                       Text(line.assetName, style: AppTypography.dense(context)),
                       const SizedBox(height: Spacing.xs),
                       StatusChip(
-                        label: HandoverVocabulary.machineStateLabel(line.state),
+                        label: handoverMachineStateLabel(AppLocalizations.of(context), line.state),
                         tone: toneOf(line.state),
                       ),
                     ],

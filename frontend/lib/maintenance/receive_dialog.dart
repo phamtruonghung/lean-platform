@@ -18,6 +18,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'part.dart';
 import 'store_stock_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class ReceiveDialog extends StatefulWidget {
   const ReceiveDialog({super.key, required this.parts});
@@ -178,7 +179,7 @@ class _ReceiveDialogState extends State<ReceiveDialog> {
               Padding(
                 key: ReceiveDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),

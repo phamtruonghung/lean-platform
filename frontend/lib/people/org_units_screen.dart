@@ -79,6 +79,7 @@ import 'org_unit_form_dialog.dart';
 import 'org_unit_import_dialog.dart';
 import 'org_unit_picker_bloc.dart';
 import 'site_form_dialog.dart';
+import '../widgets/notice_text.dart';
 
 class OrgUnitsScreen extends StatefulWidget {
   const OrgUnitsScreen({super.key, required this.isAdmin});
@@ -332,7 +333,7 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
                     if (adminState.mutationFailure != null)
                       Padding(
                         padding: const EdgeInsets.only(bottom: Spacing.md),
-                        child: Text(
+                        child: NoticeText(
                           adminState.mutationFailure!,
                           key: OrgUnitsScreen.mutationFailureKey,
                           style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
@@ -581,7 +582,7 @@ class _TreeRow extends StatelessWidget {
           if (row.failure != null)
             Padding(
               padding: const EdgeInsets.only(left: 32),
-              child: Text(
+              child: NoticeText(
                 row.failure!,
                 style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.error),
               ),

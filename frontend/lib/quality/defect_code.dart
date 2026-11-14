@@ -62,9 +62,9 @@ abstract final class DefectCategory {
 
   static const List<String> values = [product, process, material, documentation, packaging];
 
-  /// The category as a person reads it — 'Product', 'Documentation'.
-  static String label(String category) =>
-      category.isEmpty ? category : category[0].toUpperCase() + category.substring(1);
+  /// The words are in `l10n/vocabulary.dart` (`defectCategoryLabel`): a code's
+  /// category is a wire, and the register prints it in the reader's language
+  /// (ADR-0062).
 }
 
 /// The severities a Defect code can start a Non-conformance at — the
@@ -76,9 +76,6 @@ abstract final class DefectSeverity {
   static const String critical = 'critical';
 
   static const List<String> values = [minor, major, critical];
-
-  static String label(String severity) =>
-      severity.isEmpty ? severity : severity[0].toUpperCase() + severity.substring(1);
 }
 
 /// One row of the tree as a Screen reads it: the code, and how deep it sits.

@@ -7216,4 +7216,1037 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workOrdersWoBuc202600001 => 'WO-BUC-2026-00001';
+
+  @override
+  String get workOrderStatusDraft => 'Draft';
+
+  @override
+  String get workOrderStatusApproved => 'Approved';
+
+  @override
+  String get workOrderStatusScheduled => 'Scheduled';
+
+  @override
+  String get workOrderStatusInProgress => 'In progress';
+
+  @override
+  String get workOrderStatusOnHold => 'On hold';
+
+  @override
+  String get workOrderStatusCompleted => 'Completed';
+
+  @override
+  String get workOrderStatusClosed => 'Closed';
+
+  @override
+  String get workOrderStatusCancelled => 'Cancelled';
+
+  @override
+  String get workOrderTaskStatusPending => 'Pending';
+
+  @override
+  String get workOrderTaskStatusDone => 'Done';
+
+  @override
+  String get workOrderTaskStatusSkipped => 'Skipped';
+
+  @override
+  String get workOrderTaskStatusFailed => 'Failed';
+
+  @override
+  String get workOrderWorkTypeCorrective => 'Corrective';
+
+  @override
+  String get workOrderWorkTypePreventive => 'Preventive';
+
+  @override
+  String get workOrderWorkTypePredictive => 'Predictive';
+
+  @override
+  String get workOrderWorkTypeInspection => 'Inspection';
+
+  @override
+  String get workOrderWorkTypeImprovement => 'Improvement';
+
+  @override
+  String get workOrderWorkTypeCalibration => 'Calibration';
+
+  @override
+  String get partSourceStores => 'Stores';
+
+  @override
+  String get partSourcePurchased => 'Purchased';
+
+  @override
+  String get partSourceRefurbished => 'Refurbished';
+
+  @override
+  String get partSourceCannibalised => 'Cannibalised';
+
+  @override
+  String get requestUrgencyLow => 'Low';
+
+  @override
+  String get requestUrgencyNormal => 'Normal';
+
+  @override
+  String get requestUrgencyHigh => 'High';
+
+  @override
+  String get requestUrgencyImmediate => 'Immediate';
+
+  @override
+  String get requestStatusNew => 'New';
+
+  @override
+  String get requestStatusTriaged => 'Triaged';
+
+  @override
+  String get requestStatusAccepted => 'Accepted';
+
+  @override
+  String get requestStatusRejected => 'Rejected';
+
+  @override
+  String get requestStatusDuplicate => 'Duplicate';
+
+  @override
+  String get labourActivityWork => 'Work';
+
+  @override
+  String get labourActivityTravel => 'Travel';
+
+  @override
+  String get labourActivityWaiting => 'Waiting';
+
+  @override
+  String get labourActivityDiagnosis => 'Diagnosis';
+
+  @override
+  String get labourActivityDocumentation => 'Documentation';
+
+  @override
+  String get meterTypeCumulative => 'Cumulative';
+
+  @override
+  String get meterTypeGauge => 'Gauge';
+
+  @override
+  String get meterTypeCumulativeExplanation =>
+      'Only ever goes up — an hour counter or a cycle count. Only a cumulative meter can drive a PM schedule.';
+
+  @override
+  String get meterTypeGaugeExplanation =>
+      'May go either way — a temperature, a pressure, an oil level. Recorded, but never scheduled against.';
+
+  @override
+  String get pmAnchorDueDate => 'Due date';
+
+  @override
+  String get pmAnchorCompletion => 'Completion';
+
+  @override
+  String get pmAnchorDueDateExplanation =>
+      'The next date is fixed to the calendar: doing the work late does not push the following one back.';
+
+  @override
+  String get pmAnchorCompletionExplanation =>
+      'The clock starts when the work was actually done, so a service done late simply slides.';
+
+  @override
+  String get actionStatusOpen => 'Open';
+
+  @override
+  String get actionStatusInProgress => 'In progress';
+
+  @override
+  String get actionStatusBlocked => 'Blocked';
+
+  @override
+  String get actionStatusDone => 'Done';
+
+  @override
+  String get actionStatusCancelled => 'Cancelled';
+
+  @override
+  String get actionTypeConcern => 'Concern';
+
+  @override
+  String get actionTypeContainment => 'Containment';
+
+  @override
+  String get actionTypeCountermeasure => 'Countermeasure';
+
+  @override
+  String get actionTypePreventive => 'Preventive action';
+
+  @override
+  String get actionTypeImprovement => 'Improvement';
+
+  @override
+  String get actionTypeRoutine => 'Routine action';
+
+  @override
+  String get actionPhasePlan => 'Plan';
+
+  @override
+  String get actionPhaseDo => 'Do';
+
+  @override
+  String get actionPhaseCheck => 'Check';
+
+  @override
+  String get actionPhaseAct => 'Act';
+
+  @override
+  String get actionCheckOutcomeHeld => 'It held';
+
+  @override
+  String get actionCheckOutcomeDidNotHold => 'It did not hold';
+
+  @override
+  String get actionPriorityWorst => 'P1 — worst';
+
+  @override
+  String get actionPriority2 => 'P2';
+
+  @override
+  String get actionPriorityNormal => 'P3 — normal';
+
+  @override
+  String get actionPriority4 => 'P4';
+
+  @override
+  String get actionPriorityLeast => 'P5 — least';
+
+  @override
+  String get capaStatusOpen => 'Open';
+
+  @override
+  String get capaStatusContainment => 'Contained';
+
+  @override
+  String get capaStatusRootCause => 'Root cause';
+
+  @override
+  String get capaStatusActions => 'Actions';
+
+  @override
+  String get capaStatusVerifying => 'Verifying';
+
+  @override
+  String get capaStatusClosed => 'Closed';
+
+  @override
+  String get capaStatusCancelled => 'Cancelled';
+
+  @override
+  String get capaMethod8d => '8D';
+
+  @override
+  String get capaMethodFiveWhy => '5 Why';
+
+  @override
+  String get capaMethodA3 => 'A3';
+
+  @override
+  String get capaMethodSimple => 'Simple';
+
+  @override
+  String get capaChainOccurrence => 'Why it happened';
+
+  @override
+  String get capaChainEscape => 'Why it was not detected';
+
+  @override
+  String get capaCauseCategoryMan => 'Man';
+
+  @override
+  String get capaCauseCategoryMachine => 'Machine';
+
+  @override
+  String get capaCauseCategoryMethod => 'Method';
+
+  @override
+  String get capaCauseCategoryMaterial => 'Material';
+
+  @override
+  String get capaCauseCategoryMeasurement => 'Measurement';
+
+  @override
+  String get capaCauseCategoryEnvironment => 'Environment';
+
+  @override
+  String get capaCauseVerdictCandidate => 'Candidate';
+
+  @override
+  String get capaCauseVerdictConfirmed => 'Confirmed';
+
+  @override
+  String get capaCauseVerdictRuledOut => 'Ruled out';
+
+  @override
+  String get capaEffectivenessHeld => 'The fix held';
+
+  @override
+  String get capaEffectivenessDidNotHold => 'The fix did not hold';
+
+  @override
+  String get safetyIncidentStatusOpen => 'Open';
+
+  @override
+  String get safetyIncidentStatusInvestigating => 'Investigating';
+
+  @override
+  String get safetyIncidentStatusActionsPending => 'Actions pending';
+
+  @override
+  String get safetyIncidentStatusClosed => 'Closed';
+
+  @override
+  String get safetyIncidentTypeInjury => 'Injury';
+
+  @override
+  String get safetyIncidentTypeNearMiss => 'Near miss';
+
+  @override
+  String get safetyIncidentTypePropertyDamage => 'Property damage';
+
+  @override
+  String get safetyIncidentTypeEnvironmental => 'Environmental';
+
+  @override
+  String get safetyIncidentTypeFire => 'Fire';
+
+  @override
+  String get safetyIncidentTypeErgonomic => 'Ergonomic';
+
+  @override
+  String get safetyIncidentTypeSecurity => 'Security';
+
+  @override
+  String get safetySeverityNoInjury => 'No injury';
+
+  @override
+  String get safetySeverityFirstAid => 'First aid';
+
+  @override
+  String get safetySeverityMedicalTreatment => 'Medical treatment';
+
+  @override
+  String get safetySeverityRestrictedWork => 'Restricted work';
+
+  @override
+  String get safetySeverityLostTime => 'Lost time';
+
+  @override
+  String get safetySeverityFatality => 'Fatality';
+
+  @override
+  String get safetyObservationTypeSafeAct => 'Safe act';
+
+  @override
+  String get safetyObservationTypeUnsafeAct => 'Unsafe act';
+
+  @override
+  String get safetyObservationTypeUnsafeCondition => 'Unsafe condition';
+
+  @override
+  String get safetyObservationCategoryPpe => 'PPE';
+
+  @override
+  String get safetyObservationCategoryMachineGuarding => 'Machine guarding';
+
+  @override
+  String get safetyObservationCategoryHousekeeping => 'Housekeeping';
+
+  @override
+  String get safetyObservationCategoryErgonomics => 'Ergonomics';
+
+  @override
+  String get safetyObservationCategoryChemical => 'Chemical';
+
+  @override
+  String get safetyObservationCategoryWorkingAtHeight => 'Working at height';
+
+  @override
+  String get safetyObservationCategoryTraffic => 'Traffic';
+
+  @override
+  String get safetyObservationCategoryEnergyIsolation => 'Energy isolation';
+
+  @override
+  String get safetyObservationCategoryProcedure => 'Procedure';
+
+  @override
+  String get safetyObservationCategoryOther => 'Other';
+
+  @override
+  String get safetyPotentialLow => 'Low';
+
+  @override
+  String get safetyPotentialMedium => 'Medium';
+
+  @override
+  String get safetyPotentialHigh => 'High';
+
+  @override
+  String get safetyPotentialFatal => 'Fatal';
+
+  @override
+  String get bodyPartRegionHead => 'Head';
+
+  @override
+  String get bodyPartRegionTrunk => 'Trunk';
+
+  @override
+  String get bodyPartRegionUpperLimb => 'Upper limb';
+
+  @override
+  String get bodyPartRegionLowerLimb => 'Lower limb';
+
+  @override
+  String get bodyPartRegionMultiple => 'Multiple';
+
+  @override
+  String get bodyPartRegionOther => 'Other';
+
+  @override
+  String get roleOperator => 'Operator';
+
+  @override
+  String get roleSupervisor => 'Supervisor';
+
+  @override
+  String get roleEngineer => 'Engineer';
+
+  @override
+  String get roleManager => 'Manager';
+
+  @override
+  String get roleAdministrator => 'Administrator';
+
+  @override
+  String get roleOperatorDescription =>
+      'Works in the Org Units this Account is granted.';
+
+  @override
+  String get roleSupervisorDescription =>
+      'Runs the Org Units this Account is granted, and the people in them.';
+
+  @override
+  String get roleEngineerDescription =>
+      'Improves the Org Units this Account is granted.';
+
+  @override
+  String get roleManagerDescription =>
+      'Oversees the Org Units this Account is granted.';
+
+  @override
+  String get roleAdministratorDescription =>
+      'Acts everywhere, in every Site, with no Org Unit Grants at all.';
+
+  @override
+  String get employmentTypePermanent => 'Permanent';
+
+  @override
+  String get employmentTypeTemporary => 'Temporary';
+
+  @override
+  String get employmentTypeAgency => 'Agency';
+
+  @override
+  String get employmentTypeContractor => 'Contractor';
+
+  @override
+  String get employmentTypeApprentice => 'Apprentice';
+
+  @override
+  String get trainingEvaluationPaper => 'Paper';
+
+  @override
+  String get trainingEvaluationJobTraining => 'Job-training';
+
+  @override
+  String get trainingStatusDraft => 'Draft';
+
+  @override
+  String get trainingStatusSent => 'Sent';
+
+  @override
+  String get attendanceStatusPresent => 'Present';
+
+  @override
+  String get attendanceStatusLate => 'Late';
+
+  @override
+  String get attendanceStatusAbsentPlanned => 'Absent (planned)';
+
+  @override
+  String get attendanceStatusAbsentUnplanned => 'Absent (unplanned)';
+
+  @override
+  String get attendanceStatusLeave => 'Leave';
+
+  @override
+  String get attendanceStatusTraining => 'Training';
+
+  @override
+  String get attendanceStatusNotScheduled => 'Not scheduled';
+
+  @override
+  String get attendanceSheetStateMissing => 'Not opened yet';
+
+  @override
+  String get attendanceSheetStateUnconfirmed => 'Started, not yet confirmed';
+
+  @override
+  String get leaveRequestStatusPending => 'Pending';
+
+  @override
+  String get leaveRequestStatusApproved => 'Approved';
+
+  @override
+  String get leaveRequestStatusRejected => 'Rejected';
+
+  @override
+  String get leaveRequestStatusCancelled => 'Cancelled';
+
+  @override
+  String get costRateScopeSite => 'Site';
+
+  @override
+  String get costRateScopeOrgUnit => 'Org Unit';
+
+  @override
+  String get costRateScopeAsset => 'Asset';
+
+  @override
+  String get costRateScopeCostCentre => 'Cost centre';
+
+  @override
+  String get costRateTypeLabourPerHour => 'Labour, per hour';
+
+  @override
+  String get costRateTypeOvertimePremium => 'Overtime premium, a multiplier';
+
+  @override
+  String get costRateTypeMachineDowntime => 'Machine downtime, per hour';
+
+  @override
+  String get costRateTypeOverhead => 'Overhead, per hour';
+
+  @override
+  String get costRateTypeReworkLabour => 'Rework labour, per hour';
+
+  @override
+  String get nonconformanceStatusOpen => 'Open';
+
+  @override
+  String get nonconformanceStatusContained => 'Contained';
+
+  @override
+  String get nonconformanceStatusDispositioned => 'Dispositioned';
+
+  @override
+  String get nonconformanceStatusClosed => 'Closed';
+
+  @override
+  String get nonconformanceStatusCancelled => 'Cancelled';
+
+  @override
+  String get dispositionScrap => 'Scrap';
+
+  @override
+  String get dispositionRework => 'Rework';
+
+  @override
+  String get dispositionReturnToSupplier => 'Return to supplier';
+
+  @override
+  String get dispositionUseAsIs => 'Use as is';
+
+  @override
+  String get dispositionConcession => 'Concession';
+
+  @override
+  String get severityChangeLowered => 'Severity lowered';
+
+  @override
+  String get noticeSessionEnded =>
+      'This session has ended. Sign in again to continue.';
+
+  @override
+  String get noticeActionInFlight =>
+      'Another action is already in progress. Try again in a moment.';
+
+  @override
+  String get noticeDeviceNotRegistered =>
+      'This device is not registered. Ask an administrator to register it against an Org Unit.';
+
+  @override
+  String get noticeIdentificationExpired =>
+      'Your identification has expired. Identify yourself again.';
+
+  @override
+  String get noticeAccountAlreadyMoved =>
+      'Another administrator has already changed that Account. The list has been refreshed.';
+
+  @override
+  String get noticeAccountAlreadyDecided =>
+      'Another administrator has already dealt with that Account. The queue has been refreshed.';
+
+  @override
+  String noticeEmployeeLeft(String name) {
+    return '$name has left.';
+  }
+
+  @override
+  String noticeEmployeeBack(String name) {
+    return '$name is back.';
+  }
+
+  @override
+  String noticeAssetBack(String code) {
+    return '$code is back on the active register.';
+  }
+
+  @override
+  String get noticeNoSitesActionLog =>
+      'There are no Sites you can see, so there is no action log to show.';
+
+  @override
+  String get noticeNoSitesRegister =>
+      'There are no Sites you can see, so there is no register to show.';
+
+  @override
+  String get noticeNoSitesStores =>
+      'There are no Sites you can see, so there are no stores to show.';
+
+  @override
+  String get noticeNoSitesCoverage =>
+      'There are no Sites you can see, so there is no coverage to show.';
+
+  @override
+  String get noticeNoSitesKpiCatalogue =>
+      'There are no Sites you can see, so there is no KPI catalogue to show.';
+
+  @override
+  String get noticeNoSitesKpiTargets =>
+      'There are no Sites you can see, so there are no Targets to show.';
+
+  @override
+  String get noticeNoSitesKpiReview =>
+      'There are no Sites you can see, so there is no KPI Review to show.';
+
+  @override
+  String get noticeNoSitesBoard =>
+      'There are no Sites you can see, so there is no board to show.';
+
+  @override
+  String get noticeNoSitesWork =>
+      'There are no Sites you can see, so there is no work to show.';
+
+  @override
+  String get noticeNoSitesWaiting =>
+      'There are no Sites you can see, so there is nothing waiting.';
+
+  @override
+  String get noticeNoSitesNothing =>
+      'There are no Sites you can see, so there is nothing to show.';
+
+  @override
+  String noticeAssetRetired(String code) {
+    return '$code has been retired.';
+  }
+
+  @override
+  String noticeMeasureAnswers(String actionNo, String kind) {
+    return '$actionNo answers this — a $kind.';
+  }
+
+  @override
+  String noticeActionClosed(String actionNo) {
+    return '$actionNo is closed — its Act named the standard that now holds it.';
+  }
+
+  @override
+  String noticeActionAwaitingPhase(String actionNo, String phase) {
+    return '$actionNo is waiting on its $phase phase.';
+  }
+
+  @override
+  String get commonUnknown => 'Unknown';
+
+  @override
+  String get defectSeverityMinor => 'Minor';
+
+  @override
+  String get defectSeverityMajor => 'Major';
+
+  @override
+  String get defectSeverityCritical => 'Critical';
+
+  @override
+  String get correctionKindReopened => 'Reopened';
+
+  @override
+  String get correctionKindCancelled => 'Cancelled';
+
+  @override
+  String correctionSummarySeverityLowered(String from, String to) {
+    return 'Severity lowered from $from to $to';
+  }
+
+  @override
+  String correctionSummaryReopened(String status) {
+    return 'Reopened from $status';
+  }
+
+  @override
+  String correctionSummaryCancelled(String status) {
+    return 'Cancelled from $status';
+  }
+
+  @override
+  String incidentEventSeverityChanged(String from, String to) {
+    return 'Severity changed from $from to $to';
+  }
+
+  @override
+  String incidentEventStatusMoved(String from, String to) {
+    return 'Status moved from $from to $to';
+  }
+
+  @override
+  String incidentEventDaysRecorded(String days) {
+    return 'Days recorded: $days';
+  }
+
+  @override
+  String get incidentEventClosed => 'Closed';
+
+  @override
+  String get incidentEventClassified => 'Classified';
+
+  @override
+  String get detectionPointIncoming => 'Incoming';
+
+  @override
+  String get detectionPointInProcess => 'In process';
+
+  @override
+  String get detectionPointFinalInspection => 'Final inspection';
+
+  @override
+  String get detectionPointAudit => 'Audit';
+
+  @override
+  String get detectionPointCustomer => 'Customer';
+
+  @override
+  String get safetyAnySeverity => 'Choose a rung';
+
+  @override
+  String get safetySeverityRecordableSuffix => ' · recordable';
+
+  @override
+  String get complaintStatusOpen => 'Open';
+
+  @override
+  String get complaintStatusInvestigating => 'Investigating';
+
+  @override
+  String get complaintStatusResponded => 'Responded';
+
+  @override
+  String get complaintStatusClosed => 'Closed';
+
+  @override
+  String get complaintStatusRejected => 'Rejected';
+
+  @override
+  String get complaintTypeQuality => 'Quality';
+
+  @override
+  String get complaintTypeDelivery => 'Delivery';
+
+  @override
+  String get complaintTypeQuantity => 'Quantity';
+
+  @override
+  String get complaintTypeDocumentation => 'Documentation';
+
+  @override
+  String get complaintTypePackaging => 'Packaging';
+
+  @override
+  String get complaintTypeService => 'Service';
+
+  @override
+  String get supplierNcrStatusOpen => 'Open';
+
+  @override
+  String get supplierNcrStatusIssued => 'Issued';
+
+  @override
+  String get supplierNcrStatusResponded => 'Responded';
+
+  @override
+  String get supplierNcrStatusClosed => 'Closed';
+
+  @override
+  String get supplierNcrStatusRejected => 'Rejected';
+
+  @override
+  String get supplierNcrDispositionReturnToSupplier => 'Return to the Supplier';
+
+  @override
+  String get supplierNcrDispositionScrap => 'Scrap';
+
+  @override
+  String get supplierNcrDispositionReworkAtCost =>
+      'Rework at the Supplier\'s cost';
+
+  @override
+  String get supplierNcrDispositionSort => 'Sort';
+
+  @override
+  String get supplierNcrDispositionUseAsIs => 'Use as it is';
+
+  @override
+  String get downtimeStatusOpen => 'Open';
+
+  @override
+  String get downtimeStatusUnclassified => 'Unclassified';
+
+  @override
+  String get downtimeStatusClosed => 'Closed';
+
+  @override
+  String get assetTypeMachine => 'Machine';
+
+  @override
+  String get assetTypeCell => 'Cell';
+
+  @override
+  String get assetTypeTool => 'Tool';
+
+  @override
+  String get assetTypeUtility => 'Utility';
+
+  @override
+  String get assetTypeVehicle => 'Vehicle';
+
+  @override
+  String get assetTypeOther => 'Other';
+
+  @override
+  String get assetCriticalityLow => 'Low';
+
+  @override
+  String get assetCriticalityMedium => 'Medium';
+
+  @override
+  String get assetCriticalityHigh => 'High';
+
+  @override
+  String get assetCriticalityCritical => 'Critical';
+
+  @override
+  String get defectCategoryProduct => 'Product';
+
+  @override
+  String get defectCategoryProcess => 'Process';
+
+  @override
+  String get defectCategoryMaterial => 'Material';
+
+  @override
+  String get defectCategoryDocumentation => 'Documentation';
+
+  @override
+  String get defectCategoryPackaging => 'Packaging';
+
+  @override
+  String get boardKpiStatusOnTarget => 'On target';
+
+  @override
+  String get boardKpiStatusNearTarget => 'Near target';
+
+  @override
+  String get boardKpiStatusOffTarget => 'Off target';
+
+  @override
+  String get boardKpiStatusNoTarget => 'No target';
+
+  @override
+  String get boardKpiStatusNoData => 'No data';
+
+  @override
+  String get reviewStatusMet => 'Met';
+
+  @override
+  String get reviewStatusMissed => 'Missed';
+
+  @override
+  String get reviewStatusNotMeasured => 'Not measured';
+
+  @override
+  String get reviewStatusNotReviewed => 'Not reviewed';
+
+  @override
+  String get issueKindNonconformance => 'Non-conformance';
+
+  @override
+  String get issueKindComplaint => 'Customer complaint';
+
+  @override
+  String get issueKindNonconformanceShort => 'NC';
+
+  @override
+  String get issueKindComplaintShort => 'Complaint';
+
+  @override
+  String get handoverMachineRunning => 'Running';
+
+  @override
+  String get handoverMachineRunningManual => 'Running (manual)';
+
+  @override
+  String get handoverMachineIdle => 'Idle';
+
+  @override
+  String get handoverMachineDown => 'Down';
+
+  @override
+  String get handoverMachineMaintenance => 'Maintenance';
+
+  @override
+  String get handoverMachineCleaning => 'Cleaning';
+
+  @override
+  String get handoverMachineChangeover => 'Changeover';
+
+  @override
+  String get handoverMachineIsolated => 'Isolated';
+
+  @override
+  String get handoverAbnormalityMinorFlaw => 'Minor flaw';
+
+  @override
+  String get handoverAbnormalityUnfulfilledBasicCondition =>
+      'Unfulfilled basic condition';
+
+  @override
+  String get handoverAbnormalityInaccessiblePlace => 'Inaccessible place';
+
+  @override
+  String get handoverAbnormalityContaminationSource => 'Contamination source';
+
+  @override
+  String get handoverAbnormalityQualityDefectSource => 'Quality defect source';
+
+  @override
+  String get handoverAbnormalityUnnecessaryItem => 'Unnecessary item';
+
+  @override
+  String get handoverAbnormalityUnsafePlace => 'Unsafe place';
+
+  @override
+  String get handoverDimensionMan => 'Man';
+
+  @override
+  String get handoverDimensionMachine => 'Machine';
+
+  @override
+  String get handoverDimensionMaterial => 'Material';
+
+  @override
+  String get handoverDimensionMethod => 'Method';
+
+  @override
+  String get handoverDispositionCarried => 'Carried';
+
+  @override
+  String get handoverDispositionReassigned => 'Reassigned';
+
+  @override
+  String get handoverDispositionClosed => 'Closed';
+
+  @override
+  String get handoverWatchOk => 'OK';
+
+  @override
+  String get handoverWatchConcern => 'Concern';
+
+  @override
+  String get handoverWatchNotRun => 'Not run';
+
+  @override
+  String get handoverDeviationNone => 'None';
+
+  @override
+  String get handoverDeviationLate => 'Late';
+
+  @override
+  String get handoverDeviationPartial => 'Partial';
+
+  @override
+  String get handoverDeviationNoIncomingTeamLeader => 'No incoming Team Leader';
+
+  @override
+  String get handoverExceptionNoHandover => 'No handover recorded';
+
+  @override
+  String get handoverExceptionUnacknowledged => 'Unacknowledged';
+
+  @override
+  String get handoverExceptionAmendedAfterAcknowledgement =>
+      'Amended after acknowledgement';
+
+  @override
+  String get handoverStatusSubmitted => 'Submitted';
+
+  @override
+  String get handoverStatusAcknowledged => 'Acknowledged';
+
+  @override
+  String get skillCoverageNobodyQualified => 'Nobody qualified';
+
+  @override
+  String get skillCoveragePartlyQualified => 'Partly qualified';
+
+  @override
+  String get skillCoverageLegendShort => 'Short';
+
+  @override
+  String get accountsStandingRejected => 'Rejected';
+
+  @override
+  String get accountsStandingActive => 'Active';
+
+  @override
+  String get accountsStandingDeactivated => 'Deactivated';
+
+  @override
+  String get accountsStandingAwaitingApproval => 'Awaiting Approval';
+
+  @override
+  String get grantLevelView => 'View';
+
+  @override
+  String get grantLevelViewAndEdit => 'View and edit';
+
+  @override
+  String get boardPeriodShift => 'Shift';
+
+  @override
+  String get boardPeriodDay => 'Day';
+
+  @override
+  String get boardPeriodWeek => 'Week';
+
+  @override
+  String get boardPeriodMonth => 'Month';
 }

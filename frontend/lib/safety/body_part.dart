@@ -24,18 +24,8 @@ abstract final class BodyPartRegion {
 
   /// Head downward, then the two catch-alls — the order a person reads a body
   /// in, never alphabetical, and the order `body-parts.js` lists its own set
-  /// in.
+  /// in. The words are `l10n/vocabulary.dart`'s (`bodyPartRegionLabel`).
   static const List<String> values = [head, trunk, upperLimb, lowerLimb, multiple, other];
-
-  static String label(String region) => switch (region) {
-        head => 'Head',
-        trunk => 'Trunk',
-        upperLimb => 'Upper limb',
-        lowerLimb => 'Lower limb',
-        multiple => 'Multiple',
-        other => 'Other',
-        _ => region,
-      };
 }
 
 @immutable
@@ -66,11 +56,4 @@ class BodyPart {
   /// Whether the part is still offered as a choice — see
   /// [InjuryType.isActive]'s own note; the rule is the same.
   final bool isActive;
-
-  String get regionLabel => BodyPartRegion.label(region);
-
-  /// What a row and a chosen value both read as: the name, the code a person
-  /// quotes, and the region it is filed under — the field that groups the
-  /// catalogue and the only one this model has that an Injury type does not.
-  String get label => '$name · $code · $regionLabel';
 }

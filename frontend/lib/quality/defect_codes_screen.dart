@@ -40,6 +40,7 @@ import '../widgets/status_chip.dart';
 import 'defect_code.dart';
 import 'defect_code_form_dialog.dart';
 import 'defect_codes_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 class DefectCodesScreen extends StatelessWidget {
   const DefectCodesScreen({super.key, required this.isAdmin});
@@ -197,8 +198,8 @@ class _DefectCodeRow extends StatelessWidget {
                     // Non-conformance recorded against it starts at.
                     DisclosingText(
                       '${row.parentName == null ? l10n.defectCodesTopLevel : l10n.defectCodesUnder(row.parentName!)} · '
-                      '${DefectCategory.label(code.category)} · '
-                      '${l10n.defectCodesStartsAt(DefectSeverity.label(code.defaultSeverity))}',
+                      '${defectCategoryLabel(l10n, code.category)} · '
+                      '${l10n.defectCodesStartsAt(defectSeverityLabel(l10n, code.defaultSeverity))}',
                       style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
                     ),
                   ],

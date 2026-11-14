@@ -18,6 +18,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'maintenance_api.dart';
 import 'pm_schedule.dart';
+import '../l10n/notices.dart';
 
 sealed class PmSchedulesEvent {
   const PmSchedulesEvent();
@@ -164,8 +165,8 @@ class PmSchedulesBloc extends Bloc<PmSchedulesEvent, PmSchedulesState> {
   final PeopleApi _people;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
-  static const String noSitesMessage = 'There are no Sites you can see, so there is nothing to show.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
+  static const String noSitesMessage = BlocNotice.noSitesNothing;
 
   /// The last Site the caller actually settled on — set wherever a Site is
   /// settled, so a retry re-opens on it rather than jumping back to the first.

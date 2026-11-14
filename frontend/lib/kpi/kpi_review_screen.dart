@@ -75,6 +75,8 @@ import '../widgets/skeleton_list.dart';
 import 'kpi_catalogue.dart';
 import 'kpi_matrix.dart' show kpiMatchesSearch;
 import 'kpi_review_bloc.dart';
+import '../widgets/notice_text.dart';
+import '../l10n/vocabulary.dart';
 
 class KpiReviewScreen extends StatelessWidget {
   const KpiReviewScreen({super.key, this.canWrite = true});
@@ -473,7 +475,7 @@ class _LoadedState extends State<_Loaded> {
                 Padding(
                   key: KpiReviewScreen.failureKey,
                   padding: const EdgeInsets.only(top: Spacing.md),
-                  child: Text(
+                  child: NoticeText(
                     state.mutationFailure!,
                     style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                   ),
@@ -530,7 +532,7 @@ class _JudgementLegend extends StatelessWidget {
             children: [
               Icon(_judgementIcons(colors, status).$2, size: 16, color: _judgementIcons(colors, status).$3),
               const SizedBox(width: Spacing.xs),
-              Text(ReviewStatus.label(status), style: floor),
+              Text(reviewStatusLabel(AppLocalizations.of(context), status), style: floor),
             ],
           ),
       ],
@@ -636,7 +638,7 @@ class _ReviewCell extends StatelessWidget {
     final saved = row.status == null
         ? null
         : [
-            ReviewStatus.label(row.status!),
+            reviewStatusLabel(l10n, row.status!),
             if (row.appUser != null) row.appUser!,
             if (row.enteredAt != null) formatEnteredAt(row.enteredAt!),
           ].join(' · ');
@@ -668,7 +670,7 @@ class _ReviewCell extends StatelessWidget {
             const SizedBox(height: Spacing.sm),
             Row(
               children: [
-                for (final choice in ReviewStatus.all) _judgementButton(theme.colorScheme, choice),
+                for (final choice in ReviewStatus.all) _judgementButton(l10n, theme.colorScheme, choice),
                 const Spacer(),
                 if (note.trim().isNotEmpty)
                   IconButton(
@@ -686,12 +688,12 @@ class _ReviewCell extends StatelessWidget {
     );
   }
 
-  Widget _judgementButton(ColorScheme colors, String choice) {
+  Widget _judgementButton(AppLocalizations l10n, ColorScheme colors, String choice) {
     final (filled, outline, colour) = _judgementIcons(colors, choice);
     final selected = status == choice;
     return IconButton(
       key: KpiReviewScreen.statusKey(row.kpiId, choice),
-      tooltip: ReviewStatus.label(choice),
+      tooltip: reviewStatusLabel(l10n, choice),
       isSelected: selected,
       icon: Icon(selected ? filled : outline),
       color: selected ? colour : colors.onSurfaceVariant,

@@ -51,6 +51,7 @@ import 'org_unit.dart';
 import 'org_unit_picker_bloc.dart';
 import 'skill.dart';
 import 'skills_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class SkillQualifiedEmployeesDialog extends StatefulWidget {
   const SkillQualifiedEmployeesDialog({super.key, required this.skill});
@@ -213,7 +214,7 @@ class _Results extends StatelessWidget {
           child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
         );
       case QualifiedEmployeesStatus.failed:
-        return Text(
+        return NoticeText(
           query!.failure ?? '',
           key: SkillQualifiedEmployeesDialog.failureKey,
           style: AppTypography.dense(context)
@@ -407,7 +408,7 @@ class _PickerMessage extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          NoticeText(
             message,
             style: AppTypography.floor(context)
                 ?.copyWith(color: AppColors.of(context).textMuted),

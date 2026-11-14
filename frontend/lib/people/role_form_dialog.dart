@@ -31,6 +31,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_scan_field.dart';
 import 'app_role.dart';
 import 'roles_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class RoleFormDialog extends StatefulWidget {
   const RoleFormDialog({super.key, this.role, this.permissions});
@@ -223,7 +224,7 @@ class _RoleFormDialogState extends State<RoleFormDialog> {
               Padding(
                 key: RoleFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   failure,
                   style: AppTypography.dense(context)
                       ?.copyWith(color: AppColors.of(context).statusForeground(StatusTone.danger)),

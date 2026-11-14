@@ -28,6 +28,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'kpi_catalogue.dart';
 import 'kpi_catalogue_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class AddKpiDialog extends StatefulWidget {
   const AddKpiDialog({super.key});
@@ -236,7 +237,7 @@ class _AddKpiDialogState extends State<AddKpiDialog> {
               Padding(
                 key: AddKpiDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

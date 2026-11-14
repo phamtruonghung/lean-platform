@@ -7191,4 +7191,1038 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get workOrdersWoBuc202600001 => 'WO-BUC-2026-00001';
+
+  @override
+  String get workOrderStatusDraft => 'Bản nháp';
+
+  @override
+  String get workOrderStatusApproved => 'Đã duyệt';
+
+  @override
+  String get workOrderStatusScheduled => 'Đã lên lịch';
+
+  @override
+  String get workOrderStatusInProgress => 'Đang thực hiện';
+
+  @override
+  String get workOrderStatusOnHold => 'Tạm dừng';
+
+  @override
+  String get workOrderStatusCompleted => 'Đã hoàn thành';
+
+  @override
+  String get workOrderStatusClosed => 'Đã đóng';
+
+  @override
+  String get workOrderStatusCancelled => 'Đã huỷ';
+
+  @override
+  String get workOrderTaskStatusPending => 'Chờ làm';
+
+  @override
+  String get workOrderTaskStatusDone => 'Đã làm';
+
+  @override
+  String get workOrderTaskStatusSkipped => 'Đã bỏ qua';
+
+  @override
+  String get workOrderTaskStatusFailed => 'Thất bại';
+
+  @override
+  String get workOrderWorkTypeCorrective => 'Sửa chữa';
+
+  @override
+  String get workOrderWorkTypePreventive => 'Phòng ngừa';
+
+  @override
+  String get workOrderWorkTypePredictive => 'Dự báo';
+
+  @override
+  String get workOrderWorkTypeInspection => 'Kiểm tra';
+
+  @override
+  String get workOrderWorkTypeImprovement => 'Cải tiến';
+
+  @override
+  String get workOrderWorkTypeCalibration => 'Hiệu chuẩn';
+
+  @override
+  String get partSourceStores => 'Từ kho';
+
+  @override
+  String get partSourcePurchased => 'Mua ngoài';
+
+  @override
+  String get partSourceRefurbished => 'Phục hồi';
+
+  @override
+  String get partSourceCannibalised => 'Tháo máy khác';
+
+  @override
+  String get requestUrgencyLow => 'Thấp';
+
+  @override
+  String get requestUrgencyNormal => 'Bình thường';
+
+  @override
+  String get requestUrgencyHigh => 'Cao';
+
+  @override
+  String get requestUrgencyImmediate => 'Khẩn cấp';
+
+  @override
+  String get requestStatusNew => 'Mới';
+
+  @override
+  String get requestStatusTriaged => 'Đã phân loại';
+
+  @override
+  String get requestStatusAccepted => 'Đã tiếp nhận';
+
+  @override
+  String get requestStatusRejected => 'Bị từ chối';
+
+  @override
+  String get requestStatusDuplicate => 'Trùng lặp';
+
+  @override
+  String get labourActivityWork => 'Làm việc';
+
+  @override
+  String get labourActivityTravel => 'Di chuyển';
+
+  @override
+  String get labourActivityWaiting => 'Chờ';
+
+  @override
+  String get labourActivityDiagnosis => 'Chẩn đoán';
+
+  @override
+  String get labourActivityDocumentation => 'Ghi chép';
+
+  @override
+  String get meterTypeCumulative => 'Luỹ kế';
+
+  @override
+  String get meterTypeGauge => 'Đồng hồ đo';
+
+  @override
+  String get meterTypeCumulativeExplanation =>
+      'Chỉ tăng — như đồng hồ giờ chạy hoặc số chu kỳ. Chỉ đồng hồ luỹ kế mới dùng được để lên lịch bảo trì định kỳ.';
+
+  @override
+  String get meterTypeGaugeExplanation =>
+      'Có thể tăng hoặc giảm — như nhiệt độ, áp suất, mức dầu. Vẫn ghi nhận, nhưng không dùng để lên lịch bảo trì định kỳ.';
+
+  @override
+  String get pmAnchorDueDate => 'Ngày đến hạn';
+
+  @override
+  String get pmAnchorCompletion => 'Hoàn thành';
+
+  @override
+  String get pmAnchorDueDateExplanation =>
+      'Ngày kế tiếp bám theo lịch: làm muộn cũng không đẩy lần sau ra.';
+
+  @override
+  String get pmAnchorCompletionExplanation =>
+      'Chu kỳ tính từ lúc thực sự làm xong, nên làm muộn thì lần sau cũng trượt theo.';
+
+  @override
+  String get actionStatusOpen => 'Mở';
+
+  @override
+  String get actionStatusInProgress => 'Đang thực hiện';
+
+  @override
+  String get actionStatusBlocked => 'Bị chặn';
+
+  @override
+  String get actionStatusDone => 'Hoàn thành';
+
+  @override
+  String get actionStatusCancelled => 'Đã huỷ';
+
+  @override
+  String get actionTypeConcern => 'Vấn đề';
+
+  @override
+  String get actionTypeContainment => 'Khoanh vùng';
+
+  @override
+  String get actionTypeCountermeasure => 'Biện pháp khắc phục';
+
+  @override
+  String get actionTypePreventive => 'Hành động phòng ngừa';
+
+  @override
+  String get actionTypeImprovement => 'Cải tiến';
+
+  @override
+  String get actionTypeRoutine => 'Hành động thường lệ';
+
+  @override
+  String get actionPhasePlan => 'Lập kế hoạch';
+
+  @override
+  String get actionPhaseDo => 'Thực hiện';
+
+  @override
+  String get actionPhaseCheck => 'Kiểm tra';
+
+  @override
+  String get actionPhaseAct => 'Chuẩn hoá';
+
+  @override
+  String get actionCheckOutcomeHeld => 'Đã giữ được';
+
+  @override
+  String get actionCheckOutcomeDidNotHold => 'Chưa giữ được';
+
+  @override
+  String get actionPriorityWorst => 'P1 — nặng nhất';
+
+  @override
+  String get actionPriority2 => 'P2';
+
+  @override
+  String get actionPriorityNormal => 'P3 — bình thường';
+
+  @override
+  String get actionPriority4 => 'P4';
+
+  @override
+  String get actionPriorityLeast => 'P5 — nhẹ nhất';
+
+  @override
+  String get capaStatusOpen => 'Mở';
+
+  @override
+  String get capaStatusContainment => 'Đã khoanh vùng';
+
+  @override
+  String get capaStatusRootCause => 'Nguyên nhân gốc';
+
+  @override
+  String get capaStatusActions => 'Hành động';
+
+  @override
+  String get capaStatusVerifying => 'Đang xác minh';
+
+  @override
+  String get capaStatusClosed => 'Đã đóng';
+
+  @override
+  String get capaStatusCancelled => 'Đã huỷ';
+
+  @override
+  String get capaMethod8d => '8D';
+
+  @override
+  String get capaMethodFiveWhy => '5 Vì sao';
+
+  @override
+  String get capaMethodA3 => 'A3';
+
+  @override
+  String get capaMethodSimple => 'Đơn giản';
+
+  @override
+  String get capaChainOccurrence => 'Vì sao nó xảy ra';
+
+  @override
+  String get capaChainEscape => 'Vì sao nó không bị phát hiện';
+
+  @override
+  String get capaCauseCategoryMan => 'Con người';
+
+  @override
+  String get capaCauseCategoryMachine => 'Máy móc';
+
+  @override
+  String get capaCauseCategoryMethod => 'Phương pháp';
+
+  @override
+  String get capaCauseCategoryMaterial => 'Nguyên vật liệu';
+
+  @override
+  String get capaCauseCategoryMeasurement => 'Đo lường';
+
+  @override
+  String get capaCauseCategoryEnvironment => 'Môi trường';
+
+  @override
+  String get capaCauseVerdictCandidate => 'Ứng viên';
+
+  @override
+  String get capaCauseVerdictConfirmed => 'Đã xác nhận';
+
+  @override
+  String get capaCauseVerdictRuledOut => 'Đã loại trừ';
+
+  @override
+  String get capaEffectivenessHeld => 'Bản sửa đã giữ được';
+
+  @override
+  String get capaEffectivenessDidNotHold => 'Bản sửa chưa giữ được';
+
+  @override
+  String get safetyIncidentStatusOpen => 'Mở';
+
+  @override
+  String get safetyIncidentStatusInvestigating => 'Đang điều tra';
+
+  @override
+  String get safetyIncidentStatusActionsPending => 'Chờ hành động';
+
+  @override
+  String get safetyIncidentStatusClosed => 'Đã đóng';
+
+  @override
+  String get safetyIncidentTypeInjury => 'Thương tích';
+
+  @override
+  String get safetyIncidentTypeNearMiss => 'Suýt xảy ra';
+
+  @override
+  String get safetyIncidentTypePropertyDamage => 'Hư hỏng tài sản';
+
+  @override
+  String get safetyIncidentTypeEnvironmental => 'Môi trường';
+
+  @override
+  String get safetyIncidentTypeFire => 'Cháy';
+
+  @override
+  String get safetyIncidentTypeErgonomic => 'Công thái học';
+
+  @override
+  String get safetyIncidentTypeSecurity => 'An ninh';
+
+  @override
+  String get safetySeverityNoInjury => 'Không thương tích';
+
+  @override
+  String get safetySeverityFirstAid => 'Sơ cứu';
+
+  @override
+  String get safetySeverityMedicalTreatment => 'Điều trị y tế';
+
+  @override
+  String get safetySeverityRestrictedWork => 'Hạn chế công việc';
+
+  @override
+  String get safetySeverityLostTime => 'Mất ngày công';
+
+  @override
+  String get safetySeverityFatality => 'Tử vong';
+
+  @override
+  String get safetyObservationTypeSafeAct => 'Hành vi an toàn';
+
+  @override
+  String get safetyObservationTypeUnsafeAct => 'Hành vi không an toàn';
+
+  @override
+  String get safetyObservationTypeUnsafeCondition => 'Điều kiện không an toàn';
+
+  @override
+  String get safetyObservationCategoryPpe => 'Bảo hộ lao động';
+
+  @override
+  String get safetyObservationCategoryMachineGuarding => 'Che chắn máy';
+
+  @override
+  String get safetyObservationCategoryHousekeeping => 'Sắp xếp vệ sinh';
+
+  @override
+  String get safetyObservationCategoryErgonomics => 'Công thái học';
+
+  @override
+  String get safetyObservationCategoryChemical => 'Hoá chất';
+
+  @override
+  String get safetyObservationCategoryWorkingAtHeight => 'Làm việc trên cao';
+
+  @override
+  String get safetyObservationCategoryTraffic => 'Giao thông nội bộ';
+
+  @override
+  String get safetyObservationCategoryEnergyIsolation => 'Cô lập năng lượng';
+
+  @override
+  String get safetyObservationCategoryProcedure => 'Quy trình';
+
+  @override
+  String get safetyObservationCategoryOther => 'Khác';
+
+  @override
+  String get safetyPotentialLow => 'Thấp';
+
+  @override
+  String get safetyPotentialMedium => 'Trung bình';
+
+  @override
+  String get safetyPotentialHigh => 'Cao';
+
+  @override
+  String get safetyPotentialFatal => 'Tử vong';
+
+  @override
+  String get bodyPartRegionHead => 'Đầu';
+
+  @override
+  String get bodyPartRegionTrunk => 'Thân';
+
+  @override
+  String get bodyPartRegionUpperLimb => 'Chi trên';
+
+  @override
+  String get bodyPartRegionLowerLimb => 'Chi dưới';
+
+  @override
+  String get bodyPartRegionMultiple => 'Nhiều vị trí';
+
+  @override
+  String get bodyPartRegionOther => 'Khác';
+
+  @override
+  String get roleOperator => 'Người vận hành';
+
+  @override
+  String get roleSupervisor => 'Giám sát';
+
+  @override
+  String get roleEngineer => 'Kỹ sư';
+
+  @override
+  String get roleManager => 'Quản lý';
+
+  @override
+  String get roleAdministrator => 'Quản trị viên';
+
+  @override
+  String get roleOperatorDescription =>
+      'Làm việc trong các Đơn vị tổ chức mà tài khoản này được cấp.';
+
+  @override
+  String get roleSupervisorDescription =>
+      'Điều hành các Đơn vị tổ chức mà tài khoản này được cấp, cùng những người trong đó.';
+
+  @override
+  String get roleEngineerDescription =>
+      'Cải tiến các Đơn vị tổ chức mà tài khoản này được cấp.';
+
+  @override
+  String get roleManagerDescription =>
+      'Giám sát các Đơn vị tổ chức mà tài khoản này được cấp.';
+
+  @override
+  String get roleAdministratorDescription =>
+      'Hoạt động ở mọi nơi, trong mọi Nhà máy, không cần cấp quyền Đơn vị tổ chức.';
+
+  @override
+  String get employmentTypePermanent => 'Chính thức';
+
+  @override
+  String get employmentTypeTemporary => 'Tạm thời';
+
+  @override
+  String get employmentTypeAgency => 'Qua công ty cung ứng';
+
+  @override
+  String get employmentTypeContractor => 'Nhà thầu';
+
+  @override
+  String get employmentTypeApprentice => 'Học nghề';
+
+  @override
+  String get trainingEvaluationPaper => 'Trên giấy';
+
+  @override
+  String get trainingEvaluationJobTraining => 'Đào tạo tại chỗ';
+
+  @override
+  String get trainingStatusDraft => 'Bản nháp';
+
+  @override
+  String get trainingStatusSent => 'Đã gửi';
+
+  @override
+  String get attendanceStatusPresent => 'Có mặt';
+
+  @override
+  String get attendanceStatusLate => 'Đi muộn';
+
+  @override
+  String get attendanceStatusAbsentPlanned => 'Vắng (có báo trước)';
+
+  @override
+  String get attendanceStatusAbsentUnplanned => 'Vắng (không báo trước)';
+
+  @override
+  String get attendanceStatusLeave => 'Nghỉ';
+
+  @override
+  String get attendanceStatusTraining => 'Đào tạo';
+
+  @override
+  String get attendanceStatusNotScheduled => 'Không có ca';
+
+  @override
+  String get attendanceSheetStateMissing => 'Chưa mở';
+
+  @override
+  String get attendanceSheetStateUnconfirmed => 'Đã bắt đầu, chưa xác nhận';
+
+  @override
+  String get leaveRequestStatusPending => 'Chờ duyệt';
+
+  @override
+  String get leaveRequestStatusApproved => 'Đã duyệt';
+
+  @override
+  String get leaveRequestStatusRejected => 'Bị từ chối';
+
+  @override
+  String get leaveRequestStatusCancelled => 'Đã huỷ';
+
+  @override
+  String get costRateScopeSite => 'Nhà máy';
+
+  @override
+  String get costRateScopeOrgUnit => 'Đơn vị tổ chức';
+
+  @override
+  String get costRateScopeAsset => 'Tài sản';
+
+  @override
+  String get costRateScopeCostCentre => 'Trung tâm chi phí';
+
+  @override
+  String get costRateTypeLabourPerHour => 'Nhân công, mỗi giờ';
+
+  @override
+  String get costRateTypeOvertimePremium => 'Phụ trội làm thêm giờ, hệ số';
+
+  @override
+  String get costRateTypeMachineDowntime => 'Máy dừng, mỗi giờ';
+
+  @override
+  String get costRateTypeOverhead => 'Chi phí chung, mỗi giờ';
+
+  @override
+  String get costRateTypeReworkLabour => 'Nhân công làm lại, mỗi giờ';
+
+  @override
+  String get nonconformanceStatusOpen => 'Mở';
+
+  @override
+  String get nonconformanceStatusContained => 'Đã khoanh vùng';
+
+  @override
+  String get nonconformanceStatusDispositioned => 'Đã xử lý';
+
+  @override
+  String get nonconformanceStatusClosed => 'Đã đóng';
+
+  @override
+  String get nonconformanceStatusCancelled => 'Đã huỷ';
+
+  @override
+  String get dispositionScrap => 'Phế liệu';
+
+  @override
+  String get dispositionRework => 'Làm lại';
+
+  @override
+  String get dispositionReturnToSupplier => 'Trả lại nhà cung cấp';
+
+  @override
+  String get dispositionUseAsIs => 'Dùng như hiện trạng';
+
+  @override
+  String get dispositionConcession => 'Nhượng bộ';
+
+  @override
+  String get severityChangeLowered => 'Đã hạ mức độ';
+
+  @override
+  String get noticeSessionEnded =>
+      'Phiên làm việc đã kết thúc. Vui lòng đăng nhập lại để tiếp tục.';
+
+  @override
+  String get noticeActionInFlight =>
+      'Một thao tác khác đang được thực hiện. Vui lòng thử lại sau giây lát.';
+
+  @override
+  String get noticeDeviceNotRegistered =>
+      'Thiết bị này chưa được đăng ký. Hãy nhờ quản trị viên đăng ký thiết bị cho một Đơn vị tổ chức.';
+
+  @override
+  String get noticeIdentificationExpired =>
+      'Giấy tờ định danh đã hết hạn. Vui lòng định danh lại.';
+
+  @override
+  String get noticeAccountAlreadyMoved =>
+      'Một quản trị viên khác đã thay đổi tài khoản đó. Danh sách đã được làm mới.';
+
+  @override
+  String get noticeAccountAlreadyDecided =>
+      'Một quản trị viên khác đã xử lý tài khoản đó. Hàng đợi đã được làm mới.';
+
+  @override
+  String noticeEmployeeLeft(String name) {
+    return '$name đã rời đi.';
+  }
+
+  @override
+  String noticeEmployeeBack(String name) {
+    return '$name đã trở lại.';
+  }
+
+  @override
+  String noticeAssetBack(String code) {
+    return '$code đã trở lại danh sách đang dùng.';
+  }
+
+  @override
+  String get noticeNoSitesActionLog =>
+      'Bạn không thấy Nhà máy nào, nên không có nhật ký hành động để hiển thị.';
+
+  @override
+  String get noticeNoSitesRegister =>
+      'Bạn không thấy Nhà máy nào, nên không có danh sách để hiển thị.';
+
+  @override
+  String get noticeNoSitesStores =>
+      'Bạn không thấy Nhà máy nào, nên không có kho để hiển thị.';
+
+  @override
+  String get noticeNoSitesCoverage =>
+      'Bạn không thấy Nhà máy nào, nên không có độ phủ kỹ năng để hiển thị.';
+
+  @override
+  String get noticeNoSitesKpiCatalogue =>
+      'Bạn không thấy Nhà máy nào, nên không có danh mục KPI để hiển thị.';
+
+  @override
+  String get noticeNoSitesKpiTargets =>
+      'Bạn không thấy Nhà máy nào, nên không có chỉ tiêu để hiển thị.';
+
+  @override
+  String get noticeNoSitesKpiReview =>
+      'Bạn không thấy Nhà máy nào, nên không có phần duyệt KPI để hiển thị.';
+
+  @override
+  String get noticeNoSitesBoard =>
+      'Bạn không thấy Nhà máy nào, nên không có bảng nào để hiển thị.';
+
+  @override
+  String get noticeNoSitesWork =>
+      'Bạn không thấy Nhà máy nào, nên không có công việc để hiển thị.';
+
+  @override
+  String get noticeNoSitesWaiting =>
+      'Bạn không thấy Nhà máy nào, nên không có gì đang chờ.';
+
+  @override
+  String get noticeNoSitesNothing =>
+      'Bạn không thấy Nhà máy nào, nên không có gì để hiển thị.';
+
+  @override
+  String noticeAssetRetired(String code) {
+    return '$code đã được cho ngừng sử dụng.';
+  }
+
+  @override
+  String noticeMeasureAnswers(String actionNo, String kind) {
+    return '$actionNo trả lời vấn đề này — một $kind.';
+  }
+
+  @override
+  String noticeActionClosed(String actionNo) {
+    return '$actionNo đã đóng — bước Chuẩn hoá đã nêu tiêu chuẩn đang áp dụng.';
+  }
+
+  @override
+  String noticeActionAwaitingPhase(String actionNo, String phase) {
+    return '$actionNo đang chờ bước $phase.';
+  }
+
+  @override
+  String get commonUnknown => 'Không rõ';
+
+  @override
+  String get defectSeverityMinor => 'Nhẹ';
+
+  @override
+  String get defectSeverityMajor => 'Nặng';
+
+  @override
+  String get defectSeverityCritical => 'Nghiêm trọng';
+
+  @override
+  String get correctionKindReopened => 'Mở lại';
+
+  @override
+  String get correctionKindCancelled => 'Đã huỷ';
+
+  @override
+  String correctionSummarySeverityLowered(String from, String to) {
+    return 'Đã hạ mức độ từ $from xuống $to';
+  }
+
+  @override
+  String correctionSummaryReopened(String status) {
+    return 'Mở lại từ trạng thái $status';
+  }
+
+  @override
+  String correctionSummaryCancelled(String status) {
+    return 'Đã huỷ từ trạng thái $status';
+  }
+
+  @override
+  String incidentEventSeverityChanged(String from, String to) {
+    return 'Mức độ đã đổi từ $from sang $to';
+  }
+
+  @override
+  String incidentEventStatusMoved(String from, String to) {
+    return 'Trạng thái đã chuyển từ $from sang $to';
+  }
+
+  @override
+  String incidentEventDaysRecorded(String days) {
+    return 'Số ngày ghi nhận: $days';
+  }
+
+  @override
+  String get incidentEventClosed => 'Đã đóng';
+
+  @override
+  String get incidentEventClassified => 'Đã phân loại';
+
+  @override
+  String get detectionPointIncoming => 'Khi nhập';
+
+  @override
+  String get detectionPointInProcess => 'Trong quá trình';
+
+  @override
+  String get detectionPointFinalInspection => 'Kiểm tra cuối';
+
+  @override
+  String get detectionPointAudit => 'Đánh giá';
+
+  @override
+  String get detectionPointCustomer => 'Khách hàng';
+
+  @override
+  String get safetyAnySeverity => 'Chọn mức độ';
+
+  @override
+  String get safetySeverityRecordableSuffix => ' · phải báo cáo';
+
+  @override
+  String get complaintStatusOpen => 'Mở';
+
+  @override
+  String get complaintStatusInvestigating => 'Đang điều tra';
+
+  @override
+  String get complaintStatusResponded => 'Đã phản hồi';
+
+  @override
+  String get complaintStatusClosed => 'Đã đóng';
+
+  @override
+  String get complaintStatusRejected => 'Bị từ chối';
+
+  @override
+  String get complaintTypeQuality => 'Chất lượng';
+
+  @override
+  String get complaintTypeDelivery => 'Giao hàng';
+
+  @override
+  String get complaintTypeQuantity => 'Số lượng';
+
+  @override
+  String get complaintTypeDocumentation => 'Chứng từ';
+
+  @override
+  String get complaintTypePackaging => 'Đóng gói';
+
+  @override
+  String get complaintTypeService => 'Dịch vụ';
+
+  @override
+  String get supplierNcrStatusOpen => 'Mở';
+
+  @override
+  String get supplierNcrStatusIssued => 'Đã phát hành';
+
+  @override
+  String get supplierNcrStatusResponded => 'Đã phản hồi';
+
+  @override
+  String get supplierNcrStatusClosed => 'Đã đóng';
+
+  @override
+  String get supplierNcrStatusRejected => 'Bị từ chối';
+
+  @override
+  String get supplierNcrDispositionReturnToSupplier => 'Trả lại nhà cung cấp';
+
+  @override
+  String get supplierNcrDispositionScrap => 'Phế liệu';
+
+  @override
+  String get supplierNcrDispositionReworkAtCost =>
+      'Làm lại do nhà cung cấp chịu chi phí';
+
+  @override
+  String get supplierNcrDispositionSort => 'Phân loại';
+
+  @override
+  String get supplierNcrDispositionUseAsIs => 'Dùng như hiện trạng';
+
+  @override
+  String get downtimeStatusOpen => 'Đang dừng';
+
+  @override
+  String get downtimeStatusUnclassified => 'Chưa phân loại';
+
+  @override
+  String get downtimeStatusClosed => 'Đã đóng';
+
+  @override
+  String get assetTypeMachine => 'Máy';
+
+  @override
+  String get assetTypeCell => 'Cụm máy';
+
+  @override
+  String get assetTypeTool => 'Công cụ';
+
+  @override
+  String get assetTypeUtility => 'Tiện ích';
+
+  @override
+  String get assetTypeVehicle => 'Xe';
+
+  @override
+  String get assetTypeOther => 'Khác';
+
+  @override
+  String get assetCriticalityLow => 'Thấp';
+
+  @override
+  String get assetCriticalityMedium => 'Trung bình';
+
+  @override
+  String get assetCriticalityHigh => 'Cao';
+
+  @override
+  String get assetCriticalityCritical => 'Nghiêm trọng';
+
+  @override
+  String get defectCategoryProduct => 'Sản phẩm';
+
+  @override
+  String get defectCategoryProcess => 'Quy trình';
+
+  @override
+  String get defectCategoryMaterial => 'Vật tư';
+
+  @override
+  String get defectCategoryDocumentation => 'Chứng từ';
+
+  @override
+  String get defectCategoryPackaging => 'Đóng gói';
+
+  @override
+  String get boardKpiStatusOnTarget => 'Đạt mục tiêu';
+
+  @override
+  String get boardKpiStatusNearTarget => 'Gần mục tiêu';
+
+  @override
+  String get boardKpiStatusOffTarget => 'Không đạt mục tiêu';
+
+  @override
+  String get boardKpiStatusNoTarget => 'Chưa có mục tiêu';
+
+  @override
+  String get boardKpiStatusNoData => 'Chưa có dữ liệu';
+
+  @override
+  String get reviewStatusMet => 'Đạt';
+
+  @override
+  String get reviewStatusMissed => 'Không đạt';
+
+  @override
+  String get reviewStatusNotMeasured => 'Chưa đo';
+
+  @override
+  String get reviewStatusNotReviewed => 'Chưa xem xét';
+
+  @override
+  String get issueKindNonconformance => 'Sản phẩm không phù hợp';
+
+  @override
+  String get issueKindComplaint => 'Khiếu nại khách hàng';
+
+  @override
+  String get issueKindNonconformanceShort => 'NC';
+
+  @override
+  String get issueKindComplaintShort => 'Khiếu nại';
+
+  @override
+  String get handoverMachineRunning => 'Đang chạy';
+
+  @override
+  String get handoverMachineRunningManual => 'Chạy thủ công';
+
+  @override
+  String get handoverMachineIdle => 'Chờ';
+
+  @override
+  String get handoverMachineDown => 'Dừng máy';
+
+  @override
+  String get handoverMachineMaintenance => 'Bảo trì';
+
+  @override
+  String get handoverMachineCleaning => 'Vệ sinh';
+
+  @override
+  String get handoverMachineChangeover => 'Đổi sản phẩm';
+
+  @override
+  String get handoverMachineIsolated => 'Cô lập';
+
+  @override
+  String get handoverAbnormalityMinorFlaw => 'Lỗi nhỏ';
+
+  @override
+  String get handoverAbnormalityUnfulfilledBasicCondition =>
+      'Điều kiện cơ bản chưa đạt';
+
+  @override
+  String get handoverAbnormalityInaccessiblePlace => 'Vị trí khó tiếp cận';
+
+  @override
+  String get handoverAbnormalityContaminationSource => 'Nguồn nhiễm bẩn';
+
+  @override
+  String get handoverAbnormalityQualityDefectSource => 'Nguồn lỗi chất lượng';
+
+  @override
+  String get handoverAbnormalityUnnecessaryItem => 'Vật dụng không cần thiết';
+
+  @override
+  String get handoverAbnormalityUnsafePlace => 'Vị trí không an toàn';
+
+  @override
+  String get handoverDimensionMan => 'Con người';
+
+  @override
+  String get handoverDimensionMachine => 'Máy';
+
+  @override
+  String get handoverDimensionMaterial => 'Vật tư';
+
+  @override
+  String get handoverDimensionMethod => 'Phương pháp';
+
+  @override
+  String get handoverDispositionCarried => 'Chuyển tiếp';
+
+  @override
+  String get handoverDispositionReassigned => 'Giao lại';
+
+  @override
+  String get handoverDispositionClosed => 'Đã đóng';
+
+  @override
+  String get handoverWatchOk => 'Đạt';
+
+  @override
+  String get handoverWatchConcern => 'Cần lưu ý';
+
+  @override
+  String get handoverWatchNotRun => 'Chưa chạy';
+
+  @override
+  String get handoverDeviationNone => 'Không';
+
+  @override
+  String get handoverDeviationLate => 'Muộn';
+
+  @override
+  String get handoverDeviationPartial => 'Một phần';
+
+  @override
+  String get handoverDeviationNoIncomingTeamLeader =>
+      'Không có Tổ trưởng ca sau';
+
+  @override
+  String get handoverExceptionNoHandover => 'Không có bàn giao';
+
+  @override
+  String get handoverExceptionUnacknowledged => 'Chưa xác nhận';
+
+  @override
+  String get handoverExceptionAmendedAfterAcknowledgement =>
+      'Sửa sau khi xác nhận';
+
+  @override
+  String get handoverStatusSubmitted => 'Đã gửi';
+
+  @override
+  String get handoverStatusAcknowledged => 'Đã xác nhận';
+
+  @override
+  String get skillCoverageNobodyQualified => 'Chưa ai đủ năng lực';
+
+  @override
+  String get skillCoveragePartlyQualified => 'Đủ năng lực một phần';
+
+  @override
+  String get skillCoverageLegendShort => 'Còn thiếu';
+
+  @override
+  String get accountsStandingRejected => 'Bị từ chối';
+
+  @override
+  String get accountsStandingActive => 'Đang hoạt động';
+
+  @override
+  String get accountsStandingDeactivated => 'Đã vô hiệu';
+
+  @override
+  String get accountsStandingAwaitingApproval => 'Chờ phê duyệt';
+
+  @override
+  String get grantLevelView => 'Xem';
+
+  @override
+  String get grantLevelViewAndEdit => 'Xem và sửa';
+
+  @override
+  String get boardPeriodShift => 'Ca';
+
+  @override
+  String get boardPeriodDay => 'Ngày';
+
+  @override
+  String get boardPeriodWeek => 'Tuần';
+
+  @override
+  String get boardPeriodMonth => 'Tháng';
 }

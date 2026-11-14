@@ -44,6 +44,8 @@ import '../widgets/status_chip.dart';
 import 'action.dart';
 import 'capa.dart';
 import 'capa_detail_bloc.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class CapaDetailScreen extends StatelessWidget {
   const CapaDetailScreen({super.key, required this.capaId});
@@ -388,15 +390,15 @@ class _SummaryCard extends StatelessWidget {
                 // The method is a chip rather than a field: every CAPA this
                 // slice opens is an 8D, and a reader wants to know which
                 // discipline they are reading rather than to change it.
-                Chip(label: Text(l10n.capaDetailInvestigation(capa.methodLabel))),
+                Chip(label: Text(l10n.capaDetailInvestigation(capa.methodLabel(l10n)))),
                 Chip(label: Text(capa.orgUnitName)),
                 if (capa.dueDate != null) Chip(label: Text(l10n.actionDetailDue((capa.dueDate ?? '')))),
-                StatusChip(label: capa.statusLabel, tone: capa.statusTone),
+                StatusChip(label: capa.statusLabel(l10n), tone: capa.statusTone),
               ],
             ),
             if (notice != null) ...[
               const SizedBox(height: Spacing.md),
-              Text(
+              NoticeText(
                 notice!,
                 key: CapaDetailScreen.noticeKey,
                 style: AppTypography.dense(context),
@@ -404,7 +406,7 @@ class _SummaryCard extends StatelessWidget {
             ],
             if (failure != null) ...[
               const SizedBox(height: Spacing.sm),
-              Text(
+              NoticeText(
                 failure!,
                 key: CapaDetailScreen.failureKey,
                 style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
@@ -465,7 +467,7 @@ class _Effectiveness extends StatelessWidget {
             children: [
               StatusChip(
                 key: CapaDetailScreen.effectivenessOutcomeKey,
-                label: capaEffectivenessOutcomeLabel(capa.effectivenessOutcome!),
+                label: capaEffectivenessOutcomeLabel(l10n, capa.effectivenessOutcome!),
                 tone: capaEffectivenessOutcomeTone(capa.effectivenessOutcome!),
               ),
               Text(
@@ -727,8 +729,8 @@ class _Bone extends StatelessWidget {
           children: [
             Text(
               causes.isEmpty
-                  ? capaCauseCategoryLabel(category)
-                  : '${capaCauseCategoryLabel(category)} (${causes.length})',
+                  ? capaCauseCategoryLabel(l10n, category)
+                  : '${capaCauseCategoryLabel(l10n, category)} (${causes.length})',
               style: theme.textTheme.titleSmall,
             ),
             if (mayWrite)
@@ -747,7 +749,7 @@ class _Bone extends StatelessWidget {
             key: CapaDetailScreen.causeCategoryEmptyKey(category),
             padding: const EdgeInsets.only(top: Spacing.xs),
             child: Text(
-              l10n.capaDetailNothingIsRecordedUnder(capaCauseCategoryLabel(category)),
+              l10n.capaDetailNothingIsRecordedUnder(capaCauseCategoryLabel(l10n, category)),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -802,7 +804,7 @@ class _CauseRow extends StatelessWidget {
                 Text(l10n.capaDetailCause(cause.sequence), style: theme.textTheme.titleSmall),
                 StatusChip(
                   key: CapaDetailScreen.causeVerdictKey(cause.id),
-                  label: cause.verdictLabel,
+                  label: cause.verdictLabel(l10n),
                   tone: cause.verdictTone,
                 ),
               ],
@@ -956,8 +958,8 @@ class _Chain extends StatelessWidget {
           children: [
             Text(
               whys.isEmpty
-                  ? capaChainLabel(chain)
-                  : '${capaChainLabel(chain)} (${whys.length})',
+                  ? capaChainLabel(l10n, chain)
+                  : '${capaChainLabel(l10n, chain)} (${whys.length})',
               style: theme.textTheme.titleSmall,
             ),
             if (mayWrite)
@@ -1169,7 +1171,7 @@ class _ConcernCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: Spacing.sm),
-                  StatusChip(label: concern.statusLabel, tone: concern.statusTone),
+                  StatusChip(label: concern.statusLabel(l10n), tone: concern.statusTone),
                   Icon(Icons.chevron_right, color: AppColors.of(context).textMuted),
                 ],
               ),
@@ -1228,11 +1230,11 @@ class _ConcernMeasures extends StatelessWidget {
                   title: Text(measure.title),
                   subtitle: Text(
                     [
-                      measure.typeLabel,
-                      measure.statusLabel,
+                      measure.typeLabel(l10n),
+                      measure.statusLabel(l10n),
                       measure.ownerName ?? l10n.commonNobodyYet,
                       if (measure.openPhase != null)
-                        l10n.commonWaitingOnIts(measure.openPhase!.phaseLabel.toLowerCase()),
+                        l10n.commonWaitingOnIts(measure.openPhase!.phaseLabel(l10n).toLowerCase()),
                     ].join(' · '),
                   ),
                   trailing: const Icon(Icons.chevron_right),
@@ -1246,9 +1248,9 @@ class _ConcernMeasures extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xs),
                     child: Text(
                       [
-                        l10n.commonCycle(phase.cycle, phase.phaseLabel),
+                        l10n.commonCycle(phase.cycle, phase.phaseLabel(l10n)),
                         if (phase.completedAt != null) l10n.commonDone else l10n.commonOpen2,
-                        if (phase.outcomeLabel != null) phase.outcomeLabel!,
+                        if (phase.outcomeLabel(l10n) != null) phase.outcomeLabel(l10n)!,
                         if (phase.note != null) phase.note!,
                       ].join(' · '),
                       style: theme.textTheme.bodySmall?.copyWith(

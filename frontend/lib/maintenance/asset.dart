@@ -4,32 +4,33 @@ library;
 import 'package:flutter/foundation.dart';
 
 /// The kinds of thing an Asset can be, mirroring the CHECK constraint on
-/// `assets.asset_type` and the backend's own `ASSET_TYPES`.
+/// `assets.asset_type` and the backend's own `ASSET_TYPES`. The wire is the
+/// only thing here: the words are in `l10n/vocabulary.dart`
+/// (`assetTypeLabel`, ADR-0062).
 enum AssetType {
-  machine('machine', 'Machine'),
-  cell('cell', 'Cell'),
-  tool('tool', 'Tool'),
-  utility('utility', 'Utility'),
-  vehicle('vehicle', 'Vehicle'),
-  other('other', 'Other');
+  machine('machine'),
+  cell('cell'),
+  tool('tool'),
+  utility('utility'),
+  vehicle('vehicle'),
+  other('other');
 
-  const AssetType(this.wire, this.label);
+  const AssetType(this.wire);
 
   final String wire;
-  final String label;
 }
 
-/// Mirrors the CHECK constraint on `assets.criticality`.
+/// Mirrors the CHECK constraint on `assets.criticality`, in wires only: the
+/// words are in `l10n/vocabulary.dart` (`assetCriticalityLabel`).
 enum Criticality {
-  low('low', 'Low'),
-  medium('medium', 'Medium'),
-  high('high', 'High'),
-  critical('critical', 'Critical');
+  low('low'),
+  medium('medium'),
+  high('high'),
+  critical('critical');
 
-  const Criticality(this.wire, this.label);
+  const Criticality(this.wire);
 
   final String wire;
-  final String label;
 }
 
 @immutable
@@ -73,15 +74,4 @@ class Asset {
   /// parent can sit in another Site, or be retired and filtered out — so a
   /// non-null value here is never assumed to resolve.
   final String? parentId;
-
-  String get typeLabel => _labelFor(assetType, [for (final t in AssetType.values) (t.wire, t.label)]);
-  String get criticalityLabel =>
-      _labelFor(criticality, [for (final c in Criticality.values) (c.wire, c.label)]);
-
-  static String _labelFor(String wire, List<(String, String)> known) {
-    for (final (value, label) in known) {
-      if (value == wire) return label;
-    }
-    return wire;
-  }
 }

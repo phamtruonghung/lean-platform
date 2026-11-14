@@ -72,6 +72,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/notices.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
@@ -91,6 +92,8 @@ import '../widgets/status_chip.dart';
 import 'org_unit_chooser.dart';
 import 'work_order.dart';
 import 'work_orders_bloc.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class WorkOrdersScreen extends StatelessWidget {
   const WorkOrdersScreen({
@@ -271,7 +274,7 @@ class WorkOrdersScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _Header(state: state, canRaiseWorkOrder: canRaiseWorkOrder),
-          if (state is WorkOrdersLoaded && state.notice != null) _Notice(message: state.notice!),
+          if (state is WorkOrdersLoaded && state.notice != null) _Notice(message: noticeText(l10n, state.notice!)),
           if (state is WorkOrdersLoaded && state.truncated) const _Truncated(),
           Expanded(
             child: switch (state) {
@@ -599,7 +602,7 @@ class _Notice extends StatelessWidget {
                 Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
                 const SizedBox(width: Spacing.sm),
                 Expanded(
-                  child: Text(
+                  child: NoticeText(
                     message,
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
@@ -830,13 +833,14 @@ double _actionsColumnWidth(BuildContext context) {
 double _statusColumnWidth(BuildContext context) {
   final style = Theme.of(context).textTheme.labelLarge;
   final direction = Directionality.of(context);
+  final l10n = AppLocalizations.of(context);
   // The reader's text scale is counted: the chip's label grows with it.
   final painter = TextPainter(
     textDirection: direction,
     textScaler: MediaQuery.textScalerOf(context),
   );
   var widest = 0.0;
-  for (final label in WorkOrder.knownStatusLabels) {
+  for (final label in workOrderKnownStatusLabels(l10n)) {
     painter.text = TextSpan(text: label, style: style);
     painter.layout();
     if (painter.width > widest) widest = painter.width;
@@ -935,10 +939,10 @@ class _WorkOrderTableRow extends StatelessWidget {
             // is the narrowest; both disclose. The Assignee keeps the share issue
             // #168 raised (2→3, now 4 of 14) because "Unassigned" and an ordinary
             // name were ellipsizing at the smaller one: at 1280 in Roboto both fit.
-            cell('${workOrder.assetName} (${workOrder.assetCode}) · ${workOrder.workTypeLabel}',
+            cell('${workOrder.assetName} (${workOrder.assetCode}) · ${workOrder.workTypeLabel(l10n)}',
                 style: muted, disclose: true),
             cell(workOrder.orgUnitName, style: muted, disclose: true),
-            shrinkWrapTargets(StatusChip(label: workOrder.statusLabel, tone: workOrder.statusTone)),
+            shrinkWrapTargets(StatusChip(label: workOrder.statusLabel(l10n), tone: workOrder.statusTone)),
             cell(workOrder.assigneeName ?? l10n.commonUnassigned, style: primary, disclose: true),
             shrinkWrapTargets(_RowActions(
               workOrder: workOrder,
@@ -1011,7 +1015,7 @@ class _WorkOrderCard extends StatelessWidget {
                         ),
                         const SizedBox(height: Spacing.xxs),
                         Text(
-                          '${workOrder.assetName} (${workOrder.assetCode}) · ${workOrder.workTypeLabel}',
+                          '${workOrder.assetName} (${workOrder.assetCode}) · ${workOrder.workTypeLabel(l10n)}',
                           style: floor?.copyWith(color: palette.textMuted),
                         ),
                       ],
@@ -1019,7 +1023,7 @@ class _WorkOrderCard extends StatelessWidget {
                   ),
                   const SizedBox(width: Spacing.md),
                   StatusChip(
-                    label: workOrder.statusLabel,
+                    label: workOrder.statusLabel(l10n),
                     tone: workOrder.statusTone,
                   ),
                 ],

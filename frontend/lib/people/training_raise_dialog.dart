@@ -64,6 +64,7 @@ import 'org_unit_picker_bloc.dart';
 import 'training_bloc.dart';
 import 'training_detail_bloc.dart';
 import 'training_record.dart';
+import '../widgets/notice_text.dart';
 
 class TrainingRaiseDialog extends StatefulWidget {
   const TrainingRaiseDialog({super.key, this.record});
@@ -363,7 +364,7 @@ class _TrainingRaiseDialogState extends State<TrainingRaiseDialog> {
             Padding(
               key: TrainingRaiseDialog.failureKey,
               padding: const EdgeInsets.only(top: Spacing.md),
-              child: Text(
+              child: NoticeText(
                 failure,
                 style: AppTypography.dense(context)
                     ?.copyWith(color: AppColors.of(context).statusForeground(StatusTone.danger)),
@@ -574,7 +575,7 @@ class _PickerMessage extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          NoticeText(
             message,
             style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
           ),

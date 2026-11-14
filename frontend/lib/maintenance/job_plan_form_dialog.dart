@@ -24,6 +24,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -32,6 +33,7 @@ import '../widgets/app_search_field.dart';
 import 'job_plan.dart';
 import 'job_plans_bloc.dart';
 import 'work_order.dart' show WorkType;
+import '../widgets/notice_text.dart';
 
 class JobPlanFormDialog extends StatefulWidget {
   const JobPlanFormDialog({super.key});
@@ -325,7 +327,10 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
               ),
               items: [
                 for (final choice in jobPlanWorkTypes)
-                  DropdownMenuItem<WorkType>(value: choice, child: Text(choice.label)),
+                  DropdownMenuItem<WorkType>(
+                    value: choice,
+                    child: Text(workOrderWorkTypeLabel(l10n, choice.wire)),
+                  ),
               ],
               onChanged: _awaiting ? null : (value) => setState(() => _workType = value!),
             ),
@@ -396,7 +401,7 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(
+                      child: NoticeText(
                         _skillsFailure ?? l10n.jobPlanFormSkillsFailed,
                         style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                       ),
@@ -425,7 +430,7 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
               Padding(
                 key: JobPlanFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),

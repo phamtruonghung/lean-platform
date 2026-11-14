@@ -20,6 +20,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'action.dart';
 import 'action_detail_bloc.dart';
+import '../widgets/notice_text.dart';
 
 /// The address's own guard: an Action that has already ended is not offered a
 /// cancel form, and says so rather than silently opening one the server would
@@ -189,7 +190,7 @@ class _ActionCancelDialogState extends State<ActionCancelDialog> {
                 Padding(
                   key: ActionCancelDialog.failureKey,
                   padding: const EdgeInsets.only(top: Spacing.md),
-                  child: Text(
+                  child: NoticeText(
                     _failure!,
                     style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                   ),

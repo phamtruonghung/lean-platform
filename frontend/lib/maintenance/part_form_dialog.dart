@@ -24,6 +24,8 @@ import '../widgets/failure_state.dart';
 import 'maintenance_api.dart';
 import 'part.dart';
 import 'parts_bloc.dart';
+import '../widgets/notice_text.dart';
+import '../l10n/notices.dart';
 
 class PartFormDialog extends StatefulWidget {
   const PartFormDialog({super.key});
@@ -91,7 +93,7 @@ class _PartFormDialogState extends State<PartFormDialog> {
     if (token == null) {
       setState(() {
         _loadingUnits = false;
-        _unitsFailure = 'This session has ended. Sign in again to continue.';
+        _unitsFailure = BlocNotice.sessionEnded;
       });
       return;
     }
@@ -227,7 +229,7 @@ class _PartFormDialogState extends State<PartFormDialog> {
               Padding(
                 key: PartFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),

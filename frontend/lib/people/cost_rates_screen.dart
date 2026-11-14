@@ -62,6 +62,7 @@ import '../widgets/status_chip.dart';
 import 'cost_rate.dart';
 import 'cost_rate_form_dialog.dart';
 import 'cost_rates_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 class CostRatesScreen extends StatelessWidget {
   const CostRatesScreen({super.key, required this.isAdmin});
@@ -332,14 +333,14 @@ class _CostRateTableRow extends StatelessWidget {
       child: AppTableRow(
         columns: columns,
         cells: [
-          DisclosingText(costRateTypeLabel(row.rateType), style: dense?.copyWith(color: palette.textPrimary)),
+          DisclosingText(costRateTypeLabel(l10n, row.rateType), style: dense?.copyWith(color: palette.textPrimary)),
           Text(
             _amountCell(row, oneUnit: oneUnit),
             style: AppTableRow.numberStyle(context)?.copyWith(color: palette.textPrimary),
             maxLines: 1,
             softWrap: false,
           ),
-          DisclosingText(row.scopeLabel, style: dense?.copyWith(color: palette.textMuted)),
+          DisclosingText(row.scopeLabel(l10n), style: dense?.copyWith(color: palette.textMuted)),
           _periodCell(context, row),
           _shrinkWrapTargets(
             context,
@@ -450,7 +451,7 @@ class _CostRateCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    costRateTypeLabel(row.rateType),
+                    costRateTypeLabel(l10n, row.rateType),
                     style: dense?.copyWith(color: palette.textPrimary),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -466,7 +467,7 @@ class _CostRateCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: Spacing.xs),
-            Text(row.scopeLabel, style: floor?.copyWith(color: palette.textMuted)),
+            Text(row.scopeLabel(l10n), style: floor?.copyWith(color: palette.textMuted)),
             const SizedBox(height: Spacing.xxs),
             _periodCell(context, row),
             if (isAdmin) ...[

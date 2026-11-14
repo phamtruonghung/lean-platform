@@ -34,6 +34,7 @@ import '../actions/actions.dart';
 import '../platform/auth_gateway.dart';
 import 'safety_api.dart';
 import 'safety_incident.dart';
+import '../l10n/notices.dart';
 
 sealed class SafetyIncidentDetailEvent {
   const SafetyIncidentDetailEvent();
@@ -238,7 +239,7 @@ class SafetyIncidentDetailBloc
 
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   String? _id;
 

@@ -36,6 +36,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'employee.dart';
 import 'training_detail_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class TrainingTraineeDialog extends StatefulWidget {
   const TrainingTraineeDialog({super.key, required this.orgUnitId, required this.orgUnitName});
@@ -198,7 +199,7 @@ class _TrainingTraineeDialogState extends State<TrainingTraineeDialog> {
               Padding(
                 key: TrainingTraineeDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   failure,
                   style: AppTypography.dense(context)
                       ?.copyWith(color: AppColors.of(context).statusForeground(StatusTone.danger)),

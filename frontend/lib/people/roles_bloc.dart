@@ -18,6 +18,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'app_role.dart';
+import '../l10n/notices.dart';
 
 sealed class RolesEvent {
   const RolesEvent();
@@ -148,7 +149,7 @@ class RolesBloc extends Bloc<RolesEvent, RolesState> {
   final PeopleApi _api;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   Future<void> _onStarted(RolesStarted event, Emitter<RolesState> emit) async {
     emit(const RolesLoading());

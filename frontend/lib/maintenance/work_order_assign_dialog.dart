@@ -37,6 +37,7 @@ import '../widgets/app_filter_field.dart';
 import '../widgets/status_chip.dart';
 import 'work_order.dart';
 import 'work_orders_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class WorkOrderAssignDialog extends StatefulWidget {
   const WorkOrderAssignDialog({super.key, required this.workOrder});
@@ -271,7 +272,7 @@ class _WorkOrderAssignDialogState extends State<WorkOrderAssignDialog> {
               Padding(
                 key: WorkOrderAssignDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.floor(context)?.copyWith(color: palette.statusDanger),
                 ),
@@ -331,7 +332,7 @@ class _CandidatesList extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.workOrderAssignTheCandidatesCouldNotBeRead,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
             ),

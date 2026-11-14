@@ -16,6 +16,7 @@ import '../platform/auth_gateway.dart';
 import 'nonconformance.dart';
 import 'quality_api.dart';
 import 'supplier_ncr.dart';
+import '../l10n/notices.dart';
 
 sealed class SupplierNcrDetailEvent {
   const SupplierNcrDetailEvent();
@@ -156,7 +157,7 @@ class SupplierNcrDetailBloc extends Bloc<SupplierNcrDetailEvent, SupplierNcrDeta
   final QualityApi _api;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   Future<void> _onStarted(
     SupplierNcrDetailStarted event,

@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -32,6 +33,7 @@ import 'maintenance_api.dart';
 import 'meter.dart';
 import 'pm_schedule.dart';
 import 'pm_schedules_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class PmScheduleFormDialog extends StatefulWidget {
   const PmScheduleFormDialog({super.key, required this.siteId});
@@ -459,7 +461,10 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
               ),
               items: [
                 for (final anchor in PmScheduleAnchor.values)
-                  DropdownMenuItem<PmScheduleAnchor>(value: anchor, child: Text(anchor.label)),
+                  DropdownMenuItem<PmScheduleAnchor>(
+                    value: anchor,
+                    child: Text(pmScheduleAnchorLabel(l10n, anchor.wire)),
+                  ),
               ],
               onChanged: _awaiting ? null : (value) => setState(() => _anchor = value!),
             ),
@@ -467,7 +472,7 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
               key: PmScheduleFormDialog.anchorExplanationKey,
               padding: const EdgeInsets.only(top: Spacing.xs),
               child: Text(
-                _anchor.explanation,
+                pmScheduleAnchorExplanation(l10n, _anchor.wire),
                 style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
               ),
             ),
@@ -537,7 +542,7 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
               Padding(
                 key: PmScheduleFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),
@@ -599,7 +604,7 @@ class _AssetField extends StatelessWidget {
           key: PmScheduleFormDialog.assetsFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.commonAssetsFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
@@ -692,7 +697,7 @@ class _JobPlanField extends StatelessWidget {
           key: PmScheduleFormDialog.jobPlansFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.pmScheduleFormJobPlansFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
@@ -774,7 +779,7 @@ class _MeterField extends StatelessWidget {
           key: PmScheduleFormDialog.metersFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.pmScheduleFormMetersFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),

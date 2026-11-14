@@ -216,8 +216,6 @@ class TrainingRecord {
 
   bool get isDraft => status == 'draft';
 
-  String get statusLabel => trainingStatusLabel(status);
-
   factory TrainingRecord.fromJson(Map<String, dynamic> json) => TrainingRecord(
         id: json['id'].toString(),
         siteId: json['siteId'].toString(),
@@ -246,18 +244,6 @@ class TrainingRecord {
 /// The two methods a Trainee can have been evaluated by, in the order the
 /// picker offers them (issue #290).
 const List<String> trainingEvaluations = ['paper', 'job_training'];
-
-String trainingEvaluationLabel(String evaluation) => switch (evaluation) {
-      'paper' => 'Paper',
-      'job_training' => 'Job-training',
-      _ => evaluation,
-    };
-
-String trainingStatusLabel(String status) => switch (status) {
-      'draft' => 'Draft',
-      'sent' => 'Sent',
-      _ => status,
-    };
 
 StatusTone trainingStatusTone(String status) => switch (status) {
       'sent' => StatusTone.success,

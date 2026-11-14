@@ -36,6 +36,7 @@ import '../widgets/status_chip.dart';
 import 'body_part.dart';
 import 'body_part_form_dialog.dart';
 import 'body_parts_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 class BodyPartsScreen extends StatelessWidget {
   const BodyPartsScreen({super.key, required this.isAdmin});
@@ -167,7 +168,7 @@ class _BodyPartRow extends StatelessWidget {
                     // reader scans by, so it is on the row rather than only in
                     // the form.
                     child: DisclosingText(
-                      bodyPart.label,
+                      bodyPart.label(l10n),
                       style: AppTypography.dense(context)?.copyWith(
                         color: bodyPart.isActive ? palette.textPrimary : palette.textMuted,
                       ),

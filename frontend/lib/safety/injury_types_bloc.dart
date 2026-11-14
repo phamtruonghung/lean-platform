@@ -13,6 +13,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../platform/auth_gateway.dart';
 import 'injury_type.dart';
 import 'safety_api.dart';
+import '../l10n/notices.dart';
 
 sealed class InjuryTypesEvent {
   const InjuryTypesEvent();
@@ -103,7 +104,7 @@ class InjuryTypesBloc extends Bloc<InjuryTypesEvent, InjuryTypesState> {
   final SafetyApi _api;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   Future<void> _onStarted(InjuryTypesStarted event, Emitter<InjuryTypesState> emit) async {
     emit(const InjuryTypesLoading());

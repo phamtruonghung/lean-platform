@@ -26,6 +26,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'action.dart';
 import 'action_detail_bloc.dart';
+import '../widgets/notice_text.dart';
 
 /// The address's own guard: it names one occurrence by id, and a Concern that
 /// does not answer that occurrence has nothing to unlink. Saying so beats
@@ -193,7 +194,7 @@ class _ActionUnlinkNonconformanceDialogState extends State<ActionUnlinkNonconfor
               Padding(
                 key: ActionUnlinkNonconformanceDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

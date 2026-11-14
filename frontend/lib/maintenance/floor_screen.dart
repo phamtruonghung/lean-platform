@@ -35,6 +35,8 @@ import 'floor_bloc.dart';
 import 'floor_technician_dialog.dart';
 import 'maintenance_api.dart';
 import 'work_order.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class FloorScreen extends StatelessWidget {
   const FloorScreen({super.key});
@@ -454,7 +456,7 @@ class _FloorFrame extends StatelessWidget {
             width: double.infinity,
             color: Theme.of(context).colorScheme.secondaryContainer,
             padding: const EdgeInsets.symmetric(horizontal: Spacing.lg, vertical: Spacing.sm),
-            child: Text(notice!, style: Theme.of(context).textTheme.bodyLarge),
+            child: NoticeText(notice!, style: Theme.of(context).textTheme.bodyLarge),
           ),
         Expanded(child: child),
       ],
@@ -594,7 +596,7 @@ class _FloorWorkOrderCard extends StatelessWidget {
                 // user story 7 names this surface, and it was the last list in
                 // the Platform showing a state as plain text while every other
                 // one painted it.
-                StatusChip(label: workOrder.statusLabel, tone: workOrder.statusTone),
+                StatusChip(label: workOrder.statusLabel(l10n), tone: workOrder.statusTone),
               ],
             ),
             const SizedBox(height: Spacing.sm),

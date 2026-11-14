@@ -29,6 +29,7 @@ import 'people/org_unit_scope.dart';
 import 'people_api.dart';
 import 'platform/auth_gateway.dart';
 import 'platform/destinations.dart';
+import 'l10n/notices.dart';
 
 sealed class HomeEvent {
   const HomeEvent();
@@ -239,7 +240,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   final String _role;
   final OrgUnitScope _orgUnitScope;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   /// The roles that earn a Work orders Destination at all — the same set
   /// `Routes.workOrders`'s own route guard checks (router.dart), so this

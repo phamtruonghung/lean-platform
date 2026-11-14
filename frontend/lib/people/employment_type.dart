@@ -11,9 +11,3 @@ const List<String> employmentTypes = [
   'contractor',
   'apprentice',
 ];
-
-/// The label for [employmentType] — a plain capitalised form, since none of
-/// these five words need more explaining than that.
-String employmentTypeLabel(String employmentType) => employmentType.isEmpty
-    ? employmentType
-    : '${employmentType[0].toUpperCase()}${employmentType.substring(1)}';

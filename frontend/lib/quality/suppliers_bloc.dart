@@ -11,6 +11,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../platform/auth_gateway.dart';
 import 'quality_api.dart';
 import 'supplier.dart';
+import '../l10n/notices.dart';
 
 sealed class SuppliersEvent {
   const SuppliersEvent();
@@ -109,7 +110,7 @@ class SuppliersBloc extends Bloc<SuppliersEvent, SuppliersState> {
   final QualityApi _api;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   Future<void> _onStarted(SuppliersStarted event, Emitter<SuppliersState> emit) async {
     emit(const SuppliersLoading());

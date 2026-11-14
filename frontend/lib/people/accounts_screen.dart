@@ -21,6 +21,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
+import '../l10n/notices.dart';
 import '../platform/destinations.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
@@ -42,7 +44,7 @@ import 'account_roles_dialog.dart';
 import 'accounts_bloc.dart';
 import 'managed_account.dart';
 import 'pending_account.dart' show waitingFor;
-import 'role_choice.dart';
+import '../widgets/notice_text.dart';
 
 class AccountsScreen extends StatelessWidget {
   const AccountsScreen({super.key, required this.selfAccountId});
@@ -171,7 +173,7 @@ class AccountsScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const _Header(),
-          if (state is AccountsLoaded && state.notice != null) _Notice(message: state.notice!),
+          if (state is AccountsLoaded && state.notice != null) _Notice(message: noticeText(l10n, state.notice!)),
           Expanded(
             child: switch (state) {
               AccountsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
@@ -259,7 +261,7 @@ class _Notice extends StatelessWidget {
                 Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
                 const SizedBox(width: Spacing.sm),
                 Expanded(
-                  child: Text(
+                  child: NoticeText(
                     message,
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
@@ -338,17 +340,18 @@ class _AccountsListState extends State<_AccountsList> {
   /// shows, so "supervisor" and "Supervisor" both find it). No ranking and
   /// no fuzzy matching, the same rule the assign dialog's own filter uses
   /// (issue #187).
-  static bool _matches(ManagedAccount account, String term) =>
+  static bool _matches(ManagedAccount account, String term, AppLocalizations l10n) =>
       account.displayName.toLowerCase().contains(term) ||
       account.email.toLowerCase().contains(term) ||
       account.role.toLowerCase().contains(term) ||
-      roleLabel(account.role).toLowerCase().contains(term);
+      admissionRoleLabel(l10n, account.role).toLowerCase().contains(term);
 
   /// The rows actually rendered — every one of them while the term is empty.
   List<ManagedAccount> get _matchingAccounts {
     final term = _term.trim().toLowerCase();
     if (term.isEmpty) return widget.accounts;
-    return widget.accounts.where((account) => _matches(account, term)).toList(growable: false);
+    final l10n = AppLocalizations.of(context);
+    return widget.accounts.where((account) => _matches(account, term, l10n)).toList(growable: false);
   }
 
   @override
@@ -513,8 +516,8 @@ List<AppTableColumn> _columns(BuildContext context) => [
 /// still waiting on an administrator reads as a decision owed, one turned away
 /// reads as wrong, and a deactivated one as deliberately out of the way
 /// (`status_tone.dart`'s five meanings). Written against the three fields rather
-/// than against [ManagedAccount.standing]'s wording, so a copy change cannot
-/// silently re-tone the column.
+/// than against the standing's own wording, so a copy change cannot silently
+/// re-tone the column.
 StatusTone _standingTone(ManagedAccount account) {
   if (account.isPending) return StatusTone.warning;
   if (account.approvalStatus == ApprovalStatuses.rejected) return StatusTone.danger;
@@ -578,6 +581,7 @@ class _AccountTableRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
     final dense = AppTypography.dense(context);
+    final l10n = AppLocalizations.of(context);
 
     return KeyedSubtree(
       key: AccountsScreen.rowKey(account.id),
@@ -602,11 +606,17 @@ class _AccountTableRow extends StatelessWidget {
           // fixed shape is what makes that comparison possible (#392).
           Align(
             alignment: Alignment.centerLeft,
-            child: StatusChip(label: roleLabel(account.role), tone: StatusTone.neutral),
+            child: StatusChip(
+              label: admissionRoleLabel(l10n, account.role),
+              tone: StatusTone.neutral,
+            ),
           ),
           Align(
             alignment: Alignment.centerLeft,
-            child: StatusChip(label: account.standing, tone: _standingTone(account)),
+            child: StatusChip(
+              label: accountStandingLabel(l10n, account.approvalStatus, account.isActive),
+              tone: _standingTone(account),
+            ),
           ),
           DisclosingText(
             waitingFor(account.createdAt),
@@ -642,6 +652,7 @@ class _AccountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     return Card(
       key: AccountsScreen.rowKey(account.id),
       margin: EdgeInsets.zero,
@@ -685,8 +696,11 @@ class _AccountCard extends StatelessWidget {
               spacing: Spacing.xs,
               runSpacing: Spacing.xs,
               children: [
-                StatusChip(label: roleLabel(account.role), tone: StatusTone.neutral),
-                StatusChip(label: account.standing, tone: _standingTone(account)),
+                StatusChip(label: admissionRoleLabel(l10n, account.role), tone: StatusTone.neutral),
+                StatusChip(
+                  label: accountStandingLabel(l10n, account.approvalStatus, account.isActive),
+                  tone: _standingTone(account),
+                ),
               ],
             ),
             const SizedBox(height: Spacing.sm),
@@ -859,7 +873,7 @@ class _RowActions extends StatelessWidget {
       accountName: account.displayName,
     );
     if (notice == null || !context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(notice)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: NoticeText(notice)));
   }
 }
 
@@ -937,10 +951,15 @@ class _RowOverflowButton extends StatelessWidget {
 /// (issue #225, ADR-0035 applied a second time) — a phrase shared by
 /// [_GrantsCell]'s tooltip and [_Grants]' chips so the two layouts cannot say
 /// different things about the same Grant.
-String _grantLabel(AccountGrant grant) =>
-    '${grant.siteName} › ${grant.name} · ${grant.level.label}'
-    '${grant.qualityAuthority ? ' · Quality authority' : ''}'
-    '${grant.safetyAuthority ? ' · Safety authority' : ''}';
+///
+/// Every word comes from the catalogue through [l10n]: the level through
+/// [grantLevelLabel], and the two authorities through the picker's own entries
+/// rather than a second translation of the same two words — a Grant's authority
+/// is one concept whichever surface names it.
+String _grantLabel(AppLocalizations l10n, AccountGrant grant) =>
+    '${grant.siteName} › ${grant.name} · ${grantLevelLabel(l10n, grant.level)}'
+    '${grant.qualityAuthority ? ' · ${l10n.orgUnitPickerQualityAuthority}' : ''}'
+    '${grant.safetyAuthority ? ' · ${l10n.orgUnitPickerSafetyAuthority}' : ''}';
 
 /// The Grants cell in the wide table (issue #112, Decision D): a count, not
 /// a wall of chips — "Everywhere" for an admin, "None" for an Account with
@@ -965,7 +984,7 @@ class _GrantsCell extends StatelessWidget {
     return Tooltip(
       key: AccountsScreen.grantsKey(account.id),
       message: [
-        for (final grant in account.grants) _grantLabel(grant),
+        for (final grant in account.grants) _grantLabel(l10n, grant),
       ].join('\n'),
       child: Text(l10n.accountsOrgUnit(count), overflow: TextOverflow.ellipsis),
     );
@@ -1012,7 +1031,7 @@ class _Grants extends StatelessWidget {
             // the wide table's tooltip: an administrator auditing "who may
             // accept bad product" or "who may close an incident" on a narrow
             // window must be able to read it without hovering.
-            label: Text(_grantLabel(grant)),
+            label: Text(_grantLabel(l10n, grant)),
             labelStyle: theme.textTheme.labelMedium,
           ),
       ],

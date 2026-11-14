@@ -26,6 +26,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'request.dart';
 import 'requests_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class RequestDeclineDialog extends StatefulWidget {
   const RequestDeclineDialog({super.key, required this.request});
@@ -126,7 +127,7 @@ class _RequestDeclineDialogState extends State<RequestDeclineDialog> {
               Padding(
                 key: RequestDeclineDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),

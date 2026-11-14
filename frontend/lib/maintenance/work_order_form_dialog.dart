@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -20,6 +21,7 @@ import 'asset.dart';
 import 'maintenance_api.dart';
 import 'work_order.dart';
 import 'work_orders_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class WorkOrderFormDialog extends StatefulWidget {
   const WorkOrderFormDialog({super.key, required this.siteId});
@@ -230,7 +232,10 @@ class _WorkOrderFormDialogState extends State<WorkOrderFormDialog> {
                     ),
                     items: [
                       for (final type in WorkType.values)
-                        DropdownMenuItem<WorkType>(value: type, child: Text(type.label)),
+                        DropdownMenuItem<WorkType>(
+                          value: type,
+                          child: Text(workOrderWorkTypeLabel(l10n, type.wire)),
+                        ),
                     ],
                     onChanged: _awaiting ? null : (value) => setState(() => _workType = value),
                   ),
@@ -275,7 +280,7 @@ class _WorkOrderFormDialogState extends State<WorkOrderFormDialog> {
               Padding(
                 key: WorkOrderFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),
@@ -333,7 +338,7 @@ class _AssetField extends StatelessWidget {
           key: WorkOrderFormDialog.assetsFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.commonAssetsFailed,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
             ),

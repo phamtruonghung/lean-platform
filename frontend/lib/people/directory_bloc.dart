@@ -12,6 +12,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'employee.dart';
 import 'job_role.dart';
+import '../l10n/notices.dart';
 
 sealed class DirectoryEvent {
   const DirectoryEvent();
@@ -182,7 +183,7 @@ class DirectoryBloc extends Bloc<DirectoryEvent, DirectoryState> {
   final PeopleApi _api;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   Future<void> _onStarted(DirectoryStarted event, Emitter<DirectoryState> emit) async {
     emit(const DirectoryLoading());

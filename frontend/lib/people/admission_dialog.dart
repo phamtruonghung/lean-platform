@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/destinations.dart';
@@ -25,6 +26,7 @@ import 'org_unit_picker.dart';
 import 'org_unit_picker_bloc.dart';
 import 'pending_account.dart';
 import 'role_choice.dart';
+import '../widgets/notice_text.dart';
 
 class AdmissionDialog extends StatefulWidget {
   const AdmissionDialog({super.key, required this.account});
@@ -200,8 +202,8 @@ class _AdmissionDialogState extends State<AdmissionDialog> {
                           RadioListTile<String>(
                             key: AdmissionDialog.roleKey(choice.role),
                             value: choice.role,
-                            title: Text(choice.label),
-                            subtitle: Text(choice.description),
+                            title: Text(admissionRoleLabel(l10n, choice.role)),
+                            subtitle: Text(admissionRoleDescription(l10n, choice.role)),
                             enabled: !_awaiting,
                             contentPadding: EdgeInsets.zero,
                           ),
@@ -283,7 +285,7 @@ class _Callout extends StatelessWidget {
             Icon(icon, size: 20, color: foreground),
             const SizedBox(width: Spacing.sm),
             Expanded(
-              child: Text(
+              child: NoticeText(
                 message,
                 style: theme.textTheme.bodySmall?.copyWith(color: foreground),
               ),

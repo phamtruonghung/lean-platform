@@ -4,8 +4,11 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:lean_platform/people/attendance_record_dialog.dart';
 import 'package:lean_platform/people/attendance_sheet_screen.dart';
+import 'package:lean_platform/platform/locale_cubit.dart';
 import 'package:lean_platform/widgets/app_search_field.dart';
 
 import 'harness.dart';
@@ -174,5 +177,51 @@ void main() {
     expect(wire.attendanceRecordPatches.single.$2['attendanceStatus'], 'late');
     // The confirmation is unaffected by the correction.
     expect(find.byKey(AttendanceSheetScreen.confirmedChipKey), findsOneWidget);
+  });
+
+  testWidgets('the legend names its tones in the reader\'s language, and the English is gone',
+      (tester) async {
+    // The legend used to be four English constants in `_Legend` — "Present",
+    // "Leave", "Absent", "Not recorded" — beside cells whose own chips already
+    // read `attendanceStatusLabel`. Both now come from
+    // `attendanceToneLegendLabel`, so the amber that means leave on a row means
+    // leave in the legend above it, in the same language.
+    SharedPreferences.setMockInitialValues({LocaleCubit.storageKey: 'vi'});
+    final wire = FakeWire(
+      attendanceSheet: attendanceSheetJson('900', '501'),
+      attendanceRecords: [
+        attendanceRecordJson('1000', '7', 'Alice Nguyen'),
+        attendanceRecordJson(
+          '1001',
+          '8',
+          'Bao Tran',
+          attendanceStatus: 'absent_planned',
+          absenceReasonId: 'HOL',
+          workedMinutes: 0,
+        ),
+        attendanceRecordJson(
+          '1002',
+          '9',
+          'Chi Le',
+          attendanceStatus: 'absent_unplanned',
+          workedMinutes: 0,
+        ),
+      ],
+    );
+    await openSheet(tester, wire);
+
+    final legend = find.byKey(AttendanceSheetScreen.legendKey);
+    expect(legend, findsOneWidget);
+    // The three tones these records paint: success, info (leave) and danger.
+    for (final word in const ['Có mặt', 'Nghỉ', 'Vắng (không báo trước)']) {
+      expect(
+        find.descendant(of: legend, matching: find.text(word)),
+        findsOneWidget,
+        reason: 'legend word $word',
+      );
+    }
+    for (final english in const ['Present', 'Leave', 'Absent', 'Not recorded']) {
+      expect(find.text(english), findsNothing, reason: 'English legend $english');
+    }
   });
 }

@@ -44,6 +44,8 @@ import '../widgets/app_search_field.dart';
 import 'defect_code.dart';
 import 'floor_nonconformance_bloc.dart';
 import 'nonconformance.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class FloorNonconformanceDialog extends StatefulWidget {
   const FloorNonconformanceDialog({super.key});
@@ -165,7 +167,7 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
                   ),
                 FloorNonconformanceUnavailable(message: final message) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: Spacing.xl),
-                    child: Text(message, style: Theme.of(context).textTheme.bodyLarge),
+                    child: NoticeText(message, style: Theme.of(context).textTheme.bodyLarge),
                   ),
                 FloorNonconformanceReady() => _form(
                     busy: state.isSubmitting || _awaiting,
@@ -277,7 +279,7 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
             for (final point in DetectionPoint.values)
               DropdownMenuItem<String?>(
                 value: point,
-                child: Text(DetectionPoint.label(point)),
+                child: Text(detectionPointLabel(l10n, point)),
               ),
           ],
           onChanged: busy ? null : (point) => setState(() => _detectionPoint = point),
@@ -286,7 +288,7 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
           Padding(
             padding: const EdgeInsets.only(top: Spacing.sm),
             child: Text(
-              l10n.nonconformanceFloorStartsAt(DefectSeverity.label(defaultSeverity)),
+              l10n.nonconformanceFloorStartsAt(defectSeverityLabel(l10n, defaultSeverity)),
               style: theme.textTheme.bodySmall?.copyWith(color: AppColors.of(context).textMuted),
             ),
           ),
@@ -359,7 +361,7 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
           Padding(
             key: FloorNonconformanceDialog.failureKey,
             padding: const EdgeInsets.only(top: Spacing.md),
-            child: Text(
+            child: NoticeText(
               state.failure!,
               style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
             ),

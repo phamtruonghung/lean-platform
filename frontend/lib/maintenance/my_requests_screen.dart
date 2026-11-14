@@ -25,6 +25,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/notices.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/app_page_frame.dart';
@@ -40,6 +41,8 @@ import 'my_requests_bloc.dart';
 import 'request.dart';
 import 'request_form_dialog.dart';
 import 'row_disclosure.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class MyRequestsScreen extends StatelessWidget {
   const MyRequestsScreen({super.key, required this.canRaiseRequest});
@@ -109,7 +112,7 @@ class MyRequestsScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _Header(state: state, canRaiseRequest: canRaiseRequest),
-          if (state is MyRequestsLoaded && state.notice != null) _Notice(message: state.notice!),
+          if (state is MyRequestsLoaded && state.notice != null) _Notice(message: noticeText(l10n, state.notice!)),
           Expanded(
             child: switch (state) {
               MyRequestsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
@@ -236,7 +239,7 @@ class _Notice extends StatelessWidget {
                 Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
                 const SizedBox(width: Spacing.sm),
                 Expanded(
-                  child: Text(
+                  child: NoticeText(
                     message,
                     style: AppTypography.dense(context)
                         ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
@@ -409,6 +412,8 @@ double _bandLabelWidth(BuildContext context, String label) => _widest(
 /// a measured width that followed the filter would move the whole band, and every
 /// label with it, each time a term hid the widest record.
 List<AppTableColumn> _columns(BuildContext context, {required List<Request> requests}) {
+  final l10n = AppLocalizations.of(context);
+
   double sized(double content, String label) {
     final bandLabel = _bandLabelWidth(context, label);
     return (content > bandLabel ? content : bandLabel) + Spacing.sm;
@@ -431,8 +436,8 @@ List<AppTableColumn> _columns(BuildContext context, {required List<Request> requ
       AppLocalizations.of(context).requestsUrgency,
       width: sized(
         _widest(context, [
-          for (final u in RequestUrgency.values) u.label,
-          for (final r in requests) r.urgencyLabel,
+          ...requestKnownUrgencyLabels(AppLocalizations.of(context)),
+          for (final r in requests) r.urgencyLabel(l10n),
         ], dense),
         'Urgency',
       ),
@@ -450,7 +455,7 @@ List<AppTableColumn> _columns(BuildContext context, {required List<Request> requ
               'Accepted',
               'Rejected',
               'Duplicate',
-              for (final r in requests) r.statusLabel,
+              for (final r in requests) r.statusLabel(l10n),
             ], Theme.of(context).textTheme.labelLarge) +
             Spacing.xxl,
         'Status',
@@ -508,8 +513,8 @@ class _MyRequestTableRow extends StatelessWidget {
           DisclosingText(request.requestNo, style: muted),
           DisclosingText(request.summary, style: dense?.copyWith(color: palette.textPrimary)),
           DisclosingText('${request.assetName} (${request.assetCode})', style: muted),
-          Text(request.urgencyLabel, maxLines: 1, overflow: TextOverflow.ellipsis, style: muted),
-          shrinkWrapTargets(StatusChip(label: request.statusLabel, tone: request.statusTone)),
+          Text(request.urgencyLabel(l10n), maxLines: 1, overflow: TextOverflow.ellipsis, style: muted),
+          shrinkWrapTargets(StatusChip(label: request.statusLabel(l10n), tone: request.statusTone)),
           Text(
             formatRequestDate(request.reportedAt),
             maxLines: 1,
@@ -583,14 +588,14 @@ class _MyRequestCard extends StatelessWidget {
                       ),
                       const SizedBox(height: Spacing.xxs),
                       Text(
-                        '${request.assetName} (${request.assetCode}) · ${request.urgencyLabel}',
+                        '${request.assetName} (${request.assetCode}) · ${request.urgencyLabel(l10n)}',
                         style: muted,
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: Spacing.md),
-                StatusChip(label: request.statusLabel, tone: request.statusTone),
+                StatusChip(label: request.statusLabel(l10n), tone: request.statusTone),
               ],
             ),
             if (workOrder != null) ...[

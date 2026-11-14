@@ -52,6 +52,7 @@ import 'supplier_ncr.dart';
 import 'supplier_ncr_org_unit_filter_dialog.dart';
 import 'supplier_ncr_supplier_filter_dialog.dart';
 import 'supplier_ncrs_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 class SupplierNcrsScreen extends StatelessWidget {
   const SupplierNcrsScreen({super.key});
@@ -265,7 +266,7 @@ class _Filters extends StatelessWidget {
               for (final status in SupplierNcrStatus.values)
                 DropdownMenuItem<String?>(
                   value: status,
-                  child: Text(SupplierNcrStatus.label(status)),
+                  child: Text(supplierNcrStatusLabel(l10n, status)),
                 ),
             ],
             onChanged: (status) =>
@@ -369,7 +370,7 @@ double _numberColumnWidth(BuildContext context) {
 double _stateColumnWidth(BuildContext context) {
   var widestStatus = 0.0;
   for (final status in SupplierNcrStatus.values) {
-    final width = _chipWidth(context, SupplierNcrStatus.label(status));
+    final width = _chipWidth(context, supplierNcrStatusLabel(AppLocalizations.of(context), status));
     if (width > widestStatus) widestStatus = width;
   }
   return widestStatus + Spacing.xs + _chipWidth(context, 'Past due');
@@ -412,8 +413,8 @@ String _subject(SupplierNcr row) {
 
 /// The answer for the material, and what was clawed back: the two facts the Cost
 /// pillar is built on.
-String _dispositionLabel(SupplierNcr row) =>
-    '${row.dispositionLabel} · ${row.costRecoveredLabel}';
+String _dispositionLabel(AppLocalizations l10n, SupplierNcr row) =>
+    '${row.dispositionLabel(l10n)} · ${row.costRecoveredLabel}';
 
 /// The control that exists, or the absence of one — the two answers this
 /// register is read for.
@@ -424,7 +425,7 @@ String _control(SupplierNcr row) => row.nonconformance == null
 List<Widget> _marks(BuildContext context, SupplierNcr row) => [
       StatusChip(
         key: SupplierNcrsScreen.rowStatusKey(row.id),
-        label: row.statusLabel,
+        label: row.statusLabel(AppLocalizations.of(context)),
         tone: row.statusTone,
       ),
       if (row.isOverdue)
@@ -498,7 +499,7 @@ class _SupplierNcrTableRow extends StatelessWidget {
             Row(mainAxisSize: MainAxisSize.min, children: _marks(context, row)),
           ),
           DisclosingText(
-            _dispositionLabel(row),
+            _dispositionLabel(l10n, row),
             key: SupplierNcrsScreen.rowDispositionKey(row.id),
             style: dense?.copyWith(color: palette.textPrimary),
           ),
@@ -587,7 +588,7 @@ class _SupplierNcrCard extends StatelessWidget {
               ),
               const SizedBox(height: Spacing.xxs),
               Text(
-                _dispositionLabel(row),
+                _dispositionLabel(l10n, row),
                 key: SupplierNcrsScreen.rowDispositionKey(row.id),
                 style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
               ),

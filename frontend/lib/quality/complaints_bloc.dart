@@ -27,6 +27,7 @@ import 'defect_code.dart';
 import 'issue_image.dart';
 import 'product.dart';
 import 'quality_api.dart';
+import '../l10n/notices.dart';
 
 sealed class ComplaintsEvent {
   const ComplaintsEvent();
@@ -227,7 +228,7 @@ class ComplaintsBloc extends Bloc<ComplaintsEvent, ComplaintsState> {
   final PeopleApi _people;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   Future<void> _onStarted(ComplaintsStarted event, Emitter<ComplaintsState> emit) async {
     emit(const ComplaintsLoading());

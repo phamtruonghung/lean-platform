@@ -25,6 +25,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/notices.dart';
+import '../l10n/vocabulary.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
@@ -42,6 +44,7 @@ import 'job_plan_form_dialog.dart';
 import 'job_plans_bloc.dart';
 import 'name_with_chip.dart';
 import 'row_disclosure.dart';
+import '../widgets/notice_text.dart';
 
 class JobPlansScreen extends StatelessWidget {
   const JobPlansScreen({super.key, required this.isAdmin});
@@ -99,7 +102,7 @@ class JobPlansScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _Header(state: state, isAdmin: isAdmin),
-          if (state is JobPlansLoaded && state.notice != null) _Notice(message: state.notice!),
+          if (state is JobPlansLoaded && state.notice != null) _Notice(message: noticeText(l10n, state.notice!)),
           Expanded(
             child: switch (state) {
               JobPlansLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
@@ -181,7 +184,7 @@ class _Notice extends StatelessWidget {
                 Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
                 const SizedBox(width: Spacing.sm),
                 Expanded(
-                  child: Text(
+                  child: NoticeText(
                     message,
                     style: AppTypography.dense(context)
                         ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
@@ -421,7 +424,10 @@ class _JobPlanTableRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   DisclosingText(plan.name, style: dense?.copyWith(color: palette.textPrimary)),
-                  DisclosingText('${plan.code} · ${plan.workTypeLabel}', style: muted),
+                  DisclosingText(
+                    '${plan.code} · ${workOrderWorkTypeLabel(l10n, plan.workType)}',
+                    style: muted,
+                  ),
                 ],
               ),
               chipLabel: l10n.jobPlansInactive,
@@ -520,7 +526,10 @@ class _JobPlanCard extends StatelessWidget {
                         style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: Spacing.xxs),
-                      Text('${plan.code} · ${plan.workTypeLabel}', style: muted),
+                      Text(
+                        '${plan.code} · ${workOrderWorkTypeLabel(l10n, plan.workType)}',
+                        style: muted,
+                      ),
                     ],
                   ),
                 ),

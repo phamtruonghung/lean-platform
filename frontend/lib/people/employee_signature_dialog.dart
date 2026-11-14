@@ -19,6 +19,7 @@ import '../widgets/signature_file_picker.dart';
 import '../widgets/signature_pad.dart';
 import 'employee.dart';
 import 'employee_signature_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class EmployeeSignatureDialog extends StatelessWidget {
   const EmployeeSignatureDialog({super.key, required this.employee});
@@ -107,7 +108,7 @@ class _BodyState extends State<_Body> {
 
     final Widget content;
     if (state.failure != null) {
-      content = Text(
+      content = NoticeText(
         state.failure!,
         key: EmployeeSignatureDialog.failureKey,
         style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
@@ -191,7 +192,7 @@ class _BodyState extends State<_Body> {
               if (state.writeFailure != null)
                 Padding(
                   padding: const EdgeInsets.only(top: Spacing.md),
-                  child: Text(
+                  child: NoticeText(
                     state.writeFailure!,
                     key: EmployeeSignatureDialog.writeFailureKey,
                     style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),

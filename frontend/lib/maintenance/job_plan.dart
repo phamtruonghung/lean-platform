@@ -117,13 +117,4 @@ class JobPlan {
   /// The ordered steps. Populated on both the list and the single-plan read,
   /// so the catalogue can show a plan's steps without a second request.
   final List<JobPlanTask> tasks;
-
-  /// The human label for [workType] — falls back to the wire string itself
-  /// for a work type this build does not know about.
-  String get workTypeLabel {
-    for (final type in WorkType.values) {
-      if (type.wire == workType) return type.label;
-    }
-    return workType;
-  }
 }

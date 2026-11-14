@@ -34,6 +34,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_scan_field.dart';
 import 'injury_type.dart';
 import 'injury_types_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class InjuryTypeFormDialog extends StatefulWidget {
   const InjuryTypeFormDialog({super.key, this.injuryType});
@@ -206,7 +207,7 @@ class _InjuryTypeFormDialogState extends State<InjuryTypeFormDialog> {
               Padding(
                 key: InjuryTypeFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

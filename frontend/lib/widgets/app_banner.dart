@@ -32,6 +32,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../l10n/notices.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 
@@ -95,7 +96,15 @@ class AppBanner extends StatelessWidget {
                 key: titleKey,
                 style: dense?.copyWith(fontWeight: FontWeight.w600, color: foreground),
               ),
-            Text(message, key: messageKey, style: dense?.copyWith(color: foreground)),
+            // The key stays on the `Text` itself: `AppBanner.messageKey` is the
+            // contract a caller (and its tone test) reads the rendered message
+            // and its colour through, so this site resolves with the function
+            // rather than swapping in the `NoticeText` widget.
+            Text(
+              noticeTextFor(context, message),
+              key: messageKey,
+              style: dense?.copyWith(color: foreground),
+            ),
           ],
         );
 

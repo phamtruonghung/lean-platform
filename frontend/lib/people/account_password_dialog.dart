@@ -16,6 +16,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'accounts_bloc.dart';
 import 'managed_account.dart';
+import '../widgets/notice_text.dart';
 
 class AccountPasswordDialog extends StatefulWidget {
   const AccountPasswordDialog({super.key, required this.account});
@@ -143,7 +144,7 @@ class _AccountPasswordDialogState extends State<AccountPasswordDialog> {
                     Padding(
                       key: AccountPasswordDialog.failureKey,
                       padding: const EdgeInsets.only(top: Spacing.md),
-                      child: Text(
+                      child: NoticeText(
                         _failure!,
                         style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                       ),

@@ -20,6 +20,7 @@ import '../platform/floor_device_gateway.dart';
 import 'floor_info.dart';
 import 'maintenance_api.dart';
 import 'work_order.dart';
+import '../l10n/notices.dart';
 
 sealed class FloorEvent {
   const FloorEvent();
@@ -130,8 +131,7 @@ class FloorBloc extends Bloc<FloorEvent, FloorState> {
   final MaintenanceApi _maintenance;
   final FloorDeviceGateway _device;
 
-  static const String notRegisteredMessage =
-      'This device is not registered. Ask an administrator to register it against an Org Unit.';
+  static const String notRegisteredMessage = BlocNotice.deviceNotRegistered;
 
   Future<void> _onStarted(FloorStarted event, Emitter<FloorState> emit) async {
     emit(const FloorLoading());

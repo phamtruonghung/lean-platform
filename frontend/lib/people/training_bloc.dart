@@ -18,6 +18,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'training_record.dart';
+import '../l10n/notices.dart';
 
 sealed class TrainingEvent {
   const TrainingEvent();
@@ -167,7 +168,7 @@ class TrainingBloc extends Bloc<TrainingEvent, TrainingState> {
     on<TrainingRaised>(_onRaised);
   }
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   final PeopleApi _api;
   final AuthGateway _auth;

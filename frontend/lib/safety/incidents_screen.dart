@@ -57,6 +57,7 @@ import '../widgets/status_chip.dart';
 import 'safety_incident.dart';
 import 'safety_incidents_bloc.dart';
 import 'safety_org_unit_filter_dialog.dart';
+import '../l10n/vocabulary.dart';
 
 class SafetyIncidentsScreen extends StatelessWidget {
   const SafetyIncidentsScreen({super.key});
@@ -268,7 +269,7 @@ class _Filters extends StatelessWidget {
               for (final status in SafetyIncidentStatus.values)
                 DropdownMenuItem<String?>(
                   value: status,
-                  child: Text(SafetyIncidentStatus.label(status)),
+                  child: Text(safetyIncidentStatusLabel(l10n, status)),
                 ),
             ],
             onChanged: (status) => context
@@ -290,7 +291,7 @@ class _Filters extends StatelessWidget {
             items: [
               DropdownMenuItem<String?>(value: null, child: Text(l10n.safetyAnyType)),
               for (final type in IncidentType.values)
-                DropdownMenuItem<String?>(value: type, child: Text(IncidentType.label(type))),
+                DropdownMenuItem<String?>(value: type, child: Text(safetyIncidentTypeLabel(l10n, type))),
             ],
             onChanged: (type) =>
                 context.read<SafetyIncidentsBloc>().add(SafetyIncidentsTypeFilterChanged(type)),
@@ -318,7 +319,7 @@ class _Filters extends StatelessWidget {
               for (final level in SeverityLevel.values)
                 DropdownMenuItem<String?>(
                   value: level,
-                  child: Text(SeverityLevel.label(level)),
+                  child: Text(safetySeverityLabel(l10n, level)),
                 ),
             ],
             onChanged: (level) => context
@@ -524,13 +525,19 @@ double _chipColumnWidth(BuildContext context, Iterable<String> labels) {
   return widest + Spacing.xxl + Spacing.sm;
 }
 
-double _severityColumnWidth(BuildContext context) =>
-    _chipColumnWidth(context, [for (final level in SeverityLevel.values) SeverityLevel.label(level)]);
+double _severityColumnWidth(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
+  return _chipColumnWidth(context, [
+    for (final level in SeverityLevel.values) safetySeverityLabel(l10n, level),
+  ]);
+}
 
-double _statusColumnWidth(BuildContext context) => _chipColumnWidth(
-      context,
-      [for (final status in SafetyIncidentStatus.values) SafetyIncidentStatus.label(status)],
-    );
+double _statusColumnWidth(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
+  return _chipColumnWidth(context, [
+    for (final status in SafetyIncidentStatus.values) safetyIncidentStatusLabel(l10n, status),
+  ]);
+}
 
 class _Register extends StatelessWidget {
   const _Register({required this.rows});
@@ -597,6 +604,7 @@ class _SafetyIncidentTableRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     final dense = AppTypography.dense(context);
     final muted = dense?.copyWith(color: palette.textMuted);
 
@@ -617,7 +625,7 @@ class _SafetyIncidentTableRow extends StatelessWidget {
           shrinkWrapTargets(
             StatusChip(
               key: SafetyIncidentsScreen.rowSeverityKey(incident.id),
-              label: incident.severityLabel,
+              label: incident.severityLabel(l10n),
               tone: incident.severityTone,
             ),
           ),
@@ -625,7 +633,7 @@ class _SafetyIncidentTableRow extends StatelessWidget {
             incident.incidentNo,
             style: dense?.copyWith(color: palette.textPrimary, fontWeight: FontWeight.w600),
           ),
-          DisclosingText(incident.incidentTypeLabel, style: dense),
+          DisclosingText(incident.incidentTypeLabel(l10n), style: dense),
           DisclosingText(incident.orgUnitName, style: muted),
           // Measured: this is the one cell that still clips in a table over a
           // 1280 window (183.2px needed; 63.9 at 960, 138.9 at 1160), so it is
@@ -639,7 +647,7 @@ class _SafetyIncidentTableRow extends StatelessWidget {
           shrinkWrapTargets(
             StatusChip(
               key: SafetyIncidentsScreen.rowStatusKey(incident.id),
-              label: incident.statusLabel,
+              label: incident.statusLabel(l10n),
               tone: incident.statusTone,
             ),
           ),
@@ -692,7 +700,7 @@ class _SafetyIncidentCard extends StatelessWidget {
                       children: [
                         StatusChip(
                           key: SafetyIncidentsScreen.rowSeverityKey(row.id),
-                          label: row.severityLabel,
+                          label: row.severityLabel(l10n),
                           tone: row.severityTone,
                         ),
                         Text(
@@ -706,7 +714,7 @@ class _SafetyIncidentCard extends StatelessWidget {
                     ),
                     const SizedBox(height: Spacing.xs),
                     Text(
-                      row.incidentTypeLabel,
+                      row.incidentTypeLabel(l10n),
                       style: dense?.copyWith(
                         color: palette.textPrimary,
                         fontWeight: FontWeight.w500,
@@ -724,7 +732,7 @@ class _SafetyIncidentCard extends StatelessWidget {
               const SizedBox(width: Spacing.sm),
               StatusChip(
                 key: SafetyIncidentsScreen.rowStatusKey(row.id),
-                label: row.statusLabel,
+                label: row.statusLabel(l10n),
                 tone: row.statusTone,
               ),
             ],

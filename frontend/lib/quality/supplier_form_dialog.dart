@@ -28,6 +28,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_scan_field.dart';
 import 'supplier.dart';
 import 'suppliers_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class SupplierFormDialog extends StatefulWidget {
   const SupplierFormDialog({super.key, this.supplier});
@@ -223,7 +224,7 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
               Padding(
                 key: SupplierFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

@@ -16,6 +16,8 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'directory_bloc.dart';
 import 'employment_type.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class EmployeeFormDialog extends StatefulWidget {
   const EmployeeFormDialog({super.key});
@@ -179,7 +181,7 @@ class _EmployeeFormDialogState extends State<EmployeeFormDialog> {
                       InputDecoration(labelText: l10n.commonEmploymentType, border: OutlineInputBorder()),
                   items: [
                     for (final type in employmentTypes)
-                      DropdownMenuItem<String>(value: type, child: Text(employmentTypeLabel(type))),
+                      DropdownMenuItem<String>(value: type, child: Text(employmentTypeLabel(l10n, type))),
                   ],
                   onChanged: _awaiting
                       ? null
@@ -199,7 +201,7 @@ class _EmployeeFormDialogState extends State<EmployeeFormDialog> {
                   Padding(
                     key: EmployeeFormDialog.failureKey,
                     padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
+                    child: NoticeText(
                       _failure!,
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                     ),

@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -26,6 +27,7 @@ import 'part.dart';
 import 'store.dart';
 import 'work_order.dart';
 import 'work_order_detail_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class PartBookingDialog extends StatefulWidget {
   const PartBookingDialog({super.key, required this.siteId});
@@ -266,7 +268,10 @@ class _PartBookingDialogState extends State<PartBookingDialog> {
               ),
               items: [
                 for (final source in PartSource.values)
-                  DropdownMenuItem<String>(value: source.wire, child: Text(source.label)),
+                  DropdownMenuItem<String>(
+                    value: source.wire,
+                    child: Text(partSourceLabel(l10n, source.wire)),
+                  ),
               ],
               onChanged: _awaiting
                   ? null
@@ -288,7 +293,7 @@ class _PartBookingDialogState extends State<PartBookingDialog> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  NoticeText(
                     _optionsFailure ?? l10n.partBookingOptionsFailed,
                     style: AppTypography.floor(context)?.copyWith(color: palette.statusDanger),
                   ),
@@ -426,7 +431,7 @@ class _PartBookingDialogState extends State<PartBookingDialog> {
               Padding(
                 key: PartBookingDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),

@@ -65,6 +65,8 @@ import 'handover.dart';
 import 'handover_format.dart';
 import 'handover_vocabulary.dart';
 import 'shift_handover_bloc.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 /// The horizontal room a section's field row gives up before it is measured
 /// (issue #440): the scrolled form's own `Spacing.lg` inset on each side, plus
@@ -309,7 +311,7 @@ class _LoadedState extends State<_Loaded> {
                               Text(handover.handoverNo!, style: theme.textTheme.labelMedium),
                             StatusChip(
                               key: ShiftHandoverScreen.statusKey,
-                              label: _statusLabel(handover.status),
+                              label: handoverStatusLabel(l10n, handover.status),
                               tone: _statusTone(handover.status),
                             ),
                             if (handover.late == true) StatusChip(label: l10n.commonLate, tone: StatusTone.warning),
@@ -499,13 +501,6 @@ class _SubmitBar extends StatelessWidget {
   }
 }
 
-String _statusLabel(String status) => switch (status) {
-      'draft' => 'Draft',
-      'submitted' => 'Submitted',
-      'acknowledged' => 'Acknowledged',
-      _ => status,
-    };
-
 StatusTone _statusTone(String status) => switch (status) {
       'draft' => StatusTone.neutral,
       'submitted' => StatusTone.info,
@@ -594,7 +589,7 @@ class _RefusalPanel extends StatelessWidget {
           ),
           const SizedBox(height: Spacing.xs),
           if (lines.isEmpty)
-            Text(refusal.message, style: theme.textTheme.bodyMedium?.copyWith(color: colors.onErrorContainer))
+            NoticeText(refusal.message, style: theme.textTheme.bodyMedium?.copyWith(color: colors.onErrorContainer))
           else
             for (final line in lines)
               Padding(
@@ -803,7 +798,7 @@ class _MachineRowState extends State<_MachineRow> {
                   decoration: InputDecoration(labelText: l10n.commonState),
                   items: [
                     for (final choice in HandoverVocabulary.machineStates)
-                      DropdownMenuItem<String>(value: choice.wire, child: Text(choice.label)),
+                      DropdownMenuItem<String>(value: choice, child: Text(handoverMachineStateLabel(l10n, choice))),
                   ],
                   onChanged: widget.enabled ? (value) => setState(() => _state = value) : null,
                 ),
@@ -819,7 +814,7 @@ class _MachineRowState extends State<_MachineRow> {
                   items: [
                     DropdownMenuItem<String?>(value: null, child: Text(l10n.shiftHandoverNoneFound)),
                     for (final choice in HandoverVocabulary.abnormalityTypes)
-                      DropdownMenuItem<String?>(value: choice.wire, child: Text(choice.label)),
+                      DropdownMenuItem<String?>(value: choice, child: Text(handoverAbnormalityTypeLabel(l10n, choice))),
                   ],
                   onChanged: widget.enabled ? (value) => setState(() => _abnormality = value) : null,
                 ),
@@ -897,7 +892,7 @@ class _ChangePoints extends StatefulWidget {
 }
 
 class _ChangePointsState extends State<_ChangePoints> {
-  String _dimension = HandoverVocabulary.changePointDimensions.first.wire;
+  String _dimension = HandoverVocabulary.defaultDimension;
   final TextEditingController _description = TextEditingController();
   final TextEditingController _watch = TextEditingController();
 
@@ -946,18 +941,18 @@ class _ChangePointsState extends State<_ChangePoints> {
         ),
         for (final dimension in HandoverVocabulary.changePointDimensions)
           Padding(
-            key: ShiftHandoverScreen.changePointGroupKey(dimension.wire),
+            key: ShiftHandoverScreen.changePointGroupKey(dimension),
             padding: const EdgeInsets.only(top: Spacing.sm),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(dimension.label, style: theme.textTheme.titleSmall),
-                if ((handover.changePoints[dimension.wire] ?? const []).isEmpty)
+                Text(handoverDimensionLabel(l10n, dimension), style: theme.textTheme.titleSmall),
+                if ((handover.changePoints[dimension] ?? const []).isEmpty)
                   Text(
                     l10n.shiftHandoverNoneRecorded,
                     style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
-                for (final point in handover.changePoints[dimension.wire] ?? const <ChangePoint>[])
+                for (final point in handover.changePoints[dimension] ?? const <ChangePoint>[])
                   Row(
                     key: ShiftHandoverScreen.changePointKey(point.id),
                     children: [
@@ -967,7 +962,7 @@ class _ChangePointsState extends State<_ChangePoints> {
                           children: [
                             Text(point.description, style: theme.textTheme.bodyMedium),
                             Text(
-                              l10n.shiftHandoverWatch(point.watchNote, point.watchResult != null ? ' · found ${HandoverVocabulary.watchResultLabel(point.watchResult)}' : ''),
+                              l10n.shiftHandoverWatch(point.watchNote, point.watchResult != null ? ' · found ${handoverWatchResultLabel(l10n, point.watchResult)}' : ''),
                               style: theme.textTheme.bodySmall
                                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                             ),
@@ -1003,7 +998,7 @@ class _ChangePointsState extends State<_ChangePoints> {
                   decoration: InputDecoration(labelText: l10n.shiftHandoverDimension),
                   items: [
                     for (final choice in HandoverVocabulary.changePointDimensions)
-                      DropdownMenuItem<String>(value: choice.wire, child: Text(choice.label)),
+                      DropdownMenuItem<String>(value: choice, child: Text(handoverDimensionLabel(l10n, choice))),
                   ],
                   onChanged: widget.enabled ? (value) => setState(() => _dimension = value ?? _dimension) : null,
                 ),
@@ -1094,7 +1089,7 @@ class _Actions extends StatelessWidget {
                       ),
                       Text(
                         [
-                          HandoverVocabulary.dispositionLabel(handover.actions[i].disposition),
+                          handoverDispositionLabel(l10n, handover.actions[i].disposition),
                           if (handover.actions[i].ownerName != null) 'to ${handover.actions[i].ownerName}',
                           if (handover.actions[i].closureNote != null) handover.actions[i].closureNote!,
                           if (handover.actions[i].ageShifts != null && handover.actions[i].ageShifts! > 0)
@@ -1214,7 +1209,7 @@ class _OpenActionRowState extends State<_OpenActionRow> {
                   decoration: InputDecoration(labelText: l10n.commonDisposition),
                   items: [
                     for (final choice in HandoverVocabulary.dispositions)
-                      DropdownMenuItem<String>(value: choice.wire, child: Text(choice.label)),
+                      DropdownMenuItem<String>(value: choice, child: Text(handoverDispositionLabel(l10n, choice))),
                   ],
                   onChanged: widget.enabled
                       ? (value) => setState(() {
@@ -1299,7 +1294,7 @@ class _Evidence extends StatefulWidget {
 
 class _EvidenceState extends State<_Evidence> {
   late bool _jointWalk = widget.handover.jointWalkDone;
-  late String _deviation = widget.handover.deviationReason ?? HandoverVocabulary.deviationReasons.first.wire;
+  late String _deviation = widget.handover.deviationReason ?? HandoverVocabulary.defaultDeviationReason;
   late final TextEditingController _critical = TextEditingController(text: widget.handover.criticalItems ?? '');
 
   @override
@@ -1358,7 +1353,7 @@ class _EvidenceState extends State<_Evidence> {
                   ),
                   items: [
                     for (final choice in HandoverVocabulary.deviationReasons)
-                      DropdownMenuItem<String>(value: choice.wire, child: Text(choice.label)),
+                      DropdownMenuItem<String>(value: choice, child: Text(handoverDeviationReasonLabel(l10n, choice))),
                   ],
                   onChanged: widget.enabled
                       ? (value) => setState(() => _deviation = value ?? _deviation)

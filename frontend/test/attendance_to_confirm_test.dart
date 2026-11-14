@@ -4,9 +4,12 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:lean_platform/people/attendance_picker_screen.dart';
 import 'package:lean_platform/people/attendance_sheet_screen.dart';
 import 'package:lean_platform/people/attendance_to_confirm_screen.dart';
+import 'package:lean_platform/platform/locale_cubit.dart';
 
 import 'harness.dart';
 
@@ -107,5 +110,72 @@ void main() {
 
     expect(wire.attendanceToConfirmRequests.length, 2);
     expect(wire.attendanceToConfirmRequests.last.containsKey('from'), isTrue);
+  });
+
+  testWidgets('each shift\'s state chip on the picker is a catalogue word under Vietnamese, and the '
+      'English is gone', (tester) async {
+    // The three sentences used to be inline English in `_ShiftRow` — "Not
+    // opened yet", "Confirmed", "Started, not yet confirmed" — while the
+    // worklist beside them (`attendance_to_confirm_screen.dart`) already read
+    // `attendanceSheetStateLabel`. Both Screens now read the one lookup, so a
+    // shift reads the same way whichever one a supervisor found it from.
+    SharedPreferences.setMockInitialValues({LocaleCubit.storageKey: 'vi'});
+    final wire = FakeWire(
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      orgUnits: {
+        null: [orgUnitJson('10', 'Assembly')],
+      },
+      shiftInstances: [
+        shiftInstanceSummaryJson('501', shiftDefinitionName: 'Day shift'),
+        shiftInstanceSummaryJson(
+          '502',
+          shiftDefinitionName: 'Night shift',
+          shiftDefinitionCode: 'NIGHT',
+          hasSheet: true,
+          confirmedAt: '2026-05-04T14:10:00.000Z',
+        ),
+        shiftInstanceSummaryJson(
+          '503',
+          shiftDefinitionName: 'Late shift',
+          shiftDefinitionCode: 'LATE',
+          hasSheet: true,
+        ),
+      ],
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/attendance',
+    );
+
+    // Choose the Org Unit, then a production day: the two choices the read
+    // waits for (the picker's own test in `people_attendance_geometry_test.dart`
+    // opens the shifts the same way).
+    await tapIn(tester, find.byKey(AttendancePickerScreen.orgUnitRowKey('10')));
+    await tapIn(tester, find.byKey(AttendancePickerScreen.dateFieldKey));
+    await tapIn(tester, find.text('OK'));
+
+    final expected = {
+      '501': 'Chưa mở',
+      '502': 'Đã xác nhận',
+      '503': 'Đã bắt đầu, chưa xác nhận',
+    };
+    for (final entry in expected.entries) {
+      final row = find.byKey(AttendancePickerScreen.shiftRowKey(entry.key));
+      expect(row, findsOneWidget, reason: 'shift ${entry.key}');
+      expect(
+        find.descendant(of: row, matching: find.text(entry.value)),
+        findsOneWidget,
+        reason: 'shift ${entry.key} chip',
+      );
+    }
+    for (final english in const [
+      'Not opened yet',
+      'Confirmed',
+      'Started, not yet confirmed',
+    ]) {
+      expect(find.text(english), findsNothing, reason: 'English sheet state $english');
+    }
   });
 }

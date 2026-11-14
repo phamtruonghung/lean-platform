@@ -18,17 +18,6 @@ const List<String> attendanceStatuses = [
   'not_scheduled',
 ];
 
-/// A human label for each of [attendanceStatuses], in the same order.
-String attendanceStatusLabel(String status) => switch (status) {
-      'present' => 'Present',
-      'late' => 'Late',
-      'absent_planned' => 'Absent (planned)',
-      'absent_unplanned' => 'Absent (unplanned)',
-      'training' => 'Training',
-      'not_scheduled' => 'Not scheduled',
-      _ => status,
-    };
-
 /// `absent_planned`/`absent_unplanned` — the two statuses `attendance.js`
 /// requires an [AbsenceReason] for, mirrored here so the Screen can decide
 /// when to show the reason dropdown without guessing at the server's own
@@ -284,9 +273,5 @@ class AttendanceToConfirmEntry {
 /// A human label for [AttendanceToConfirmEntry.sheetState], the same two
 /// readings `_ShiftRow` in `attendance_picker_screen.dart` already gives
 /// `hasSheet`/`confirmedAt` — kept in step so a shift reads the same way
-/// whichever Screen a supervisor found it from.
-String attendanceSheetStateLabel(String sheetState) => switch (sheetState) {
-      'missing' => 'Not opened yet',
-      'unconfirmed' => 'Started, not yet confirmed',
-      _ => sheetState,
-    };
+/// whichever Screen a supervisor found it from. The words are
+/// `l10n/vocabulary.dart`'s (`attendanceSheetStateLabel`).

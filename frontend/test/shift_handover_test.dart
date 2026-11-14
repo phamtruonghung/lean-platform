@@ -17,6 +17,10 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lean_platform/l10n/app_localizations_en.dart';
+import 'package:lean_platform/l10n/vocabulary.dart';
+import 'package:lean_platform/platform/locale_cubit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/production/handover_acknowledge_dialog.dart';
@@ -116,10 +120,11 @@ void main() {
 
       // The picker offers the API's eight states.
       await tapIn(tester, find.byKey(ShiftHandoverScreen.machineStateKey('a1')));
+      final en = AppLocalizationsEn();
       for (final state in HandoverVocabulary.machineStates) {
-        expect(find.text(state.label), findsWidgets);
+        expect(find.text(handoverMachineStateLabel(en, state)), findsWidgets);
       }
-      await tester.tap(find.text('Down').last);
+      await tester.tap(find.text(handoverMachineStateLabel(en, 'down')).last);
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byKey(ShiftHandoverScreen.machineNoteKey('a1')), 'Feed belt slipping');
@@ -391,6 +396,36 @@ void main() {
       await tapIn(tester, find.byKey(SectionBoardScreen.sectionRowKey(_section)));
       expect(find.byKey(SectionBoardScreen.loadedKey), findsOneWidget);
       expect(find.byKey(SectionBoardScreen.shiftRowKey('s1')), findsOneWidget);
+    });
+
+    testWidgets('each handover status chip is a catalogue word under Vietnamese, and the English is '
+        'gone', (tester) async {
+      // The status chip on a shift's card, for the two standings this day
+      // holds: `submitted` and `acknowledged`. Both used to be an inline
+      // English switch inside this Screen and a `_statusLabel` beside the
+      // record's own header; `handoverStatusLabel` is the one lookup behind
+      // both, so a Vietnamese reader gets a Vietnamese chip.
+      SharedPreferences.setMockInitialValues({LocaleCubit.storageKey: 'vi'});
+      final wire = boardWire();
+      await _pump(tester, wire, _boardAddress);
+
+      expect(
+        find.descendant(
+          of: find.byKey(SectionBoardScreen.handoverStatusKey('s2')),
+          matching: find.text('Đã gửi'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(SectionBoardScreen.handoverStatusKey('s3')),
+          matching: find.text('Đã xác nhận'),
+        ),
+        findsOneWidget,
+      );
+      for (final english in const ['Draft', 'Submitted', 'Acknowledged']) {
+        expect(find.text(english), findsNothing, reason: 'English handover status $english');
+      }
     });
   });
 }

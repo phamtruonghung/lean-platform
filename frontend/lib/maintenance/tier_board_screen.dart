@@ -37,6 +37,7 @@ import '../widgets/status_chip.dart';
 import 'tier_board.dart';
 import 'tier_board_bloc.dart';
 import 'tier_board_org_unit_filter_dialog.dart';
+import '../l10n/vocabulary.dart';
 
 class TierBoardScreen extends StatelessWidget {
   const TierBoardScreen({super.key});
@@ -176,7 +177,10 @@ class _Controls extends StatelessWidget {
             decoration: InputDecoration(labelText: l10n.commonPeriod, border: OutlineInputBorder()),
             items: [
               for (final periodType in BoardPeriodType.selectable)
-                DropdownMenuItem<String>(value: periodType.wire, child: Text(periodType.label)),
+                DropdownMenuItem<String>(
+                  value: periodType.wire,
+                  child: Text(boardPeriodTypeLabel(l10n, periodType.wire)),
+                ),
             ],
             onChanged: (periodType) {
               if (periodType == null) return;
@@ -419,7 +423,7 @@ class _KpiRow extends StatelessWidget {
           );
     final chip = StatusChip(
       key: TierBoardScreen.kpiStatusKey(kpi.code),
-      label: kpi.statusLabel,
+      label: kpi.statusLabel(l10n),
       tone: _toneOf(kpi),
     );
     final figure = Wrap(

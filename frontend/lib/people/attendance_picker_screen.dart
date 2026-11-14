@@ -36,6 +36,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
@@ -52,6 +53,7 @@ import '../widgets/status_chip.dart';
 import 'attendance.dart';
 import 'attendance_picker_bloc.dart';
 import 'org_unit_picker_bloc.dart';
+import '../widgets/notice_text.dart';
 
 /// The height a `SkeletonList` is given when it stands in for a list inside a
 /// page that is itself scrolling: the placeholder scrolls its own rows, so it
@@ -230,18 +232,23 @@ class _ShiftRow extends StatelessWidget {
 
   final ShiftInstanceSummary shiftInstance;
 
-  /// The three sentences, unchanged — they now say their meaning in colour as
-  /// well (`StatusChip`'s own rule: the label is always rendered).
-  (String, StatusTone) get _state {
-    if (!shiftInstance.hasSheet) return ('Not opened yet', StatusTone.warning);
-    if (shiftInstance.confirmedAt != null) return ('Confirmed', StatusTone.success);
-    return ('Started, not yet confirmed', StatusTone.warning);
+  /// The state this shift's sheet is in, in the three wires
+  /// `attendanceSheetStateLabel` reads — the same words the worklist beside it
+  /// (`attendance_to_confirm_screen.dart`'s `_EntryRow`) shows a supervisor, so
+  /// a shift reads the same whichever Screen they found it from.
+  String get _sheetState {
+    if (!shiftInstance.hasSheet) return 'missing';
+    if (shiftInstance.confirmedAt != null) return 'confirmed';
+    return 'unconfirmed';
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
-    final (label, tone) = _state;
+    final sheetState = _sheetState;
+    final label = attendanceSheetStateLabel(l10n, sheetState);
+    final tone = sheetState == 'confirmed' ? StatusTone.success : StatusTone.warning;
     return InkWell(
       key: AttendancePickerScreen.shiftRowKey(shiftInstance.id),
       onTap: () => context.go('${Routes.attendance}/${shiftInstance.id}'),
@@ -298,9 +305,9 @@ class _OrgUnitBrowser extends StatelessWidget {
         ),
       );
     } else if (state.sitesStatus == SitesStatus.failed) {
-      body = Text(state.sitesFailure ?? l10n.commonTheSitesAreUnavailable);
+      body = NoticeText(state.sitesFailure ?? l10n.commonTheSitesAreUnavailable);
     } else if (state.rootsFailure != null) {
-      body = Text(state.rootsFailure!);
+      body = NoticeText(state.rootsFailure!);
     } else if (state.sites.isEmpty) {
       body = Text(l10n.commonThereAreNoSitesToBrowseYet);
     } else if (state.rows.isEmpty) {

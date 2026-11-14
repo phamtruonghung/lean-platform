@@ -28,6 +28,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'request.dart';
 import 'requests_bloc.dart';
+import '../widgets/notice_text.dart';
 
 /// The word next to each priority level, indexed `level - 1` — 1 is the CHECK
 /// constraint's most urgent end, 5 its least, made visible at the point of
@@ -150,7 +151,7 @@ class _RequestAcceptDialogState extends State<RequestAcceptDialog> {
               Padding(
                 key: RequestAcceptDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),

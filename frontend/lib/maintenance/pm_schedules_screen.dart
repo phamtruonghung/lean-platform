@@ -28,6 +28,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/notices.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
@@ -45,6 +46,8 @@ import 'name_with_chip.dart';
 import 'pm_schedule_form_dialog.dart';
 import 'pm_schedules_bloc.dart';
 import 'row_disclosure.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class PmSchedulesScreen extends StatelessWidget {
   const PmSchedulesScreen({super.key, required this.canAct});
@@ -113,7 +116,7 @@ class PmSchedulesScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _Header(state: state, canAct: canAct),
-          if (state is PmSchedulesLoaded && state.notice != null) _Notice(message: state.notice!),
+          if (state is PmSchedulesLoaded && state.notice != null) _Notice(message: noticeText(l10n, state.notice!)),
           Expanded(
             child: switch (state) {
               PmSchedulesLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
@@ -227,7 +230,7 @@ class _Notice extends StatelessWidget {
                 Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
                 const SizedBox(width: Spacing.sm),
                 Expanded(
-                  child: Text(
+                  child: NoticeText(
                     message,
                     style: AppTypography.dense(context)
                         ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
@@ -524,7 +527,7 @@ class _PmScheduleTableRow extends StatelessWidget {
         spacing: Spacing.md,
         runSpacing: Spacing.xxs,
         children: [
-          Text(l10n.pmSchedulesRollsFrom(schedule.anchorLabel), style: muted),
+          Text(l10n.pmSchedulesRollsFrom(schedule.anchorLabel(l10n)), style: muted),
           Text(l10n.pmSchedulesLeadTime(schedule.leadTimeDays), style: muted),
           if (hasAccumulated)
             Text(
@@ -616,7 +619,7 @@ class _PmScheduleCard extends StatelessWidget {
                   )
                 else
                   Text(l10n.pmSchedulesEveryDays(schedule.intervalDays ?? 0), style: muted),
-                Text(l10n.pmSchedulesRollsFrom(schedule.anchorLabel), style: muted),
+                Text(l10n.pmSchedulesRollsFrom(schedule.anchorLabel(l10n)), style: muted),
                 Text(l10n.pmSchedulesLeadTime(schedule.leadTimeDays), style: muted),
                 Text(l10n.pmSchedulesPriorityLine('${schedule.priority}'), style: muted),
                 if (schedule.isMeterDriven &&

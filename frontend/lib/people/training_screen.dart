@@ -57,6 +57,8 @@ import 'org_unit_picker_bloc.dart';
 import 'training_bloc.dart';
 import 'training_raise_dialog.dart';
 import 'training_record.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class TrainingScreen extends StatelessWidget {
   const TrainingScreen({super.key, required this.canRaise});
@@ -324,11 +326,11 @@ class _TrainingTableRow extends StatelessWidget {
         if (record.isDraft)
           StatusChip(
             key: TrainingScreen.draftKey(record.id),
-            label: record.statusLabel,
+            label: record.statusLabel(l10n),
             tone: trainingStatusTone(record.status),
           )
         else
-          Text(record.statusLabel, style: dense?.copyWith(color: palette.textMuted)),
+          Text(record.statusLabel(l10n), style: dense?.copyWith(color: palette.textMuted)),
         // The printed form, one tap from the register — a sibling of the row's
         // own tap target so the two never fight over one gesture.
         IconButton(
@@ -423,9 +425,9 @@ class _OrgUnitBrowser extends StatelessWidget {
         child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
       );
     } else if (state.sitesStatus == SitesStatus.failed) {
-      body = Text(state.sitesFailure ?? l10n.commonTheSitesAreUnavailable);
+      body = NoticeText(state.sitesFailure ?? l10n.commonTheSitesAreUnavailable);
     } else if (state.rootsFailure != null) {
-      body = Text(state.rootsFailure!);
+      body = NoticeText(state.rootsFailure!);
     } else if (state.sites.isEmpty) {
       body = Text(l10n.commonThereAreNoSitesToBrowseYet);
     } else if (state.rows.isEmpty) {
@@ -549,7 +551,7 @@ class _TrainingRow extends StatelessWidget {
                       if (record.isDraft)
                         StatusChip(
                           key: TrainingScreen.draftKey(record.id),
-                          label: record.statusLabel,
+                          label: record.statusLabel(l10n),
                           tone: trainingStatusTone(record.status),
                         ),
                     ],

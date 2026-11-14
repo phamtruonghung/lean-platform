@@ -48,6 +48,8 @@ import 'request_accept_dialog.dart';
 import 'request_decline_dialog.dart';
 import 'request_duplicate_dialog.dart';
 import 'requests_bloc.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class RequestsScreen extends StatelessWidget {
   const RequestsScreen({super.key, required this.canTriage});
@@ -218,7 +220,7 @@ class _Notice extends StatelessWidget {
                 Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
                 const SizedBox(width: Spacing.sm),
                 Expanded(
-                  child: Text(
+                  child: NoticeText(
                     message,
                     style: AppTypography.dense(context)
                         ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
@@ -426,12 +428,8 @@ List<AppTableColumn> _columns(
         // whatever label the rows on screen carry, so a state this build does not
         // know still fits.
         _widest(context, [
-              'New',
-              'Triaged',
-              'Accepted',
-              'Rejected',
-              'Duplicate',
-              for (final r in requests) r.statusLabel,
+              ...requestKnownStatusLabels(l10n),
+              for (final r in requests) r.statusLabel(l10n),
             ], labelLarge) +
             Spacing.xxl,
         l10n.commonStatus,
@@ -441,8 +439,8 @@ List<AppTableColumn> _columns(
       l10n.requestsUrgency,
       width: sized(
         _widest(context, [
-              for (final u in RequestUrgency.values) u.label,
-              for (final r in requests) r.urgencyLabel,
+              ...requestKnownUrgencyLabels(l10n),
+              for (final r in requests) r.urgencyLabel(l10n),
             ], labelLarge) +
             Spacing.xxl,
         l10n.requestsUrgency,
@@ -534,9 +532,9 @@ class _RequestTableRow extends StatelessWidget {
             maxLines: 1,
             style: AppTableRow.numberStyle(context)?.copyWith(color: palette.textPrimary),
           ),
-          shrinkWrapTargets(StatusChip(label: request.statusLabel, tone: request.statusTone)),
+          shrinkWrapTargets(StatusChip(label: request.statusLabel(l10n), tone: request.statusTone)),
           shrinkWrapTargets(
-            Chip(label: Text(request.urgencyLabel), visualDensity: VisualDensity.compact),
+            Chip(label: Text(request.urgencyLabel(l10n)), visualDensity: VisualDensity.compact),
           ),
           if (canTriage) shrinkWrapTargets(_RequestRowActions(request: request)),
         ],
@@ -699,7 +697,7 @@ class _RequestCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: Spacing.md),
-                Chip(label: Text(request.urgencyLabel), visualDensity: VisualDensity.compact),
+                Chip(label: Text(request.urgencyLabel(l10n)), visualDensity: VisualDensity.compact),
               ],
             ),
             const SizedBox(height: Spacing.sm),

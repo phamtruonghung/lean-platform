@@ -10,9 +10,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../theme.dart';
 import 'org_unit.dart';
 import 'org_unit_picker_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class OrgUnitPicker extends StatelessWidget {
   const OrgUnitPicker({super.key, this.enabled = true, this.height = 260});
@@ -279,7 +281,7 @@ class _TreeRow extends StatelessWidget {
                           // set is being assembled.
                           [
                             l10n.orgUnitPickerGranted,
-                            level!.label,
+                            grantLevelLabel(l10n, level!),
                             if (state.qualityOf(row.node.id)) l10n.groupQuality,
                             if (state.safetyOf(row.node.id)) l10n.groupSafety,
                           ].join(' · '),
@@ -301,7 +303,7 @@ class _TreeRow extends StatelessWidget {
                             PopupMenuItem<GrantLevel>(
                               key: OrgUnitPicker.levelKey(row.node.id, choice),
                               value: choice,
-                              child: Text(choice.label),
+                              child: Text(grantLevelLabel(l10n, choice)),
                             ),
                         ],
                         onSelected: (choice) => bloc.add(
@@ -316,7 +318,7 @@ class _TreeRow extends StatelessWidget {
           if (row.failure != null)
             Padding(
               padding: const EdgeInsets.only(left: 32, bottom: Spacing.xs),
-              child: Text(
+              child: NoticeText(
                 row.failure!,
                 style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.error),
               ),
@@ -378,7 +380,7 @@ class _GrantedPane extends StatelessWidget {
                                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                             ),
                             Text(
-                              entry.level.label,
+                              grantLevelLabel(l10n, entry.level),
                               style: theme.textTheme.labelMedium
                                   ?.copyWith(color: theme.colorScheme.primary),
                             ),
@@ -474,7 +476,7 @@ class _PaneMessage extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          NoticeText(
             message,
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),

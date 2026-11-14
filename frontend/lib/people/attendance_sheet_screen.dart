@@ -69,6 +69,7 @@ import 'attendance.dart';
 import 'attendance_record_dialog.dart';
 import 'attendance_sheet_bloc.dart';
 import 'employee.dart';
+import '../l10n/vocabulary.dart';
 
 class AttendanceSheetScreen extends StatelessWidget {
   const AttendanceSheetScreen({super.key, required this.shiftInstanceId, required this.canRecord});
@@ -252,24 +253,29 @@ class _Legend extends StatelessWidget {
 
   final List<AttendanceRecord> records;
 
-  /// One entry per tone the sheet can paint, in the order a reader meets them.
-  static const List<(StatusTone, String)> _words = [
-    (StatusTone.success, 'Present'),
-    (StatusTone.info, 'Leave'),
-    (StatusTone.danger, 'Absent'),
-    (StatusTone.neutral, 'Not recorded'),
+  /// The tones the sheet can paint, in the order a reader meets them. The word
+  /// for each is the domain's (`attendanceToneLegendLabel`) — the same words the
+  /// cells themselves carry, so the amber that means leave on a row means leave
+  /// in the legend beside it.
+  static const List<StatusTone> _tones = [
+    StatusTone.success,
+    StatusTone.info,
+    StatusTone.danger,
+    StatusTone.neutral,
   ];
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final painted = {for (final record in records) attendanceRecordTone(record)};
     return Wrap(
       key: AttendanceSheetScreen.legendKey,
       spacing: Spacing.sm,
       runSpacing: Spacing.xs,
       children: [
-        for (final (tone, word) in _words)
-          if (painted.contains(tone)) StatusChip(label: word, tone: tone),
+        for (final tone in _tones)
+          if (painted.contains(tone))
+            StatusChip(label: attendanceToneLegendLabel(l10n, tone), tone: tone),
       ],
     );
   }
@@ -468,7 +474,7 @@ class _RecordCells extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           StatusChip(
-            label: attendanceStatusLabel(record.attendanceStatus),
+            label: attendanceStatusLabel(l10n, record.attendanceStatus),
             tone: attendanceRecordTone(record),
           ),
           if (reason != null && reason.name.isNotEmpty) ...[
@@ -693,7 +699,8 @@ List<AppTableColumn> _columns(
       // reason beside it when the record names one.
       width: sized(
         records.fold<double>(0, (width, record) {
-          final chip = _widthOf(context, attendanceStatusLabel(record.attendanceStatus), labelLarge) +
+          final l10n = AppLocalizations.of(context);
+          final chip = _widthOf(context, attendanceStatusLabel(l10n, record.attendanceStatus), labelLarge) +
               Spacing.xxl;
           final reason = record.absenceReason?.name;
           final withReason = reason == null || reason.isEmpty

@@ -37,6 +37,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../maintenance/maintenance.dart';
 import '../platform/floor_device_gateway.dart';
 import 'safety_api.dart';
+import '../l10n/notices.dart';
 
 sealed class FloorSafetyIncidentEvent {
   const FloorSafetyIncidentEvent();
@@ -137,8 +138,7 @@ class FloorSafetyIncidentBloc
   /// a device can never be talked into recording somewhere else.
   final String orgUnitId;
 
-  static const String notRegisteredMessage =
-      'This device is not registered. Ask an administrator to register it against an Org Unit.';
+  static const String notRegisteredMessage = BlocNotice.deviceNotRegistered;
 
   Future<void> _onSubmitted(
     FloorSafetyIncidentSubmitted event,

@@ -22,6 +22,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'meter.dart';
 import 'meters_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class ReadingFormDialog extends StatefulWidget {
   const ReadingFormDialog({super.key, required this.meter});
@@ -180,7 +181,7 @@ class _ReadingFormDialogState extends State<ReadingFormDialog> {
               Padding(
                 key: ReadingFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),

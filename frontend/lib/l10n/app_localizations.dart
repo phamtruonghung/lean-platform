@@ -11884,6 +11884,1962 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'WO-BUC-2026-00001'**
   String get workOrdersWoBuc202600001;
+
+  /// A Work order's status: written down, not yet approved.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft'**
+  String get workOrderStatusDraft;
+
+  /// A Work order's status: approved and waiting to be scheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get workOrderStatusApproved;
+
+  /// A Work order's status: on the plan for a day.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled'**
+  String get workOrderStatusScheduled;
+
+  /// A Work order's status: work is under way.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get workOrderStatusInProgress;
+
+  /// A Work order's status: stopped, waiting on a decision.
+  ///
+  /// In en, this message translates to:
+  /// **'On hold'**
+  String get workOrderStatusOnHold;
+
+  /// A Work order's status: the work is done, not yet closed.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get workOrderStatusCompleted;
+
+  /// A Work order's status: finished and closed off.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get workOrderStatusClosed;
+
+  /// A Work order's status: called off on purpose.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get workOrderStatusCancelled;
+
+  /// A step inside a Work order: not started.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get workOrderTaskStatusPending;
+
+  /// A step inside a Work order: carried out.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get workOrderTaskStatusDone;
+
+  /// A step inside a Work order: stepped over on purpose.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get workOrderTaskStatusSkipped;
+
+  /// A step inside a Work order: attempted and it did not work.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get workOrderTaskStatusFailed;
+
+  /// A Work order's type: fixing something that broke.
+  ///
+  /// In en, this message translates to:
+  /// **'Corrective'**
+  String get workOrderWorkTypeCorrective;
+
+  /// A Work order's type: planned work that keeps it from breaking.
+  ///
+  /// In en, this message translates to:
+  /// **'Preventive'**
+  String get workOrderWorkTypePreventive;
+
+  /// A Work order's type: work triggered by a measured trend.
+  ///
+  /// In en, this message translates to:
+  /// **'Predictive'**
+  String get workOrderWorkTypePredictive;
+
+  /// A Work order's type: looking, not repairing.
+  ///
+  /// In en, this message translates to:
+  /// **'Inspection'**
+  String get workOrderWorkTypeInspection;
+
+  /// A Work order's type: making something better than it was.
+  ///
+  /// In en, this message translates to:
+  /// **'Improvement'**
+  String get workOrderWorkTypeImprovement;
+
+  /// A Work order's type: setting an instrument to a known standard.
+  ///
+  /// In en, this message translates to:
+  /// **'Calibration'**
+  String get workOrderWorkTypeCalibration;
+
+  /// How a fitted part reached the job: drawn from the store.
+  ///
+  /// In en, this message translates to:
+  /// **'Stores'**
+  String get partSourceStores;
+
+  /// How a fitted part reached the job: bought for it.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchased'**
+  String get partSourcePurchased;
+
+  /// How a fitted part reached the job: repaired and reused.
+  ///
+  /// In en, this message translates to:
+  /// **'Refurbished'**
+  String get partSourceRefurbished;
+
+  /// How a fitted part reached the job: taken off another machine.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannibalised'**
+  String get partSourceCannibalised;
+
+  /// A maintenance Request's urgency: whenever someone can.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get requestUrgencyLow;
+
+  /// A maintenance Request's urgency: the ordinary queue.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get requestUrgencyNormal;
+
+  /// A maintenance Request's urgency: soon, please.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get requestUrgencyHigh;
+
+  /// A maintenance Request's urgency: stop and come now.
+  ///
+  /// In en, this message translates to:
+  /// **'Immediate'**
+  String get requestUrgencyImmediate;
+
+  /// A maintenance Request's status: raised, not yet read.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get requestStatusNew;
+
+  /// A maintenance Request's status: maintenance has read it.
+  ///
+  /// In en, this message translates to:
+  /// **'Triaged'**
+  String get requestStatusTriaged;
+
+  /// A maintenance Request's status: it became a Work order.
+  ///
+  /// In en, this message translates to:
+  /// **'Accepted'**
+  String get requestStatusAccepted;
+
+  /// A maintenance Request's status: maintenance said no.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get requestStatusRejected;
+
+  /// A maintenance Request's status: the same problem was already raised.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get requestStatusDuplicate;
+
+  /// A booked labour line's activity: hands on the job.
+  ///
+  /// In en, this message translates to:
+  /// **'Work'**
+  String get labourActivityWork;
+
+  /// A booked labour line's activity: getting to the job.
+  ///
+  /// In en, this message translates to:
+  /// **'Travel'**
+  String get labourActivityTravel;
+
+  /// A booked labour line's activity: waiting for a permit or a part.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting'**
+  String get labourActivityWaiting;
+
+  /// A booked labour line's activity: working out what is wrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnosis'**
+  String get labourActivityDiagnosis;
+
+  /// A booked labour line's activity: writing the job up.
+  ///
+  /// In en, this message translates to:
+  /// **'Documentation'**
+  String get labourActivityDocumentation;
+
+  /// A meter's type: only ever goes up, so a PM schedule can run off it.
+  ///
+  /// In en, this message translates to:
+  /// **'Cumulative'**
+  String get meterTypeCumulative;
+
+  /// A meter's type: may go either way, recorded but never scheduled against.
+  ///
+  /// In en, this message translates to:
+  /// **'Gauge'**
+  String get meterTypeGauge;
+
+  /// The help text under the Cumulative meter type.
+  ///
+  /// In en, this message translates to:
+  /// **'Only ever goes up — an hour counter or a cycle count. Only a cumulative meter can drive a PM schedule.'**
+  String get meterTypeCumulativeExplanation;
+
+  /// The help text under the Gauge meter type.
+  ///
+  /// In en, this message translates to:
+  /// **'May go either way — a temperature, a pressure, an oil level. Recorded, but never scheduled against.'**
+  String get meterTypeGaugeExplanation;
+
+  /// A PM schedule's anchor: the next date rolls from the original due date.
+  ///
+  /// In en, this message translates to:
+  /// **'Due date'**
+  String get pmAnchorDueDate;
+
+  /// A PM schedule's anchor: the next date rolls from when the work was done.
+  ///
+  /// In en, this message translates to:
+  /// **'Completion'**
+  String get pmAnchorCompletion;
+
+  /// The help text under the Due date anchor.
+  ///
+  /// In en, this message translates to:
+  /// **'The next date is fixed to the calendar: doing the work late does not push the following one back.'**
+  String get pmAnchorDueDateExplanation;
+
+  /// The help text under the Completion anchor.
+  ///
+  /// In en, this message translates to:
+  /// **'The clock starts when the work was actually done, so a service done late simply slides.'**
+  String get pmAnchorCompletionExplanation;
+
+  /// An Action's status: raised and live.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get actionStatusOpen;
+
+  /// An Action's status: someone is working on it.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get actionStatusInProgress;
+
+  /// An Action's status: stopped, waiting on a decision.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked'**
+  String get actionStatusBlocked;
+
+  /// An Action's status: finished.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get actionStatusDone;
+
+  /// An Action's status: called off on purpose.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get actionStatusCancelled;
+
+  /// An Action's type: the problem itself, which measures answer.
+  ///
+  /// In en, this message translates to:
+  /// **'Concern'**
+  String get actionTypeConcern;
+
+  /// An Action's type: stopping the problem spreading while it is investigated.
+  ///
+  /// In en, this message translates to:
+  /// **'Containment'**
+  String get actionTypeContainment;
+
+  /// An Action's type: the fix that keeps the problem from coming back.
+  ///
+  /// In en, this message translates to:
+  /// **'Countermeasure'**
+  String get actionTypeCountermeasure;
+
+  /// An Action's type: work that keeps the problem from starting.
+  ///
+  /// In en, this message translates to:
+  /// **'Preventive action'**
+  String get actionTypePreventive;
+
+  /// An Action's type: making something better than it was.
+  ///
+  /// In en, this message translates to:
+  /// **'Improvement'**
+  String get actionTypeImprovement;
+
+  /// An Action's type: ordinary work, not answering a Concern.
+  ///
+  /// In en, this message translates to:
+  /// **'Routine action'**
+  String get actionTypeRoutine;
+
+  /// A turn of the PDCA cycle: what will be done.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan'**
+  String get actionPhasePlan;
+
+  /// A turn of the PDCA cycle: carrying the plan out.
+  ///
+  /// In en, this message translates to:
+  /// **'Do'**
+  String get actionPhaseDo;
+
+  /// A turn of the PDCA cycle: did it hold?
+  ///
+  /// In en, this message translates to:
+  /// **'Check'**
+  String get actionPhaseCheck;
+
+  /// A turn of the PDCA cycle: making the result the standard.
+  ///
+  /// In en, this message translates to:
+  /// **'Act'**
+  String get actionPhaseAct;
+
+  /// A Check's verdict: the countermeasure worked.
+  ///
+  /// In en, this message translates to:
+  /// **'It held'**
+  String get actionCheckOutcomeHeld;
+
+  /// A Check's verdict: the countermeasure did not work, so the cycle runs again.
+  ///
+  /// In en, this message translates to:
+  /// **'It did not hold'**
+  String get actionCheckOutcomeDidNotHold;
+
+  /// The highest Action priority: fix this first.
+  ///
+  /// In en, this message translates to:
+  /// **'P1 — worst'**
+  String get actionPriorityWorst;
+
+  /// An Action priority: second of five.
+  ///
+  /// In en, this message translates to:
+  /// **'P2'**
+  String get actionPriority2;
+
+  /// An Action priority: the ordinary one.
+  ///
+  /// In en, this message translates to:
+  /// **'P3 — normal'**
+  String get actionPriorityNormal;
+
+  /// An Action priority: fourth of five.
+  ///
+  /// In en, this message translates to:
+  /// **'P4'**
+  String get actionPriority4;
+
+  /// The lowest Action priority.
+  ///
+  /// In en, this message translates to:
+  /// **'P5 — least'**
+  String get actionPriorityLeast;
+
+  /// A CAPA's status: opened, nothing done yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get capaStatusOpen;
+
+  /// A CAPA's status: the problem is stopped from spreading.
+  ///
+  /// In en, this message translates to:
+  /// **'Contained'**
+  String get capaStatusContainment;
+
+  /// A CAPA's status: working the fishbone to the cause.
+  ///
+  /// In en, this message translates to:
+  /// **'Root cause'**
+  String get capaStatusRootCause;
+
+  /// A CAPA's status: the fixes are being decided and carried out.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions'**
+  String get capaStatusActions;
+
+  /// A CAPA's status: the fix is in and nobody has proved it held.
+  ///
+  /// In en, this message translates to:
+  /// **'Verifying'**
+  String get capaStatusVerifying;
+
+  /// A CAPA's status: the fix held and the investigation is closed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get capaStatusClosed;
+
+  /// A CAPA's status: called off on purpose.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get capaStatusCancelled;
+
+  /// The method a CAPA is opened by: the eight disciplines.
+  ///
+  /// In en, this message translates to:
+  /// **'8D'**
+  String get capaMethod8d;
+
+  /// The method a CAPA is opened by: asking why five times.
+  ///
+  /// In en, this message translates to:
+  /// **'5 Why'**
+  String get capaMethodFiveWhy;
+
+  /// The method a CAPA is opened by: one A3 sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'A3'**
+  String get capaMethodA3;
+
+  /// The method a CAPA is opened by: the short form.
+  ///
+  /// In en, this message translates to:
+  /// **'Simple'**
+  String get capaMethodSimple;
+
+  /// One 5 Why chain: why the problem happened.
+  ///
+  /// In en, this message translates to:
+  /// **'Why it happened'**
+  String get capaChainOccurrence;
+
+  /// One 5 Why chain: why the problem was not caught.
+  ///
+  /// In en, this message translates to:
+  /// **'Why it was not detected'**
+  String get capaChainEscape;
+
+  /// An Ishikawa bone: the people doing the work.
+  ///
+  /// In en, this message translates to:
+  /// **'Man'**
+  String get capaCauseCategoryMan;
+
+  /// An Ishikawa bone: the equipment.
+  ///
+  /// In en, this message translates to:
+  /// **'Machine'**
+  String get capaCauseCategoryMachine;
+
+  /// An Ishikawa bone: how the work is done.
+  ///
+  /// In en, this message translates to:
+  /// **'Method'**
+  String get capaCauseCategoryMethod;
+
+  /// An Ishikawa bone: what the work is done with.
+  ///
+  /// In en, this message translates to:
+  /// **'Material'**
+  String get capaCauseCategoryMaterial;
+
+  /// An Ishikawa bone: how it is measured.
+  ///
+  /// In en, this message translates to:
+  /// **'Measurement'**
+  String get capaCauseCategoryMeasurement;
+
+  /// An Ishikawa bone: the surroundings.
+  ///
+  /// In en, this message translates to:
+  /// **'Environment'**
+  String get capaCauseCategoryEnvironment;
+
+  /// A candidate cause's verdict: not looked at yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Candidate'**
+  String get capaCauseVerdictCandidate;
+
+  /// A candidate cause's verdict: the evidence backed it.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmed'**
+  String get capaCauseVerdictConfirmed;
+
+  /// A candidate cause's verdict: the evidence settled it, and the answer was no.
+  ///
+  /// In en, this message translates to:
+  /// **'Ruled out'**
+  String get capaCauseVerdictRuledOut;
+
+  /// An effectiveness check's verdict: the fix worked.
+  ///
+  /// In en, this message translates to:
+  /// **'The fix held'**
+  String get capaEffectivenessHeld;
+
+  /// An effectiveness check's verdict: the Concern goes round again.
+  ///
+  /// In en, this message translates to:
+  /// **'The fix did not hold'**
+  String get capaEffectivenessDidNotHold;
+
+  /// A Safety incident's status: reported, not yet investigated.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get safetyIncidentStatusOpen;
+
+  /// A Safety incident's status: an investigation is under way.
+  ///
+  /// In en, this message translates to:
+  /// **'Investigating'**
+  String get safetyIncidentStatusInvestigating;
+
+  /// A Safety incident's status: the actions it raised are not done.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions pending'**
+  String get safetyIncidentStatusActionsPending;
+
+  /// A Safety incident's status: investigated and closed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get safetyIncidentStatusClosed;
+
+  /// A Safety incident's type: somebody was hurt.
+  ///
+  /// In en, this message translates to:
+  /// **'Injury'**
+  String get safetyIncidentTypeInjury;
+
+  /// A Safety incident's type: it nearly happened.
+  ///
+  /// In en, this message translates to:
+  /// **'Near miss'**
+  String get safetyIncidentTypeNearMiss;
+
+  /// A Safety incident's type: something was damaged.
+  ///
+  /// In en, this message translates to:
+  /// **'Property damage'**
+  String get safetyIncidentTypePropertyDamage;
+
+  /// A Safety incident's type: a release into the environment.
+  ///
+  /// In en, this message translates to:
+  /// **'Environmental'**
+  String get safetyIncidentTypeEnvironmental;
+
+  /// A Safety incident's type: fire or smoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Fire'**
+  String get safetyIncidentTypeFire;
+
+  /// A Safety incident's type: strain from how the work is done.
+  ///
+  /// In en, this message translates to:
+  /// **'Ergonomic'**
+  String get safetyIncidentTypeErgonomic;
+
+  /// A Safety incident's type: an intrusion or a threat.
+  ///
+  /// In en, this message translates to:
+  /// **'Security'**
+  String get safetyIncidentTypeSecurity;
+
+  /// An incident's severity: nobody was hurt.
+  ///
+  /// In en, this message translates to:
+  /// **'No injury'**
+  String get safetySeverityNoInjury;
+
+  /// An incident's severity: treated on the spot.
+  ///
+  /// In en, this message translates to:
+  /// **'First aid'**
+  String get safetySeverityFirstAid;
+
+  /// An incident's severity: treated by a medical professional.
+  ///
+  /// In en, this message translates to:
+  /// **'Medical treatment'**
+  String get safetySeverityMedicalTreatment;
+
+  /// An incident's severity: back at work, on lighter duties.
+  ///
+  /// In en, this message translates to:
+  /// **'Restricted work'**
+  String get safetySeverityRestrictedWork;
+
+  /// An incident's severity: away from work for at least a day.
+  ///
+  /// In en, this message translates to:
+  /// **'Lost time'**
+  String get safetySeverityLostTime;
+
+  /// An incident's severity: somebody died.
+  ///
+  /// In en, this message translates to:
+  /// **'Fatality'**
+  String get safetySeverityFatality;
+
+  /// A Safety observation's type: somebody doing it right.
+  ///
+  /// In en, this message translates to:
+  /// **'Safe act'**
+  String get safetyObservationTypeSafeAct;
+
+  /// A Safety observation's type: somebody doing it unsafely.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsafe act'**
+  String get safetyObservationTypeUnsafeAct;
+
+  /// A Safety observation's type: something unsafe about the place.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsafe condition'**
+  String get safetyObservationTypeUnsafeCondition;
+
+  /// A Safety observation's category: personal protective equipment.
+  ///
+  /// In en, this message translates to:
+  /// **'PPE'**
+  String get safetyObservationCategoryPpe;
+
+  /// A Safety observation's category: guards on machinery.
+  ///
+  /// In en, this message translates to:
+  /// **'Machine guarding'**
+  String get safetyObservationCategoryMachineGuarding;
+
+  /// A Safety observation's category: tidiness and order.
+  ///
+  /// In en, this message translates to:
+  /// **'Housekeeping'**
+  String get safetyObservationCategoryHousekeeping;
+
+  /// A Safety observation's category: how the work loads the body.
+  ///
+  /// In en, this message translates to:
+  /// **'Ergonomics'**
+  String get safetyObservationCategoryErgonomics;
+
+  /// A Safety observation's category: chemicals and their handling.
+  ///
+  /// In en, this message translates to:
+  /// **'Chemical'**
+  String get safetyObservationCategoryChemical;
+
+  /// A Safety observation's category: work above the ground.
+  ///
+  /// In en, this message translates to:
+  /// **'Working at height'**
+  String get safetyObservationCategoryWorkingAtHeight;
+
+  /// A Safety observation's category: vehicles and people moving.
+  ///
+  /// In en, this message translates to:
+  /// **'Traffic'**
+  String get safetyObservationCategoryTraffic;
+
+  /// A Safety observation's category: lock-out and tag-out.
+  ///
+  /// In en, this message translates to:
+  /// **'Energy isolation'**
+  String get safetyObservationCategoryEnergyIsolation;
+
+  /// A Safety observation's category: the written way to do it.
+  ///
+  /// In en, this message translates to:
+  /// **'Procedure'**
+  String get safetyObservationCategoryProcedure;
+
+  /// A Safety observation's category: none of the listed ones.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get safetyObservationCategoryOther;
+
+  /// How bad an observation could have been: low.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get safetyPotentialLow;
+
+  /// How bad an observation could have been: medium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get safetyPotentialMedium;
+
+  /// How bad an observation could have been: high.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get safetyPotentialHigh;
+
+  /// How bad an observation could have been: fatal.
+  ///
+  /// In en, this message translates to:
+  /// **'Fatal'**
+  String get safetyPotentialFatal;
+
+  /// The body region a Body part is filed under: head and neck.
+  ///
+  /// In en, this message translates to:
+  /// **'Head'**
+  String get bodyPartRegionHead;
+
+  /// The body region a Body part is filed under: trunk and back.
+  ///
+  /// In en, this message translates to:
+  /// **'Trunk'**
+  String get bodyPartRegionTrunk;
+
+  /// The body region a Body part is filed under: arms and hands.
+  ///
+  /// In en, this message translates to:
+  /// **'Upper limb'**
+  String get bodyPartRegionUpperLimb;
+
+  /// The body region a Body part is filed under: legs and feet.
+  ///
+  /// In en, this message translates to:
+  /// **'Lower limb'**
+  String get bodyPartRegionLowerLimb;
+
+  /// The body region a Body part is filed under: more than one place.
+  ///
+  /// In en, this message translates to:
+  /// **'Multiple'**
+  String get bodyPartRegionMultiple;
+
+  /// The body region a Body part is filed under: not one of the listed ones.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get bodyPartRegionOther;
+
+  /// An Account's role: works in the Org Units it is granted.
+  ///
+  /// In en, this message translates to:
+  /// **'Operator'**
+  String get roleOperator;
+
+  /// An Account's role: runs the Org Units it is granted, and the people in them.
+  ///
+  /// In en, this message translates to:
+  /// **'Supervisor'**
+  String get roleSupervisor;
+
+  /// An Account's role: improves the Org Units it is granted.
+  ///
+  /// In en, this message translates to:
+  /// **'Engineer'**
+  String get roleEngineer;
+
+  /// An Account's role: oversees the Org Units it is granted.
+  ///
+  /// In en, this message translates to:
+  /// **'Manager'**
+  String get roleManager;
+
+  /// An Account's role: acts everywhere, with no Org Unit Grants at all.
+  ///
+  /// In en, this message translates to:
+  /// **'Administrator'**
+  String get roleAdministrator;
+
+  /// The line under the Operator role in the admission picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Works in the Org Units this Account is granted.'**
+  String get roleOperatorDescription;
+
+  /// The line under the Supervisor role in the admission picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs the Org Units this Account is granted, and the people in them.'**
+  String get roleSupervisorDescription;
+
+  /// The line under the Engineer role in the admission picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Improves the Org Units this Account is granted.'**
+  String get roleEngineerDescription;
+
+  /// The line under the Manager role in the admission picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Oversees the Org Units this Account is granted.'**
+  String get roleManagerDescription;
+
+  /// The line under the Administrator role in the admission picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Acts everywhere, in every Site, with no Org Unit Grants at all.'**
+  String get roleAdministratorDescription;
+
+  /// An Employee's employment type: a permanent contract.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanent'**
+  String get employmentTypePermanent;
+
+  /// An Employee's employment type: a fixed-term contract.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary'**
+  String get employmentTypeTemporary;
+
+  /// An Employee's employment type: supplied by an agency.
+  ///
+  /// In en, this message translates to:
+  /// **'Agency'**
+  String get employmentTypeAgency;
+
+  /// An Employee's employment type: works for a contractor.
+  ///
+  /// In en, this message translates to:
+  /// **'Contractor'**
+  String get employmentTypeContractor;
+
+  /// An Employee's employment type: learning the trade.
+  ///
+  /// In en, this message translates to:
+  /// **'Apprentice'**
+  String get employmentTypeApprentice;
+
+  /// How a Trainee was evaluated: a paper test.
+  ///
+  /// In en, this message translates to:
+  /// **'Paper'**
+  String get trainingEvaluationPaper;
+
+  /// How a Trainee was evaluated: on the job.
+  ///
+  /// In en, this message translates to:
+  /// **'Job-training'**
+  String get trainingEvaluationJobTraining;
+
+  /// A Training record's status: being written, not yet sent to its Trainees.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft'**
+  String get trainingStatusDraft;
+
+  /// A Training record's status: sent to its Trainees to confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent'**
+  String get trainingStatusSent;
+
+  /// An attendance row: at work for the whole shift.
+  ///
+  /// In en, this message translates to:
+  /// **'Present'**
+  String get attendanceStatusPresent;
+
+  /// An attendance row: at work, but late.
+  ///
+  /// In en, this message translates to:
+  /// **'Late'**
+  String get attendanceStatusLate;
+
+  /// An attendance row: away, and the absence was booked.
+  ///
+  /// In en, this message translates to:
+  /// **'Absent (planned)'**
+  String get attendanceStatusAbsentPlanned;
+
+  /// An attendance row: away with no notice.
+  ///
+  /// In en, this message translates to:
+  /// **'Absent (unplanned)'**
+  String get attendanceStatusAbsentUnplanned;
+
+  /// The attendance sheet's legend: away on booked leave (or a training day), for the tone a row paints.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get attendanceStatusLeave;
+
+  /// An attendance row: on a training course instead of the line.
+  ///
+  /// In en, this message translates to:
+  /// **'Training'**
+  String get attendanceStatusTraining;
+
+  /// An attendance row: never rostered for that shift.
+  ///
+  /// In en, this message translates to:
+  /// **'Not scheduled'**
+  String get attendanceStatusNotScheduled;
+
+  /// An attendance sheet: nobody has started it.
+  ///
+  /// In en, this message translates to:
+  /// **'Not opened yet'**
+  String get attendanceSheetStateMissing;
+
+  /// An attendance sheet: rows entered, waiting for a supervisor.
+  ///
+  /// In en, this message translates to:
+  /// **'Started, not yet confirmed'**
+  String get attendanceSheetStateUnconfirmed;
+
+  /// A leave request's status: waiting for a decision.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get leaveRequestStatusPending;
+
+  /// A leave request's status: the time off was granted.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get leaveRequestStatusApproved;
+
+  /// A leave request's status: the time off was refused.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get leaveRequestStatusRejected;
+
+  /// A leave request's status: withdrawn by the person who asked.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get leaveRequestStatusCancelled;
+
+  /// What a cost rate applies to: the whole Site.
+  ///
+  /// In en, this message translates to:
+  /// **'Site'**
+  String get costRateScopeSite;
+
+  /// What a cost rate applies to: one Org Unit.
+  ///
+  /// In en, this message translates to:
+  /// **'Org Unit'**
+  String get costRateScopeOrgUnit;
+
+  /// What a cost rate applies to: one Asset.
+  ///
+  /// In en, this message translates to:
+  /// **'Asset'**
+  String get costRateScopeAsset;
+
+  /// What a cost rate applies to: a cost centre.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost centre'**
+  String get costRateScopeCostCentre;
+
+  /// A cost rate's kind: an hour of labour.
+  ///
+  /// In en, this message translates to:
+  /// **'Labour, per hour'**
+  String get costRateTypeLabourPerHour;
+
+  /// A cost rate's kind: the multiplier paid on overtime.
+  ///
+  /// In en, this message translates to:
+  /// **'Overtime premium, a multiplier'**
+  String get costRateTypeOvertimePremium;
+
+  /// A cost rate's kind: an hour of a stopped machine.
+  ///
+  /// In en, this message translates to:
+  /// **'Machine downtime, per hour'**
+  String get costRateTypeMachineDowntime;
+
+  /// A cost rate's kind: an hour of overhead.
+  ///
+  /// In en, this message translates to:
+  /// **'Overhead, per hour'**
+  String get costRateTypeOverhead;
+
+  /// A cost rate's kind: an hour spent putting work right.
+  ///
+  /// In en, this message translates to:
+  /// **'Rework labour, per hour'**
+  String get costRateTypeReworkLabour;
+
+  /// A Non-conformance's status: written down, not yet contained.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get nonconformanceStatusOpen;
+
+  /// A Non-conformance's status: the product is held.
+  ///
+  /// In en, this message translates to:
+  /// **'Contained'**
+  String get nonconformanceStatusContained;
+
+  /// A Non-conformance's status: a decision was recorded about the product.
+  ///
+  /// In en, this message translates to:
+  /// **'Dispositioned'**
+  String get nonconformanceStatusDispositioned;
+
+  /// A Non-conformance's status: finished and closed off.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get nonconformanceStatusClosed;
+
+  /// A Non-conformance's status: called off on purpose.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get nonconformanceStatusCancelled;
+
+  /// A Disposition: the product is thrown away.
+  ///
+  /// In en, this message translates to:
+  /// **'Scrap'**
+  String get dispositionScrap;
+
+  /// A Disposition: the product is put right.
+  ///
+  /// In en, this message translates to:
+  /// **'Rework'**
+  String get dispositionRework;
+
+  /// A Disposition: the product goes back where it came from.
+  ///
+  /// In en, this message translates to:
+  /// **'Return to supplier'**
+  String get dispositionReturnToSupplier;
+
+  /// A Disposition: the product is used without changing it.
+  ///
+  /// In en, this message translates to:
+  /// **'Use as is'**
+  String get dispositionUseAsIs;
+
+  /// A Disposition that is `use_as_is`, named as the concession it is.
+  ///
+  /// In en, this message translates to:
+  /// **'Concession'**
+  String get dispositionConcession;
+
+  /// What a Non-conformance's own history calls a severity that was lowered.
+  ///
+  /// In en, this message translates to:
+  /// **'Severity lowered'**
+  String get severityChangeLowered;
+
+  /// The sentence a Bloc reports when the caller's session has expired.
+  ///
+  /// In en, this message translates to:
+  /// **'This session has ended. Sign in again to continue.'**
+  String get noticeSessionEnded;
+
+  /// The sentence a Bloc reports when a second write arrives while one is still running.
+  ///
+  /// In en, this message translates to:
+  /// **'Another action is already in progress. Try again in a moment.'**
+  String get noticeActionInFlight;
+
+  /// The sentence a floor Bloc reports when its device has no registration.
+  ///
+  /// In en, this message translates to:
+  /// **'This device is not registered. Ask an administrator to register it against an Org Unit.'**
+  String get noticeDeviceNotRegistered;
+
+  /// The sentence the floor training Bloc reports when its identification lapses.
+  ///
+  /// In en, this message translates to:
+  /// **'Your identification has expired. Identify yourself again.'**
+  String get noticeIdentificationExpired;
+
+  /// The sentence the Accounts Bloc reports when a correction raced another administrator.
+  ///
+  /// In en, this message translates to:
+  /// **'Another administrator has already changed that Account. The list has been refreshed.'**
+  String get noticeAccountAlreadyMoved;
+
+  /// The sentence the approval queue Bloc reports when a decision raced another administrator.
+  ///
+  /// In en, this message translates to:
+  /// **'Another administrator has already dealt with that Account. The queue has been refreshed.'**
+  String get noticeAccountAlreadyDecided;
+
+  /// The sentence the employee detail Bloc reports after a departure is recorded.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} has left.'**
+  String noticeEmployeeLeft(String name);
+
+  /// The sentence the employee detail Bloc reports after a departure is undone.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is back.'**
+  String noticeEmployeeBack(String name);
+
+  /// The sentence the Assets Bloc reports after an Asset is put back into service.
+  ///
+  /// In en, this message translates to:
+  /// **'{code} is back on the active register.'**
+  String noticeAssetBack(String code);
+
+  /// The sentence the Actions Bloc reports when the caller sees no Sites.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no Sites you can see, so there is no action log to show.'**
+  String get noticeNoSitesActionLog;
+
+  /// The sentence the Assets Bloc reports when the caller sees no Sites.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no Sites you can see, so there is no register to show.'**
+  String get noticeNoSitesRegister;
+
+  /// The sentence the Stores Bloc reports when the caller sees no Sites.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no Sites you can see, so there are no stores to show.'**
+  String get noticeNoSitesStores;
+
+  /// The sentence the skill coverage Bloc reports when the caller sees no Sites.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no Sites you can see, so there is no coverage to show.'**
+  String get noticeNoSitesCoverage;
+
+  /// The sentence the KPI catalogue Bloc reports when the caller sees no Sites.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no Sites you can see, so there is no KPI catalogue to show.'**
+  String get noticeNoSitesKpiCatalogue;
+
+  /// The sentence the KPI targets Bloc reports when the caller sees no Sites.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no Sites you can see, so there are no Targets to show.'**
+  String get noticeNoSitesKpiTargets;
+
+  /// The sentence the KPI review Bloc reports when the caller sees no Sites.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no Sites you can see, so there is no KPI Review to show.'**
+  String get noticeNoSitesKpiReview;
+
+  /// The sentence the Tier board Bloc reports when the caller sees no Sites.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no Sites you can see, so there is no board to show.'**
+  String get noticeNoSitesBoard;
+
+  /// The sentence the Work orders Bloc reports when the caller sees no Sites.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no Sites you can see, so there is no work to show.'**
+  String get noticeNoSitesWork;
+
+  /// The sentence the triage queue Bloc reports when the caller sees no Sites.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no Sites you can see, so there is nothing waiting.'**
+  String get noticeNoSitesWaiting;
+
+  /// The sentence a register Bloc reports when the caller sees no Sites.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no Sites you can see, so there is nothing to show.'**
+  String get noticeNoSitesNothing;
+
+  /// The sentence the Assets Bloc reports after an Asset is taken out of service.
+  ///
+  /// In en, this message translates to:
+  /// **'{code} has been retired.'**
+  String noticeAssetRetired(String code);
+
+  /// The sentence the Action detail Bloc reports after a measure is added to a Concern.
+  ///
+  /// In en, this message translates to:
+  /// **'{actionNo} answers this — a {kind}.'**
+  String noticeMeasureAnswers(String actionNo, String kind);
+
+  /// The sentence the Action detail Bloc reports after a cycle is closed on its Act.
+  ///
+  /// In en, this message translates to:
+  /// **'{actionNo} is closed — its Act named the standard that now holds it.'**
+  String noticeActionClosed(String actionNo);
+
+  /// The sentence the Action detail Bloc reports after a phase is completed and the next one is open.
+  ///
+  /// In en, this message translates to:
+  /// **'{actionNo} is waiting on its {phase} phase.'**
+  String noticeActionAwaitingPhase(String actionNo, String phase);
+
+  /// What a record's own reader shows where nobody was named.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get commonUnknown;
+
+  /// A Defect code's default severity: minor.
+  ///
+  /// In en, this message translates to:
+  /// **'Minor'**
+  String get defectSeverityMinor;
+
+  /// A Defect code's default severity: major.
+  ///
+  /// In en, this message translates to:
+  /// **'Major'**
+  String get defectSeverityMajor;
+
+  /// A Defect code's default severity: critical.
+  ///
+  /// In en, this message translates to:
+  /// **'Critical'**
+  String get defectSeverityCritical;
+
+  /// A Non-conformance correction: the record was reopened.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopened'**
+  String get correctionKindReopened;
+
+  /// A Non-conformance correction: the record was cancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get correctionKindCancelled;
+
+  /// A history row: the severity was lowered, naming both levels.
+  ///
+  /// In en, this message translates to:
+  /// **'Severity lowered from {from} to {to}'**
+  String correctionSummarySeverityLowered(String from, String to);
+
+  /// A history row: the record was reopened from a state.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopened from {status}'**
+  String correctionSummaryReopened(String status);
+
+  /// A history row: the record was cancelled from a state.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled from {status}'**
+  String correctionSummaryCancelled(String status);
+
+  /// A Safety incident history row: the severity level changed.
+  ///
+  /// In en, this message translates to:
+  /// **'Severity changed from {from} to {to}'**
+  String incidentEventSeverityChanged(String from, String to);
+
+  /// A Safety incident history row: the status moved.
+  ///
+  /// In en, this message translates to:
+  /// **'Status moved from {from} to {to}'**
+  String incidentEventStatusMoved(String from, String to);
+
+  /// A Safety incident history row: the days away were recorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Days recorded: {days}'**
+  String incidentEventDaysRecorded(String days);
+
+  /// A Safety incident history row: the incident was closed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get incidentEventClosed;
+
+  /// A Safety incident history row: the incident was classified.
+  ///
+  /// In en, this message translates to:
+  /// **'Classified'**
+  String get incidentEventClassified;
+
+  /// A Non-conformance's detection point: found as goods arrived.
+  ///
+  /// In en, this message translates to:
+  /// **'Incoming'**
+  String get detectionPointIncoming;
+
+  /// A Non-conformance's detection point: found while the work ran.
+  ///
+  /// In en, this message translates to:
+  /// **'In process'**
+  String get detectionPointInProcess;
+
+  /// A Non-conformance's detection point: found at final inspection.
+  ///
+  /// In en, this message translates to:
+  /// **'Final inspection'**
+  String get detectionPointFinalInspection;
+
+  /// A Non-conformance's detection point: found during an audit.
+  ///
+  /// In en, this message translates to:
+  /// **'Audit'**
+  String get detectionPointAudit;
+
+  /// A Non-conformance's detection point: found by the customer.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer'**
+  String get detectionPointCustomer;
+
+  /// The leading placeholder in the severity ladder's dropdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a rung'**
+  String get safetyAnySeverity;
+
+  /// Appended to a severity level that has to be reported, in the ladder's dropdown.
+  ///
+  /// In en, this message translates to:
+  /// **' · recordable'**
+  String get safetySeverityRecordableSuffix;
+
+  /// A Customer complaint's status: recorded, nobody has picked it up yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get complaintStatusOpen;
+
+  /// A Customer complaint's status: somebody is looking into it.
+  ///
+  /// In en, this message translates to:
+  /// **'Investigating'**
+  String get complaintStatusInvestigating;
+
+  /// A Customer complaint's status: the customer has an answer, the complaint is not closed yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Responded'**
+  String get complaintStatusResponded;
+
+  /// A Customer complaint's status: answered and closed off.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get complaintStatusClosed;
+
+  /// A Customer complaint's status: refused as not the plant's to answer.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get complaintStatusRejected;
+
+  /// What a Customer complaint is about: the product does not meet its quality.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality'**
+  String get complaintTypeQuality;
+
+  /// What a Customer complaint is about: it arrived late or wrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery'**
+  String get complaintTypeDelivery;
+
+  /// What a Customer complaint is about: there was not enough of it.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity'**
+  String get complaintTypeQuantity;
+
+  /// What a Customer complaint is about: the paperwork was wrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Documentation'**
+  String get complaintTypeDocumentation;
+
+  /// What a Customer complaint is about: how it was packed.
+  ///
+  /// In en, this message translates to:
+  /// **'Packaging'**
+  String get complaintTypePackaging;
+
+  /// What a Customer complaint is about: the service around the product.
+  ///
+  /// In en, this message translates to:
+  /// **'Service'**
+  String get complaintTypeService;
+
+  /// A Supplier NCR's status: recorded, waiting on the Supplier's answer.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get supplierNcrStatusOpen;
+
+  /// A Supplier NCR's status: sent to the Supplier.
+  ///
+  /// In en, this message translates to:
+  /// **'Issued'**
+  String get supplierNcrStatusIssued;
+
+  /// A Supplier NCR's status: the Supplier has answered, the NCR is not closed yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Responded'**
+  String get supplierNcrStatusResponded;
+
+  /// A Supplier NCR's status: answered and closed off.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get supplierNcrStatusClosed;
+
+  /// A Supplier NCR's status: refused as not the Supplier's.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get supplierNcrStatusRejected;
+
+  /// What the plant decided happens to the material: it goes back.
+  ///
+  /// In en, this message translates to:
+  /// **'Return to the Supplier'**
+  String get supplierNcrDispositionReturnToSupplier;
+
+  /// What the plant decided happens to the material: it is scrapped.
+  ///
+  /// In en, this message translates to:
+  /// **'Scrap'**
+  String get supplierNcrDispositionScrap;
+
+  /// What the plant decided happens to the material: it is reworked and the Supplier pays.
+  ///
+  /// In en, this message translates to:
+  /// **'Rework at the Supplier\'s cost'**
+  String get supplierNcrDispositionReworkAtCost;
+
+  /// What the plant decided happens to the material: it is sorted, good from bad.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get supplierNcrDispositionSort;
+
+  /// What the plant decided happens to the material: it is used as it arrived.
+  ///
+  /// In en, this message translates to:
+  /// **'Use as it is'**
+  String get supplierNcrDispositionUseAsIs;
+
+  /// A Downtime event's status: the machine is not running right now.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get downtimeStatusOpen;
+
+  /// A Downtime event's status: the stop is over with no reason recorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Unclassified'**
+  String get downtimeStatusUnclassified;
+
+  /// A Downtime event's status: the stop is over and its reason recorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get downtimeStatusClosed;
+
+  /// An Asset's kind: a machine on the floor.
+  ///
+  /// In en, this message translates to:
+  /// **'Machine'**
+  String get assetTypeMachine;
+
+  /// An Asset's kind: a group of machines worked as one.
+  ///
+  /// In en, this message translates to:
+  /// **'Cell'**
+  String get assetTypeCell;
+
+  /// An Asset's kind: a tool.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool'**
+  String get assetTypeTool;
+
+  /// An Asset's kind: a utility such as air or water.
+  ///
+  /// In en, this message translates to:
+  /// **'Utility'**
+  String get assetTypeUtility;
+
+  /// An Asset's kind: a vehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicle'**
+  String get assetTypeVehicle;
+
+  /// An Asset's kind: none of the others.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get assetTypeOther;
+
+  /// An Asset's criticality: work on it can wait.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get assetCriticalityLow;
+
+  /// An Asset's criticality: work on it matters.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get assetCriticalityMedium;
+
+  /// An Asset's criticality: work on it comes before most other work.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get assetCriticalityHigh;
+
+  /// An Asset's criticality: the Plant stops without it.
+  ///
+  /// In en, this message translates to:
+  /// **'Critical'**
+  String get assetCriticalityCritical;
+
+  /// A Defect code's category: the product itself is wrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Product'**
+  String get defectCategoryProduct;
+
+  /// A Defect code's category: how it was made is wrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Process'**
+  String get defectCategoryProcess;
+
+  /// A Defect code's category: what went into it is wrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Material'**
+  String get defectCategoryMaterial;
+
+  /// A Defect code's category: the paperwork around it is wrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Documentation'**
+  String get defectCategoryDocumentation;
+
+  /// A Defect code's category: how it was packed is wrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Packaging'**
+  String get defectCategoryPackaging;
+
+  /// A KPI's standing on the Tier board: it met its Target.
+  ///
+  /// In en, this message translates to:
+  /// **'On target'**
+  String get boardKpiStatusOnTarget;
+
+  /// A KPI's standing on the Tier board: it is close to its Target.
+  ///
+  /// In en, this message translates to:
+  /// **'Near target'**
+  String get boardKpiStatusNearTarget;
+
+  /// A KPI's standing on the Tier board: it missed its Target.
+  ///
+  /// In en, this message translates to:
+  /// **'Off target'**
+  String get boardKpiStatusOffTarget;
+
+  /// A KPI's standing: no Target is set for it.
+  ///
+  /// In en, this message translates to:
+  /// **'No target'**
+  String get boardKpiStatusNoTarget;
+
+  /// A KPI's standing: nothing was measured for it.
+  ///
+  /// In en, this message translates to:
+  /// **'No data'**
+  String get boardKpiStatusNoData;
+
+  /// A day's judgement in the KPI Review: the KPI met its Target.
+  ///
+  /// In en, this message translates to:
+  /// **'Met'**
+  String get reviewStatusMet;
+
+  /// A day's judgement in the KPI Review: the KPI missed its Target.
+  ///
+  /// In en, this message translates to:
+  /// **'Missed'**
+  String get reviewStatusMissed;
+
+  /// A day's judgement in the KPI Review: nothing was measured.
+  ///
+  /// In en, this message translates to:
+  /// **'Not measured'**
+  String get reviewStatusNotMeasured;
+
+  /// The KPI catalogue's Today column: the KPI has no judgement for today yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not reviewed'**
+  String get reviewStatusNotReviewed;
+
+  /// What a picture belongs to: a Non-conformance.
+  ///
+  /// In en, this message translates to:
+  /// **'Non-conformance'**
+  String get issueKindNonconformance;
+
+  /// What a picture belongs to: a Customer complaint.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer complaint'**
+  String get issueKindComplaint;
+
+  /// The type chip on a wall display: a Non-conformance, in two letters.
+  ///
+  /// In en, this message translates to:
+  /// **'NC'**
+  String get issueKindNonconformanceShort;
+
+  /// The type chip on a wall display: a Customer complaint, short.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaint'**
+  String get issueKindComplaintShort;
+
+  /// A machine's state at a Shift handover: running normally.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get handoverMachineRunning;
+
+  /// A machine's state at a Shift handover: running, but by hand.
+  ///
+  /// In en, this message translates to:
+  /// **'Running (manual)'**
+  String get handoverMachineRunningManual;
+
+  /// A machine's state at a Shift handover: able to run, not running.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get handoverMachineIdle;
+
+  /// A machine's state at a Shift handover: stopped and not running.
+  ///
+  /// In en, this message translates to:
+  /// **'Down'**
+  String get handoverMachineDown;
+
+  /// A machine's state at a Shift handover: being maintained.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance'**
+  String get handoverMachineMaintenance;
+
+  /// A machine's state at a Shift handover: being cleaned.
+  ///
+  /// In en, this message translates to:
+  /// **'Cleaning'**
+  String get handoverMachineCleaning;
+
+  /// A machine's state at a Shift handover: being set up for the next product.
+  ///
+  /// In en, this message translates to:
+  /// **'Changeover'**
+  String get handoverMachineChangeover;
+
+  /// A machine's state at a Shift handover: shut off from the line.
+  ///
+  /// In en, this message translates to:
+  /// **'Isolated'**
+  String get handoverMachineIsolated;
+
+  /// A TPM abnormality type: a small flaw.
+  ///
+  /// In en, this message translates to:
+  /// **'Minor flaw'**
+  String get handoverAbnormalityMinorFlaw;
+
+  /// A TPM abnormality type: a basic condition not kept.
+  ///
+  /// In en, this message translates to:
+  /// **'Unfulfilled basic condition'**
+  String get handoverAbnormalityUnfulfilledBasicCondition;
+
+  /// A TPM abnormality type: a place that is hard to reach.
+  ///
+  /// In en, this message translates to:
+  /// **'Inaccessible place'**
+  String get handoverAbnormalityInaccessiblePlace;
+
+  /// A TPM abnormality type: something that puts dirt where it must not be.
+  ///
+  /// In en, this message translates to:
+  /// **'Contamination source'**
+  String get handoverAbnormalityContaminationSource;
+
+  /// A TPM abnormality type: something that produces defects.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality defect source'**
+  String get handoverAbnormalityQualityDefectSource;
+
+  /// A TPM abnormality type: something there that should not be.
+  ///
+  /// In en, this message translates to:
+  /// **'Unnecessary item'**
+  String get handoverAbnormalityUnnecessaryItem;
+
+  /// A TPM abnormality type: a place that can hurt somebody.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsafe place'**
+  String get handoverAbnormalityUnsafePlace;
+
+  /// A Change point's dimension, the 4M: the people doing the work.
+  ///
+  /// In en, this message translates to:
+  /// **'Man'**
+  String get handoverDimensionMan;
+
+  /// A Change point's dimension, the 4M: the machines.
+  ///
+  /// In en, this message translates to:
+  /// **'Machine'**
+  String get handoverDimensionMachine;
+
+  /// A Change point's dimension, the 4M: the material.
+  ///
+  /// In en, this message translates to:
+  /// **'Material'**
+  String get handoverDimensionMaterial;
+
+  /// A Change point's dimension, the 4M: the way the work is done.
+  ///
+  /// In en, this message translates to:
+  /// **'Method'**
+  String get handoverDimensionMethod;
+
+  /// What a Shift handover does with an open Action: carries it forward.
+  ///
+  /// In en, this message translates to:
+  /// **'Carried'**
+  String get handoverDispositionCarried;
+
+  /// What a Shift handover does with an open Action: hands it to somebody else.
+  ///
+  /// In en, this message translates to:
+  /// **'Reassigned'**
+  String get handoverDispositionReassigned;
+
+  /// What a Shift handover does with an open Action: closes it.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get handoverDispositionClosed;
+
+  /// What a Change point's watch found: as it should be.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get handoverWatchOk;
+
+  /// What a Change point's watch found: something to keep an eye on.
+  ///
+  /// In en, this message translates to:
+  /// **'Concern'**
+  String get handoverWatchConcern;
+
+  /// What a Change point's watch found: the watch was not run.
+  ///
+  /// In en, this message translates to:
+  /// **'Not run'**
+  String get handoverWatchNotRun;
+
+  /// Why a Shift handover did not go the standard way: it did.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get handoverDeviationNone;
+
+  /// Why a Shift handover did not go the standard way: it was late.
+  ///
+  /// In en, this message translates to:
+  /// **'Late'**
+  String get handoverDeviationLate;
+
+  /// Why a Shift handover did not go the standard way: only part of it was done.
+  ///
+  /// In en, this message translates to:
+  /// **'Partial'**
+  String get handoverDeviationPartial;
+
+  /// Why a Shift handover did not go the standard way: nobody came to take it.
+  ///
+  /// In en, this message translates to:
+  /// **'No incoming Team Leader'**
+  String get handoverDeviationNoIncomingTeamLeader;
+
+  /// A Section's day exception: the shift boundary has no handover.
+  ///
+  /// In en, this message translates to:
+  /// **'No handover recorded'**
+  String get handoverExceptionNoHandover;
+
+  /// A Section's day exception: the incoming shift has not acknowledged it.
+  ///
+  /// In en, this message translates to:
+  /// **'Unacknowledged'**
+  String get handoverExceptionUnacknowledged;
+
+  /// A Section's day exception: it was changed after it had been acknowledged.
+  ///
+  /// In en, this message translates to:
+  /// **'Amended after acknowledgement'**
+  String get handoverExceptionAmendedAfterAcknowledgement;
+
+  /// A Shift handover's own status chip: signed off by the outgoing Team Leader, waiting to be acknowledged.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted'**
+  String get handoverStatusSubmitted;
+
+  /// A Shift handover's own status chip: read and acknowledged by the incoming shift.
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledged'**
+  String get handoverStatusAcknowledged;
+
+  /// The skill coverage register's legend: no Employee is qualified for this requirement.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody qualified'**
+  String get skillCoverageNobodyQualified;
+
+  /// The skill coverage register's legend: some but not enough Employees are qualified.
+  ///
+  /// In en, this message translates to:
+  /// **'Partly qualified'**
+  String get skillCoveragePartlyQualified;
+
+  /// The skill coverage register's legend: the Org Unit is short of qualified people.
+  ///
+  /// In en, this message translates to:
+  /// **'Short'**
+  String get skillCoverageLegendShort;
+
+  /// An Account's standing chip: an administrator turned the request away.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get accountsStandingRejected;
+
+  /// An Account's standing chip: approved and able to sign in.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get accountsStandingActive;
+
+  /// An Account's standing chip: approved, but an administrator has switched it off.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivated'**
+  String get accountsStandingDeactivated;
+
+  /// An Account's standing chip: signed up, waiting for an administrator's decision.
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting Approval'**
+  String get accountsStandingAwaitingApproval;
+
+  /// A Grant's level: may read the Org Unit, may not change it.
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get grantLevelView;
+
+  /// A Grant's level: may read and change the Org Unit.
+  ///
+  /// In en, this message translates to:
+  /// **'View and edit'**
+  String get grantLevelViewAndEdit;
+
+  /// The Tier board's period selector: one shift.
+  ///
+  /// In en, this message translates to:
+  /// **'Shift'**
+  String get boardPeriodShift;
+
+  /// The Tier board's period selector: one day.
+  ///
+  /// In en, this message translates to:
+  /// **'Day'**
+  String get boardPeriodDay;
+
+  /// The Tier board's period selector: one week.
+  ///
+  /// In en, this message translates to:
+  /// **'Week'**
+  String get boardPeriodWeek;
+
+  /// The Tier board's period selector: one month.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get boardPeriodMonth;
 }
 
 class _AppLocalizationsDelegate

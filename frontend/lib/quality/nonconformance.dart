@@ -39,15 +39,8 @@ abstract final class DetectionPoint {
 
   static const List<String> values = [incoming, inProcess, finalInspection, audit, customer];
 
-  /// The point in the words a person reads.
-  static String label(String point) => switch (point) {
-        incoming => 'Incoming',
-        inProcess => 'In process',
-        finalInspection => 'Final inspection',
-        audit => 'Audit',
-        customer => 'Customer',
-        _ => point,
-      };
+  /// The point in the words a person reads — `l10n/vocabulary.dart`'s
+  /// (`detectionPointLabel`): a model knows a code, not a language.
 }
 
 /// The states a Non-conformance can be in — the baseline's own
@@ -66,14 +59,8 @@ abstract final class NonconformanceStatus {
 
   static const List<String> values = [open, contained, dispositioned, closed, cancelled];
 
-  static String label(String status) => switch (status) {
-        open => 'Open',
-        contained => 'Contained',
-        dispositioned => 'Dispositioned',
-        closed => 'Closed',
-        cancelled => 'Cancelled',
-        _ => status,
-      };
+  /// What a state means to a reader — the words are `l10n/vocabulary.dart`'s
+  /// (`nonconformanceStatusLabel`).
 
   /// What the state means, in the shared status vocabulary (issue #168): an
   /// open Non-conformance is the one that wants a decision, a contained one is
@@ -156,14 +143,6 @@ abstract final class DispositionType {
 
   /// What a recorder may choose from — the three that need no authority.
   static const List<String> choices = [scrap, rework, returnToSupplier];
-
-  static String label(String type) => switch (type) {
-        scrap => 'Scrap',
-        rework => 'Rework',
-        returnToSupplier => 'Return to supplier',
-        useAsIs => 'Use as is',
-        _ => type,
-      };
 }
 
 /// One Disposition: the decision about what happens to some of a
@@ -233,9 +212,8 @@ class Disposition {
 
   /// The kind in the words a person reads — "Concession" where the product was
   /// accepted as it is, which is the word the record's own reader is looking
-  /// for.
-  String get label =>
-      isConcession ? 'Concession' : DispositionType.label(dispositionType);
+  /// for. The words themselves are `l10n/vocabulary.dart`'s
+  /// (`disposition.label(l10n)`): a model knows a kind, not a language.
 
   /// Who decided it. An Employee named at a floor device wins where both are
   /// somehow present, and an unattributed row (which every route in this
@@ -256,13 +234,6 @@ abstract final class CorrectionKind {
   static const String severityLowered = 'severity_lowered';
   static const String reopened = 'reopened';
   static const String cancelled = 'cancelled';
-
-  static String label(String kind) => switch (kind) {
-        severityLowered => 'Severity lowered',
-        reopened => 'Reopened',
-        cancelled => 'Cancelled',
-        _ => kind,
-      };
 }
 
 /// One correction: what the record was, what it became, why, and who decided
@@ -306,25 +277,13 @@ class Correction {
   final String? correctedByAccountId;
   final String? correctedByAccountName;
 
-  String get label => CorrectionKind.label(kind);
-
-  /// What changed, in the words a reader wants: a severity lowering names both
-  /// severities, a reopen and a cancel name both states.
-  String get summary => switch (kind) {
-        CorrectionKind.severityLowered =>
-          'Severity lowered from ${DefectSeverity.label(previousSeverity ?? '')} '
-              'to ${DefectSeverity.label(newSeverity ?? '')}',
-        CorrectionKind.reopened =>
-          'Reopened from ${NonconformanceStatus.label(previousStatus ?? '')}',
-        CorrectionKind.cancelled =>
-          'Cancelled from ${NonconformanceStatus.label(previousStatus ?? '')}',
-        _ => label,
-      };
-
-  /// Who decided it, said the way [Disposition.decidedBy] is.
-  String get correctedBy {
+  /// The named Account's own display name, or null when the record names none.
+  /// What the row *reads* as, including the words for a correction with no
+  /// name, is `l10n/vocabulary.dart`'s ([correctionSummary],
+  /// [correctionKindLabel]): a model knows a correction, not a language.
+  String? get correctedByAccountDisplayName {
     final name = correctedByAccountName;
-    return name == null || name.isEmpty ? 'Unknown' : name;
+    return name == null || name.isEmpty ? null : name;
   }
 }
 
@@ -402,9 +361,7 @@ class LinkedConcern {
   /// Whether this is the Concern raised from this Non-conformance.
   final bool isSource;
 
-  String get statusLabel => actionStatusLabel(status);
   StatusTone get statusTone => actionStatusTone(status);
-  String get typeLabel => actionTypeLabel(actionType);
 
   /// Whether the cause is still being answered — what a reader of the record
   /// wants to know, said as a fact rather than left to the status's word.
@@ -601,10 +558,7 @@ class Nonconformance {
   /// empty state and its controls turn on.
   bool get hasConcerns => concerns.isNotEmpty;
 
-  String get statusLabel => NonconformanceStatus.label(status);
   StatusTone get statusTone => NonconformanceStatus.tone(status);
-  String get detectionPointLabel => DetectionPoint.label(detectionPoint);
-  String get severityLabel => DefectSeverity.label(severity);
 
   /// Whether the record is finished: closed because its whole quantity has
   /// been dealt with, or cancelled because it should never have been written

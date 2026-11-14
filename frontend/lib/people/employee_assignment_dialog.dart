@@ -60,6 +60,7 @@ import 'employee_detail_bloc.dart';
 import 'job_role.dart';
 import 'org_unit.dart';
 import 'org_unit_picker_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class EmployeeAssignmentDialog extends StatefulWidget {
   const EmployeeAssignmentDialog({super.key, required this.employee});
@@ -213,7 +214,7 @@ class _EmployeeAssignmentDialogState extends State<EmployeeAssignmentDialog> {
                   Padding(
                     key: EmployeeAssignmentDialog.failureKey,
                     padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
+                    child: NoticeText(
                       _failure!,
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                     ),
@@ -398,7 +399,7 @@ class _PickerMessage extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          NoticeText(
             message,
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),

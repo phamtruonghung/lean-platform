@@ -15,6 +15,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'org_unit.dart';
 import 'skill.dart';
+import '../l10n/notices.dart';
 
 sealed class SkillCoverageEvent {
   const SkillCoverageEvent();
@@ -87,9 +88,8 @@ class SkillCoverageBloc extends Bloc<SkillCoverageEvent, SkillCoverageState> {
   final PeopleApi _api;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
-  static const String noSitesMessage =
-      'There are no Sites you can see, so there is no coverage to show.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
+  static const String noSitesMessage = BlocNotice.noSitesCoverage;
 
   /// The last Site the caller actually settled on — the same reason
   /// `AssetsBloc._lastSiteId` is kept: a retry must re-open on it.

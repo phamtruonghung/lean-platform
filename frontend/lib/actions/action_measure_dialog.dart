@@ -26,6 +26,8 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'action.dart';
 import 'action_detail_bloc.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class ActionMeasureDialog extends StatefulWidget {
   const ActionMeasureDialog({super.key, required this.concern, required this.measureType});
@@ -65,7 +67,7 @@ class _ActionMeasureDialogState extends State<ActionMeasureDialog> {
   bool _awaiting = false;
   String? _failure;
 
-  String get _label => actionTypeLabel(widget.measureType);
+  String _label(AppLocalizations l10n) => actionTypeLabel(l10n, widget.measureType);
   bool get _complete => _title.text.trim().isNotEmpty;
 
   @override
@@ -114,7 +116,7 @@ class _ActionMeasureDialogState extends State<ActionMeasureDialog> {
     return BlocListener<ActionDetailBloc, ActionDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: l10n.actionMeasureAddA(_label.toLowerCase()),
+        title: l10n.actionMeasureAddA(_label(l10n).toLowerCase()),
         // A long form: five fields and the Org Unit chooser (issue #398).
         size: AppDialogSize.wide,
         actions: [
@@ -126,7 +128,7 @@ class _ActionMeasureDialogState extends State<ActionMeasureDialog> {
           ),
           AppDialogAction(
             id: 'add',
-            label: l10n.actionMeasureAddThe(_label.toLowerCase()),
+            label: l10n.actionMeasureAddThe(_label(l10n).toLowerCase()),
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -219,8 +221,8 @@ class _ActionMeasureDialogState extends State<ActionMeasureDialog> {
                     border: OutlineInputBorder(),
                   ),
                   items: [
-                    for (final entry in actionPriorityLabels.entries)
-                      DropdownMenuItem<int>(value: entry.key, child: Text(entry.value)),
+                    for (final (priority, label) in actionPriorityChoices(l10n))
+                      DropdownMenuItem<int>(value: priority, child: Text(label)),
                   ],
                   onChanged:
                       _awaiting ? null : (value) => setState(() => _priority = value ?? _priority),
@@ -238,7 +240,7 @@ class _ActionMeasureDialogState extends State<ActionMeasureDialog> {
                   Padding(
                     key: ActionMeasureDialog.failureKey,
                     padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
+                    child: NoticeText(
                       _failure!,
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                     ),

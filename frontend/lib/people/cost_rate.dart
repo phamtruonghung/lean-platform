@@ -34,27 +34,6 @@ const List<String> costRateTypes = [
   'rework_labor_per_hour',
 ];
 
-/// What a scope type is called on screen. The words are the plant's, not the
-/// column's — `cost_center` is a cost centre to a person reading the page.
-String costRateScopeTypeLabel(String scopeType) => switch (scopeType) {
-      'site' => 'Site',
-      'org_unit' => 'Org Unit',
-      'asset' => 'Asset',
-      'cost_center' => 'Cost centre',
-      _ => scopeType,
-    };
-
-/// What a rate type is called on screen, and what it means. The American
-/// spelling in the value (`labor_`) is the schema's and is never shown.
-String costRateTypeLabel(String rateType) => switch (rateType) {
-      'labor_per_hour' => 'Labour, per hour',
-      'overtime_premium_multiplier' => 'Overtime premium, a multiplier',
-      'machine_downtime_per_hour' => 'Machine downtime, per hour',
-      'overhead_per_hour' => 'Overhead, per hour',
-      'rework_labor_per_hour' => 'Rework labour, per hour',
-      _ => rateType,
-    };
-
 /// Whether a rate type's amount is money or a bare multiplier. The baseline
 /// shares one `amount` column for both on purpose (its own comment says so:
 /// 1.5 for time-and-a-half), so the currency is meaningless on the one that is
@@ -150,11 +129,6 @@ class CostRate {
   final String? note;
 
   bool get isCurrent => effectiveTo == null;
-
-  /// The scope as a row reads it: the record's own name where it is still
-  /// there, and the kind of thing it is.
-  String get scopeLabel =>
-      '${scopeName ?? 'Scope $scopeId'} · ${costRateScopeTypeLabel(scopeType)}';
 
   /// The amount as a row reads it — money carries its currency, the overtime
   /// multiplier does not, because it is dimensionless.

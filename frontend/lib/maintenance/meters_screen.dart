@@ -26,6 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/app_page_frame.dart';
@@ -40,6 +41,7 @@ import 'meter.dart';
 import 'meter_form_dialog.dart';
 import 'meters_bloc.dart';
 import 'reading_form_dialog.dart';
+import '../widgets/notice_text.dart';
 
 class MetersScreen extends StatelessWidget {
   const MetersScreen({super.key, required this.canAct});
@@ -209,7 +211,7 @@ class _Notice extends StatelessWidget {
                 Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
                 const SizedBox(width: Spacing.sm),
                 Expanded(
-                  child: Text(
+                  child: NoticeText(
                     message,
                     style: AppTypography.dense(context)
                         ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
@@ -401,7 +403,9 @@ List<AppTableColumn> _columns(BuildContext context, {required bool canAct}) {
     AppTableColumn(
       l10n.metersType,
       width:
-          _widestLabel(context, [for (final type in MeterType.values) type.label]) +
+          _widestLabel(context, [
+                for (final type in MeterType.values) meterTypeLabel(l10n, type.wire),
+              ]) +
           Spacing.xxl +
           Spacing.sm,
     ),
@@ -467,7 +471,10 @@ class _MeterTableRow extends StatelessWidget {
             style: muted,
           ),
           shrinkWrapTargets(
-            Chip(label: Text(meter.meterTypeLabel), visualDensity: VisualDensity.compact),
+            Chip(
+              label: Text(meterTypeLabel(l10n, meter.meterType)),
+              visualDensity: VisualDensity.compact,
+            ),
           ),
           DisclosingText(meter.uomCode, style: muted),
           meter.latestReading == null
@@ -546,7 +553,10 @@ class _MeterCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: Spacing.md),
-                Chip(label: Text(meter.meterTypeLabel), visualDensity: VisualDensity.compact),
+                Chip(
+                  label: Text(meterTypeLabel(l10n, meter.meterType)),
+                  visualDensity: VisualDensity.compact,
+                ),
               ],
             ),
             const SizedBox(height: Spacing.sm),

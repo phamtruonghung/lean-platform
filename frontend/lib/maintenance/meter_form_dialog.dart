@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -24,6 +25,7 @@ import 'asset.dart';
 import 'maintenance_api.dart';
 import 'meter.dart';
 import 'meters_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class MeterFormDialog extends StatefulWidget {
   const MeterFormDialog({super.key, required this.siteId});
@@ -285,14 +287,17 @@ class _MeterFormDialogState extends State<MeterFormDialog> {
               ),
               items: [
                 for (final type in MeterType.values)
-                  DropdownMenuItem<MeterType>(value: type, child: Text(type.label)),
+                  DropdownMenuItem<MeterType>(
+                    value: type,
+                    child: Text(meterTypeLabel(l10n, type.wire)),
+                  ),
               ],
               onChanged: _awaiting ? null : (value) => setState(() => _type = value!),
             ),
             Padding(
               padding: const EdgeInsets.only(top: Spacing.xs),
               child: Text(
-                _type.explanation,
+                meterTypeExplanation(l10n, _type.wire),
                 style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
               ),
             ),
@@ -300,7 +305,7 @@ class _MeterFormDialogState extends State<MeterFormDialog> {
               Padding(
                 key: MeterFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),
@@ -362,7 +367,7 @@ class _AssetField extends StatelessWidget {
           key: MeterFormDialog.assetsFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.commonAssetsFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
@@ -445,7 +450,7 @@ class _UomField extends StatelessWidget {
           key: MeterFormDialog.uomFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.meterFormUomFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),

@@ -16,6 +16,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../platform/auth_gateway.dart';
 import 'handover.dart';
 import 'production_api.dart';
+import '../l10n/notices.dart';
 
 sealed class SectionBoardEvent {
   const SectionBoardEvent();
@@ -86,7 +87,7 @@ class SectionBoardBloc extends Bloc<SectionBoardEvent, SectionBoardState> {
   String? _orgUnitId;
   String? _date;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   Future<void> _onStarted(SectionBoardStarted event, Emitter<SectionBoardState> emit) async {
     _orgUnitId = event.orgUnitId;

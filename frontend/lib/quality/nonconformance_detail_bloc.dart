@@ -31,6 +31,7 @@ import '../platform/auth_gateway.dart';
 import 'issue_image.dart';
 import 'nonconformance.dart';
 import 'quality_api.dart';
+import '../l10n/notices.dart';
 
 sealed class NonconformanceDetailEvent {
   const NonconformanceDetailEvent();
@@ -266,7 +267,7 @@ class NonconformanceDetailBloc extends Bloc<NonconformanceDetailEvent, Nonconfor
 
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
 
   String? _id;
 

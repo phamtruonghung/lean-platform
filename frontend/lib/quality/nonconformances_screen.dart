@@ -56,6 +56,7 @@ import 'nonconformance.dart';
 import 'nonconformance_org_unit_filter_dialog.dart';
 import 'nonconformances_bloc.dart';
 import 'slide_show_toggle.dart';
+import '../l10n/vocabulary.dart';
 
 class NonconformancesScreen extends StatelessWidget {
   const NonconformancesScreen({super.key});
@@ -298,7 +299,7 @@ class _Filters extends StatelessWidget {
               for (final status in NonconformanceStatus.values)
                 DropdownMenuItem<String?>(
                   value: status,
-                  child: Text(NonconformanceStatus.label(status)),
+                  child: Text(nonconformanceStatusLabel(l10n, status)),
                 ),
             ],
             onChanged: (status) => context
@@ -369,7 +370,7 @@ class _Filters extends StatelessWidget {
               for (final severity in DefectSeverity.values)
                 DropdownMenuItem<String?>(
                   value: severity,
-                  child: Text(DefectSeverity.label(severity)),
+                  child: Text(defectSeverityLabel(l10n, severity)),
                 ),
             ],
             onChanged: (severity) => context
@@ -511,11 +512,12 @@ double _numberColumnWidth(BuildContext context) {
 /// so it is the two widest labels of either family plus the [Spacing.xs] between
 /// them. Both are bounded sets, so this is measured once rather than guessed.
 double _stateColumnWidth(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
   final severity = _widestChip(context, [
-    for (final value in DefectSeverity.values) DefectSeverity.label(value),
+    for (final value in DefectSeverity.values) defectSeverityLabel(l10n, value),
   ]);
   final status = _widestChip(context, [
-    for (final value in NonconformanceStatus.values) NonconformanceStatus.label(value),
+    for (final value in NonconformanceStatus.values) nonconformanceStatusLabel(l10n, value),
   ]);
   return severity + Spacing.xs + status;
 }
@@ -622,7 +624,7 @@ class _NonconformanceTableRow extends StatelessWidget {
         cells: [
           DisclosingText(row.issueNo, style: dense?.copyWith(color: palette.textMuted)),
           DisclosingText(
-            '${row.productName} · ${row.defectCodeName} · ${row.detectionPointLabel}',
+            '${row.productName} · ${row.defectCodeName} · ${detectionPointLabel(l10n, row.detectionPoint)}',
             style: dense?.copyWith(color: palette.textPrimary),
           ),
           _shrinkWrapTargets(
@@ -632,13 +634,13 @@ class _NonconformanceTableRow extends StatelessWidget {
               children: [
                 StatusChip(
                   key: NonconformancesScreen.rowSeverityKey(row.id),
-                  label: row.severityLabel,
+                  label: row.severityLabel(l10n),
                   tone: _severityTone(row.severity),
                 ),
                 const SizedBox(width: Spacing.xs),
                 StatusChip(
                   key: NonconformancesScreen.rowStatusKey(row.id),
-                  label: row.statusLabel,
+                  label: row.statusLabel(l10n),
                   tone: row.statusTone,
                 ),
               ],
@@ -719,7 +721,7 @@ class _NonconformanceCard extends StatelessWidget {
               ),
               const SizedBox(height: Spacing.xs),
               Text(
-                '${row.productName} · ${row.defectCodeName} · ${row.detectionPointLabel}',
+                '${row.productName} · ${row.defectCodeName} · ${detectionPointLabel(l10n, row.detectionPoint)}',
                 style: AppTypography.dense(context)
                     ?.copyWith(color: palette.textPrimary, fontWeight: FontWeight.w500),
               ),
@@ -731,12 +733,12 @@ class _NonconformanceCard extends StatelessWidget {
                 children: [
                   StatusChip(
                     key: NonconformancesScreen.rowSeverityKey(row.id),
-                    label: row.severityLabel,
+                    label: row.severityLabel(l10n),
                     tone: _severityTone(row.severity),
                   ),
                   StatusChip(
                     key: NonconformancesScreen.rowStatusKey(row.id),
-                    label: row.statusLabel,
+                    label: row.statusLabel(l10n),
                     tone: row.statusTone,
                   ),
                 ],

@@ -31,15 +31,12 @@ abstract final class ObservationType {
 
   static const List<String> values = [safeAct, unsafeAct, unsafeCondition];
 
-  static String label(String type) => switch (type) {
-        safeAct => 'Safe act',
-        unsafeAct => 'Unsafe act',
-        unsafeCondition => 'Unsafe condition',
-        _ => type,
-      };
-
+  /// The dropdown's own item list. The words come from the caller
+  /// (`l10n/vocabulary.dart`'s `observationTypeLabel`): a model knows a code,
+  /// not a language.
   static List<DropdownMenuItem<String?>> dropdownItems({
-    String placeholder = 'Choose a type',
+    required String Function(String type) label,
+    String placeholder = '',
   }) =>
       [
         DropdownMenuItem<String?>(value: null, child: Text(placeholder)),
@@ -75,22 +72,11 @@ abstract final class ObservationCategory {
     other,
   ];
 
-  static String label(String category) => switch (category) {
-        ppe => 'PPE',
-        machineGuarding => 'Machine guarding',
-        housekeeping => 'Housekeeping',
-        ergonomics => 'Ergonomics',
-        chemical => 'Chemical',
-        workingAtHeight => 'Working at height',
-        traffic => 'Traffic',
-        energyIsolation => 'Energy isolation',
-        procedure => 'Procedure',
-        other => 'Other',
-        _ => category,
-      };
-
+  /// The dropdown's own item list. The words come from the caller
+  /// (`l10n/vocabulary.dart`'s `observationCategoryLabel`).
   static List<DropdownMenuItem<String?>> dropdownItems({
-    String placeholder = 'Choose a category',
+    required String Function(String category) label,
+    String placeholder = '',
   }) =>
       [
         DropdownMenuItem<String?>(value: null, child: Text(placeholder)),
@@ -114,16 +100,11 @@ abstract final class SeverityPotential {
   /// the order the picker renders in.
   static const List<String> values = [low, medium, high, fatal];
 
-  static String label(String potential) => switch (potential) {
-        low => 'Low',
-        medium => 'Medium',
-        high => 'High',
-        fatal => 'Fatal',
-        _ => potential,
-      };
-
+  /// The dropdown's own item list. The words come from the caller
+  /// (`l10n/vocabulary.dart`'s `severityPotentialLabel`).
   static List<DropdownMenuItem<String?>> dropdownItems({
-    String placeholder = 'Choose the worst credible outcome',
+    required String Function(String potential) label,
+    String placeholder = '',
   }) =>
       [
         DropdownMenuItem<String?>(value: null, child: Text(placeholder)),
@@ -216,9 +197,7 @@ class SafetyObservationAction {
   final String? orgUnitId;
   final String? orgUnitName;
 
-  String get statusLabel => actionStatusLabel(status);
   StatusTone get statusTone => actionStatusTone(status);
-  String get typeLabel => actionTypeLabel(actionType);
 }
 
 @immutable
@@ -322,20 +301,18 @@ class SafetyObservation {
   /// Whether any Action has been raised from this observation (issue #231).
   bool get hasActions => actions.isNotEmpty;
 
-  String get observationTypeLabel => ObservationType.label(observationType);
-  String get categoryLabel => ObservationCategory.label(category);
-  String get severityPotentialLabel => SeverityPotential.label(severityPotential);
   StatusTone get severityPotentialTone => SeverityPotential.tone(severityPotential);
 
   /// Who recorded it, in the words a reader wants. An Account wins where one
   /// is present, the only door for a record this app itself writes — a floor
-  /// report is the fallback.
-  String get recordedByLabel {
+  /// report is the fallback. Null when neither is named; the catalogue's own
+  /// word for that is the Screen's (`l10n/vocabulary.dart`'s `namedOrUnknown`).
+  String? get recordedBy {
     final account = recordedByAccountName;
     if (account != null && account.isNotEmpty) return account;
     final employee = observerEmployeeName;
     if (employee != null && employee.isNotEmpty) return employee;
-    return 'Unknown';
+    return null;
   }
 
   /// The production day in the words a reader wants, falling back to the

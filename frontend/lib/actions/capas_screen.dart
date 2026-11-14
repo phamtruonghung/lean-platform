@@ -43,6 +43,7 @@ import '../widgets/status_chip.dart';
 import 'capa.dart';
 import 'capa_org_unit_filter_dialog.dart';
 import 'capas_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 class CapasScreen extends StatelessWidget {
   const CapasScreen({super.key});
@@ -202,10 +203,10 @@ class _Filters extends StatelessWidget {
             decoration: InputDecoration(labelText: l10n.commonStatus, border: OutlineInputBorder()),
             items: [
               DropdownMenuItem<String?>(value: null, child: Text(l10n.nonconformancesAnyStatus)),
-              for (final status in capaStatuses.keys)
+              for (final (status, label) in capaStatusChoices(l10n))
                 DropdownMenuItem<String?>(
                   value: status,
-                  child: Text(capaStatusLabel(status)),
+                  child: Text(label),
                 ),
             ],
             onChanged: (status) =>
@@ -365,8 +366,8 @@ double _statusColumnWidth(BuildContext context) {
     textScaler: MediaQuery.textScalerOf(context),
   );
   var widest = 0.0;
-  for (final status in capaStatuses.keys) {
-    painter.text = TextSpan(text: capaStatusLabel(status), style: Theme.of(context).textTheme.labelLarge);
+  for (final (_, label) in capaStatusChoices(l10n)) {
+    painter.text = TextSpan(text: label, style: Theme.of(context).textTheme.labelLarge);
     painter.layout();
     if (painter.width > widest) widest = painter.width;
   }
@@ -402,7 +403,7 @@ class _CapaTableRow extends StatelessWidget {
     final Widget check;
     if (verifiedAt != null) {
       check = Text(
-        l10n.capasRecordedBy(capaEffectivenessOutcomeLabel(capa.effectivenessOutcome!), capa.effectivenessVerifiedBy?.name ?? 'somebody'),
+        l10n.capasRecordedBy(capaEffectivenessOutcomeLabel(l10n, capa.effectivenessOutcome!), capa.effectivenessVerifiedBy?.name ?? 'somebody'),
         key: CapasScreen.rowVerifiedKey(capa.id),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
@@ -447,7 +448,7 @@ class _CapaTableRow extends StatelessWidget {
               ),
               const SizedBox(height: Spacing.xxs),
               Text(
-                [capa.methodLabel, l10n.capasOnTheTeam(capa.team.length)].join(' · '),
+                [capa.methodLabel(l10n), l10n.capasOnTheTeam(capa.team.length)].join(' · '),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: floor,
@@ -471,7 +472,7 @@ class _CapaTableRow extends StatelessWidget {
                     label: l10n.capasOverdueCheck,
                     tone: StatusTone.warning,
                   ),
-                StatusChip(label: capa.statusLabel, tone: capa.statusTone),
+                StatusChip(label: capa.statusLabel(l10n), tone: capa.statusTone),
               ],
             ),
           ),
@@ -532,7 +533,7 @@ class _CapaRow extends StatelessWidget {
                           label: l10n.capasOverdueCheck,
                           tone: StatusTone.warning,
                         ),
-                      StatusChip(label: capa.statusLabel, tone: capa.statusTone),
+                      StatusChip(label: capa.statusLabel(l10n), tone: capa.statusTone),
                     ],
                   ),
                 ],
@@ -542,7 +543,7 @@ class _CapaRow extends StatelessWidget {
               const SizedBox(height: Spacing.xs),
               Text(
                 [
-                  capa.methodLabel,
+                  capa.methodLabel(l10n),
                   capa.orgUnitName,
                   l10n.capasOnTheTeam(capa.team.length),
                 ].join(' · '),
@@ -565,7 +566,7 @@ class _CapaRow extends StatelessWidget {
                   key: CapasScreen.rowVerifiedKey(capa.id),
                   padding: const EdgeInsets.only(top: Spacing.xs),
                   child: Text(
-                    l10n.capasRecordedBy(capaEffectivenessOutcomeLabel(capa.effectivenessOutcome!), capa.effectivenessVerifiedBy?.name ?? 'somebody'),
+                    l10n.capasRecordedBy(capaEffectivenessOutcomeLabel(l10n, capa.effectivenessOutcome!), capa.effectivenessVerifiedBy?.name ?? 'somebody'),
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),

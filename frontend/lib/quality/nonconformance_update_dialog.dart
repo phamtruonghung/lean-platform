@@ -26,6 +26,8 @@ import '../widgets/app_dialog.dart';
 import 'defect_code.dart';
 import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class NonconformanceUpdateDialog extends StatefulWidget {
   const NonconformanceUpdateDialog({super.key, required this.nonconformance});
@@ -140,7 +142,7 @@ class _NonconformanceUpdateDialogState extends State<NonconformanceUpdateDialog>
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              l10n.nonconformanceUpdateIsSeverityAnd(row.issueNo, row.severityLabel.toLowerCase(), row.statusLabel.toLowerCase()),
+              l10n.nonconformanceUpdateIsSeverityAnd(row.issueNo, row.severityLabel(l10n).toLowerCase(), row.statusLabel(l10n).toLowerCase()),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: Spacing.md),
@@ -168,7 +170,7 @@ class _NonconformanceUpdateDialogState extends State<NonconformanceUpdateDialog>
                   for (final severity in offerable)
                     DropdownMenuItem<String?>(
                       value: severity,
-                      child: Text(DefectSeverity.label(severity)),
+                      child: Text(defectSeverityLabel(l10n, severity)),
                     ),
                 ],
                 onChanged: _awaiting ? null : (value) => setState(() => _severity = value),
@@ -216,7 +218,7 @@ class _NonconformanceUpdateDialogState extends State<NonconformanceUpdateDialog>
               Padding(
                 key: NonconformanceUpdateDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

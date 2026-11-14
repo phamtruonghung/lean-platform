@@ -21,6 +21,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_scan_field.dart';
 import 'org_unit.dart';
 import 'org_unit_admin_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class OrgUnitFormDialog extends StatefulWidget {
   const OrgUnitFormDialog({super.key, required this.siteId, required this.parentId});
@@ -187,7 +188,7 @@ class _OrgUnitFormDialogState extends State<OrgUnitFormDialog> {
                   Padding(
                     key: OrgUnitFormDialog.failureKey,
                     padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
+                    child: NoticeText(
                       _failure!,
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                     ),

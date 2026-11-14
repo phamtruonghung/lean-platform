@@ -20,6 +20,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'action.dart';
 import 'action_detail_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class ActionEscalateDialogHost extends StatefulWidget {
   const ActionEscalateDialogHost({super.key});
@@ -245,7 +246,7 @@ class _ActionEscalateDialogState extends State<ActionEscalateDialog> {
                   Padding(
                     key: ActionEscalateDialog.failureKey,
                     padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
+                    child: NoticeText(
                       _failure!,
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                     ),

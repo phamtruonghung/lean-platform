@@ -22,6 +22,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'maintenance_api.dart';
 import 'tier_board.dart';
+import '../l10n/notices.dart';
 
 sealed class TierBoardEvent {
   const TierBoardEvent();
@@ -174,8 +175,8 @@ class TierBoardBloc extends Bloc<TierBoardEvent, TierBoardState> {
   final PeopleApi _people;
   final AuthGateway _auth;
 
-  static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
-  static const String noSitesMessage = 'There are no Sites you can see, so there is no board to show.';
+  static const String signedOutMessage = BlocNotice.sessionEnded;
+  static const String noSitesMessage = BlocNotice.noSitesBoard;
 
   /// The last Site the caller settled on, so a retry reopens on it rather than
   /// jumping back to the first — the same guard `WorkOrdersBloc._lastSiteId`

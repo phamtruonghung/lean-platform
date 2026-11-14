@@ -23,6 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -31,6 +32,7 @@ import 'asset.dart';
 import 'maintenance_api.dart';
 import 'my_requests_bloc.dart';
 import 'request.dart';
+import '../widgets/notice_text.dart';
 
 class RequestFormDialog extends StatefulWidget {
   const RequestFormDialog({super.key, required this.siteId});
@@ -223,7 +225,10 @@ class _RequestFormDialogState extends State<RequestFormDialog> {
               decoration: InputDecoration(labelText: l10n.requestsUrgency, border: OutlineInputBorder()),
               items: [
                 for (final urgency in RequestUrgency.values)
-                  DropdownMenuItem<RequestUrgency>(value: urgency, child: Text(urgency.label)),
+                  DropdownMenuItem<RequestUrgency>(
+                    value: urgency,
+                    child: Text(requestUrgencyLabel(l10n, urgency.wire)),
+                  ),
               ],
               onChanged: _awaiting ? null : (value) => setState(() => _urgency = value),
             ),
@@ -253,7 +258,7 @@ class _RequestFormDialogState extends State<RequestFormDialog> {
               Padding(
                 key: RequestFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),
@@ -315,7 +320,7 @@ class _AssetField extends StatelessWidget {
           key: RequestFormDialog.assetsFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.commonAssetsFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
