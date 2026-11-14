@@ -6643,4 +6643,446 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get kpiTargetsEveryEntryMadeForThisKpiWill =>
       'Every entry made for this KPI will be listed here.';
+
+  @override
+  String get assetFormCorrectDetails => 'Correct details';
+
+  @override
+  String get commonAddAnAsset => 'Add an Asset';
+
+  @override
+  String get assetFormAddAsset => 'Add Asset';
+
+  @override
+  String get assetFormUniqueAcrossTheWholePlatformNotJust =>
+      'Unique across the whole Platform, not just this Site.';
+
+  @override
+  String get assetFormKind => 'Kind';
+
+  @override
+  String get commonCriticality => 'Criticality';
+
+  @override
+  String get assetFormWhereThisAssetSitsIsChangedWith =>
+      'Where this Asset sits is changed with its own \"Change Org Unit…\" action.';
+
+  @override
+  String assetFormThisAssetWillSitAt(Object value) {
+    return 'This Asset will sit at $value.';
+  }
+
+  @override
+  String get assetMoveChangeWhereThisAssetSits =>
+      'Change where this Asset sits';
+
+  @override
+  String get assetMoveChangeOrgUnit => 'Change Org Unit';
+
+  @override
+  String assetMoveSitsAtNow(Object name, Object code, Object orgUnitName) {
+    return '$name ($code) sits at $orgUnitName now.';
+  }
+
+  @override
+  String get assetMoveMoveItTo => 'Move it to';
+
+  @override
+  String get assetMoveWhereThisAssetWillSitItDecides =>
+      'Where this Asset will sit. It decides who may raise and close work against it; work already recorded against it stays where it happened.';
+
+  @override
+  String assetMoveThisAssetWillSitAt(Object value) {
+    return 'This Asset will sit at $value.';
+  }
+
+  @override
+  String get assetsTheRegisterCouldNotBeRead =>
+      'The register could not be read';
+
+  @override
+  String get assetsNoAssetsOnTheRegisterYet => 'No Assets on the register yet';
+
+  @override
+  String get assetsNothingHasBeenRecordedAtThisSite =>
+      'Nothing has been recorded at this Site. Add a machine and it can be worked on the same day.';
+
+  @override
+  String get assetsEveryMachineOnTheRegisterAtThis =>
+      'Every machine on the register at this Site, and the Org Unit each one sits at.';
+
+  @override
+  String get assetsShowRetired => 'Show retired';
+
+  @override
+  String get assetsFilterAssets => 'Filter Assets';
+
+  @override
+  String get assetsNoAssetsMatch => 'No Assets match';
+
+  @override
+  String assetsThisSiteHasAssetsOnTheRegister(Object term) {
+    return 'This Site has Assets on the register, but none matches \"$term\". Try a different name or code, or clear the filter.';
+  }
+
+  @override
+  String get assetsCodeType => 'Code · Type';
+
+  @override
+  String get assetsCorrectDetails => 'Correct details…';
+
+  @override
+  String get assetsChangeOrgUnit => 'Change Org Unit…';
+
+  @override
+  String get assetsDetach => 'Detach';
+
+  @override
+  String get assetsNestUnder => 'Nest under…';
+
+  @override
+  String get assetsRetireThisAsset => 'Retire this Asset?';
+
+  @override
+  String assetsWillNoLongerAppearOnTheActive(Object name) {
+    return '$name will no longer appear on the active register. Nothing is deleted, and it can be reinstated at any time.';
+  }
+
+  @override
+  String get assetsThereIsNothingElseOnThisRegister =>
+      'There is nothing else on this register it could sit beneath.';
+
+  @override
+  String get breakdownReportReportABreakdown => 'Report a Breakdown';
+
+  @override
+  String get breakdownReportReport => 'Report';
+
+  @override
+  String get breakdownReportStartedAtOptional => 'Started at (optional)';
+
+  @override
+  String get commonLeaveBlankToRecordNow => 'Leave blank to record now.';
+
+  @override
+  String downtimeClassifyClassifyTheStopFor(Object assetName) {
+    return 'Classify the stop for $assetName';
+  }
+
+  @override
+  String get downtimeClassifyKeepItUnclassified => 'Keep it unclassified';
+
+  @override
+  String get downtimeClassifyDescriptionRequired => 'Description (required)';
+
+  @override
+  String get downtimeClassifyTheDowntimeReasonsCouldNotBeRead =>
+      'The Downtime reasons could not be read.';
+
+  @override
+  String downtimeCloseCloseTheStopFor(Object assetName) {
+    return 'Close the stop for $assetName?';
+  }
+
+  @override
+  String get commonKeepItOpen => 'Keep it open';
+
+  @override
+  String get downtimeCloseCloseThisStop => 'Close this stop';
+
+  @override
+  String get downtimeCloseTheMachineIsRunningAgainTheServer =>
+      'The machine is running again. The server records how long it was down.';
+
+  @override
+  String get downtimeCloseEndedAtOptional => 'Ended at (optional)';
+
+  @override
+  String get floorTheFloorWorkCouldNotBeLoaded =>
+      'The floor work could not be loaded';
+
+  @override
+  String get floorNoOpenWork => 'No open work';
+
+  @override
+  String floorThereIsNoOpenWorkForRight(Object orgUnitName) {
+    return 'There is no open work for $orgUnitName right now.';
+  }
+
+  @override
+  String get floorRefresh => 'Refresh';
+
+  @override
+  String get floorFloorWork => 'Floor work';
+
+  @override
+  String get floorObservation => 'Observation';
+
+  @override
+  String get floorMyTraining => 'My training';
+
+  @override
+  String floorTechnicianComplete(Object workOrderNo) {
+    return 'Complete $workOrderNo';
+  }
+
+  @override
+  String floorTechnicianStart(Object workOrderNo) {
+    return 'Start $workOrderNo';
+  }
+
+  @override
+  String get floorTechnicianWhoIsRecordingThisYourEmployeeNumber =>
+      'Who is recording this? Your Employee number and PIN identify you for this action only.';
+
+  @override
+  String get commonWhatWasFound => 'What was found?';
+
+  @override
+  String get myRequestsYourRequestsCouldNotBeRead =>
+      'Your requests could not be read';
+
+  @override
+  String get myRequestsWhatYouRaisedAndWhatBecameOf =>
+      'What you raised, and what became of each.';
+
+  @override
+  String get commonRaiseARequest => 'Raise a Request';
+
+  @override
+  String myRequestsYouHaveRequestsAtThisSiteBut(Object term) {
+    return 'You have Requests at this Site, but none matches \"$term\". Try a different description or Asset.';
+  }
+
+  @override
+  String get myRequestsOutcome => 'Outcome';
+
+  @override
+  String myRequestsBecameWorkOrder(Object workOrderNo) {
+    return 'Became Work order $workOrderNo';
+  }
+
+  @override
+  String myRequestsDeclined(Object rejectionReason) {
+    return 'Declined: $rejectionReason';
+  }
+
+  @override
+  String get myRequestsNothingRaisedYet => 'Nothing raised yet';
+
+  @override
+  String get myRequestsYouHaveNotRaisedAnyRequestsAt =>
+      'You have not raised any Requests at this Site. Raise one and it will show up here with whatever becomes of it.';
+
+  @override
+  String get commonAddPart => 'Add part';
+
+  @override
+  String get commonPartNumber => 'Part number';
+
+  @override
+  String get partsThePartsCatalogueCouldNotBeRead =>
+      'The parts catalogue could not be read';
+
+  @override
+  String get partsTheSharedCatalogueDefinedOnceReusedAt =>
+      'The shared catalogue — defined once, reused at every Site.';
+
+  @override
+  String get partsNoPartsYet => 'No parts yet';
+
+  @override
+  String get partsFilterParts => 'Filter parts';
+
+  @override
+  String get commonByPartNumberOrDescription =>
+      'By part number or description.';
+
+  @override
+  String get commonNoPartsMatch => 'No parts match';
+
+  @override
+  String partsNothingInTheCatalogueMatchesTryA(Object term) {
+    return 'Nothing in the catalogue matches \"$term\". Try a different part number or description, or clear the filter.';
+  }
+
+  @override
+  String get commonReceiveStock => 'Receive stock';
+
+  @override
+  String get receiveReceiving => 'Receiving…';
+
+  @override
+  String get receiveReceive => 'Receive';
+
+  @override
+  String get receiveReasonOptional => 'Reason (optional)';
+
+  @override
+  String get commonRaise => 'Raise';
+
+  @override
+  String get requestFormProductionIsStoppedRightNow =>
+      'Production is stopped right now';
+
+  @override
+  String get storeStockThisStoreCouldNotBeRead =>
+      'This store could not be read';
+
+  @override
+  String get storeStockBackToStores => 'Back to Stores';
+
+  @override
+  String get storeStockNothingOnTheShelf => 'Nothing on the shelf';
+
+  @override
+  String get storeStockNoPartHasMovedInOrOut =>
+      'No part has moved in or out of this store yet.';
+
+  @override
+  String get storeStockFilterStock => 'Filter stock';
+
+  @override
+  String storeStockThisStoreHoldsStockButNothingOn(Object term) {
+    return 'This store holds stock, but nothing on its shelf matches \"$term\". Try a different part number or description.';
+  }
+
+  @override
+  String get storesTheStoresCouldNotBeRead => 'The stores could not be read';
+
+  @override
+  String get storesTheShelvesThatHoldPartsAtThis =>
+      'The shelves that hold parts at this Site.';
+
+  @override
+  String get storesNoStoresYet => 'No stores yet';
+
+  @override
+  String get storesNothingHereHoldsParts => 'Nothing here holds parts.';
+
+  @override
+  String get storesFilterStores => 'Filter stores';
+
+  @override
+  String get storesNoStoresMatch => 'No stores match';
+
+  @override
+  String storesThisSiteHasStoresButNoneMatches(Object term) {
+    return 'This Site has stores, but none matches \"$term\". Try a different name or code, or clear the filter.';
+  }
+
+  @override
+  String get storesTappingAStoreShowsWhatIsOn =>
+      'Tapping a store shows what is on its shelf.';
+
+  @override
+  String get storesCodeOrgUnit => 'Code · Org Unit';
+
+  @override
+  String taskReadingRecordAReadingOn(Object value) {
+    return 'Record a reading on $value';
+  }
+
+  @override
+  String get taskReadingWhatTheMeterReads => 'What the meter reads';
+
+  @override
+  String get tierBoardOrgUnitFilterNarrowTheBoard => 'Narrow the board';
+
+  @override
+  String get tierBoardOrgUnitFilterChooseTheOrgUnitWhoseNumbersAnd =>
+      'Choose the Org Unit whose numbers and everything beneath it you want to read, or clear back to the whole Site.';
+
+  @override
+  String get tierTheTierBoardCouldNotBeRead =>
+      'The tier board could not be read';
+
+  @override
+  String get tierTheNumbersThisSiteSWorkProduces =>
+      'The numbers this Site\'s work produces, reported under the five Pillars. Every Pillar is shown whether or not anything reports under it yet.';
+
+  @override
+  String get tierDate => 'Date';
+
+  @override
+  String get tierNoPillarsToShow => 'No Pillars to show';
+
+  @override
+  String get tierThisSiteHasNoPillarsToReport =>
+      'This Site has no Pillars to report against yet.';
+
+  @override
+  String get tierNoDataYet => 'No data yet';
+
+  @override
+  String get tierNoKpiIsDefinedUnderThisPillar =>
+      'No KPI is defined under this Pillar yet.';
+
+  @override
+  String get tierValue => 'Value';
+
+  @override
+  String get workOrderAssignFindAPerson => 'Find a person';
+
+  @override
+  String get workOrderAssignByNameEmployeeNumberOrTheQualification =>
+      'By name, employee number, or the qualification they hold.';
+
+  @override
+  String get workOrderAssignTheCandidatesCouldNotBeRead =>
+      'The candidates could not be read.';
+
+  @override
+  String workOrderAssignNobodyMatchesTryADifferentNameNumber(Object term) {
+    return 'Nobody matches \"$term\" — try a different name, number, or skill.';
+  }
+
+  @override
+  String get workOrderAssignThereIsNobodyThisWorkOrderCould =>
+      'There is nobody this Work order could be given to.';
+
+  @override
+  String get workOrderAssignNoQualificationsRecorded =>
+      'No qualifications recorded';
+
+  @override
+  String get workOrderCancelCancelThisWorkOrder => 'Cancel this Work order?';
+
+  @override
+  String get workOrderCancelCancelThisWorkOrder2 => 'Cancel this Work order';
+
+  @override
+  String get workOrderCancelWhyIsThisBeingCancelledOptional =>
+      'Why is this being cancelled? (optional)';
+
+  @override
+  String get workOrderCompleteCompleteThisWorkOrder =>
+      'Complete this Work order';
+
+  @override
+  String get workOrderDialogYouDoNotHoldAWriteGrant =>
+      'You do not hold a write Grant that reaches this Work order.';
+
+  @override
+  String get workOrderDialogLoadingThisWorkOrder => 'Loading this Work order';
+
+  @override
+  String get workOrderDialogThatIsNoLongerAvailable =>
+      'That is no longer available';
+
+  @override
+  String workOrderDialogThisWorkOrderIsNowWhichNo(Object statusLabel) {
+    return 'This Work order is now $statusLabel, which no longer offers this action.';
+  }
+
+  @override
+  String get workOrderDialogThatWorkOrderIsNotInThis =>
+      'That Work order is not in this list';
+
+  @override
+  String get workOrderDialogItMayHaveBeenCompletedCancelledOr =>
+      'It may have been completed, cancelled, or it is outside the Site or Org Unit the list is currently showing.';
+
+  @override
+  String get workOrdersWoBuc202600001 => 'WO-BUC-2026-00001';
 }

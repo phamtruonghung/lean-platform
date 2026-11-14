@@ -851,8 +851,9 @@ double _statusColumnWidth(BuildContext context) {
 /// The number is a code, never truncated, so its column is sized to it and does
 /// not take a share of the flex.
 double _workOrderNoColumnWidth(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
   final painter = TextPainter(
-    text: TextSpan(text: 'WO-BUC-2026-00001', style: AppTypography.dense(context)),
+    text: TextSpan(text: l10n.workOrdersWoBuc202600001, style: AppTypography.dense(context)),
     textDirection: Directionality.of(context),
     textScaler: MediaQuery.textScalerOf(context),
   )..layout();

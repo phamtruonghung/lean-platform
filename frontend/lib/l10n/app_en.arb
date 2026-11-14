@@ -4561,5 +4561,224 @@
   "kpiTargetsHistory": "History",
   "kpiTargetsNewestFirstAnEntryIsNeverEdited": "Newest first. An entry is never edited — a later one supersedes it.",
   "kpiTargetsNoTargetHasBeenSet": "No Target has been set",
-  "kpiTargetsEveryEntryMadeForThisKpiWill": "Every entry made for this KPI will be listed here."
+  "kpiTargetsEveryEntryMadeForThisKpiWill": "Every entry made for this KPI will be listed here.",
+  "assetFormCorrectDetails": "Correct details",
+  "commonAddAnAsset": "Add an Asset",
+  "assetFormAddAsset": "Add Asset",
+  "assetFormUniqueAcrossTheWholePlatformNotJust": "Unique across the whole Platform, not just this Site.",
+  "assetFormKind": "Kind",
+  "commonCriticality": "Criticality",
+  "assetFormWhereThisAssetSitsIsChangedWith": "Where this Asset sits is changed with its own \"Change Org Unit…\" action.",
+  "assetFormThisAssetWillSitAt": "This Asset will sit at {value}.",
+  "@assetFormThisAssetWillSitAt": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "assetMoveChangeWhereThisAssetSits": "Change where this Asset sits",
+  "assetMoveChangeOrgUnit": "Change Org Unit",
+  "assetMoveSitsAtNow": "{name} ({code}) sits at {orgUnitName} now.",
+  "@assetMoveSitsAtNow": {
+    "placeholders": {
+      "name": {"type": "Object"},
+      "code": {"type": "Object"},
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "assetMoveMoveItTo": "Move it to",
+  "assetMoveWhereThisAssetWillSitItDecides": "Where this Asset will sit. It decides who may raise and close work against it; work already recorded against it stays where it happened.",
+  "assetMoveThisAssetWillSitAt": "This Asset will sit at {value}.",
+  "@assetMoveThisAssetWillSitAt": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "assetsTheRegisterCouldNotBeRead": "The register could not be read",
+  "assetsNoAssetsOnTheRegisterYet": "No Assets on the register yet",
+  "assetsNothingHasBeenRecordedAtThisSite": "Nothing has been recorded at this Site. Add a machine and it can be worked on the same day.",
+  "assetsEveryMachineOnTheRegisterAtThis": "Every machine on the register at this Site, and the Org Unit each one sits at.",
+  "assetsShowRetired": "Show retired",
+  "assetsFilterAssets": "Filter Assets",
+  "assetsNoAssetsMatch": "No Assets match",
+  "assetsThisSiteHasAssetsOnTheRegister": "This Site has Assets on the register, but none matches \"{term}\". Try a different name or code, or clear the filter.",
+  "@assetsThisSiteHasAssetsOnTheRegister": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "assetsCodeType": "Code · Type",
+  "assetsCorrectDetails": "Correct details…",
+  "assetsChangeOrgUnit": "Change Org Unit…",
+  "assetsDetach": "Detach",
+  "assetsNestUnder": "Nest under…",
+  "assetsRetireThisAsset": "Retire this Asset?",
+  "assetsWillNoLongerAppearOnTheActive": "{name} will no longer appear on the active register. Nothing is deleted, and it can be reinstated at any time.",
+  "@assetsWillNoLongerAppearOnTheActive": {
+    "placeholders": {
+      "name": {"type": "Object"}
+    }
+  },
+  "assetsThereIsNothingElseOnThisRegister": "There is nothing else on this register it could sit beneath.",
+  "breakdownReportReportABreakdown": "Report a Breakdown",
+  "breakdownReportReport": "Report",
+  "breakdownReportStartedAtOptional": "Started at (optional)",
+  "commonLeaveBlankToRecordNow": "Leave blank to record now.",
+  "downtimeClassifyClassifyTheStopFor": "Classify the stop for {assetName}",
+  "@downtimeClassifyClassifyTheStopFor": {
+    "placeholders": {
+      "assetName": {"type": "Object"}
+    }
+  },
+  "downtimeClassifyKeepItUnclassified": "Keep it unclassified",
+  "downtimeClassifyDescriptionRequired": "Description (required)",
+  "downtimeClassifyTheDowntimeReasonsCouldNotBeRead": "The Downtime reasons could not be read.",
+  "downtimeCloseCloseTheStopFor": "Close the stop for {assetName}?",
+  "@downtimeCloseCloseTheStopFor": {
+    "placeholders": {
+      "assetName": {"type": "Object"}
+    }
+  },
+  "commonKeepItOpen": "Keep it open",
+  "downtimeCloseCloseThisStop": "Close this stop",
+  "downtimeCloseTheMachineIsRunningAgainTheServer": "The machine is running again. The server records how long it was down.",
+  "downtimeCloseEndedAtOptional": "Ended at (optional)",
+  "floorTheFloorWorkCouldNotBeLoaded": "The floor work could not be loaded",
+  "floorNoOpenWork": "No open work",
+  "floorThereIsNoOpenWorkForRight": "There is no open work for {orgUnitName} right now.",
+  "@floorThereIsNoOpenWorkForRight": {
+    "placeholders": {
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "floorRefresh": "Refresh",
+  "floorFloorWork": "Floor work",
+  "floorObservation": "Observation",
+  "floorMyTraining": "My training",
+  "floorTechnicianComplete": "Complete {workOrderNo}",
+  "@floorTechnicianComplete": {
+    "placeholders": {
+      "workOrderNo": {"type": "Object"}
+    }
+  },
+  "floorTechnicianStart": "Start {workOrderNo}",
+  "@floorTechnicianStart": {
+    "placeholders": {
+      "workOrderNo": {"type": "Object"}
+    }
+  },
+  "floorTechnicianWhoIsRecordingThisYourEmployeeNumber": "Who is recording this? Your Employee number and PIN identify you for this action only.",
+  "commonWhatWasFound": "What was found?",
+  "myRequestsYourRequestsCouldNotBeRead": "Your requests could not be read",
+  "myRequestsWhatYouRaisedAndWhatBecameOf": "What you raised, and what became of each.",
+  "commonRaiseARequest": "Raise a Request",
+  "myRequestsYouHaveRequestsAtThisSiteBut": "You have Requests at this Site, but none matches \"{term}\". Try a different description or Asset.",
+  "@myRequestsYouHaveRequestsAtThisSiteBut": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "myRequestsOutcome": "Outcome",
+  "myRequestsBecameWorkOrder": "Became Work order {workOrderNo}",
+  "@myRequestsBecameWorkOrder": {
+    "placeholders": {
+      "workOrderNo": {"type": "Object"}
+    }
+  },
+  "myRequestsDeclined": "Declined: {rejectionReason}",
+  "@myRequestsDeclined": {
+    "placeholders": {
+      "rejectionReason": {"type": "Object"}
+    }
+  },
+  "myRequestsNothingRaisedYet": "Nothing raised yet",
+  "myRequestsYouHaveNotRaisedAnyRequestsAt": "You have not raised any Requests at this Site. Raise one and it will show up here with whatever becomes of it.",
+  "commonAddPart": "Add part",
+  "commonPartNumber": "Part number",
+  "partsThePartsCatalogueCouldNotBeRead": "The parts catalogue could not be read",
+  "partsTheSharedCatalogueDefinedOnceReusedAt": "The shared catalogue — defined once, reused at every Site.",
+  "partsNoPartsYet": "No parts yet",
+  "partsFilterParts": "Filter parts",
+  "commonByPartNumberOrDescription": "By part number or description.",
+  "commonNoPartsMatch": "No parts match",
+  "partsNothingInTheCatalogueMatchesTryA": "Nothing in the catalogue matches \"{term}\". Try a different part number or description, or clear the filter.",
+  "@partsNothingInTheCatalogueMatchesTryA": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "commonReceiveStock": "Receive stock",
+  "receiveReceiving": "Receiving…",
+  "receiveReceive": "Receive",
+  "receiveReasonOptional": "Reason (optional)",
+  "commonRaise": "Raise",
+  "requestFormProductionIsStoppedRightNow": "Production is stopped right now",
+  "storeStockThisStoreCouldNotBeRead": "This store could not be read",
+  "storeStockBackToStores": "Back to Stores",
+  "storeStockNothingOnTheShelf": "Nothing on the shelf",
+  "storeStockNoPartHasMovedInOrOut": "No part has moved in or out of this store yet.",
+  "storeStockFilterStock": "Filter stock",
+  "storeStockThisStoreHoldsStockButNothingOn": "This store holds stock, but nothing on its shelf matches \"{term}\". Try a different part number or description.",
+  "@storeStockThisStoreHoldsStockButNothingOn": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "storesTheStoresCouldNotBeRead": "The stores could not be read",
+  "storesTheShelvesThatHoldPartsAtThis": "The shelves that hold parts at this Site.",
+  "storesNoStoresYet": "No stores yet",
+  "storesNothingHereHoldsParts": "Nothing here holds parts.",
+  "storesFilterStores": "Filter stores",
+  "storesNoStoresMatch": "No stores match",
+  "storesThisSiteHasStoresButNoneMatches": "This Site has stores, but none matches \"{term}\". Try a different name or code, or clear the filter.",
+  "@storesThisSiteHasStoresButNoneMatches": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "storesTappingAStoreShowsWhatIsOn": "Tapping a store shows what is on its shelf.",
+  "storesCodeOrgUnit": "Code · Org Unit",
+  "taskReadingRecordAReadingOn": "Record a reading on {value}",
+  "@taskReadingRecordAReadingOn": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "taskReadingWhatTheMeterReads": "What the meter reads",
+  "tierBoardOrgUnitFilterNarrowTheBoard": "Narrow the board",
+  "tierBoardOrgUnitFilterChooseTheOrgUnitWhoseNumbersAnd": "Choose the Org Unit whose numbers and everything beneath it you want to read, or clear back to the whole Site.",
+  "tierTheTierBoardCouldNotBeRead": "The tier board could not be read",
+  "tierTheNumbersThisSiteSWorkProduces": "The numbers this Site's work produces, reported under the five Pillars. Every Pillar is shown whether or not anything reports under it yet.",
+  "tierDate": "Date",
+  "tierNoPillarsToShow": "No Pillars to show",
+  "tierThisSiteHasNoPillarsToReport": "This Site has no Pillars to report against yet.",
+  "tierNoDataYet": "No data yet",
+  "tierNoKpiIsDefinedUnderThisPillar": "No KPI is defined under this Pillar yet.",
+  "tierValue": "Value",
+  "workOrderAssignFindAPerson": "Find a person",
+  "workOrderAssignByNameEmployeeNumberOrTheQualification": "By name, employee number, or the qualification they hold.",
+  "workOrderAssignTheCandidatesCouldNotBeRead": "The candidates could not be read.",
+  "workOrderAssignNobodyMatchesTryADifferentNameNumber": "Nobody matches \"{term}\" — try a different name, number, or skill.",
+  "@workOrderAssignNobodyMatchesTryADifferentNameNumber": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "workOrderAssignThereIsNobodyThisWorkOrderCould": "There is nobody this Work order could be given to.",
+  "workOrderAssignNoQualificationsRecorded": "No qualifications recorded",
+  "workOrderCancelCancelThisWorkOrder": "Cancel this Work order?",
+  "workOrderCancelCancelThisWorkOrder2": "Cancel this Work order",
+  "workOrderCancelWhyIsThisBeingCancelledOptional": "Why is this being cancelled? (optional)",
+  "workOrderCompleteCompleteThisWorkOrder": "Complete this Work order",
+  "workOrderDialogYouDoNotHoldAWriteGrant": "You do not hold a write Grant that reaches this Work order.",
+  "workOrderDialogLoadingThisWorkOrder": "Loading this Work order",
+  "workOrderDialogThatIsNoLongerAvailable": "That is no longer available",
+  "workOrderDialogThisWorkOrderIsNowWhichNo": "This Work order is now {statusLabel}, which no longer offers this action.",
+  "@workOrderDialogThisWorkOrderIsNowWhichNo": {
+    "placeholders": {
+      "statusLabel": {"type": "Object"}
+    }
+  },
+  "workOrderDialogThatWorkOrderIsNotInThis": "That Work order is not in this list",
+  "workOrderDialogItMayHaveBeenCompletedCancelledOr": "It may have been completed, cancelled, or it is outside the Site or Org Unit the list is currently showing.",
+  "workOrdersWoBuc202600001": "WO-BUC-2026-00001"
 }

@@ -25,6 +25,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'work_order.dart';
@@ -67,11 +68,12 @@ class WorkOrderDialogHost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (!permitted) {
       return _refusal(
         context,
-        title: 'You cannot do that here',
-        message: 'You do not hold a write Grant that reaches this Work order.',
+        title: l10n.routerCannotDoThatHere,
+        message: l10n.workOrderDialogYouDoNotHoldAWriteGrant,
       );
     }
 
@@ -79,9 +81,9 @@ class WorkOrderDialogHost extends StatelessWidget {
     if (state is! WorkOrdersLoaded || state.isLoadingWorkOrders) {
       // A notice with nothing to decide: the decision width (420), no action,
       // so `Esc` pops the route like the barrier would.
-      return const AppDialog(
+      return AppDialog(
         key: loadingKey,
-        title: 'Loading this Work order',
+        title: l10n.workOrderDialogLoadingThisWorkOrder,
         size: AppDialogSize.decision,
         actions: [],
         child: Padding(
@@ -97,9 +99,8 @@ class WorkOrderDialogHost extends StatelessWidget {
       if (statusGuard != null && !statusGuard(workOrder.status)) {
         return _refusal(
           context,
-          title: 'That is no longer available',
-          message: 'This Work order is now ${workOrder.statusLabel}, which no longer offers '
-              'this action.',
+          title: l10n.workOrderDialogThatIsNoLongerAvailable,
+          message: l10n.workOrderDialogThisWorkOrderIsNowWhichNo(workOrder.statusLabel),
         );
       }
       return builder(workOrder);
@@ -107,9 +108,8 @@ class WorkOrderDialogHost extends StatelessWidget {
 
     return AppDialog(
       key: notFoundKey,
-      title: 'That Work order is not in this list',
-      description: 'It may have been completed, cancelled, or it is outside the Site or Org Unit '
-          'the list is currently showing.',
+      title: l10n.workOrderDialogThatWorkOrderIsNotInThis,
+      description: l10n.workOrderDialogItMayHaveBeenCompletedCancelledOr,
       size: AppDialogSize.decision,
       actions: [_backToTheList(context)],
     );
@@ -129,7 +129,7 @@ class WorkOrderDialogHost extends StatelessWidget {
   /// action and `Esc` runs it.
   AppDialogAction _backToTheList(BuildContext context) => AppDialogAction(
         id: 'work-order-notice-back',
-        label: 'Back to the list',
+        label: AppLocalizations.of(context).routerBackToList,
         kind: AppDialogActionKind.dismiss,
         onPressed: () => context.pop(),
       );

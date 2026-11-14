@@ -9,6 +9,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'work_order.dart';
@@ -92,24 +93,25 @@ class _TaskReadingDialogState extends State<TaskReadingDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final task = widget.task;
     return BlocListener<WorkOrderDetailBloc, WorkOrderDetailState>(
       listener: _onStateChanged,
       // The form width (520): two fields under an instruction (§11).
       child: AppDialog(
-        title: 'Record a reading on ${task.meterName ?? task.meterCode ?? 'the meter'}',
+        title: l10n.taskReadingRecordAReadingOn(task.meterName ?? task.meterCode ?? 'the meter'),
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: TaskReadingDialog._cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: TaskReadingDialog._submitId,
-            label: _awaiting ? 'Saving…' : 'Record reading',
+            label: _awaiting ? l10n.commonSaving : l10n.readingFormSubmit,
             onPressed: _readingValue != null && !_awaiting ? _submit : null,
           ),
         ],
@@ -125,8 +127,8 @@ class _TaskReadingDialogState extends State<TaskReadingDialog> {
               enabled: !_awaiting,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'What the meter reads',
+              decoration: InputDecoration(
+                labelText: l10n.taskReadingWhatTheMeterReads,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -135,8 +137,8 @@ class _TaskReadingDialogState extends State<TaskReadingDialog> {
               key: TaskReadingDialog.noteKey,
               controller: _note,
               enabled: !_awaiting,
-              decoration: const InputDecoration(
-                labelText: 'Note (optional)',
+              decoration: InputDecoration(
+                labelText: l10n.commonNoteOptional,
                 border: OutlineInputBorder(),
               ),
             ),

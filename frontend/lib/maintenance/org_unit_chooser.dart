@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people/people.dart';
 import '../theme.dart';
 
@@ -61,6 +62,7 @@ class OrgUnitChooser extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final state = context.watch<OrgUnitPickerBloc>().state;
     final bloc = context.read<OrgUnitPickerBloc>();
@@ -83,7 +85,7 @@ class OrgUnitChooser extends StatelessWidget {
         onRetry: enabled ? () => bloc.add(OrgUnitPickerSiteSelected(state.siteId!)) : null,
       );
     } else if (state.rows.isEmpty) {
-      body = const _ChooserMessage(message: 'Nothing to browse in this Site.');
+      body = _ChooserMessage(message: l10n.commonNothingToBrowseInThisSite);
     } else {
       body = ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
@@ -113,7 +115,7 @@ class OrgUnitChooser extends StatelessWidget {
             key: siteKey,
             initialValue: state.siteId,
             isDense: true,
-            decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: l10n.commonSite, border: OutlineInputBorder()),
             items: [
               for (final site in state.sites)
                 DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -155,6 +157,7 @@ class _ChooserRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final bloc = context.read<OrgUnitPickerBloc>();
 
@@ -174,7 +177,7 @@ class _ChooserRow extends StatelessWidget {
                     key: OrgUnitChooser.expandKey(row.node.id),
                     padding: EdgeInsets.zero,
                     iconSize: 18,
-                    tooltip: row.isExpanded ? 'Collapse' : 'Expand',
+                    tooltip: row.isExpanded ? l10n.commonCollapse : l10n.commonExpand,
                     onPressed: enabled
                         ? () => bloc.add(
                               row.isExpanded
@@ -219,6 +222,7 @@ class _ChooserMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.all(Spacing.md),
@@ -232,7 +236,7 @@ class _ChooserMessage extends StatelessWidget {
           ),
           if (onRetry != null) ...[
             const SizedBox(height: Spacing.xs),
-            TextButton(onPressed: onRetry, child: const Text('Try again')),
+            TextButton(onPressed: onRetry, child: Text(l10n.commonTryAgain)),
           ],
         ],
       ),

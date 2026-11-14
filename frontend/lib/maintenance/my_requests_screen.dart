@@ -24,6 +24,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/app_page_frame.dart';
@@ -100,6 +101,7 @@ class MyRequestsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<MyRequestsBloc>().state;
 
     return Scaffold(
@@ -113,7 +115,7 @@ class MyRequestsScreen extends StatelessWidget {
               MyRequestsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
               MyRequestsUnavailable(message: final message) => PlatformFailureState(
                 key: MyRequestsScreen.failedKey,
-                title: 'Your requests could not be read',
+                title: l10n.myRequestsYourRequestsCouldNotBeRead,
                 message: message,
                 retryKey: MyRequestsScreen.retryKey,
                 onRetry: () => context.read<MyRequestsBloc>().add(const MyRequestsStarted()),
@@ -142,6 +144,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final loaded = state is MyRequestsLoaded ? state as MyRequestsLoaded : null;
 
     return Center(
@@ -150,8 +153,8 @@ class _Header extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
-            title: 'My requests',
-            description: 'What you raised, and what became of each.',
+            title: l10n.navMyRequests,
+            description: l10n.myRequestsWhatYouRaisedAndWhatBecameOf,
             actions: [
               if (canRaiseRequest && loaded != null)
                 FilledButton.icon(
@@ -160,7 +163,7 @@ class _Header extends StatelessWidget {
                       ? null
                       : () => _openRaise(context, loaded.siteId!),
                   icon: const Icon(Icons.add),
-                  label: const Text('Raise a Request'),
+                  label: Text(l10n.commonRaiseARequest),
                   style: FilledButton.styleFrom(minimumSize: const Size(44, 44)),
                 ),
             ],
@@ -171,8 +174,8 @@ class _Header extends StatelessWidget {
                       key: MyRequestsScreen.siteKey,
                       initialValue: loaded.siteId,
                       isDense: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Site',
+                      decoration: InputDecoration(
+                        labelText: l10n.commonSite,
                         border: OutlineInputBorder(),
                       ),
                       items: [
@@ -287,6 +290,7 @@ class _MyRequestsListState extends State<_MyRequestsList> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     // Filtered here, immediately before the row widgets are built, so a term
     // can only ever narrow rows this Screen already read (issue #191).
     final matches = _matchingRequests;
@@ -315,8 +319,8 @@ class _MyRequestsListState extends State<_MyRequestsList> {
                           width: box.maxWidth,
                           child: AppFilterField(
                             name: MyRequestsScreen.filterFieldName,
-                            label: 'Filter requests',
-                            helperText: 'By description, Request number or Asset.',
+                            label: l10n.requestsFilter,
+                            helperText: l10n.requestsFilterHelp,
                             term: _term,
                             onChanged: (term) => setState(() => _term = term),
                             shown: matches.length,
@@ -332,10 +336,9 @@ class _MyRequestsListState extends State<_MyRequestsList> {
                   child: matches.isEmpty
                       ? PlatformEmptyState.noneMatched(
                           key: MyRequestsScreen.noMatchKey,
-                          title: 'No requests match',
+                          title: l10n.requestsNoMatch,
                           message:
-                              'You have Requests at this Site, but none matches '
-                              '"${_term.trim()}". Try a different description or Asset.',
+                              l10n.myRequestsYouHaveRequestsAtThisSiteBut(_term.trim()),
                         )
                       : narrow
                       ? ListView.separated(
@@ -414,7 +417,7 @@ List<AppTableColumn> _columns(BuildContext context, {required List<Request> requ
   final dense = AppTypography.dense(context);
   return [
     AppTableColumn(
-      'Request',
+      AppLocalizations.of(context).requestsNumberColumn,
       // `MR-<Site code>-<year>-<five digits>`, as `next_document_number` issues it; the
       // Site code is the Site's own, so the numbers on screen are measured too.
       width: sized(
@@ -422,10 +425,10 @@ List<AppTableColumn> _columns(BuildContext context, {required List<Request> requ
         'Request',
       ),
     ),
-    const AppTableColumn('Summary', flex: 4),
-    const AppTableColumn('Asset', flex: 3),
+    AppTableColumn(AppLocalizations.of(context).commonSummary, flex: 4),
+    AppTableColumn(AppLocalizations.of(context).commonAsset, flex: 3),
     AppTableColumn(
-      'Urgency',
+      AppLocalizations.of(context).requestsUrgency,
       width: sized(
         _widest(context, [
           for (final u in RequestUrgency.values) u.label,
@@ -435,7 +438,7 @@ List<AppTableColumn> _columns(BuildContext context, {required List<Request> requ
       ),
     ),
     AppTableColumn(
-      'Status',
+      AppLocalizations.of(context).commonStatus,
       // A chip's own padding and label padding (`Spacing.xxl`).
       width: sized(
         // The five states the database allows (`maintenance_requests.status`), and
@@ -454,7 +457,7 @@ List<AppTableColumn> _columns(BuildContext context, {required List<Request> requ
       ),
     ),
     AppTableColumn(
-      'Raised',
+      AppLocalizations.of(context).requestsRaisedDate,
       // The widest month, with the digits of a number cell (tabular, so each is
       // as wide as the next).
       width: sized(
@@ -466,7 +469,7 @@ List<AppTableColumn> _columns(BuildContext context, {required List<Request> requ
       align: AppColumnAlign.end,
     ),
     AppTableColumn(
-      'Outcome',
+      AppLocalizations.of(context).myRequestsOutcome,
       // The toggle's label, its gap and chevron (`Spacing.xl` square).
       width: sized(_widest(context, const ['Outcome'], dense) + Spacing.xs + Spacing.xl, 'Outcome'),
     ),
@@ -485,6 +488,7 @@ class _MyRequestTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final dense = AppTypography.dense(context);
     final muted = dense?.copyWith(color: palette.textMuted);
@@ -519,7 +523,7 @@ class _MyRequestTableRow extends StatelessWidget {
     if (workOrder == null && !declined) return row(const SizedBox.shrink());
     return RowDisclosure(
       toggleKey: MyRequestsScreen.outcomeKey(request.id),
-      label: 'Outcome',
+      label: l10n.myRequestsOutcome,
       rowBuilder: (context, toggle) => row(toggle),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -531,14 +535,14 @@ class _MyRequestTableRow extends StatelessWidget {
                 const SizedBox(width: Spacing.xs),
                 Expanded(
                   child: Text(
-                    'Became Work order ${workOrder.workOrderNo}',
+                    l10n.myRequestsBecameWorkOrder(workOrder.workOrderNo),
                     style: dense?.copyWith(color: palette.textPrimary),
                   ),
                 ),
               ],
             ),
           if (workOrder != null && declined) const SizedBox(height: Spacing.sm),
-          if (declined) Text('Declined: ${request.rejectionReason}', style: muted),
+          if (declined) Text(l10n.myRequestsDeclined((request.rejectionReason ?? '')), style: muted),
         ],
       ),
     );
@@ -552,6 +556,7 @@ class _MyRequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final muted = AppTypography.floor(context)?.copyWith(color: AppColors.of(context).textMuted);
     final workOrder = request.workOrder;
 
@@ -596,7 +601,7 @@ class _MyRequestCard extends StatelessWidget {
                   const SizedBox(width: Spacing.xs),
                   Expanded(
                     child: Text(
-                      'Became Work order ${workOrder.workOrderNo}',
+                      l10n.myRequestsBecameWorkOrder(workOrder.workOrderNo),
                       style: AppTypography.dense(context),
                     ),
                   ),
@@ -605,7 +610,7 @@ class _MyRequestCard extends StatelessWidget {
             ],
             if (request.status == 'rejected' && request.rejectionReason != null) ...[
               const SizedBox(height: Spacing.sm),
-              Text('Declined: ${request.rejectionReason}', style: muted),
+              Text(l10n.myRequestsDeclined((request.rejectionReason ?? '')), style: muted),
             ],
           ],
         ),
@@ -622,13 +627,13 @@ class _MyRequestsEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return PlatformEmptyState.noneExist(
       key: MyRequestsScreen.emptyKey,
-      title: 'Nothing raised yet',
+      title: l10n.myRequestsNothingRaisedYet,
       message:
-          'You have not raised any Requests at this Site. Raise one and it will '
-          'show up here with whatever becomes of it.',
-      actionLabel: canRaiseRequest && siteId != null ? 'Raise a Request' : null,
+          l10n.myRequestsYouHaveNotRaisedAnyRequestsAt,
+      actionLabel: canRaiseRequest && siteId != null ? l10n.commonRaiseARequest : null,
       actionKey: MyRequestsScreen.emptyRaiseKey,
       onAction: canRaiseRequest && siteId != null
           ? () {

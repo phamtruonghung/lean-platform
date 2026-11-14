@@ -10957,6 +10957,738 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Every entry made for this KPI will be listed here.'**
   String get kpiTargetsEveryEntryMadeForThisKpiWill;
+
+  /// No description provided for @assetFormCorrectDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct details'**
+  String get assetFormCorrectDetails;
+
+  /// No description provided for @commonAddAnAsset.
+  ///
+  /// In en, this message translates to:
+  /// **'Add an Asset'**
+  String get commonAddAnAsset;
+
+  /// No description provided for @assetFormAddAsset.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Asset'**
+  String get assetFormAddAsset;
+
+  /// No description provided for @assetFormUniqueAcrossTheWholePlatformNotJust.
+  ///
+  /// In en, this message translates to:
+  /// **'Unique across the whole Platform, not just this Site.'**
+  String get assetFormUniqueAcrossTheWholePlatformNotJust;
+
+  /// No description provided for @assetFormKind.
+  ///
+  /// In en, this message translates to:
+  /// **'Kind'**
+  String get assetFormKind;
+
+  /// No description provided for @commonCriticality.
+  ///
+  /// In en, this message translates to:
+  /// **'Criticality'**
+  String get commonCriticality;
+
+  /// No description provided for @assetFormWhereThisAssetSitsIsChangedWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Where this Asset sits is changed with its own \"Change Org Unit…\" action.'**
+  String get assetFormWhereThisAssetSitsIsChangedWith;
+
+  /// No description provided for @assetFormThisAssetWillSitAt.
+  ///
+  /// In en, this message translates to:
+  /// **'This Asset will sit at {value}.'**
+  String assetFormThisAssetWillSitAt(Object value);
+
+  /// No description provided for @assetMoveChangeWhereThisAssetSits.
+  ///
+  /// In en, this message translates to:
+  /// **'Change where this Asset sits'**
+  String get assetMoveChangeWhereThisAssetSits;
+
+  /// No description provided for @assetMoveChangeOrgUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Org Unit'**
+  String get assetMoveChangeOrgUnit;
+
+  /// No description provided for @assetMoveSitsAtNow.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} ({code}) sits at {orgUnitName} now.'**
+  String assetMoveSitsAtNow(Object name, Object code, Object orgUnitName);
+
+  /// No description provided for @assetMoveMoveItTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Move it to'**
+  String get assetMoveMoveItTo;
+
+  /// No description provided for @assetMoveWhereThisAssetWillSitItDecides.
+  ///
+  /// In en, this message translates to:
+  /// **'Where this Asset will sit. It decides who may raise and close work against it; work already recorded against it stays where it happened.'**
+  String get assetMoveWhereThisAssetWillSitItDecides;
+
+  /// No description provided for @assetMoveThisAssetWillSitAt.
+  ///
+  /// In en, this message translates to:
+  /// **'This Asset will sit at {value}.'**
+  String assetMoveThisAssetWillSitAt(Object value);
+
+  /// No description provided for @assetsTheRegisterCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The register could not be read'**
+  String get assetsTheRegisterCouldNotBeRead;
+
+  /// No description provided for @assetsNoAssetsOnTheRegisterYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No Assets on the register yet'**
+  String get assetsNoAssetsOnTheRegisterYet;
+
+  /// No description provided for @assetsNothingHasBeenRecordedAtThisSite.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing has been recorded at this Site. Add a machine and it can be worked on the same day.'**
+  String get assetsNothingHasBeenRecordedAtThisSite;
+
+  /// No description provided for @assetsEveryMachineOnTheRegisterAtThis.
+  ///
+  /// In en, this message translates to:
+  /// **'Every machine on the register at this Site, and the Org Unit each one sits at.'**
+  String get assetsEveryMachineOnTheRegisterAtThis;
+
+  /// No description provided for @assetsShowRetired.
+  ///
+  /// In en, this message translates to:
+  /// **'Show retired'**
+  String get assetsShowRetired;
+
+  /// No description provided for @assetsFilterAssets.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter Assets'**
+  String get assetsFilterAssets;
+
+  /// No description provided for @assetsNoAssetsMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No Assets match'**
+  String get assetsNoAssetsMatch;
+
+  /// No description provided for @assetsThisSiteHasAssetsOnTheRegister.
+  ///
+  /// In en, this message translates to:
+  /// **'This Site has Assets on the register, but none matches \"{term}\". Try a different name or code, or clear the filter.'**
+  String assetsThisSiteHasAssetsOnTheRegister(Object term);
+
+  /// No description provided for @assetsCodeType.
+  ///
+  /// In en, this message translates to:
+  /// **'Code · Type'**
+  String get assetsCodeType;
+
+  /// No description provided for @assetsCorrectDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct details…'**
+  String get assetsCorrectDetails;
+
+  /// No description provided for @assetsChangeOrgUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Org Unit…'**
+  String get assetsChangeOrgUnit;
+
+  /// No description provided for @assetsDetach.
+  ///
+  /// In en, this message translates to:
+  /// **'Detach'**
+  String get assetsDetach;
+
+  /// No description provided for @assetsNestUnder.
+  ///
+  /// In en, this message translates to:
+  /// **'Nest under…'**
+  String get assetsNestUnder;
+
+  /// No description provided for @assetsRetireThisAsset.
+  ///
+  /// In en, this message translates to:
+  /// **'Retire this Asset?'**
+  String get assetsRetireThisAsset;
+
+  /// No description provided for @assetsWillNoLongerAppearOnTheActive.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} will no longer appear on the active register. Nothing is deleted, and it can be reinstated at any time.'**
+  String assetsWillNoLongerAppearOnTheActive(Object name);
+
+  /// No description provided for @assetsThereIsNothingElseOnThisRegister.
+  ///
+  /// In en, this message translates to:
+  /// **'There is nothing else on this register it could sit beneath.'**
+  String get assetsThereIsNothingElseOnThisRegister;
+
+  /// No description provided for @breakdownReportReportABreakdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Report a Breakdown'**
+  String get breakdownReportReportABreakdown;
+
+  /// No description provided for @breakdownReportReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Report'**
+  String get breakdownReportReport;
+
+  /// No description provided for @breakdownReportStartedAtOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Started at (optional)'**
+  String get breakdownReportStartedAtOptional;
+
+  /// No description provided for @commonLeaveBlankToRecordNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave blank to record now.'**
+  String get commonLeaveBlankToRecordNow;
+
+  /// No description provided for @downtimeClassifyClassifyTheStopFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Classify the stop for {assetName}'**
+  String downtimeClassifyClassifyTheStopFor(Object assetName);
+
+  /// No description provided for @downtimeClassifyKeepItUnclassified.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep it unclassified'**
+  String get downtimeClassifyKeepItUnclassified;
+
+  /// No description provided for @downtimeClassifyDescriptionRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Description (required)'**
+  String get downtimeClassifyDescriptionRequired;
+
+  /// No description provided for @downtimeClassifyTheDowntimeReasonsCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The Downtime reasons could not be read.'**
+  String get downtimeClassifyTheDowntimeReasonsCouldNotBeRead;
+
+  /// No description provided for @downtimeCloseCloseTheStopFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Close the stop for {assetName}?'**
+  String downtimeCloseCloseTheStopFor(Object assetName);
+
+  /// No description provided for @commonKeepItOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep it open'**
+  String get commonKeepItOpen;
+
+  /// No description provided for @downtimeCloseCloseThisStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Close this stop'**
+  String get downtimeCloseCloseThisStop;
+
+  /// No description provided for @downtimeCloseTheMachineIsRunningAgainTheServer.
+  ///
+  /// In en, this message translates to:
+  /// **'The machine is running again. The server records how long it was down.'**
+  String get downtimeCloseTheMachineIsRunningAgainTheServer;
+
+  /// No description provided for @downtimeCloseEndedAtOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Ended at (optional)'**
+  String get downtimeCloseEndedAtOptional;
+
+  /// No description provided for @floorTheFloorWorkCouldNotBeLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'The floor work could not be loaded'**
+  String get floorTheFloorWorkCouldNotBeLoaded;
+
+  /// No description provided for @floorNoOpenWork.
+  ///
+  /// In en, this message translates to:
+  /// **'No open work'**
+  String get floorNoOpenWork;
+
+  /// No description provided for @floorThereIsNoOpenWorkForRight.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no open work for {orgUnitName} right now.'**
+  String floorThereIsNoOpenWorkForRight(Object orgUnitName);
+
+  /// No description provided for @floorRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get floorRefresh;
+
+  /// No description provided for @floorFloorWork.
+  ///
+  /// In en, this message translates to:
+  /// **'Floor work'**
+  String get floorFloorWork;
+
+  /// No description provided for @floorObservation.
+  ///
+  /// In en, this message translates to:
+  /// **'Observation'**
+  String get floorObservation;
+
+  /// No description provided for @floorMyTraining.
+  ///
+  /// In en, this message translates to:
+  /// **'My training'**
+  String get floorMyTraining;
+
+  /// No description provided for @floorTechnicianComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete {workOrderNo}'**
+  String floorTechnicianComplete(Object workOrderNo);
+
+  /// No description provided for @floorTechnicianStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start {workOrderNo}'**
+  String floorTechnicianStart(Object workOrderNo);
+
+  /// No description provided for @floorTechnicianWhoIsRecordingThisYourEmployeeNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Who is recording this? Your Employee number and PIN identify you for this action only.'**
+  String get floorTechnicianWhoIsRecordingThisYourEmployeeNumber;
+
+  /// No description provided for @commonWhatWasFound.
+  ///
+  /// In en, this message translates to:
+  /// **'What was found?'**
+  String get commonWhatWasFound;
+
+  /// No description provided for @myRequestsYourRequestsCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Your requests could not be read'**
+  String get myRequestsYourRequestsCouldNotBeRead;
+
+  /// No description provided for @myRequestsWhatYouRaisedAndWhatBecameOf.
+  ///
+  /// In en, this message translates to:
+  /// **'What you raised, and what became of each.'**
+  String get myRequestsWhatYouRaisedAndWhatBecameOf;
+
+  /// No description provided for @commonRaiseARequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Raise a Request'**
+  String get commonRaiseARequest;
+
+  /// No description provided for @myRequestsYouHaveRequestsAtThisSiteBut.
+  ///
+  /// In en, this message translates to:
+  /// **'You have Requests at this Site, but none matches \"{term}\". Try a different description or Asset.'**
+  String myRequestsYouHaveRequestsAtThisSiteBut(Object term);
+
+  /// No description provided for @myRequestsOutcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Outcome'**
+  String get myRequestsOutcome;
+
+  /// No description provided for @myRequestsBecameWorkOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Became Work order {workOrderNo}'**
+  String myRequestsBecameWorkOrder(Object workOrderNo);
+
+  /// No description provided for @myRequestsDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'Declined: {rejectionReason}'**
+  String myRequestsDeclined(Object rejectionReason);
+
+  /// No description provided for @myRequestsNothingRaisedYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing raised yet'**
+  String get myRequestsNothingRaisedYet;
+
+  /// No description provided for @myRequestsYouHaveNotRaisedAnyRequestsAt.
+  ///
+  /// In en, this message translates to:
+  /// **'You have not raised any Requests at this Site. Raise one and it will show up here with whatever becomes of it.'**
+  String get myRequestsYouHaveNotRaisedAnyRequestsAt;
+
+  /// No description provided for @commonAddPart.
+  ///
+  /// In en, this message translates to:
+  /// **'Add part'**
+  String get commonAddPart;
+
+  /// No description provided for @commonPartNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Part number'**
+  String get commonPartNumber;
+
+  /// No description provided for @partsThePartsCatalogueCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The parts catalogue could not be read'**
+  String get partsThePartsCatalogueCouldNotBeRead;
+
+  /// No description provided for @partsTheSharedCatalogueDefinedOnceReusedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'The shared catalogue — defined once, reused at every Site.'**
+  String get partsTheSharedCatalogueDefinedOnceReusedAt;
+
+  /// No description provided for @partsNoPartsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No parts yet'**
+  String get partsNoPartsYet;
+
+  /// No description provided for @partsFilterParts.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter parts'**
+  String get partsFilterParts;
+
+  /// No description provided for @commonByPartNumberOrDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'By part number or description.'**
+  String get commonByPartNumberOrDescription;
+
+  /// No description provided for @commonNoPartsMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No parts match'**
+  String get commonNoPartsMatch;
+
+  /// No description provided for @partsNothingInTheCatalogueMatchesTryA.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing in the catalogue matches \"{term}\". Try a different part number or description, or clear the filter.'**
+  String partsNothingInTheCatalogueMatchesTryA(Object term);
+
+  /// No description provided for @commonReceiveStock.
+  ///
+  /// In en, this message translates to:
+  /// **'Receive stock'**
+  String get commonReceiveStock;
+
+  /// No description provided for @receiveReceiving.
+  ///
+  /// In en, this message translates to:
+  /// **'Receiving…'**
+  String get receiveReceiving;
+
+  /// No description provided for @receiveReceive.
+  ///
+  /// In en, this message translates to:
+  /// **'Receive'**
+  String get receiveReceive;
+
+  /// No description provided for @receiveReasonOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (optional)'**
+  String get receiveReasonOptional;
+
+  /// No description provided for @commonRaise.
+  ///
+  /// In en, this message translates to:
+  /// **'Raise'**
+  String get commonRaise;
+
+  /// No description provided for @requestFormProductionIsStoppedRightNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Production is stopped right now'**
+  String get requestFormProductionIsStoppedRightNow;
+
+  /// No description provided for @storeStockThisStoreCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'This store could not be read'**
+  String get storeStockThisStoreCouldNotBeRead;
+
+  /// No description provided for @storeStockBackToStores.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Stores'**
+  String get storeStockBackToStores;
+
+  /// No description provided for @storeStockNothingOnTheShelf.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing on the shelf'**
+  String get storeStockNothingOnTheShelf;
+
+  /// No description provided for @storeStockNoPartHasMovedInOrOut.
+  ///
+  /// In en, this message translates to:
+  /// **'No part has moved in or out of this store yet.'**
+  String get storeStockNoPartHasMovedInOrOut;
+
+  /// No description provided for @storeStockFilterStock.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter stock'**
+  String get storeStockFilterStock;
+
+  /// No description provided for @storeStockThisStoreHoldsStockButNothingOn.
+  ///
+  /// In en, this message translates to:
+  /// **'This store holds stock, but nothing on its shelf matches \"{term}\". Try a different part number or description.'**
+  String storeStockThisStoreHoldsStockButNothingOn(Object term);
+
+  /// No description provided for @storesTheStoresCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The stores could not be read'**
+  String get storesTheStoresCouldNotBeRead;
+
+  /// No description provided for @storesTheShelvesThatHoldPartsAtThis.
+  ///
+  /// In en, this message translates to:
+  /// **'The shelves that hold parts at this Site.'**
+  String get storesTheShelvesThatHoldPartsAtThis;
+
+  /// No description provided for @storesNoStoresYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No stores yet'**
+  String get storesNoStoresYet;
+
+  /// No description provided for @storesNothingHereHoldsParts.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here holds parts.'**
+  String get storesNothingHereHoldsParts;
+
+  /// No description provided for @storesFilterStores.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter stores'**
+  String get storesFilterStores;
+
+  /// No description provided for @storesNoStoresMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No stores match'**
+  String get storesNoStoresMatch;
+
+  /// No description provided for @storesThisSiteHasStoresButNoneMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'This Site has stores, but none matches \"{term}\". Try a different name or code, or clear the filter.'**
+  String storesThisSiteHasStoresButNoneMatches(Object term);
+
+  /// No description provided for @storesTappingAStoreShowsWhatIsOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Tapping a store shows what is on its shelf.'**
+  String get storesTappingAStoreShowsWhatIsOn;
+
+  /// No description provided for @storesCodeOrgUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Code · Org Unit'**
+  String get storesCodeOrgUnit;
+
+  /// No description provided for @taskReadingRecordAReadingOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Record a reading on {value}'**
+  String taskReadingRecordAReadingOn(Object value);
+
+  /// No description provided for @taskReadingWhatTheMeterReads.
+  ///
+  /// In en, this message translates to:
+  /// **'What the meter reads'**
+  String get taskReadingWhatTheMeterReads;
+
+  /// No description provided for @tierBoardOrgUnitFilterNarrowTheBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'Narrow the board'**
+  String get tierBoardOrgUnitFilterNarrowTheBoard;
+
+  /// No description provided for @tierBoardOrgUnitFilterChooseTheOrgUnitWhoseNumbersAnd.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the Org Unit whose numbers and everything beneath it you want to read, or clear back to the whole Site.'**
+  String get tierBoardOrgUnitFilterChooseTheOrgUnitWhoseNumbersAnd;
+
+  /// No description provided for @tierTheTierBoardCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The tier board could not be read'**
+  String get tierTheTierBoardCouldNotBeRead;
+
+  /// No description provided for @tierTheNumbersThisSiteSWorkProduces.
+  ///
+  /// In en, this message translates to:
+  /// **'The numbers this Site\'s work produces, reported under the five Pillars. Every Pillar is shown whether or not anything reports under it yet.'**
+  String get tierTheNumbersThisSiteSWorkProduces;
+
+  /// No description provided for @tierDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get tierDate;
+
+  /// No description provided for @tierNoPillarsToShow.
+  ///
+  /// In en, this message translates to:
+  /// **'No Pillars to show'**
+  String get tierNoPillarsToShow;
+
+  /// No description provided for @tierThisSiteHasNoPillarsToReport.
+  ///
+  /// In en, this message translates to:
+  /// **'This Site has no Pillars to report against yet.'**
+  String get tierThisSiteHasNoPillarsToReport;
+
+  /// No description provided for @tierNoDataYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No data yet'**
+  String get tierNoDataYet;
+
+  /// No description provided for @tierNoKpiIsDefinedUnderThisPillar.
+  ///
+  /// In en, this message translates to:
+  /// **'No KPI is defined under this Pillar yet.'**
+  String get tierNoKpiIsDefinedUnderThisPillar;
+
+  /// No description provided for @tierValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Value'**
+  String get tierValue;
+
+  /// No description provided for @workOrderAssignFindAPerson.
+  ///
+  /// In en, this message translates to:
+  /// **'Find a person'**
+  String get workOrderAssignFindAPerson;
+
+  /// No description provided for @workOrderAssignByNameEmployeeNumberOrTheQualification.
+  ///
+  /// In en, this message translates to:
+  /// **'By name, employee number, or the qualification they hold.'**
+  String get workOrderAssignByNameEmployeeNumberOrTheQualification;
+
+  /// No description provided for @workOrderAssignTheCandidatesCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The candidates could not be read.'**
+  String get workOrderAssignTheCandidatesCouldNotBeRead;
+
+  /// No description provided for @workOrderAssignNobodyMatchesTryADifferentNameNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody matches \"{term}\" — try a different name, number, or skill.'**
+  String workOrderAssignNobodyMatchesTryADifferentNameNumber(Object term);
+
+  /// No description provided for @workOrderAssignThereIsNobodyThisWorkOrderCould.
+  ///
+  /// In en, this message translates to:
+  /// **'There is nobody this Work order could be given to.'**
+  String get workOrderAssignThereIsNobodyThisWorkOrderCould;
+
+  /// No description provided for @workOrderAssignNoQualificationsRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'No qualifications recorded'**
+  String get workOrderAssignNoQualificationsRecorded;
+
+  /// No description provided for @workOrderCancelCancelThisWorkOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this Work order?'**
+  String get workOrderCancelCancelThisWorkOrder;
+
+  /// No description provided for @workOrderCancelCancelThisWorkOrder2.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this Work order'**
+  String get workOrderCancelCancelThisWorkOrder2;
+
+  /// No description provided for @workOrderCancelWhyIsThisBeingCancelledOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Why is this being cancelled? (optional)'**
+  String get workOrderCancelWhyIsThisBeingCancelledOptional;
+
+  /// No description provided for @workOrderCompleteCompleteThisWorkOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete this Work order'**
+  String get workOrderCompleteCompleteThisWorkOrder;
+
+  /// No description provided for @workOrderDialogYouDoNotHoldAWriteGrant.
+  ///
+  /// In en, this message translates to:
+  /// **'You do not hold a write Grant that reaches this Work order.'**
+  String get workOrderDialogYouDoNotHoldAWriteGrant;
+
+  /// No description provided for @workOrderDialogLoadingThisWorkOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading this Work order'**
+  String get workOrderDialogLoadingThisWorkOrder;
+
+  /// No description provided for @workOrderDialogThatIsNoLongerAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'That is no longer available'**
+  String get workOrderDialogThatIsNoLongerAvailable;
+
+  /// No description provided for @workOrderDialogThisWorkOrderIsNowWhichNo.
+  ///
+  /// In en, this message translates to:
+  /// **'This Work order is now {statusLabel}, which no longer offers this action.'**
+  String workOrderDialogThisWorkOrderIsNowWhichNo(Object statusLabel);
+
+  /// No description provided for @workOrderDialogThatWorkOrderIsNotInThis.
+  ///
+  /// In en, this message translates to:
+  /// **'That Work order is not in this list'**
+  String get workOrderDialogThatWorkOrderIsNotInThis;
+
+  /// No description provided for @workOrderDialogItMayHaveBeenCompletedCancelledOr.
+  ///
+  /// In en, this message translates to:
+  /// **'It may have been completed, cancelled, or it is outside the Site or Org Unit the list is currently showing.'**
+  String get workOrderDialogItMayHaveBeenCompletedCancelledOr;
+
+  /// No description provided for @workOrdersWoBuc202600001.
+  ///
+  /// In en, this message translates to:
+  /// **'WO-BUC-2026-00001'**
+  String get workOrdersWoBuc202600001;
 }
 
 class _AppLocalizationsDelegate

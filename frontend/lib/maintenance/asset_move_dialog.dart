@@ -17,6 +17,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
@@ -108,6 +109,7 @@ class _AssetMoveDialogState extends State<AssetMoveDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return MultiBlocListener(
       listeners: [
@@ -117,18 +119,18 @@ class _AssetMoveDialogState extends State<AssetMoveDialog> {
         ),
       ],
       child: AppDialog(
-        title: 'Change where this Asset sits',
+        title: l10n.assetMoveChangeWhereThisAssetSits,
         size: AppDialogSize.wide,
         actions: [
           AppDialogAction(
             id: AssetMoveDialog._cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: AssetMoveDialog._submitId,
-            label: 'Change Org Unit',
+            label: l10n.assetMoveChangeOrgUnit,
             onPressed: _complete ? _submit : null,
           ),
         ],
@@ -137,8 +139,7 @@ class _AssetMoveDialogState extends State<AssetMoveDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '${widget.asset.name} (${widget.asset.code}) sits at '
-              '${widget.asset.orgUnitName} now.',
+              l10n.assetMoveSitsAtNow(widget.asset.name, widget.asset.code, widget.asset.orgUnitName),
               style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
             ),
             const SizedBox(height: Spacing.lg),
@@ -146,11 +147,9 @@ class _AssetMoveDialogState extends State<AssetMoveDialog> {
               // The Org Unit it is at is shown as the standing choice, so
               // the tree reads as "this one, or another".
               selectedId: widget.asset.orgUnitId,
-              title: 'Move it to',
+              title: l10n.assetMoveMoveItTo,
               description:
-                  'Where this Asset will sit. It decides who may '
-                  'raise and close work against it; work already recorded '
-                  'against it stays where it happened.',
+                  l10n.assetMoveWhereThisAssetWillSitItDecides,
               onSelected: (node) => setState(() => _chosen = node),
             ),
             if (_chosen != null)
@@ -158,7 +157,7 @@ class _AssetMoveDialogState extends State<AssetMoveDialog> {
                 key: AssetMoveDialog.chosenKey,
                 padding: const EdgeInsets.only(top: Spacing.sm),
                 child: Text(
-                  'This Asset will sit at ${_chosen!.name}.',
+                  l10n.assetMoveThisAssetWillSitAt(_chosen!.name),
                   style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
                 ),
               ),

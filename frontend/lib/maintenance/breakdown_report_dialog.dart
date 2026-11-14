@@ -30,6 +30,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -176,22 +177,23 @@ class _BreakdownReportDialogState extends State<BreakdownReportDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return BlocListener<DowntimeBloc, DowntimeState>(
       listener: _onDowntimeChanged,
       child: AppDialog(
-        title: 'Report a Breakdown',
+        title: l10n.breakdownReportReportABreakdown,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: BreakdownReportDialog._dismissId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: BreakdownReportDialog._submitId,
-            label: 'Report',
+            label: l10n.breakdownReportReport,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -212,8 +214,8 @@ class _BreakdownReportDialogState extends State<BreakdownReportDialog> {
             AppDateTimeField(
               key: BreakdownReportDialog.startedAtKey,
               name: 'breakdown-report-started-at',
-              label: 'Started at (optional)',
-              helperText: 'Leave blank to record now.',
+              label: l10n.breakdownReportStartedAtOptional,
+              helperText: l10n.commonLeaveBlankToRecordNow,
               value: _startedAt,
               optional: true,
               enabled: !_awaiting,
@@ -225,8 +227,8 @@ class _BreakdownReportDialogState extends State<BreakdownReportDialog> {
               controller: _description,
               enabled: !_awaiting,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
+              decoration: InputDecoration(
+                labelText: l10n.jobPlanFormDescriptionOptional,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -277,6 +279,7 @@ class _AssetField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     switch (status) {
       case _AssetsStatus.loading:
@@ -296,16 +299,16 @@ class _AssetField extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              failure ?? 'The Assets could not be read.',
+              failure ?? l10n.commonAssetsFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
-            TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
+            TextButton(onPressed: enabled ? onRetry : null, child: Text(l10n.commonTryAgain)),
           ],
         );
       case _AssetsStatus.ready:
         return AppSearchField<Asset>(
           name: BreakdownReportDialog._assetFieldName,
-          label: 'Asset',
+          label: l10n.commonAsset,
           value: _selected,
           enabled: enabled,
           // A pick sets the dialog's own id; typing over the chosen Asset

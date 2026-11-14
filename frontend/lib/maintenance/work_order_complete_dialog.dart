@@ -8,6 +8,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'work_order.dart';
@@ -73,24 +74,25 @@ class _WorkOrderCompleteDialogState extends State<WorkOrderCompleteDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return BlocListener<WorkOrdersBloc, WorkOrdersState>(
       listener: _onWorkOrdersChanged,
       // The decision width (420): one question and two actions. The one
       // free-text field is the answer to the question, not a form (§11).
       child: AppDialog(
-        title: 'Complete this Work order',
+        title: l10n.workOrderCompleteCompleteThisWorkOrder,
         size: AppDialogSize.decision,
         actions: [
           AppDialogAction(
             id: WorkOrderCompleteDialog._dismissId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: WorkOrderCompleteDialog._submitId,
-            label: 'Complete',
+            label: l10n.workOrdersComplete,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -104,8 +106,8 @@ class _WorkOrderCompleteDialogState extends State<WorkOrderCompleteDialog> {
               enabled: !_awaiting,
               maxLines: 4,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'What was found?',
+              decoration: InputDecoration(
+                labelText: l10n.commonWhatWasFound,
                 border: OutlineInputBorder(),
               ),
             ),

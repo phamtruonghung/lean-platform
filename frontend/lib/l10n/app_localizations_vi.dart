@@ -6620,4 +6620,443 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get kpiTargetsEveryEntryMadeForThisKpiWill =>
       'Mọi mục đã đặt cho KPI này sẽ được liệt kê ở đây.';
+
+  @override
+  String get assetFormCorrectDetails => 'Sửa thông tin';
+
+  @override
+  String get commonAddAnAsset => 'Thêm Tài sản';
+
+  @override
+  String get assetFormAddAsset => 'Thêm Tài sản';
+
+  @override
+  String get assetFormUniqueAcrossTheWholePlatformNotJust =>
+      'Duy nhất trên toàn Nền tảng, không chỉ tại Nhà máy này.';
+
+  @override
+  String get assetFormKind => 'Kiểu';
+
+  @override
+  String get commonCriticality => 'Mức trọng yếu';
+
+  @override
+  String get assetFormWhereThisAssetSitsIsChangedWith =>
+      'Vị trí của Tài sản này được đổi bằng thao tác “Đổi Đơn vị tổ chức…” riêng của nó.';
+
+  @override
+  String assetFormThisAssetWillSitAt(Object value) {
+    return 'Tài sản này sẽ nằm tại $value.';
+  }
+
+  @override
+  String get assetMoveChangeWhereThisAssetSits => 'Đổi vị trí Tài sản này';
+
+  @override
+  String get assetMoveChangeOrgUnit => 'Đổi Đơn vị tổ chức';
+
+  @override
+  String assetMoveSitsAtNow(Object name, Object code, Object orgUnitName) {
+    return '$name ($code) hiện nằm tại $orgUnitName.';
+  }
+
+  @override
+  String get assetMoveMoveItTo => 'Chuyển tới';
+
+  @override
+  String get assetMoveWhereThisAssetWillSitItDecides =>
+      'Vị trí Tài sản sẽ nằm. Điều này quyết định ai được nêu và đóng công việc trên nó; công việc đã ghi nhận vẫn ở nơi nó đã xảy ra.';
+
+  @override
+  String assetMoveThisAssetWillSitAt(Object value) {
+    return 'Tài sản này sẽ nằm tại $value.';
+  }
+
+  @override
+  String get assetsTheRegisterCouldNotBeRead =>
+      'Không đọc được danh sách Tài sản';
+
+  @override
+  String get assetsNoAssetsOnTheRegisterYet => 'Danh sách chưa có Tài sản nào';
+
+  @override
+  String get assetsNothingHasBeenRecordedAtThisSite =>
+      'Nhà máy này chưa ghi nhận gì. Thêm một máy là có thể làm việc trên máy đó ngay trong ngày.';
+
+  @override
+  String get assetsEveryMachineOnTheRegisterAtThis =>
+      'Mọi máy trong danh sách tại Nhà máy này, và Đơn vị tổ chức mà mỗi máy nằm.';
+
+  @override
+  String get assetsShowRetired => 'Hiện cả đã ngừng dùng';
+
+  @override
+  String get assetsFilterAssets => 'Lọc Tài sản';
+
+  @override
+  String get assetsNoAssetsMatch => 'Không có Tài sản nào khớp';
+
+  @override
+  String assetsThisSiteHasAssetsOnTheRegister(Object term) {
+    return 'Nhà máy này có Tài sản trong danh sách, nhưng không cái nào khớp “$term”. Hãy thử tên hoặc mã khác, hoặc xoá bộ lọc.';
+  }
+
+  @override
+  String get assetsCodeType => 'Mã · Kiểu';
+
+  @override
+  String get assetsCorrectDetails => 'Sửa thông tin…';
+
+  @override
+  String get assetsChangeOrgUnit => 'Đổi Đơn vị tổ chức…';
+
+  @override
+  String get assetsDetach => 'Tách ra';
+
+  @override
+  String get assetsNestUnder => 'Đặt dưới…';
+
+  @override
+  String get assetsRetireThisAsset => 'Ngừng dùng Tài sản này?';
+
+  @override
+  String assetsWillNoLongerAppearOnTheActive(Object name) {
+    return '$name sẽ không còn hiện trong danh sách đang hoạt động. Không có gì bị xoá, và có thể dùng lại bất cứ lúc nào.';
+  }
+
+  @override
+  String get assetsThereIsNothingElseOnThisRegister =>
+      'Danh sách không còn mục nào khác để nó nằm dưới.';
+
+  @override
+  String get breakdownReportReportABreakdown => 'Báo một lần hỏng máy';
+
+  @override
+  String get breakdownReportReport => 'Báo';
+
+  @override
+  String get breakdownReportStartedAtOptional => 'Bắt đầu lúc (không bắt buộc)';
+
+  @override
+  String get commonLeaveBlankToRecordNow =>
+      'Để trống để ghi nhận ngay bây giờ.';
+
+  @override
+  String downtimeClassifyClassifyTheStopFor(Object assetName) {
+    return 'Phân loại lần dừng của $assetName';
+  }
+
+  @override
+  String get downtimeClassifyKeepItUnclassified => 'Để chưa phân loại';
+
+  @override
+  String get downtimeClassifyDescriptionRequired => 'Mô tả (bắt buộc)';
+
+  @override
+  String get downtimeClassifyTheDowntimeReasonsCouldNotBeRead =>
+      'Không đọc được các lý do dừng máy.';
+
+  @override
+  String downtimeCloseCloseTheStopFor(Object assetName) {
+    return 'Đóng lần dừng của $assetName?';
+  }
+
+  @override
+  String get commonKeepItOpen => 'Để mở';
+
+  @override
+  String get downtimeCloseCloseThisStop => 'Đóng lần dừng này';
+
+  @override
+  String get downtimeCloseTheMachineIsRunningAgainTheServer =>
+      'Máy đã chạy lại. Máy chủ ghi nhận thời gian đã dừng.';
+
+  @override
+  String get downtimeCloseEndedAtOptional => 'Kết thúc lúc (không bắt buộc)';
+
+  @override
+  String get floorTheFloorWorkCouldNotBeLoaded =>
+      'Không tải được công việc trên sàn';
+
+  @override
+  String get floorNoOpenWork => 'Không có việc đang mở';
+
+  @override
+  String floorThereIsNoOpenWorkForRight(Object orgUnitName) {
+    return 'Hiện tại $orgUnitName không có việc nào đang mở.';
+  }
+
+  @override
+  String get floorRefresh => 'Làm mới';
+
+  @override
+  String get floorFloorWork => 'Công việc trên sàn';
+
+  @override
+  String get floorObservation => 'Quan sát';
+
+  @override
+  String get floorMyTraining => 'Đào tạo của tôi';
+
+  @override
+  String floorTechnicianComplete(Object workOrderNo) {
+    return 'Hoàn thành $workOrderNo';
+  }
+
+  @override
+  String floorTechnicianStart(Object workOrderNo) {
+    return 'Bắt đầu $workOrderNo';
+  }
+
+  @override
+  String get floorTechnicianWhoIsRecordingThisYourEmployeeNumber =>
+      'Ai đang ghi nhận việc này? Mã nhân viên và PIN xác định bạn chỉ cho thao tác này.';
+
+  @override
+  String get commonWhatWasFound => 'Đã phát hiện gì?';
+
+  @override
+  String get myRequestsYourRequestsCouldNotBeRead =>
+      'Không đọc được các yêu cầu của bạn';
+
+  @override
+  String get myRequestsWhatYouRaisedAndWhatBecameOf =>
+      'Những gì bạn đã nêu, và kết quả của từng cái.';
+
+  @override
+  String get commonRaiseARequest => 'Nêu một yêu cầu';
+
+  @override
+  String myRequestsYouHaveRequestsAtThisSiteBut(Object term) {
+    return 'Bạn có Yêu cầu tại Nhà máy này, nhưng không cái nào khớp “$term”. Hãy thử mô tả hoặc Tài sản khác.';
+  }
+
+  @override
+  String get myRequestsOutcome => 'Kết quả';
+
+  @override
+  String myRequestsBecameWorkOrder(Object workOrderNo) {
+    return 'Đã thành Lệnh công việc $workOrderNo';
+  }
+
+  @override
+  String myRequestsDeclined(Object rejectionReason) {
+    return 'Bị từ chối: $rejectionReason';
+  }
+
+  @override
+  String get myRequestsNothingRaisedYet => 'Chưa nêu gì';
+
+  @override
+  String get myRequestsYouHaveNotRaisedAnyRequestsAt =>
+      'Bạn chưa nêu Yêu cầu nào tại Nhà máy này. Hãy nêu một cái và nó sẽ hiện ở đây cùng kết quả sau đó.';
+
+  @override
+  String get commonAddPart => 'Thêm phụ tùng';
+
+  @override
+  String get commonPartNumber => 'Mã phụ tùng';
+
+  @override
+  String get partsThePartsCatalogueCouldNotBeRead =>
+      'Không đọc được danh mục phụ tùng';
+
+  @override
+  String get partsTheSharedCatalogueDefinedOnceReusedAt =>
+      'Danh mục dùng chung — khai báo một lần, dùng lại ở mọi Nhà máy.';
+
+  @override
+  String get partsNoPartsYet => 'Chưa có phụ tùng nào';
+
+  @override
+  String get partsFilterParts => 'Lọc phụ tùng';
+
+  @override
+  String get commonByPartNumberOrDescription => 'Theo mã phụ tùng hoặc mô tả.';
+
+  @override
+  String get commonNoPartsMatch => 'Không có phụ tùng nào khớp';
+
+  @override
+  String partsNothingInTheCatalogueMatchesTryA(Object term) {
+    return 'Danh mục không có gì khớp “$term”. Hãy thử mã phụ tùng hoặc mô tả khác, hoặc xoá bộ lọc.';
+  }
+
+  @override
+  String get commonReceiveStock => 'Nhập kho';
+
+  @override
+  String get receiveReceiving => 'Đang nhập…';
+
+  @override
+  String get receiveReceive => 'Nhập kho';
+
+  @override
+  String get receiveReasonOptional => 'Lý do (không bắt buộc)';
+
+  @override
+  String get commonRaise => 'Nêu';
+
+  @override
+  String get requestFormProductionIsStoppedRightNow =>
+      'Sản xuất đang dừng ngay lúc này';
+
+  @override
+  String get storeStockThisStoreCouldNotBeRead => 'Không đọc được kho này';
+
+  @override
+  String get storeStockBackToStores => 'Về danh sách Kho';
+
+  @override
+  String get storeStockNothingOnTheShelf => 'Kệ trống';
+
+  @override
+  String get storeStockNoPartHasMovedInOrOut =>
+      'Chưa có phụ tùng nào ra vào kho này.';
+
+  @override
+  String get storeStockFilterStock => 'Lọc tồn kho';
+
+  @override
+  String storeStockThisStoreHoldsStockButNothingOn(Object term) {
+    return 'Kho này có tồn kho, nhưng không mục nào trên kệ khớp “$term”. Hãy thử mã phụ tùng hoặc mô tả khác.';
+  }
+
+  @override
+  String get storesTheStoresCouldNotBeRead => 'Không đọc được danh sách Kho';
+
+  @override
+  String get storesTheShelvesThatHoldPartsAtThis =>
+      'Những kệ chứa phụ tùng tại Nhà máy này.';
+
+  @override
+  String get storesNoStoresYet => 'Chưa có kho nào';
+
+  @override
+  String get storesNothingHereHoldsParts => 'Ở đây không có gì chứa phụ tùng.';
+
+  @override
+  String get storesFilterStores => 'Lọc kho';
+
+  @override
+  String get storesNoStoresMatch => 'Không có kho nào khớp';
+
+  @override
+  String storesThisSiteHasStoresButNoneMatches(Object term) {
+    return 'Nhà máy này có kho, nhưng không kho nào khớp “$term”. Hãy thử tên hoặc mã khác, hoặc xoá bộ lọc.';
+  }
+
+  @override
+  String get storesTappingAStoreShowsWhatIsOn =>
+      'Chạm vào một kho để xem trên kệ có gì.';
+
+  @override
+  String get storesCodeOrgUnit => 'Mã · Đơn vị tổ chức';
+
+  @override
+  String taskReadingRecordAReadingOn(Object value) {
+    return 'Ghi chỉ số cho $value';
+  }
+
+  @override
+  String get taskReadingWhatTheMeterReads => 'Đồng hồ chỉ bao nhiêu';
+
+  @override
+  String get tierBoardOrgUnitFilterNarrowTheBoard => 'Thu hẹp bảng';
+
+  @override
+  String get tierBoardOrgUnitFilterChooseTheOrgUnitWhoseNumbersAnd =>
+      'Chọn Đơn vị tổ chức mà bạn muốn đọc số liệu cùng mọi thứ bên dưới nó, hoặc xoá về toàn bộ Nhà máy.';
+
+  @override
+  String get tierTheTierBoardCouldNotBeRead => 'Không đọc được bảng phân cấp';
+
+  @override
+  String get tierTheNumbersThisSiteSWorkProduces =>
+      'Những số liệu mà công việc của Nhà máy này tạo ra, báo cáo theo năm Trụ cột. Mọi Trụ cột đều được hiển thị dù chưa có gì báo cáo dưới nó.';
+
+  @override
+  String get tierDate => 'Ngày';
+
+  @override
+  String get tierNoPillarsToShow => 'Không có Trụ cột nào để hiển thị';
+
+  @override
+  String get tierThisSiteHasNoPillarsToReport =>
+      'Nhà máy này chưa có Trụ cột nào để báo cáo.';
+
+  @override
+  String get tierNoDataYet => 'Chưa có dữ liệu';
+
+  @override
+  String get tierNoKpiIsDefinedUnderThisPillar =>
+      'Chưa có KPI nào được định nghĩa dưới Trụ cột này.';
+
+  @override
+  String get tierValue => 'Giá trị';
+
+  @override
+  String get workOrderAssignFindAPerson => 'Tìm một người';
+
+  @override
+  String get workOrderAssignByNameEmployeeNumberOrTheQualification =>
+      'Theo tên, mã nhân viên, hoặc chứng nhận họ có.';
+
+  @override
+  String get workOrderAssignTheCandidatesCouldNotBeRead =>
+      'Không đọc được danh sách ứng viên.';
+
+  @override
+  String workOrderAssignNobodyMatchesTryADifferentNameNumber(Object term) {
+    return 'Không ai khớp “$term” — hãy thử tên, mã số hoặc kỹ năng khác.';
+  }
+
+  @override
+  String get workOrderAssignThereIsNobodyThisWorkOrderCould =>
+      'Không có ai để giao Lệnh công việc này.';
+
+  @override
+  String get workOrderAssignNoQualificationsRecorded =>
+      'Chưa ghi nhận chứng nhận nào';
+
+  @override
+  String get workOrderCancelCancelThisWorkOrder => 'Huỷ Lệnh công việc này?';
+
+  @override
+  String get workOrderCancelCancelThisWorkOrder2 => 'Huỷ Lệnh công việc này';
+
+  @override
+  String get workOrderCancelWhyIsThisBeingCancelledOptional =>
+      'Vì sao huỷ? (không bắt buộc)';
+
+  @override
+  String get workOrderCompleteCompleteThisWorkOrder =>
+      'Hoàn thành Lệnh công việc này';
+
+  @override
+  String get workOrderDialogYouDoNotHoldAWriteGrant =>
+      'Bạn không có quyền ghi nào bao trùm Lệnh công việc này.';
+
+  @override
+  String get workOrderDialogLoadingThisWorkOrder =>
+      'Đang tải Lệnh công việc này';
+
+  @override
+  String get workOrderDialogThatIsNoLongerAvailable => 'Mục đó không còn';
+
+  @override
+  String workOrderDialogThisWorkOrderIsNowWhichNo(Object statusLabel) {
+    return 'Lệnh công việc này hiện ở trạng thái $statusLabel, nên không còn thao tác này.';
+  }
+
+  @override
+  String get workOrderDialogThatWorkOrderIsNotInThis =>
+      'Lệnh công việc đó không có trong danh sách này';
+
+  @override
+  String get workOrderDialogItMayHaveBeenCompletedCancelledOr =>
+      'Có thể nó đã hoàn thành, đã huỷ, hoặc nằm ngoài Nhà máy hay Đơn vị tổ chức mà danh sách đang hiển thị.';
+
+  @override
+  String get workOrdersWoBuc202600001 => 'WO-BUC-2026-00001';
 }

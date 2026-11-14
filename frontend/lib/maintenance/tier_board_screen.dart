@@ -22,6 +22,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
@@ -69,6 +70,7 @@ class TierBoardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<TierBoardBloc>().state;
 
     return Scaffold(
@@ -81,7 +83,7 @@ class TierBoardScreen extends StatelessWidget {
               TierBoardLoading() => const _BoardSkeleton(),
               TierBoardUnavailable(message: final message) => PlatformFailureState(
                   key: failedKey,
-                  title: 'The tier board could not be read',
+                  title: l10n.tierTheTierBoardCouldNotBeRead,
                   message: message,
                   retryKey: retryKey,
                   onRetry: () => context.read<TierBoardBloc>().add(const TierBoardStarted()),
@@ -106,6 +108,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final loaded = state is TierBoardLoaded ? state as TierBoardLoaded : null;
 
     return Center(
@@ -114,10 +117,9 @@ class _Header extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
-            title: 'Tier board',
+            title: l10n.navTierBoard,
             description:
-                'The numbers this Site\'s work produces, reported under the five Pillars. '
-                'Every Pillar is shown whether or not anything reports under it yet.',
+                l10n.tierTheNumbersThisSiteSWorkProduces,
             below: loaded == null ? null : _Controls(state: loaded),
           ),
         ),
@@ -143,6 +145,7 @@ class _Controls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final bloc = context.read<TierBoardBloc>();
     return AppFilterRow(
       children: [
@@ -153,7 +156,7 @@ class _Controls extends StatelessWidget {
               key: TierBoardScreen.siteKey,
               initialValue: state.siteId,
               isDense: true,
-              decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.commonSite, border: OutlineInputBorder()),
               items: [
                 for (final site in state.sites)
                   DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -170,7 +173,7 @@ class _Controls extends StatelessWidget {
             key: TierBoardScreen.periodTypeKey,
             initialValue: state.periodType,
             isDense: true,
-            decoration: const InputDecoration(labelText: 'Period', border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: l10n.commonPeriod, border: OutlineInputBorder()),
             items: [
               for (final periodType in BoardPeriodType.selectable)
                 DropdownMenuItem<String>(value: periodType.wire, child: Text(periodType.label)),
@@ -185,7 +188,7 @@ class _Controls extends StatelessWidget {
           width: _controlWidth(context, 220),
           child: AppDateField(
             name: TierBoardScreen.dateFieldName,
-            label: 'Date',
+            label: l10n.tierDate,
             value: state.date,
             optional: true,
             enabled: !state.isLoadingBoard,
@@ -198,7 +201,7 @@ class _Controls extends StatelessWidget {
               ? null
               : () => TierBoardOrgUnitFilterDialog.open(context),
           icon: const Icon(Icons.account_tree_outlined, size: 18),
-          label: Text(state.orgUnitFilterName ?? 'All Org Units'),
+          label: Text(state.orgUnitFilterName ?? l10n.commonAllOrgUnits),
         ),
       ],
     );
@@ -237,10 +240,11 @@ class _TierBoardEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const PlatformEmptyState.noneExist(
+    final l10n = AppLocalizations.of(context);
+    return PlatformEmptyState.noneExist(
       key: TierBoardScreen.emptyKey,
-      title: 'No Pillars to show',
-      message: 'This Site has no Pillars to report against yet.',
+      title: l10n.tierNoPillarsToShow,
+      message: l10n.tierThisSiteHasNoPillarsToReport,
     );
   }
 }
@@ -315,6 +319,7 @@ class _PillarLane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final muted = AppTypography.dense(context)?.copyWith(color: palette.textMuted);
     const inset = EdgeInsets.symmetric(horizontal: Spacing.md);
@@ -353,7 +358,7 @@ class _PillarLane extends StatelessWidget {
             Padding(
               padding: inset.copyWith(bottom: Spacing.sm),
               child: Text(
-                'No data yet',
+                l10n.tierNoDataYet,
                 key: TierBoardScreen.pillarNoDataKey(pillar.code),
                 style: muted,
               ),
@@ -361,7 +366,7 @@ class _PillarLane extends StatelessWidget {
           if (pillar.kpis.isEmpty)
             Padding(
               padding: inset.copyWith(bottom: Spacing.md),
-              child: Text('No KPI is defined under this Pillar yet.', style: muted),
+              child: Text(l10n.tierNoKpiIsDefinedUnderThisPillar, style: muted),
             )
           else
             for (final kpi in pillar.kpis) _KpiRow(kpi: kpi),
@@ -384,14 +389,15 @@ class _KpiRow extends StatelessWidget {
 
   final BoardKpi kpi;
 
-  static const List<AppTableColumn> _columns = [
-    AppTableColumn('KPI', flex: 4),
-    AppTableColumn('Value', flex: 2, align: AppColumnAlign.end),
-    AppTableColumn('Status', flex: 2, align: AppColumnAlign.end),
+  static List<AppTableColumn> columns(AppLocalizations l10n) => [
+    AppTableColumn(l10n.addKpiKpi, flex: 4),
+    AppTableColumn(l10n.tierValue, flex: 2, align: AppColumnAlign.end),
+    AppTableColumn(l10n.commonStatus, flex: 2, align: AppColumnAlign.end),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final name = Tooltip(
       message: kpi.formulaText,
@@ -429,7 +435,7 @@ class _KpiRow extends StatelessWidget {
           if (constraints.maxWidth >=
               AppBreakpoints.effective(context, AppBreakpoints.registerTable)) {
             return AppTableRow(
-              columns: _columns,
+              columns: columns(l10n),
               cells: [
                 name,
                 Wrap(
