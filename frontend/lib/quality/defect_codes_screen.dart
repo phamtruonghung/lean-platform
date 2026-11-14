@@ -196,9 +196,9 @@ class _DefectCodeRow extends StatelessWidget {
                     // that distinct from the code itself), and the severity a
                     // Non-conformance recorded against it starts at.
                     DisclosingText(
-                      '${row.parentName == null ? 'Top level' : 'Under ${row.parentName}'} · '
+                      '${row.parentName == null ? l10n.defectCodesTopLevel : l10n.defectCodesUnder(row.parentName!)} · '
                       '${DefectCategory.label(code.category)} · '
-                      'starts at ${DefectSeverity.label(code.defaultSeverity)}',
+                      '${l10n.defectCodesStartsAt(DefectSeverity.label(code.defaultSeverity))}',
                       style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
                     ),
                   ],

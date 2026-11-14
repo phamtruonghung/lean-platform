@@ -110,7 +110,7 @@ class _IssueImagesSectionState extends State<IssueImagesSection> {
         description:
             AppLocalizations.of(context).issueImagesThePictureIsTakenOffTheRecord,
         confirmLabel: AppLocalizations.of(context).commonRemove,
-        dismissLabel: 'Keep it',
+        dismissLabel: AppLocalizations.of(context).issueImagesKeepIt,
       ),
     );
     if (confirmed != true || !mounted) return;

@@ -3096,6 +3096,14 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String skillCoverageNeedsAtLevel(
+    Object minimumQualifiedHeadcount,
+    Object minimumLevel,
+  ) {
+    return 'Cần $minimumQualifiedHeadcount người ở bậc $minimumLevel+';
+  }
+
+  @override
   String skillCoverageNeedsAtLevelQualifiedLapsed(
     Object minimumQualifiedHeadcount,
     Object minimumLevel,
@@ -3853,6 +3861,21 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String get actionPhaseCompletePlanProse =>
+      'Điều gì sẽ khác đi, và bạn biết bằng cách nào. Mục tiêu nằm ở đây, bằng chính lời của nhà máy.';
+
+  @override
+  String get actionPhaseCompleteDoProse => 'Điều thực sự đã được làm.';
+
+  @override
+  String get actionPhaseCompleteCheckProse =>
+      'Điều gì đã được đo, so với điều Kế hoạch đã nêu.';
+
+  @override
+  String get actionPhaseCompleteActProse =>
+      'Tiêu chuẩn nào giờ giữ nó, để bản sửa chữa sống lâu hơn người tạo ra nó.';
+
+  @override
   String actionPhaseCompleteCompleteThe(Object label) {
     return 'Hoàn thành $label';
   }
@@ -3937,6 +3960,9 @@ class AppLocalizationsVi extends AppLocalizations {
       'Chưa có Hành động nào được nêu tại Nhà máy này.';
 
   @override
+  String get actionsSourceRaisedHere => 'Phát sinh tại đây';
+
+  @override
   String get actionsSource => 'Nguồn';
 
   @override
@@ -4001,6 +4027,21 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get commonItMayHaveBeenRemovedAMoment =>
       'Có thể người khác vừa xoá nó cách đây ít phút.';
+
+  @override
+  String capaCauseSomethingThatCouldBeBehind(Object categoryLabel) {
+    return '$categoryLabel — điều gì đó có thể đứng sau vấn đề.';
+  }
+
+  @override
+  String get capaCauseRecordIt => 'Ghi lại';
+
+  @override
+  String get capaCauseWhatItSaysAndWhichOfTheSix =>
+      'Nó nói gì, và nó được xếp vào một trong sáu nhánh nào.';
+
+  @override
+  String get capaCauseSaveIt => 'Lưu lại';
 
   @override
   String get capaCauseRecordACandidateCause => 'Ghi một nguyên nhân ứng viên';
@@ -4356,6 +4397,52 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String get capaReportTheTeamHasNotBeenNamed =>
+      'Nhóm điều tra chưa được nêu tên.';
+
+  @override
+  String get capaReportTheProblemDescriptionHasNotBeenWritten =>
+      'Mô tả vấn đề chưa được viết.';
+
+  @override
+  String get capaReportNoContainmentActionIsRecorded =>
+      'Chưa ghi nhận hành động ngăn chặn nào trên Concern.';
+
+  @override
+  String capaReportChainHasNotBeenStarted(Object chain) {
+    return 'Chuỗi $chain chưa được bắt đầu.';
+  }
+
+  @override
+  String capaReportChainHasNoConfirmedRootCause(Object chain) {
+    return 'Chuỗi $chain chưa có nguyên nhân gốc đã xác nhận.';
+  }
+
+  @override
+  String get capaReportNoCountermeasureIsRecorded =>
+      'Chưa ghi nhận biện pháp khắc phục nào trên Concern.';
+
+  @override
+  String get capaReportNoPreventiveActionIsRecorded =>
+      'Chưa ghi nhận hành động phòng ngừa nào trên Concern.';
+
+  @override
+  String get capaReportTheEffectivenessCheckHasNotBeenRecorded =>
+      'Việc kiểm tra hiệu quả chưa được ghi nhận.';
+
+  @override
+  String get capaReportNoContainmentActionIsRecordedYet =>
+      'Chưa ghi nhận hành động ngăn chặn nào trên Concern.';
+
+  @override
+  String get capaReportNoCountermeasureIsRecordedYet =>
+      'Chưa ghi nhận biện pháp khắc phục nào trên Concern.';
+
+  @override
+  String get capaReportNoPreventiveActionIsRecordedYet =>
+      'Chưa ghi nhận hành động phòng ngừa nào trên Concern.';
+
+  @override
   String get capaReportNotYetDone => 'Chưa làm';
 
   @override
@@ -4587,6 +4674,11 @@ class AppLocalizationsVi extends AppLocalizations {
       'Mở CAPA cần thẩm quyền Chất lượng tại Đơn vị tổ chức của Concern này.';
 
   @override
+  String openCapaTakeOffTheTeam(Object displayName) {
+    return 'Bỏ $displayName khỏi nhóm';
+  }
+
+  @override
   String openCapaOpenACapaOn(Object actionNo) {
     return 'Mở CAPA trên $actionNo';
   }
@@ -4638,6 +4730,9 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get signInPassword => 'Mật khẩu';
+
+  @override
+  String get signInOr => 'hoặc';
 
   @override
   String get signInCreateAnAccount => 'Tạo tài khoản';
@@ -5009,7 +5104,23 @@ class AppLocalizationsVi extends AppLocalizations {
       'Các kiểu sai hỏng — một danh mục dùng chung cho mọi Nhà máy, kèm mức độ mà mỗi mã bắt đầu.';
 
   @override
+  String get defectCodesTopLevel => 'Cấp cao nhất';
+
+  @override
+  String defectCodesUnder(Object parentName) {
+    return 'Thuộc $parentName';
+  }
+
+  @override
+  String defectCodesStartsAt(Object severity) {
+    return 'bắt đầu ở mức $severity';
+  }
+
+  @override
   String get defectCodesNoDefectCodesYet => 'Chưa có Mã lỗi nào';
+
+  @override
+  String get issueImagesKeepIt => 'Giữ lại';
 
   @override
   String get issueImagesRemoveThisPicture => 'Bỏ ảnh này?';
@@ -6284,6 +6395,14 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get shiftHandoverBackToTheSectionBoard => 'Về bảng Bộ phận';
+
+  @override
+  String get shiftHandoverSection => 'Bộ phận';
+
+  @override
+  String shiftHandoverHandedOverBy(Object authorDisplayName) {
+    return 'bàn giao bởi $authorDisplayName';
+  }
 
   @override
   String shiftHandoverShiftHandover(Object value) {

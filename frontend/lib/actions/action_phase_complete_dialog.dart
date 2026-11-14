@@ -189,11 +189,10 @@ class _ActionPhaseCompleteDialogState extends State<ActionPhaseCompleteDialog> {
             children: [
               Text(
                 switch (_phase.phase) {
-                  'plan' => 'What will be different, and how you will know. The target belongs '
-                      'here, in the plant\'s own words.',
-                  'do' => 'What was actually done.',
-                  'check' => 'What was measured, against what the Plan named.',
-                  _ => 'Which standard now holds it, so the fix outlives the person who made it.',
+                  'plan' => l10n.actionPhaseCompletePlanProse,
+                  'do' => l10n.actionPhaseCompleteDoProse,
+                  'check' => l10n.actionPhaseCompleteCheckProse,
+                  _ => l10n.actionPhaseCompleteActProse,
                 },
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),

@@ -295,10 +295,12 @@ class _LoadedState extends State<_Loaded> {
                         ),
                         const SizedBox(height: Spacing.sm),
                         AppPageHeader(
-                          title: l10n.shiftHandoverShiftHandover(handover.sectionName ?? 'Section'),
+                          title: l10n.shiftHandoverShiftHandover(
+                            handover.sectionName ?? l10n.shiftHandoverSection,
+                          ),
                           description: '${handover.productionDate ?? ''} · '
                               '${formatClock(handover.shiftStartsAt)}–${formatClock(handover.shiftEndsAt)}'
-                              '${handover.authorDisplayName != null ? ' · handed over by ${handover.authorDisplayName}' : ''}',
+                              '${handover.authorDisplayName != null ? ' · ${l10n.shiftHandoverHandedOverBy(handover.authorDisplayName!)}' : ''}',
                           // The record's own identifying marks at the row's far
                           // end: its number, where it stands, whether it was
                           // late, and which version of it this is.

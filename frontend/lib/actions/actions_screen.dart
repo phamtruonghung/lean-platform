@@ -420,11 +420,11 @@ double _statusColumnWidth(BuildContext context) {
 /// does not model (a Downtime event, a Work order) must not become a column of
 /// snake_case. `Raised here` is what `standalone` reads as on screen — an Action
 /// somebody raised on the log itself.
-String sourceLabel(Action action) {
-  if (action.safetyIncident != null) return 'Safety incident';
-  if (action.safetyObservation != null) return 'Safety observation';
-  if (action.nonconformances.isNotEmpty) return 'Non-conformance';
-  return 'Raised here';
+String sourceLabel(AppLocalizations l10n, Action action) {
+  if (action.safetyIncident != null) return l10n.titleSafetyIncident;
+  if (action.safetyObservation != null) return l10n.titleSafetyObservation;
+  if (action.nonconformances.isNotEmpty) return l10n.titleNonConformance;
+  return l10n.actionsSourceRaisedHere;
 }
 
 class _ActionsList extends StatelessWidget {
@@ -588,7 +588,7 @@ class _ActionTableRow extends StatelessWidget {
             ),
           ),
           Text(
-            sourceLabel(action),
+            sourceLabel(l10n, action),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: muted,

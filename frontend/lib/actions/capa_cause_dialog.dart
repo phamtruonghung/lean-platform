@@ -181,8 +181,8 @@ class CapaCauseDialog extends StatelessWidget {
 
     return _CauseForm(
       title: l10n.capaCauseRecordACandidateCause,
-      blurb: '${capaCauseCategoryLabel(category)} — something that could be behind the problem.',
-      submitLabel: 'Record it',
+      blurb: l10n.capaCauseSomethingThatCouldBeBehind(capaCauseCategoryLabel(category)),
+      submitLabel: l10n.capaCauseRecordIt,
       submitId: 'record-it',
       category: category,
       statementKey: statementKey,
@@ -225,8 +225,8 @@ class CapaCauseEditDialog extends StatelessWidget {
 
     return _CauseForm(
       title: l10n.capaCauseReviseTheCause,
-      blurb: 'What it says, and which of the six it is filed under.',
-      submitLabel: 'Save it',
+      blurb: l10n.capaCauseWhatItSaysAndWhichOfTheSix,
+      submitLabel: l10n.capaCauseSaveIt,
       submitId: 'save-it',
       category: cause.category,
       choosesCategory: true,

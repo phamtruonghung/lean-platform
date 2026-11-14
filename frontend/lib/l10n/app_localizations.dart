@@ -5351,6 +5351,15 @@ abstract class AppLocalizations {
   /// **'This Site is short somewhere, but nothing matches \"{term}\". Try a different Org Unit or skill, or clear the filter.'**
   String skillCoverageThisSiteIsShortSomewhereButNothing(Object term);
 
+  /// The wide/table reading of one requirement: the headcount needed and the level they must hold. The narrow layout says the same record with its qualified and lapsed counts.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs {minimumQualifiedHeadcount} at level {minimumLevel}+'**
+  String skillCoverageNeedsAtLevel(
+    Object minimumQualifiedHeadcount,
+    Object minimumLevel,
+  );
+
   /// No description provided for @skillCoverageNeedsAtLevelQualifiedLapsed.
   ///
   /// In en, this message translates to:
@@ -6577,6 +6586,30 @@ abstract class AppLocalizations {
     Object value2,
   );
 
+  /// What the complete-the-Plan dialog says about the note it asks for.
+  ///
+  /// In en, this message translates to:
+  /// **'What will be different, and how you will know. The target belongs here, in the plant\'s own words.'**
+  String get actionPhaseCompletePlanProse;
+
+  /// What the complete-the-Do dialog says about the note it asks for.
+  ///
+  /// In en, this message translates to:
+  /// **'What was actually done.'**
+  String get actionPhaseCompleteDoProse;
+
+  /// What the complete-the-Check dialog says about the note it asks for.
+  ///
+  /// In en, this message translates to:
+  /// **'What was measured, against what the Plan named.'**
+  String get actionPhaseCompleteCheckProse;
+
+  /// What the complete-the-Act dialog says about the note it asks for.
+  ///
+  /// In en, this message translates to:
+  /// **'Which standard now holds it, so the fix outlives the person who made it.'**
+  String get actionPhaseCompleteActProse;
+
   /// No description provided for @actionPhaseCompleteCompleteThe.
   ///
   /// In en, this message translates to:
@@ -6715,6 +6748,12 @@ abstract class AppLocalizations {
   /// **'No Action has been raised at this Site yet.'**
   String get actionsNoActionHasBeenRaisedAtThis;
 
+  /// The Source column of an Action raised on the log itself, from no other record.
+  ///
+  /// In en, this message translates to:
+  /// **'Raised here'**
+  String get actionsSourceRaisedHere;
+
   /// No description provided for @actionsSource.
   ///
   /// In en, this message translates to:
@@ -6807,6 +6846,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'It may have been removed a moment ago by somebody else.'**
   String get commonItMayHaveBeenRemovedAMoment;
+
+  /// What the record-a-candidate-cause form says under its title, naming the branch the cause is filed under.
+  ///
+  /// In en, this message translates to:
+  /// **'{categoryLabel} — something that could be behind the problem.'**
+  String capaCauseSomethingThatCouldBeBehind(Object categoryLabel);
+
+  /// The submit label of the record-a-candidate-cause form.
+  ///
+  /// In en, this message translates to:
+  /// **'Record it'**
+  String get capaCauseRecordIt;
+
+  /// What the revise-a-cause form says under its title.
+  ///
+  /// In en, this message translates to:
+  /// **'What it says, and which of the six it is filed under.'**
+  String get capaCauseWhatItSaysAndWhichOfTheSix;
+
+  /// The submit label of the revise-a-cause form.
+  ///
+  /// In en, this message translates to:
+  /// **'Save it'**
+  String get capaCauseSaveIt;
 
   /// No description provided for @capaCauseRecordACandidateCause.
   ///
@@ -7351,6 +7414,72 @@ abstract class AppLocalizations {
   /// **'Answers the Concern {actionNo} · {title}'**
   String capaReportAnswersTheConcern(Object actionNo, Object title);
 
+  /// One line of the CAPA report's not-yet-done list: D1 has nobody on it.
+  ///
+  /// In en, this message translates to:
+  /// **'The team has not been named.'**
+  String get capaReportTheTeamHasNotBeenNamed;
+
+  /// One line of the CAPA report's not-yet-done list: D2 is blank.
+  ///
+  /// In en, this message translates to:
+  /// **'The problem description has not been written.'**
+  String get capaReportTheProblemDescriptionHasNotBeenWritten;
+
+  /// One line of the CAPA report's not-yet-done list: D3 has nothing on the Concern.
+  ///
+  /// In en, this message translates to:
+  /// **'No containment action is recorded on the Concern.'**
+  String get capaReportNoContainmentActionIsRecorded;
+
+  /// One line of the CAPA report's not-yet-done list: a Why chain has no Why yet.
+  ///
+  /// In en, this message translates to:
+  /// **'{chain} has not been started.'**
+  String capaReportChainHasNotBeenStarted(Object chain);
+
+  /// One line of the CAPA report's not-yet-done list: a Why chain has no confirmed root cause.
+  ///
+  /// In en, this message translates to:
+  /// **'{chain} has no confirmed root cause.'**
+  String capaReportChainHasNoConfirmedRootCause(Object chain);
+
+  /// One line of the CAPA report's not-yet-done list: D5 has nothing on the Concern.
+  ///
+  /// In en, this message translates to:
+  /// **'No countermeasure is recorded on the Concern.'**
+  String get capaReportNoCountermeasureIsRecorded;
+
+  /// One line of the CAPA report's not-yet-done list: D7 has nothing on the Concern.
+  ///
+  /// In en, this message translates to:
+  /// **'No preventive action is recorded on the Concern.'**
+  String get capaReportNoPreventiveActionIsRecorded;
+
+  /// One line of the CAPA report's not-yet-done list: D8 has no verdict yet.
+  ///
+  /// In en, this message translates to:
+  /// **'The effectiveness check has not been recorded.'**
+  String get capaReportTheEffectivenessCheckHasNotBeenRecorded;
+
+  /// The sentence the D3 section of the CAPA report reads when it is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No containment action is recorded on the Concern yet.'**
+  String get capaReportNoContainmentActionIsRecordedYet;
+
+  /// The sentence the D5–D6 section of the CAPA report reads when it is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No countermeasure is recorded on the Concern yet.'**
+  String get capaReportNoCountermeasureIsRecordedYet;
+
+  /// The sentence the D7 section of the CAPA report reads when it is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No preventive action is recorded on the Concern yet.'**
+  String get capaReportNoPreventiveActionIsRecordedYet;
+
   /// No description provided for @capaReportNotYetDone.
   ///
   /// In en, this message translates to:
@@ -7703,6 +7832,12 @@ abstract class AppLocalizations {
   /// **'Opening a CAPA needs Quality authority at this Concern\'s Org Unit.'**
   String get openCapaOpeningACapaNeedsQualityAuthorityAt;
 
+  /// The delete tooltip on a team member's chip in the open-a-CAPA dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Take {displayName} off the team'**
+  String openCapaTakeOffTheTeam(Object displayName);
+
   /// No description provided for @openCapaOpenACapaOn.
   ///
   /// In en, this message translates to:
@@ -7786,6 +7921,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Password'**
   String get signInPassword;
+
+  /// The word between the password form and the Continue with Google button.
+  ///
+  /// In en, this message translates to:
+  /// **'or'**
+  String get signInOr;
 
   /// No description provided for @signInCreateAnAccount.
   ///
@@ -8399,11 +8540,35 @@ abstract class AppLocalizations {
   /// **'The kinds of thing found wrong — one list shared by every Site, and the severity each starts a Non-conformance at.'**
   String get defectCodesTheKindsOfThingFoundWrongOne;
 
+  /// A Defect code that hangs under nothing, said on its register row.
+  ///
+  /// In en, this message translates to:
+  /// **'Top level'**
+  String get defectCodesTopLevel;
+
+  /// A Defect code's place in the tree, named by its parent.
+  ///
+  /// In en, this message translates to:
+  /// **'Under {parentName}'**
+  String defectCodesUnder(Object parentName);
+
+  /// The severity a Non-conformance recorded against this Defect code starts at.
+  ///
+  /// In en, this message translates to:
+  /// **'starts at {severity}'**
+  String defectCodesStartsAt(Object severity);
+
   /// No description provided for @defectCodesNoDefectCodesYet.
   ///
   /// In en, this message translates to:
   /// **'No Defect codes yet'**
   String get defectCodesNoDefectCodesYet;
+
+  /// The way out of the remove-this-picture confirmation that leaves the picture where it is.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep it'**
+  String get issueImagesKeepIt;
 
   /// No description provided for @issueImagesRemoveThisPicture.
   ///
@@ -10414,6 +10579,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Back to the Section board'**
   String get shiftHandoverBackToTheSectionBoard;
+
+  /// What a Shift handover's title reads when the record names no Section.
+  ///
+  /// In en, this message translates to:
+  /// **'Section'**
+  String get shiftHandoverSection;
+
+  /// The tail of a Shift handover's header line: who signed it over.
+  ///
+  /// In en, this message translates to:
+  /// **'handed over by {authorDisplayName}'**
+  String shiftHandoverHandedOverBy(Object authorDisplayName);
 
   /// No description provided for @shiftHandoverShiftHandover.
   ///

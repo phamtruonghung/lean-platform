@@ -62,7 +62,7 @@ class _ActionEscalateDialogHostState extends State<ActionEscalateDialogHost> {
           key: ActionEscalateDialogHost.endedKey,
           title: l10n.commonThatActionCouldNotBeRead,
           message: message,
-          dismissLabel: 'Back',
+          dismissLabel: l10n.commonBack,
         ),
       ActionDetailLoaded(action: final action) => switch (action.status) {
           'done' || 'cancelled' => _EscalateRefusal(
@@ -71,7 +71,7 @@ class _ActionEscalateDialogHostState extends State<ActionEscalateDialogHost> {
               message: action.status == l10n.commonDone
                   ? l10n.actionEscalateItIsClosedWhoeverNeededToKnow
                   : l10n.actionEscalateItWasCalledOffSoThereIs,
-              dismissLabel: 'Back to the Action',
+              dismissLabel: l10n.routerBackToAction,
             ),
           _ when state.isLoadingEscalationTargets => const AlertDialog(
               key: ActionEscalateDialogHost.loadingKey,
@@ -84,13 +84,13 @@ class _ActionEscalateDialogHostState extends State<ActionEscalateDialogHost> {
               key: ActionEscalateDialogHost.endedKey,
               title: l10n.actionEscalateNowhereToHandItUpTo,
               message: state.escalationFailure!,
-              dismissLabel: 'Back',
+              dismissLabel: l10n.commonBack,
             ),
           _ when state.escalationTargets.isEmpty => _EscalateRefusal(
               key: ActionEscalateDialogHost.nowhereKey,
               title: l10n.actionEscalateThereIsNobodyAboveThis,
               message: l10n.actionEscalateSitsAtWhichIsAlreadyTheTop(action.actionNo, action.orgUnitName),
-              dismissLabel: 'Back to the Action',
+              dismissLabel: l10n.routerBackToAction,
             ),
           _ => ActionEscalateDialog(action: action, targets: state.escalationTargets),
         },

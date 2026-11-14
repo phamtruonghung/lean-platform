@@ -263,14 +263,14 @@ class _SignInScreenState extends State<SignInScreen> {
               child: Text(l10n.signInCreateAnAccount),
             ),
             const SizedBox(height: Spacing.md),
-            const Row(
+            Row(
               children: [
-                Expanded(child: Divider()),
+                const Expanded(child: Divider()),
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: Spacing.sm),
-                  child: Text('or'),
+                  padding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
+                  child: Text(l10n.signInOr),
                 ),
-                Expanded(child: Divider()),
+                const Expanded(child: Divider()),
               ],
             ),
             const SizedBox(height: Spacing.md),

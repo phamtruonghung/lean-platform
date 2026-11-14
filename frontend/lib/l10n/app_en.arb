@@ -2824,6 +2824,18 @@
       "term": {"type": "Object"}
     }
   },
+  "skillCoverageNeedsAtLevel": "Needs {minimumQualifiedHeadcount} at level {minimumLevel}+",
+  "@skillCoverageNeedsAtLevel": {
+      "description": "The wide/table reading of one requirement: the headcount needed and the level they must hold. The narrow layout says the same record with its qualified and lapsed counts.",
+      "placeholders": {
+          "minimumQualifiedHeadcount": {
+              "type": "Object"
+          },
+          "minimumLevel": {
+              "type": "Object"
+          }
+      }
+  },
   "skillCoverageNeedsAtLevelQualifiedLapsed": "Needs {minimumQualifiedHeadcount} at level {minimumLevel}+, {qualifiedHeadcount} qualified, {expiredHeadcount} lapsed",
   "@skillCoverageNeedsAtLevelQualifiedLapsed": {
     "placeholders": {
@@ -3213,6 +3225,22 @@
       "value2": {"type": "Object"}
     }
   },
+  "actionPhaseCompletePlanProse": "What will be different, and how you will know. The target belongs here, in the plant's own words.",
+  "@actionPhaseCompletePlanProse": {
+      "description": "What the complete-the-Plan dialog says about the note it asks for."
+  },
+  "actionPhaseCompleteDoProse": "What was actually done.",
+  "@actionPhaseCompleteDoProse": {
+      "description": "What the complete-the-Do dialog says about the note it asks for."
+  },
+  "actionPhaseCompleteCheckProse": "What was measured, against what the Plan named.",
+  "@actionPhaseCompleteCheckProse": {
+      "description": "What the complete-the-Check dialog says about the note it asks for."
+  },
+  "actionPhaseCompleteActProse": "Which standard now holds it, so the fix outlives the person who made it.",
+  "@actionPhaseCompleteActProse": {
+      "description": "What the complete-the-Act dialog says about the note it asks for."
+  },
   "actionPhaseCompleteCompleteThe": "Complete the {label}",
   "@actionPhaseCompleteCompleteThe": {
     "placeholders": {
@@ -3246,6 +3274,10 @@
   "actionsTheLogHasActionsButNoneOf": "The log has Actions, but none of them is in the Org Unit, status or kind you picked.",
   "actionsNothingOnTheLog": "Nothing on the log",
   "actionsNoActionHasBeenRaisedAtThis": "No Action has been raised at this Site yet.",
+  "actionsSourceRaisedHere": "Raised here",
+  "@actionsSourceRaisedHere": {
+      "description": "The Source column of an Action raised on the log itself, from no other record."
+  },
   "actionsSource": "Source",
   "actionsOfThemCountermeasures": "{measureCount, plural, =1{1 measure} other{{measureCount} measures}}, {countermeasureCount} of them countermeasures",
   "@actionsOfThemCountermeasures": {
@@ -3283,6 +3315,27 @@
   "commonWritingACapaSRootCausesNeeds": "Writing a CAPA's root causes needs edit access at its Org Unit, or a place on its team.",
   "capaCauseThatCauseIsNotOnThisBone": "That cause is not on this bone",
   "commonItMayHaveBeenRemovedAMoment": "It may have been removed a moment ago by somebody else.",
+  "capaCauseSomethingThatCouldBeBehind": "{categoryLabel} — something that could be behind the problem.",
+  "@capaCauseSomethingThatCouldBeBehind": {
+      "description": "What the record-a-candidate-cause form says under its title, naming the branch the cause is filed under.",
+      "placeholders": {
+          "categoryLabel": {
+              "type": "Object"
+          }
+      }
+  },
+  "capaCauseRecordIt": "Record it",
+  "@capaCauseRecordIt": {
+      "description": "The submit label of the record-a-candidate-cause form."
+  },
+  "capaCauseWhatItSaysAndWhichOfTheSix": "What it says, and which of the six it is filed under.",
+  "@capaCauseWhatItSaysAndWhichOfTheSix": {
+      "description": "What the revise-a-cause form says under its title."
+  },
+  "capaCauseSaveIt": "Save it",
+  "@capaCauseSaveIt": {
+      "description": "The submit label of the revise-a-cause form."
+  },
   "capaCauseRecordACandidateCause": "Record a candidate cause",
   "capaCauseReviseTheCause": "Revise the cause",
   "capaCauseRemoveThisCause": "Remove this cause?",
@@ -3492,6 +3545,60 @@
       "title": {"type": "Object"}
     }
   },
+  "capaReportTheTeamHasNotBeenNamed": "The team has not been named.",
+  "@capaReportTheTeamHasNotBeenNamed": {
+      "description": "One line of the CAPA report's not-yet-done list: D1 has nobody on it."
+  },
+  "capaReportTheProblemDescriptionHasNotBeenWritten": "The problem description has not been written.",
+  "@capaReportTheProblemDescriptionHasNotBeenWritten": {
+      "description": "One line of the CAPA report's not-yet-done list: D2 is blank."
+  },
+  "capaReportNoContainmentActionIsRecorded": "No containment action is recorded on the Concern.",
+  "@capaReportNoContainmentActionIsRecorded": {
+      "description": "One line of the CAPA report's not-yet-done list: D3 has nothing on the Concern."
+  },
+  "capaReportChainHasNotBeenStarted": "{chain} has not been started.",
+  "@capaReportChainHasNotBeenStarted": {
+      "description": "One line of the CAPA report's not-yet-done list: a Why chain has no Why yet.",
+      "placeholders": {
+          "chain": {
+              "type": "Object"
+          }
+      }
+  },
+  "capaReportChainHasNoConfirmedRootCause": "{chain} has no confirmed root cause.",
+  "@capaReportChainHasNoConfirmedRootCause": {
+      "description": "One line of the CAPA report's not-yet-done list: a Why chain has no confirmed root cause.",
+      "placeholders": {
+          "chain": {
+              "type": "Object"
+          }
+      }
+  },
+  "capaReportNoCountermeasureIsRecorded": "No countermeasure is recorded on the Concern.",
+  "@capaReportNoCountermeasureIsRecorded": {
+      "description": "One line of the CAPA report's not-yet-done list: D5 has nothing on the Concern."
+  },
+  "capaReportNoPreventiveActionIsRecorded": "No preventive action is recorded on the Concern.",
+  "@capaReportNoPreventiveActionIsRecorded": {
+      "description": "One line of the CAPA report's not-yet-done list: D7 has nothing on the Concern."
+  },
+  "capaReportTheEffectivenessCheckHasNotBeenRecorded": "The effectiveness check has not been recorded.",
+  "@capaReportTheEffectivenessCheckHasNotBeenRecorded": {
+      "description": "One line of the CAPA report's not-yet-done list: D8 has no verdict yet."
+  },
+  "capaReportNoContainmentActionIsRecordedYet": "No containment action is recorded on the Concern yet.",
+  "@capaReportNoContainmentActionIsRecordedYet": {
+      "description": "The sentence the D3 section of the CAPA report reads when it is empty."
+  },
+  "capaReportNoCountermeasureIsRecordedYet": "No countermeasure is recorded on the Concern yet.",
+  "@capaReportNoCountermeasureIsRecordedYet": {
+      "description": "The sentence the D5–D6 section of the CAPA report reads when it is empty."
+  },
+  "capaReportNoPreventiveActionIsRecordedYet": "No preventive action is recorded on the Concern yet.",
+  "@capaReportNoPreventiveActionIsRecordedYet": {
+      "description": "The sentence the D7 section of the CAPA report reads when it is empty."
+  },
   "capaReportNotYetDone": "Not yet done",
   "capaReportWhatThisReportIsStillWaitingFor": "What this report is still waiting for.",
   "capaReportD1Team": "D1 · Team",
@@ -3624,6 +3731,15 @@
   },
   "openCapaOpeningACapaNeedsAuthority": "Opening a CAPA needs authority",
   "openCapaOpeningACapaNeedsQualityAuthorityAt": "Opening a CAPA needs Quality authority at this Concern's Org Unit.",
+  "openCapaTakeOffTheTeam": "Take {displayName} off the team",
+  "@openCapaTakeOffTheTeam": {
+      "description": "The delete tooltip on a team member's chip in the open-a-CAPA dialog.",
+      "placeholders": {
+          "displayName": {
+              "type": "Object"
+          }
+      }
+  },
   "openCapaOpenACapaOn": "Open a CAPA on {actionNo}",
   "@openCapaOpenACapaOn": {
     "placeholders": {
@@ -3653,6 +3769,10 @@
   },
   "awaitingApprovalCheckAgain": "Check again",
   "signInPassword": "Password",
+  "signInOr": "or",
+  "@signInOr": {
+      "description": "The word between the password form and the Continue with Google button."
+  },
   "signInCreateAnAccount": "Create an account",
   "signInContinueWithGoogle": "Continue with Google",
   "signInOneApplicationForRunningSeveralManufacturingPlants": "One application for running several manufacturing plants.",
@@ -3811,7 +3931,33 @@
   "defectCodeFormNoParentTopLevel": "No parent — top level",
   "defectCodesTheDefectCodeCatalogueCouldNotBe": "The Defect code catalogue could not be read",
   "defectCodesTheKindsOfThingFoundWrongOne": "The kinds of thing found wrong — one list shared by every Site, and the severity each starts a Non-conformance at.",
+  "defectCodesTopLevel": "Top level",
+  "@defectCodesTopLevel": {
+      "description": "A Defect code that hangs under nothing, said on its register row."
+  },
+  "defectCodesUnder": "Under {parentName}",
+  "@defectCodesUnder": {
+      "description": "A Defect code's place in the tree, named by its parent.",
+      "placeholders": {
+          "parentName": {
+              "type": "Object"
+          }
+      }
+  },
+  "defectCodesStartsAt": "starts at {severity}",
+  "@defectCodesStartsAt": {
+      "description": "The severity a Non-conformance recorded against this Defect code starts at.",
+      "placeholders": {
+          "severity": {
+              "type": "Object"
+          }
+      }
+  },
   "defectCodesNoDefectCodesYet": "No Defect codes yet",
+  "issueImagesKeepIt": "Keep it",
+  "@issueImagesKeepIt": {
+      "description": "The way out of the remove-this-picture confirmation that leaves the picture where it is."
+  },
   "issueImagesRemoveThisPicture": "Remove this picture?",
   "issueImagesThePictureIsTakenOffTheRecord": "The picture is taken off the record. A slide needs one, so the issue may leave the show until another is added.",
   "issueImagesAddPicture": "Add picture",
@@ -4392,6 +4538,19 @@
   "shiftHandoverThatHandoverCouldNotBeOpened": "That handover could not be opened",
   "shiftHandoverSubmitTheHandover": "Submit the handover",
   "shiftHandoverBackToTheSectionBoard": "Back to the Section board",
+  "shiftHandoverSection": "Section",
+  "@shiftHandoverSection": {
+      "description": "What a Shift handover's title reads when the record names no Section."
+  },
+  "shiftHandoverHandedOverBy": "handed over by {authorDisplayName}",
+  "@shiftHandoverHandedOverBy": {
+      "description": "The tail of a Shift handover's header line: who signed it over.",
+      "placeholders": {
+          "authorDisplayName": {
+              "type": "Object"
+          }
+      }
+  },
   "shiftHandoverShiftHandover": "Shift handover · {value}",
   "@shiftHandoverShiftHandover": {
     "placeholders": {

@@ -3115,6 +3115,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String skillCoverageNeedsAtLevel(
+    Object minimumQualifiedHeadcount,
+    Object minimumLevel,
+  ) {
+    return 'Needs $minimumQualifiedHeadcount at level $minimumLevel+';
+  }
+
+  @override
   String skillCoverageNeedsAtLevelQualifiedLapsed(
     Object minimumQualifiedHeadcount,
     Object minimumLevel,
@@ -3867,6 +3875,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get actionPhaseCompletePlanProse =>
+      'What will be different, and how you will know. The target belongs here, in the plant\'s own words.';
+
+  @override
+  String get actionPhaseCompleteDoProse => 'What was actually done.';
+
+  @override
+  String get actionPhaseCompleteCheckProse =>
+      'What was measured, against what the Plan named.';
+
+  @override
+  String get actionPhaseCompleteActProse =>
+      'Which standard now holds it, so the fix outlives the person who made it.';
+
+  @override
   String actionPhaseCompleteCompleteThe(Object label) {
     return 'Complete the $label';
   }
@@ -3952,6 +3975,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'No Action has been raised at this Site yet.';
 
   @override
+  String get actionsSourceRaisedHere => 'Raised here';
+
+  @override
   String get actionsSource => 'Source';
 
   @override
@@ -4016,6 +4042,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get commonItMayHaveBeenRemovedAMoment =>
       'It may have been removed a moment ago by somebody else.';
+
+  @override
+  String capaCauseSomethingThatCouldBeBehind(Object categoryLabel) {
+    return '$categoryLabel — something that could be behind the problem.';
+  }
+
+  @override
+  String get capaCauseRecordIt => 'Record it';
+
+  @override
+  String get capaCauseWhatItSaysAndWhichOfTheSix =>
+      'What it says, and which of the six it is filed under.';
+
+  @override
+  String get capaCauseSaveIt => 'Save it';
 
   @override
   String get capaCauseRecordACandidateCause => 'Record a candidate cause';
@@ -4372,6 +4413,51 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get capaReportTheTeamHasNotBeenNamed => 'The team has not been named.';
+
+  @override
+  String get capaReportTheProblemDescriptionHasNotBeenWritten =>
+      'The problem description has not been written.';
+
+  @override
+  String get capaReportNoContainmentActionIsRecorded =>
+      'No containment action is recorded on the Concern.';
+
+  @override
+  String capaReportChainHasNotBeenStarted(Object chain) {
+    return '$chain has not been started.';
+  }
+
+  @override
+  String capaReportChainHasNoConfirmedRootCause(Object chain) {
+    return '$chain has no confirmed root cause.';
+  }
+
+  @override
+  String get capaReportNoCountermeasureIsRecorded =>
+      'No countermeasure is recorded on the Concern.';
+
+  @override
+  String get capaReportNoPreventiveActionIsRecorded =>
+      'No preventive action is recorded on the Concern.';
+
+  @override
+  String get capaReportTheEffectivenessCheckHasNotBeenRecorded =>
+      'The effectiveness check has not been recorded.';
+
+  @override
+  String get capaReportNoContainmentActionIsRecordedYet =>
+      'No containment action is recorded on the Concern yet.';
+
+  @override
+  String get capaReportNoCountermeasureIsRecordedYet =>
+      'No countermeasure is recorded on the Concern yet.';
+
+  @override
+  String get capaReportNoPreventiveActionIsRecordedYet =>
+      'No preventive action is recorded on the Concern yet.';
+
+  @override
   String get capaReportNotYetDone => 'Not yet done';
 
   @override
@@ -4604,6 +4690,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Opening a CAPA needs Quality authority at this Concern\'s Org Unit.';
 
   @override
+  String openCapaTakeOffTheTeam(Object displayName) {
+    return 'Take $displayName off the team';
+  }
+
+  @override
   String openCapaOpenACapaOn(Object actionNo) {
     return 'Open a CAPA on $actionNo';
   }
@@ -4654,6 +4745,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get signInPassword => 'Password';
+
+  @override
+  String get signInOr => 'or';
 
   @override
   String get signInCreateAnAccount => 'Create an account';
@@ -5025,7 +5119,23 @@ class AppLocalizationsEn extends AppLocalizations {
       'The kinds of thing found wrong — one list shared by every Site, and the severity each starts a Non-conformance at.';
 
   @override
+  String get defectCodesTopLevel => 'Top level';
+
+  @override
+  String defectCodesUnder(Object parentName) {
+    return 'Under $parentName';
+  }
+
+  @override
+  String defectCodesStartsAt(Object severity) {
+    return 'starts at $severity';
+  }
+
+  @override
   String get defectCodesNoDefectCodesYet => 'No Defect codes yet';
+
+  @override
+  String get issueImagesKeepIt => 'Keep it';
 
   @override
   String get issueImagesRemoveThisPicture => 'Remove this picture?';
@@ -6307,6 +6417,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shiftHandoverBackToTheSectionBoard => 'Back to the Section board';
+
+  @override
+  String get shiftHandoverSection => 'Section';
+
+  @override
+  String shiftHandoverHandedOverBy(Object authorDisplayName) {
+    return 'handed over by $authorDisplayName';
+  }
 
   @override
   String shiftHandoverShiftHandover(Object value) {

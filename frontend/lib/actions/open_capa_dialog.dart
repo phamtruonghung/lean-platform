@@ -257,7 +257,7 @@ class _OpenCapaDialogState extends State<OpenCapaDialog> {
                             key: OpenCapaDialog.memberRowKey(member.id),
                             label: Text(member.displayName),
                             onDeleted: _awaiting ? null : () => _removeMember(member),
-                            deleteButtonTooltipMessage: 'Take ${member.displayName} off the team',
+                            deleteButtonTooltipMessage: l10n.openCapaTakeOffTheTeam(member.displayName),
                           ),
                       ],
                     ),

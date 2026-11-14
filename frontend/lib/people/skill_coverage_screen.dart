@@ -330,7 +330,10 @@ class _CoverageRow extends StatelessWidget {
           style: dense?.copyWith(color: palette.textPrimary),
         ),
         DisclosingText(
-          'Needs ${entry.minimumQualifiedHeadcount} at level ${entry.minimumLevel}+',
+          l10n.skillCoverageNeedsAtLevel(
+            entry.minimumQualifiedHeadcount,
+            entry.minimumLevel,
+          ),
           style: dense?.copyWith(color: palette.textMuted),
         ),
         Text('${entry.qualifiedHeadcount}', style: number),

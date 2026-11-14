@@ -251,29 +251,29 @@ class _Report extends StatelessWidget {
   /// investigation can be open with everything done but the check, or closed
   /// with no preventive action ever raised, and a reader of the report wants
   /// the facts rather than the status restated.
-  List<String> get _outstanding {
+  List<String> _outstanding(AppLocalizations l10n) {
     final missing = <String>[];
-    if (capa.team.isEmpty) missing.add('The team has not been named.');
+    if (capa.team.isEmpty) missing.add(l10n.capaReportTheTeamHasNotBeenNamed);
     if (capa.problemStatement == null) {
-      missing.add('The problem description has not been written.');
+      missing.add(l10n.capaReportTheProblemDescriptionHasNotBeenWritten);
     }
 
     final measures = capa.concern?.measures ?? const <Action>[];
     bool absent(String actionType) => !measures.any((measure) => measure.actionType == actionType);
 
-    if (absent('containment')) missing.add('No containment action is recorded on the Concern.');
+    if (absent('containment')) missing.add(l10n.capaReportNoContainmentActionIsRecorded);
     for (final chain in capaChainOrder) {
       final whys = capa.whysIn(chain);
       if (whys.isEmpty) {
-        missing.add('${capaChainLabel(chain)} has not been started.');
+        missing.add(l10n.capaReportChainHasNotBeenStarted(capaChainLabel(chain)));
       } else if (capa.rootCauseOf(chain) == null) {
-        missing.add('${capaChainLabel(chain)} has no confirmed root cause.');
+        missing.add(l10n.capaReportChainHasNoConfirmedRootCause(capaChainLabel(chain)));
       }
     }
-    if (absent('countermeasure')) missing.add('No countermeasure is recorded on the Concern.');
-    if (absent('preventive')) missing.add('No preventive action is recorded on the Concern.');
+    if (absent('countermeasure')) missing.add(l10n.capaReportNoCountermeasureIsRecorded);
+    if (absent('preventive')) missing.add(l10n.capaReportNoPreventiveActionIsRecorded);
     if (capa.effectivenessVerifiedAt == null) {
-      missing.add('The effectiveness check has not been recorded.');
+      missing.add(l10n.capaReportTheEffectivenessCheckHasNotBeenRecorded);
     }
     return missing;
   }
@@ -284,7 +284,7 @@ class _Report extends StatelessWidget {
     final theme = Theme.of(context);
     final palette = AppColors.of(context);
     final concern = capa.concern;
-    final outstanding = _outstanding;
+    final outstanding = _outstanding(l10n);
     final opened = capa.openedAt?.toLocal().toIso8601String().substring(0, 10);
 
     // The document's own metadata, one line rather than a row of chips: on
@@ -436,7 +436,7 @@ class _Report extends StatelessWidget {
         heading: l10n.capaReportD3Containment,
         summary: l10n.capaReportWhatWasDoneToStopTheBad,
         emptyKey: CapaReportScreen.noContainmentKey,
-        emptySentence: 'No containment action is recorded on the Concern yet.',
+        emptySentence: l10n.capaReportNoContainmentActionIsRecordedYet,
         measures: ofType('containment'),
       ),
       _Section(
@@ -457,7 +457,7 @@ class _Report extends StatelessWidget {
         heading: l10n.capaReportD5D6Countermeasures,
         summary: l10n.capaReportWhatWasDoneAboutTheCauseAnd,
         emptyKey: CapaReportScreen.noCountermeasuresKey,
-        emptySentence: 'No countermeasure is recorded on the Concern yet.',
+        emptySentence: l10n.capaReportNoCountermeasureIsRecordedYet,
         measures: ofType('countermeasure'),
       ),
       _Section(
@@ -465,7 +465,7 @@ class _Report extends StatelessWidget {
         heading: l10n.capaReportD7PreventiveActions,
         summary: l10n.capaReportWhatStopsItHappeningOnThisLine,
         emptyKey: CapaReportScreen.noPreventiveKey,
-        emptySentence: 'No preventive action is recorded on the Concern yet.',
+        emptySentence: l10n.capaReportNoPreventiveActionIsRecordedYet,
         measures: ofType('preventive'),
       ),
       _Effectiveness(capa: capa),

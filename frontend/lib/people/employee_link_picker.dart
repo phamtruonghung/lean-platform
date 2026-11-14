@@ -166,7 +166,7 @@ class _EmployeeLinkPickerState extends State<EmployeeLinkPicker> {
               children: [
                 Text('${employee.employeeNo} · ${employee.displayName}'),
                 Text(
-                  '${employee.jobRoleName ?? 'No job role'}'
+                  '${employee.jobRoleName ?? AppLocalizations.of(context).employeeAssignmentNoJobRole}'
                   '${employee.orgUnitName == null ? '' : ' · ${employee.orgUnitName}'}',
                   style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
