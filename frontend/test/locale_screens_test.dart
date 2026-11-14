@@ -54,6 +54,19 @@ FakeWire _wire({List<Map<String, dynamic>>? employees}) => FakeWire(
       nonconformances: {
         '1': [nonconformanceJson('701', 'NC-HCM-2026-00001')],
       },
+      // One Customer complaint whose product is controlled by a Non-conformance
+      // found by the customer: the detail screen picks its sentence from the
+      // stored detection point, so it is the record a Vietnamese assertion
+      // needs.
+      complaints: {
+        '1': [
+          customerComplaintJson(
+            '70',
+            'CC-2026-00001',
+            nonconformance: complaintNonconformanceJson('950', 'NC-HCM-2026-00050'),
+          ),
+        ],
+      },
     );
 
 /// Pumps the whole app at [at], in [language] (`null` = never chosen, so the
@@ -257,5 +270,22 @@ void main() {
     expect(find.text('Employment'), findsNothing);
     // The register still holds the row it was given.
     expect(find.byKey(DirectoryScreen.rowKey('7')), findsOneWidget);
+  });
+
+  testWidgets('a Customer complaint detail in Vietnamese still picks the sentence from the stored '
+      'detection point', (tester) async {
+    await _pump(tester, at: '/complaints/70', language: 'vi');
+
+    // The record says `detectionPoint: 'customer'` — a token the database
+    // stores, and one the screen must compare to as a token. The words change
+    // with the language; the branch does not. Comparing the token to the
+    // Vietnamese label instead made this false in Vietnamese only, so a
+    // Vietnamese reader was told the Non-conformance was recorded somewhere
+    // rather than found by the customer.
+    expect(
+      find.text('Do khách hàng phát hiện, nên khiếu nại này là nơi mọi việc bắt đầu.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Ghi nhận ngày customer'), findsNothing);
   });
 }

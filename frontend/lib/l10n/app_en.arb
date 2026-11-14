@@ -3452,7 +3452,6 @@
   "capaDetailTwoChainsEachEndingAtOneConfirmed": "Two chains, each ending at one confirmed root cause: why the problem happened, and why it was not detected.",
   "capaDetailThisInvestigationIsOverSoItsChains": "This investigation is over, so its chains are a record rather than a worklist.",
   "commonAddAWhy": "Add a Why",
-  "capaDetailOccurrence": "occurrence",
   "capaDetailWhyTheProblemHappenedOneStepAt": "Why the problem happened, one step at a time.",
   "capaDetailWhyItWasNotDetectedOneStep": "Why it was not detected, one step at a time.",
   "commonNobodyHasStartedThisChainYet": "Nobody has started this chain yet.",
@@ -3821,7 +3820,6 @@
   "complaintDetailNothingControlsTheProductThisCustomerComplained": "Nothing controls the product this customer complained about yet. Record a Non-conformance from this complaint, or link one that already exists for the same Product.",
   "commonLinkOneThatExists": "Link one that exists",
   "commonOpenRecord": "Open record",
-  "complaintDetailCustomer": "customer",
   "complaintDetailFoundByTheCustomerSoThisComplaint": "Found by the customer, so this complaint is where it started.",
   "complaintDetailRecordedAtAndLinkedToThisComplaint": "Recorded at {value}, and linked to this complaint.",
   "@complaintDetailRecordedAtAndLinkedToThisComplaint": {
@@ -4173,7 +4171,6 @@
   "supplierNcrDetailNothingWasWrittenDownAboutIt": "Nothing was written down about it.",
   "supplierNcrDetailTheMaterialThisIsAbout": "The material this is about",
   "supplierNcrDetailNothingControlsTheMaterialThisNcrIs": "Nothing controls the material this NCR is about yet. Record a Non-conformance from this NCR, or link one that already exists for the same lot.",
-  "supplierNcrDetailIncoming": "incoming",
   "supplierNcrDetailFoundAtGoodsInSoThisNcr": "Found at goods-in, so this NCR is where it started.",
   "supplierNcrDetailRecordedAtAndLinkedToThisNcr": "Recorded at {value}, and linked to this NCR.",
   "@supplierNcrDetailRecordedAtAndLinkedToThisNcr": {

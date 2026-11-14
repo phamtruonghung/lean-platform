@@ -972,7 +972,9 @@ class _Chain extends StatelessWidget {
         ),
         const SizedBox(height: Spacing.xs),
         Text(
-          chain == l10n.capaDetailOccurrence
+          // `chain` is the wire token (`occurrence` / `escape`, see
+          // `capaChainOrder`), not the label a person reads.
+          chain == 'occurrence'
               ? l10n.capaDetailWhyTheProblemHappenedOneStepAt
               : l10n.capaDetailWhyItWasNotDetectedOneStep,
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),

@@ -4249,9 +4249,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get commonAddAWhy => 'Thêm một Why';
 
   @override
-  String get capaDetailOccurrence => 'lần xuất hiện';
-
-  @override
   String get capaDetailWhyTheProblemHappenedOneStepAt =>
       'Vì sao vấn đề xảy ra, từng bước một.';
 
@@ -4834,9 +4831,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get commonOpenRecord => 'Mở bản ghi';
-
-  @override
-  String get complaintDetailCustomer => 'khách hàng';
 
   @override
   String get complaintDetailFoundByTheCustomerSoThisComplaint =>
@@ -5585,9 +5579,6 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get supplierNcrDetailNothingControlsTheMaterialThisNcrIs =>
       'Chưa có gì kiểm soát vật tư mà NCR này nói tới. Hãy ghi nhận một Sản phẩm không phù hợp từ NCR này, hoặc liên kết một bản đã có cho cùng lô.';
-
-  @override
-  String get supplierNcrDetailIncoming => 'hàng về';
 
   @override
   String get supplierNcrDetailFoundAtGoodsInSoThisNcr =>

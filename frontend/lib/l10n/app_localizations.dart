@@ -7197,12 +7197,6 @@ abstract class AppLocalizations {
   /// **'Add a Why'**
   String get commonAddAWhy;
 
-  /// No description provided for @capaDetailOccurrence.
-  ///
-  /// In en, this message translates to:
-  /// **'occurrence'**
-  String get capaDetailOccurrence;
-
   /// No description provided for @capaDetailWhyTheProblemHappenedOneStepAt.
   ///
   /// In en, this message translates to:
@@ -8095,12 +8089,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open record'**
   String get commonOpenRecord;
-
-  /// No description provided for @complaintDetailCustomer.
-  ///
-  /// In en, this message translates to:
-  /// **'customer'**
-  String get complaintDetailCustomer;
 
   /// No description provided for @complaintDetailFoundByTheCustomerSoThisComplaint.
   ///
@@ -9290,12 +9278,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Nothing controls the material this NCR is about yet. Record a Non-conformance from this NCR, or link one that already exists for the same lot.'**
   String get supplierNcrDetailNothingControlsTheMaterialThisNcrIs;
-
-  /// No description provided for @supplierNcrDetailIncoming.
-  ///
-  /// In en, this message translates to:
-  /// **'incoming'**
-  String get supplierNcrDetailIncoming;
 
   /// No description provided for @supplierNcrDetailFoundAtGoodsInSoThisNcr.
   ///

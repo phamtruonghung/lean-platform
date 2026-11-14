@@ -4265,9 +4265,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonAddAWhy => 'Add a Why';
 
   @override
-  String get capaDetailOccurrence => 'occurrence';
-
-  @override
   String get capaDetailWhyTheProblemHappenedOneStepAt =>
       'Why the problem happened, one step at a time.';
 
@@ -4849,9 +4846,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonOpenRecord => 'Open record';
-
-  @override
-  String get complaintDetailCustomer => 'customer';
 
   @override
   String get complaintDetailFoundByTheCustomerSoThisComplaint =>
@@ -5603,9 +5597,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get supplierNcrDetailNothingControlsTheMaterialThisNcrIs =>
       'Nothing controls the material this NCR is about yet. Record a Non-conformance from this NCR, or link one that already exists for the same lot.';
-
-  @override
-  String get supplierNcrDetailIncoming => 'incoming';
 
   @override
   String get supplierNcrDetailFoundAtGoodsInSoThisNcr =>

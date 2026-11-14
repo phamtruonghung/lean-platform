@@ -68,7 +68,10 @@ class _ActionEscalateDialogHostState extends State<ActionEscalateDialogHost> {
           'done' || 'cancelled' => _EscalateRefusal(
               key: ActionEscalateDialogHost.endedKey,
               title: l10n.commonThatActionHasEnded,
-              message: action.status == l10n.commonDone
+              // `action.status` is the wire token (`done`, `cancelled`), never a
+              // word a person reads — comparing it to a localised label would
+              // only be true in English.
+              message: action.status == 'done'
                   ? l10n.actionEscalateItIsClosedWhoeverNeededToKnow
                   : l10n.actionEscalateItWasCalledOffSoThereIs,
               dismissLabel: l10n.routerBackToAction,

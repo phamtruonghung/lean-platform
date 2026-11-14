@@ -452,7 +452,10 @@ class _ControlSection extends StatelessWidget {
           ),
           const SizedBox(height: Spacing.xxs),
           Text(
-            record.detectionPoint == l10n.complaintDetailCustomer
+            // `detectionPoint` is the stored token (`customer`, `incoming`,
+            // …), so it is compared to the token — the localised word is for
+            // reading only.
+            record.detectionPoint == 'customer'
                 ? l10n.complaintDetailFoundByTheCustomerSoThisComplaint
                 : l10n.complaintDetailRecordedAtAndLinkedToThisComplaint(record.detectionPoint ?? 'another detection point'),
             style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),

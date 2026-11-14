@@ -419,7 +419,8 @@ class _ControlSection extends StatelessWidget {
           ),
           const SizedBox(height: Spacing.xxs),
           Text(
-            record.detectionPoint == l10n.supplierNcrDetailIncoming
+            // `detectionPoint` is the stored token, never a localised word.
+            record.detectionPoint == 'incoming'
                 ? l10n.supplierNcrDetailFoundAtGoodsInSoThisNcr
                 : l10n.supplierNcrDetailRecordedAtAndLinkedToThisNcr(record.detectionPoint ?? 'another detection point'),
             style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),

@@ -58,7 +58,9 @@ class ActionCancelDialogHost extends StatelessWidget {
           ? AppDialog(
               key: alreadyEndedKey,
               title: l10n.commonThatActionHasEnded,
-              description: action.status == l10n.commonDone
+              // The record's own wire token, not a localised word: see
+              // `action_escalate_dialog.dart`'s note on the same comparison.
+              description: action.status == 'done'
                   ? l10n.actionCancelItIsClosedSoThereIsNothing
                   : l10n.actionCancelItWasAlreadyCancelled,
               size: AppDialogSize.decision,
