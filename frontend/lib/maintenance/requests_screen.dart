@@ -49,6 +49,7 @@ import 'request_decline_dialog.dart';
 import 'request_duplicate_dialog.dart';
 import 'requests_bloc.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class RequestsScreen extends StatelessWidget {
   const RequestsScreen({super.key, required this.canTriage});
@@ -219,7 +220,7 @@ class _Notice extends StatelessWidget {
                 Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
                 const SizedBox(width: Spacing.sm),
                 Expanded(
-                  child: Text(
+                  child: NoticeText(
                     message,
                     style: AppTypography.dense(context)
                         ?.copyWith(color: theme.colorScheme.onSecondaryContainer),

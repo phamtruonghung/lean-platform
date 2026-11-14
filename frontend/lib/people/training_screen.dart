@@ -58,6 +58,7 @@ import 'training_bloc.dart';
 import 'training_raise_dialog.dart';
 import 'training_record.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class TrainingScreen extends StatelessWidget {
   const TrainingScreen({super.key, required this.canRaise});
@@ -424,9 +425,9 @@ class _OrgUnitBrowser extends StatelessWidget {
         child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
       );
     } else if (state.sitesStatus == SitesStatus.failed) {
-      body = Text(state.sitesFailure ?? l10n.commonTheSitesAreUnavailable);
+      body = NoticeText(state.sitesFailure ?? l10n.commonTheSitesAreUnavailable);
     } else if (state.rootsFailure != null) {
-      body = Text(state.rootsFailure!);
+      body = NoticeText(state.rootsFailure!);
     } else if (state.sites.isEmpty) {
       body = Text(l10n.commonThereAreNoSitesToBrowseYet);
     } else if (state.rows.isEmpty) {

@@ -39,6 +39,7 @@ import '../widgets/app_search_field.dart';
 import 'asset.dart';
 import 'downtime_bloc.dart';
 import 'maintenance_api.dart';
+import '../widgets/notice_text.dart';
 
 class BreakdownReportDialog extends StatefulWidget {
   const BreakdownReportDialog({super.key, required this.siteId});
@@ -236,7 +237,7 @@ class _BreakdownReportDialogState extends State<BreakdownReportDialog> {
               Padding(
                 key: BreakdownReportDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),
@@ -298,7 +299,7 @@ class _AssetField extends StatelessWidget {
           key: BreakdownReportDialog.assetsFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.commonAssetsFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),

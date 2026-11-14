@@ -32,6 +32,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'app_role.dart';
 import 'roles_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class RolePermissionsDialog extends StatefulWidget {
   const RolePermissionsDialog({super.key, required this.role});
@@ -193,7 +194,7 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
               Padding(
                 key: RolePermissionsDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   failure,
                   style: AppTypography.dense(context)
                       ?.copyWith(color: palette.statusForeground(StatusTone.danger)),

@@ -49,6 +49,7 @@ import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import 'app_dialog.dart';
 import 'app_scan_field.dart';
+import 'notice_text.dart';
 
 /// Reads a code off a camera, or returns `null` when the person closed the
 /// dialog without one.
@@ -253,7 +254,7 @@ class _CameraScanDialogState extends State<CameraScanDialog> {
             const SizedBox(height: Spacing.sm),
             Text(title, textAlign: TextAlign.center, style: theme.textTheme.titleMedium),
             const SizedBox(height: Spacing.xs),
-            Text(
+            NoticeText(
               message,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),

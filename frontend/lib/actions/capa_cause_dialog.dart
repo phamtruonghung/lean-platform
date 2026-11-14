@@ -54,6 +54,7 @@ import '../widgets/app_dialog.dart';
 import 'capa.dart';
 import 'capa_detail_bloc.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 /// The keys every one of the five addresses shares, because the refusals are
 /// the same refusals: no CAPA read yet, a CAPA that cannot be read, a category
@@ -387,7 +388,7 @@ class _CapaCauseRemoveDialogState extends State<CapaCauseRemoveDialog> {
               Padding(
                 key: CapaCauseRemoveDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),
@@ -616,7 +617,7 @@ class _CauseFormState extends State<_CauseForm> {
               Padding(
                 key: widget.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),
@@ -764,7 +765,7 @@ class _VerdictFormState extends State<_VerdictForm> {
               Padding(
                 key: CapaCauseVerdictDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),
@@ -908,7 +909,7 @@ class _StartChainFormState extends State<_StartChainForm> {
               Padding(
                 key: CapaWhyFromCauseDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

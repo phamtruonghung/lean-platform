@@ -16,6 +16,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'complaint_detail_bloc.dart';
 import 'customer_complaint.dart';
+import '../widgets/notice_text.dart';
 
 class ComplaintRespondDialog extends StatefulWidget {
   const ComplaintRespondDialog({super.key, required this.complaint});
@@ -120,7 +121,7 @@ class _ComplaintRespondDialogState extends State<ComplaintRespondDialog> {
               Padding(
                 key: ComplaintRespondDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

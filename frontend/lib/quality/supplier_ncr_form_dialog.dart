@@ -33,6 +33,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'defect_code.dart';
 import 'supplier_ncrs_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class SupplierNcrFormDialog extends StatefulWidget {
   const SupplierNcrFormDialog({super.key, required this.siteId});
@@ -360,7 +361,7 @@ class _SupplierNcrFormDialogState extends State<SupplierNcrFormDialog> {
               Padding(
                 key: SupplierNcrFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

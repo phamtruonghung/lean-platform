@@ -36,6 +36,7 @@ import '../widgets/app_dialog.dart';
 import 'capa.dart';
 import 'capa_detail_bloc.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 /// The keys this one address uses: no CAPA read yet, a CAPA that cannot be
 /// read, an investigation that is over, a caller without Quality authority, a
@@ -301,7 +302,7 @@ class _CapaEffectivenessDialogState extends State<CapaEffectivenessDialog> {
               Padding(
                 key: CapaEffectivenessDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

@@ -51,6 +51,8 @@ import 'asset_form_dialog.dart';
 import 'asset_move_dialog.dart';
 import 'assets_bloc.dart';
 import 'name_with_chip.dart';
+import '../widgets/notice_text.dart';
+import '../l10n/vocabulary.dart';
 
 class AssetsScreen extends StatelessWidget {
   const AssetsScreen({super.key, required this.canPlaceAnAsset, required this.canCorrectAsset});
@@ -287,7 +289,7 @@ class _Notice extends StatelessWidget {
                 Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
                 const SizedBox(width: Spacing.sm),
                 Expanded(
-                  child: Text(
+                  child: NoticeText(
                     message,
                     style: AppTypography.dense(context)
                         ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
@@ -570,7 +572,7 @@ double _criticalityColumnWidth(BuildContext context) {
   );
   var widest = 0.0;
   for (final level in Criticality.values) {
-    painter.text = TextSpan(text: level.label, style: Theme.of(context).textTheme.labelLarge);
+    painter.text = TextSpan(text: assetCriticalityLabel(AppLocalizations.of(context), level.wire), style: Theme.of(context).textTheme.labelLarge);
     painter.layout();
     if (painter.width > widest) widest = painter.width;
   }
@@ -639,7 +641,7 @@ class _AssetRow extends StatelessWidget {
                 builder: (context, box) {
                   final meta = [
                     Text(asset.orgUnitName, style: AppTypography.dense(context)),
-                    Chip(label: Text(asset.criticalityLabel), visualDensity: VisualDensity.compact),
+                    Chip(label: Text(asset.criticalityLabel(l10n)), visualDensity: VisualDensity.compact),
                   ];
                   final info = Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -673,7 +675,7 @@ class _AssetRow extends StatelessWidget {
                       ),
                       const SizedBox(height: Spacing.xxs),
                       Text(
-                        '${asset.code} · ${asset.typeLabel}',
+                        '${asset.code} · ${asset.typeLabel(l10n)}',
                         style: AppTypography.floor(context)
                             ?.copyWith(color: AppColors.of(context).textMuted),
                       ),
@@ -966,10 +968,10 @@ class _AssetTableRow extends StatelessWidget {
                     ),
             ),
           ),
-          DisclosingText('${asset.code} · ${asset.typeLabel}', style: muted),
+          DisclosingText('${asset.code} · ${asset.typeLabel(l10n)}', style: muted),
           DisclosingText(asset.orgUnitName, style: muted),
           shrinkWrapTargets(
-            Chip(label: Text(asset.criticalityLabel), visualDensity: VisualDensity.compact),
+            Chip(label: Text(asset.criticalityLabel(l10n)), visualDensity: VisualDensity.compact),
           ),
           shrinkWrapTargets(
             _AssetRowActions(

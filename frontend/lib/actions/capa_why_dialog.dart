@@ -35,6 +35,7 @@ import '../widgets/app_dialog.dart';
 import 'capa.dart';
 import 'capa_detail_bloc.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 /// The keys every one of the three addresses shares, because the refusals are
 /// the same refusals: no CAPA read yet, a CAPA that cannot be read, a chain
@@ -318,7 +319,7 @@ class _CapaWhyRemoveDialogState extends State<CapaWhyRemoveDialog> {
               Padding(
                 key: CapaWhyRemoveDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),
@@ -460,7 +461,7 @@ class _WhyFormState extends State<_WhyForm> {
               Padding(
                 key: widget.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

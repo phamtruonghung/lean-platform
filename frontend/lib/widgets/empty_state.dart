@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import 'notice_text.dart';
 
 /// Which of the two empty stories this Screen is telling (issue #103, #99's
 /// Implementation Decisions) — the useful action differs, so this decides
@@ -97,7 +98,7 @@ class PlatformEmptyState extends StatelessWidget {
                 const SizedBox(height: Spacing.md),
                 Text(title, style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
                 const SizedBox(height: Spacing.sm),
-                Text(
+                NoticeText(
                   message,
                   textAlign: TextAlign.center,
                   style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),

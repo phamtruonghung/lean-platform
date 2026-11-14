@@ -51,6 +51,8 @@ import 'issue_images_section.dart';
 import 'quality_api.dart';
 import 'quality_photo_picker.dart';
 import 'slide_show_toggle.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class ComplaintDetailScreen extends StatelessWidget {
   const ComplaintDetailScreen({super.key, required this.complaintId});
@@ -202,7 +204,7 @@ class _Loaded extends StatelessWidget {
                   Padding(
                     key: ComplaintDetailScreen.failureKey,
                     padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
+                    child: NoticeText(
                       failure!,
                       style: AppTypography.dense(context)
                           ?.copyWith(color: AppColors.of(context).statusDanger),
@@ -322,7 +324,7 @@ class _SummaryCard extends StatelessWidget {
                       ),
                       StatusChip(
                         key: ComplaintDetailScreen.statusKey,
-                        label: row.statusLabel,
+                        label: row.statusLabel(l10n),
                         tone: row.statusTone,
                       ),
                       if (row.isOverdue)
@@ -363,7 +365,7 @@ class _SummaryCard extends StatelessWidget {
                 fact('Filed at', row.orgUnitName),
                 fact('Received', row.receivedAt),
                 fact('Response', row.dueLabel),
-                fact('Type', row.typeLabel),
+                fact(l10n.commonType, row.typeLabel(l10n)),
               ],
             ),
             const SizedBox(height: Spacing.sm),

@@ -47,6 +47,13 @@ import '../quality/nonconformance.dart';
 import '../safety/body_part.dart';
 import '../safety/safety_incident.dart';
 import '../safety/safety_observation.dart';
+import '../maintenance/asset.dart';
+import '../maintenance/downtime_event.dart';
+import '../maintenance/tier_board.dart';
+import '../quality/customer_complaint.dart';
+import '../quality/issue_image.dart';
+import '../quality/supplier_ncr.dart';
+import '../status_tone.dart';
 import 'app_localizations.dart';
 
 // ---------------------------------------------------------------------------
@@ -796,3 +803,261 @@ extension NonconformanceWords on Nonconformance {
   /// What its severity reads as.
   String severityLabel(AppLocalizations l10n) => defectSeverityLabel(l10n, severity);
 }
+
+// ---------------------------------------------------------------------------
+// Round 2: the words that were still tables inside their own model file —
+// Quality's complaints and supplier NCRs, Downtime, Assets, Defect codes, the
+// KPI board and Review, the slide show's kinds, and the Shift handover's seven
+// fixed sets. Same lookup, same fallback to the code: one mechanism, not two.
+// ---------------------------------------------------------------------------
+
+/// What a Customer complaint's stored status reads as.
+String complaintStatusLabel(AppLocalizations l10n, String status) => switch (status) {
+      'open' => l10n.complaintStatusOpen,
+      'investigating' => l10n.complaintStatusInvestigating,
+      'responded' => l10n.complaintStatusResponded,
+      'closed' => l10n.complaintStatusClosed,
+      'rejected' => l10n.complaintStatusRejected,
+      _ => status,
+    };
+
+/// What a Customer complaint is about, in words.
+String complaintTypeLabel(AppLocalizations l10n, String type) => switch (type) {
+      'quality' => l10n.complaintTypeQuality,
+      'delivery' => l10n.complaintTypeDelivery,
+      'quantity' => l10n.complaintTypeQuantity,
+      'documentation' => l10n.complaintTypeDocumentation,
+      'packaging' => l10n.complaintTypePackaging,
+      'service' => l10n.complaintTypeService,
+      _ => type,
+    };
+
+/// What a Supplier NCR's stored status reads as.
+String supplierNcrStatusLabel(AppLocalizations l10n, String status) => switch (status) {
+      'open' => l10n.supplierNcrStatusOpen,
+      'issued' => l10n.supplierNcrStatusIssued,
+      'responded' => l10n.supplierNcrStatusResponded,
+      'closed' => l10n.supplierNcrStatusClosed,
+      'rejected' => l10n.supplierNcrStatusRejected,
+      _ => status,
+    };
+
+/// What the plant decided happens to a Supplier NCR's material, in words.
+String supplierNcrDispositionLabel(AppLocalizations l10n, String disposition) =>
+    switch (disposition) {
+      'return_to_supplier' => l10n.supplierNcrDispositionReturnToSupplier,
+      'scrap' => l10n.supplierNcrDispositionScrap,
+      'rework_at_cost' => l10n.supplierNcrDispositionReworkAtCost,
+      'sort' => l10n.supplierNcrDispositionSort,
+      'use_as_is' => l10n.supplierNcrDispositionUseAsIs,
+      _ => disposition,
+    };
+
+/// What a Downtime event's stored status reads as.
+String downtimeStatusLabel(AppLocalizations l10n, String status) => switch (status) {
+      'open' => l10n.downtimeStatusOpen,
+      'unclassified' => l10n.downtimeStatusUnclassified,
+      'closed' => l10n.downtimeStatusClosed,
+      _ => status,
+    };
+
+/// What kind of thing an Asset is, in words.
+String assetTypeLabel(AppLocalizations l10n, String assetType) => switch (assetType) {
+      'machine' => l10n.assetTypeMachine,
+      'cell' => l10n.assetTypeCell,
+      'tool' => l10n.assetTypeTool,
+      'utility' => l10n.assetTypeUtility,
+      'vehicle' => l10n.assetTypeVehicle,
+      'other' => l10n.assetTypeOther,
+      _ => assetType,
+    };
+
+/// How critical an Asset is, in words.
+String assetCriticalityLabel(AppLocalizations l10n, String criticality) => switch (criticality) {
+      'low' => l10n.assetCriticalityLow,
+      'medium' => l10n.assetCriticalityMedium,
+      'high' => l10n.assetCriticalityHigh,
+      'critical' => l10n.assetCriticalityCritical,
+      _ => criticality,
+    };
+
+/// What a Defect code's category reads as.
+String defectCategoryLabel(AppLocalizations l10n, String category) => switch (category) {
+      'product' => l10n.defectCategoryProduct,
+      'process' => l10n.defectCategoryProcess,
+      'material' => l10n.defectCategoryMaterial,
+      'documentation' => l10n.defectCategoryDocumentation,
+      'packaging' => l10n.defectCategoryPackaging,
+      _ => category,
+    };
+
+/// A KPI's standing on the Tier board, in words.
+String boardKpiStatusLabel(AppLocalizations l10n, String status) => switch (status) {
+      'green' => l10n.boardKpiStatusOnTarget,
+      'amber' => l10n.boardKpiStatusNearTarget,
+      'red' => l10n.boardKpiStatusOffTarget,
+      'no_target' => l10n.boardKpiStatusNoTarget,
+      'no_data' => l10n.boardKpiStatusNoData,
+      _ => status,
+    };
+
+/// A day's judgement in the KPI Review, in words.
+String reviewStatusLabel(AppLocalizations l10n, String status) => switch (status) {
+      'met' => l10n.reviewStatusMet,
+      'missed' => l10n.reviewStatusMissed,
+      'not_measured' => l10n.reviewStatusNotMeasured,
+      _ => status,
+    };
+
+/// The KPI catalogue's Today column: the judgement, or that there is none yet.
+String reviewTodayLabel(AppLocalizations l10n, String? status) =>
+    status == null ? l10n.reviewStatusNotReviewed : reviewStatusLabel(l10n, status);
+
+/// What record a picture belongs to, in words.
+String issueKindLabel(AppLocalizations l10n, String kind) =>
+    kind == 'nonconformance' ? l10n.issueKindNonconformance : l10n.issueKindComplaint;
+
+/// What a wall display's type chip says — short, because it sits beside a
+/// number.
+String issueKindShortLabel(AppLocalizations l10n, String kind) =>
+    kind == 'nonconformance' ? l10n.issueKindNonconformanceShort : l10n.issueKindComplaintShort;
+
+// ---------------------------------------------------------------------------
+// The Shift handover's seven fixed sets. A null wire is the em dash the model
+// printed for "not answered yet", kept as it was.
+// ---------------------------------------------------------------------------
+
+/// The state a machine was left in, in words.
+String handoverMachineStateLabel(AppLocalizations l10n, String? wire) => wire == null
+    ? '—'
+    : switch (wire) {
+        'running' => l10n.handoverMachineRunning,
+        'running_manual' => l10n.handoverMachineRunningManual,
+        'idle' => l10n.handoverMachineIdle,
+        'down' => l10n.handoverMachineDown,
+        'maintenance' => l10n.handoverMachineMaintenance,
+        'cleaning' => l10n.handoverMachineCleaning,
+        'changeover' => l10n.handoverMachineChangeover,
+        'isolated' => l10n.handoverMachineIsolated,
+        _ => wire,
+      };
+
+/// TPM's abnormality types, in words.
+String handoverAbnormalityTypeLabel(AppLocalizations l10n, String? wire) => wire == null
+    ? '—'
+    : switch (wire) {
+        'minor_flaw' => l10n.handoverAbnormalityMinorFlaw,
+        'unfulfilled_basic_condition' => l10n.handoverAbnormalityUnfulfilledBasicCondition,
+        'inaccessible_place' => l10n.handoverAbnormalityInaccessiblePlace,
+        'contamination_source' => l10n.handoverAbnormalityContaminationSource,
+        'quality_defect_source' => l10n.handoverAbnormalityQualityDefectSource,
+        'unnecessary_item' => l10n.handoverAbnormalityUnnecessaryItem,
+        'unsafe_place' => l10n.handoverAbnormalityUnsafePlace,
+        _ => wire,
+      };
+
+/// The 4M dimension a Change point is filed under, in words.
+String handoverDimensionLabel(AppLocalizations l10n, String? wire) => wire == null
+    ? '—'
+    : switch (wire) {
+        'man' => l10n.handoverDimensionMan,
+        'machine' => l10n.handoverDimensionMachine,
+        'material' => l10n.handoverDimensionMaterial,
+        'method' => l10n.handoverDimensionMethod,
+        _ => wire,
+      };
+
+/// What a Shift handover did with an open Action, in words.
+String handoverDispositionLabel(AppLocalizations l10n, String? wire) => wire == null
+    ? '—'
+    : switch (wire) {
+        'carried' => l10n.handoverDispositionCarried,
+        'reassigned' => l10n.handoverDispositionReassigned,
+        'closed' => l10n.handoverDispositionClosed,
+        _ => wire,
+      };
+
+/// What a Change point's watch found, in words.
+String handoverWatchResultLabel(AppLocalizations l10n, String? wire) => wire == null
+    ? '—'
+    : switch (wire) {
+        'ok' => l10n.handoverWatchOk,
+        'concern' => l10n.handoverWatchConcern,
+        'not_run' => l10n.handoverWatchNotRun,
+        _ => wire,
+      };
+
+/// Why a Shift handover did not go the standard way, in words.
+String handoverDeviationReasonLabel(AppLocalizations l10n, String? wire) => wire == null
+    ? '—'
+    : switch (wire) {
+        'none' => l10n.handoverDeviationNone,
+        'late' => l10n.handoverDeviationLate,
+        'partial' => l10n.handoverDeviationPartial,
+        'no_incoming_team_leader' => l10n.handoverDeviationNoIncomingTeamLeader,
+        _ => wire,
+      };
+
+/// A shift boundary's exception on the Section's day, in words.
+String handoverExceptionLabel(AppLocalizations l10n, String? wire) => wire == null
+    ? '—'
+    : switch (wire) {
+        'no_handover' => l10n.handoverExceptionNoHandover,
+        'unacknowledged' => l10n.handoverExceptionUnacknowledged,
+        'amended_after_acknowledgement' => l10n.handoverExceptionAmendedAfterAcknowledgement,
+        _ => wire,
+      };
+
+// ---------------------------------------------------------------------------
+// The same words, read off the record: `record.statusLabel(l10n)`.
+// ---------------------------------------------------------------------------
+
+extension CustomerComplaintWords on CustomerComplaint {
+  /// What this complaint's stored status reads as.
+  String statusLabel(AppLocalizations l10n) => complaintStatusLabel(l10n, status);
+
+  /// What the customer complained about, in words.
+  String typeLabel(AppLocalizations l10n) => complaintTypeLabel(l10n, complaintType);
+}
+
+extension SupplierNcrWords on SupplierNcr {
+  /// What this NCR's stored status reads as.
+  String statusLabel(AppLocalizations l10n) => supplierNcrStatusLabel(l10n, status);
+
+  /// What the plant decided happens to the material, in words.
+  String dispositionLabel(AppLocalizations l10n) =>
+      supplierNcrDispositionLabel(l10n, disposition);
+}
+
+extension DowntimeEventWords on DowntimeEvent {
+  /// What this stop's stored status reads as.
+  String statusLabel(AppLocalizations l10n) => downtimeStatusLabel(l10n, status);
+}
+
+extension AssetWords on Asset {
+  /// What kind of thing this Asset is, in words.
+  String typeLabel(AppLocalizations l10n) => assetTypeLabel(l10n, assetType);
+
+  /// How critical it is, in words.
+  String criticalityLabel(AppLocalizations l10n) => assetCriticalityLabel(l10n, criticality);
+}
+
+extension BoardKpiWords on BoardKpi {
+  /// This KPI's standing, in words.
+  String statusLabel(AppLocalizations l10n) => boardKpiStatusLabel(l10n, status);
+}
+
+extension SlideIssueWords on SlideIssue {
+  /// What this picture's record is, in words.
+  String typeLabel(AppLocalizations l10n) => issueKindLabel(l10n, kind);
+
+  /// The two-letter chip a wall display shows.
+  String shortTypeLabel(AppLocalizations l10n) => issueKindShortLabel(l10n, kind);
+}
+
+/// The skill coverage register's legend: what a cell's tone means.
+String skillCoverageLegendLabel(AppLocalizations l10n, StatusTone tone) => switch (tone) {
+      StatusTone.danger => l10n.skillCoverageNobodyQualified,
+      StatusTone.warning => l10n.skillCoveragePartlyQualified,
+      _ => l10n.skillCoverageLegendShort,
+    };

@@ -18,6 +18,8 @@
 /// what this file adds is that the *other* Screens follow it.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -26,6 +28,8 @@ import 'package:lean_platform/home_screen.dart';
 import 'package:lean_platform/l10n/app_localizations.dart';
 import 'package:lean_platform/l10n/notices.dart';
 import 'package:lean_platform/maintenance/work_orders_screen.dart';
+import 'package:lean_platform/people/accounts_screen.dart';
+import 'package:lean_platform/people/account_correction_dialog.dart';
 import 'package:lean_platform/people/directory_screen.dart';
 import 'package:lean_platform/platform/change_password_dialog.dart';
 import 'package:lean_platform/platform/destinations.dart';
@@ -34,6 +38,8 @@ import 'package:lean_platform/platform/router.dart';
 import 'package:lean_platform/platform/shell.dart';
 import 'package:lean_platform/quality/nonconformances_screen.dart';
 import 'package:lean_platform/theme.dart';
+import 'package:lean_platform/widgets/app_confirm_dialog.dart';
+import 'package:lean_platform/widgets/app_dialog.dart';
 import 'package:lean_platform/widgets/failure_state.dart';
 
 import 'harness.dart';
@@ -375,5 +381,97 @@ void main() {
       ),
     );
     expect(find.text('The server refused that read.'), findsOneWidget);
+  });
+
+  testWidgets('a register chip that used to be an English table is Vietnamese too',
+      (tester) async {
+    // `ComplaintStatus` keeps its wires and nothing else: the word on this chip
+    // is `complaintStatusLabel` (`l10n/vocabulary.dart`), the same lookup a
+    // Work order's own status chip already goes through (ADR-0062).
+    await _pump(tester, at: Routes.complaints, language: 'vi');
+
+    expect(find.text('Mở'), findsWidgets);
+    expect(find.text('Open'), findsNothing);
+  });
+
+  testWidgets('a dialog description that carries a Bloc code is a sentence, not the code',
+      (tester) async {
+    // A dialog had no resolver until this round: `AppDialog(description: …)`
+    // printed whatever it was handed, so a Bloc's code reached the reader. This
+    // is the same seam as a Screen's banner, proved on the dialog's own shell.
+    Future<void> show(Locale locale) => tester.pumpWidget(
+          MaterialApp(
+            locale: locale,
+            theme: buildAppTheme(),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: AppDialog(
+                  title: AppLocalizations.of(context).commonStatus,
+                  description: BlocNotice.sessionEnded,
+                  actions: const <AppDialogAction>[],
+                  child: const SizedBox(height: 20),
+                ),
+              ),
+            ),
+          ),
+        );
+
+    await show(const Locale('vi'));
+    expect(find.text('Phiên làm việc đã kết thúc. Vui lòng đăng nhập lại để tiếp tục.'), findsOneWidget);
+    expect(find.textContaining('notice:'), findsNothing);
+
+    await show(const Locale('en'));
+    expect(find.text('This session has ended. Sign in again to continue.'), findsOneWidget);
+    expect(find.textContaining('notice:'), findsNothing);
+  });
+
+  testWidgets('a dialog that keeps its own failure word prints it in Vietnamese',
+      (tester) async {
+    // The end-to-end half: a real dialog, a real Bloc and a real in-flight
+    // refusal. `AccountsBloc` says `BlocNotice.actionInFlight`; the dialog's own
+    // failure block is a `NoticeText`, so the sentence — not `notice:…` — is
+    // what the reader sees.
+    SharedPreferences.setMockInitialValues({LocaleCubit.storageKey: 'vi'});
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1200, 900);
+    addTearDown(tester.view.reset);
+
+    final wire = FakeWire(
+      accounts: [accountJson('7', 'first@b.c'), accountJson('8', 'second@b.c')],
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      orgUnits: {
+        null: [orgUnitJson('10', 'Assembly', unitType: 'area')],
+        '10': [orgUnitJson('11', 'Line 1', parentId: '10', unitType: 'line')],
+      },
+    )..patchGate = Completer<void>();
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: Routes.accounts,
+    );
+
+    // Row 7's deactivation starts and hangs on the wire, so the Bloc is busy.
+    await tapIn(tester, find.byKey(AccountsScreen.rowActionsKey('7')));
+    await tapIn(tester, find.byKey(AccountsScreen.activeKey('7')));
+    await tapIn(tester, find.byKey(AppConfirmDialog.confirmKey));
+
+    // Row 8's correction is submitted while that is still in flight.
+    await tapIn(tester, find.byKey(AccountsScreen.rowActionsKey('8')));
+    await tapIn(tester, find.byKey(AccountsScreen.correctKey('8')));
+    await tapIn(tester, find.byKey(AccountCorrectionDialog.submitKey));
+
+    expect(find.byKey(AccountCorrectionDialog.failureKey), findsOneWidget);
+    expect(
+      find.text('Một thao tác khác đang được thực hiện. Vui lòng thử lại sau giây lát.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('notice:'), findsNothing);
+    expect(find.textContaining('Another action is already in progress'), findsNothing);
+
+    wire.patchGate!.complete();
+    await tester.pumpAndSettle();
   });
 }

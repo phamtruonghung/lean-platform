@@ -27,6 +27,7 @@ import '../widgets/app_page_header.dart';
 import 'account_bloc.dart';
 import 'auth_gateway.dart';
 import 'change_password_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class ChangePasswordScreen extends StatelessWidget {
   const ChangePasswordScreen({super.key});
@@ -147,7 +148,7 @@ class _ChangePasswordFormState extends State<_ChangePasswordForm> {
                           Padding(
                             key: ChangePasswordScreen.failureKey,
                             padding: const EdgeInsets.only(top: Spacing.md),
-                            child: Text(
+                            child: NoticeText(
                               failure,
                               style: AppTypography.dense(context)
                                   ?.copyWith(color: palette.statusDanger),

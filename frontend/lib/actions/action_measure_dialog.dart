@@ -27,6 +27,7 @@ import '../widgets/app_search_field.dart';
 import 'action.dart';
 import 'action_detail_bloc.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class ActionMeasureDialog extends StatefulWidget {
   const ActionMeasureDialog({super.key, required this.concern, required this.measureType});
@@ -239,7 +240,7 @@ class _ActionMeasureDialogState extends State<ActionMeasureDialog> {
                   Padding(
                     key: ActionMeasureDialog.failureKey,
                     padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
+                    child: NoticeText(
                       _failure!,
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                     ),

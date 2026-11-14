@@ -21,6 +21,7 @@ import 'employee.dart';
 import 'employee_detail_bloc.dart';
 import 'employment_type.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class EmployeeCorrectionDialog extends StatefulWidget {
   const EmployeeCorrectionDialog({super.key, required this.employee});
@@ -219,7 +220,7 @@ class _EmployeeCorrectionDialogState extends State<EmployeeCorrectionDialog> {
                   Padding(
                     key: EmployeeCorrectionDialog.failureKey,
                     padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
+                    child: NoticeText(
                       _failure!,
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                     ),

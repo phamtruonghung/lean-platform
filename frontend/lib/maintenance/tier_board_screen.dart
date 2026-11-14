@@ -37,6 +37,7 @@ import '../widgets/status_chip.dart';
 import 'tier_board.dart';
 import 'tier_board_bloc.dart';
 import 'tier_board_org_unit_filter_dialog.dart';
+import '../l10n/vocabulary.dart';
 
 class TierBoardScreen extends StatelessWidget {
   const TierBoardScreen({super.key});
@@ -419,7 +420,7 @@ class _KpiRow extends StatelessWidget {
           );
     final chip = StatusChip(
       key: TierBoardScreen.kpiStatusKey(kpi.code),
-      label: kpi.statusLabel,
+      label: kpi.statusLabel(l10n),
       tone: _toneOf(kpi),
     );
     final figure = Wrap(

@@ -234,7 +234,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
       emit(
         AccountsLoaded(
           accounts: current.accounts,
-          notice: 'Another action is already in progress. Try again in a moment.',
+          notice: BlocNotice.actionInFlight,
         ),
       );
       return;
@@ -302,7 +302,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
       emit(
         AccountsLoaded(
           accounts: current.accounts,
-          correctionFailure: 'Another action is already in progress. Try again in a moment.',
+          correctionFailure: BlocNotice.actionInFlight,
         ),
       );
       return;
@@ -353,7 +353,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
       emit(
         AccountsLoaded(
           accounts: current.accounts,
-          employeeLinkFailure: 'Another action is already in progress. Try again in a moment.',
+          employeeLinkFailure: BlocNotice.actionInFlight,
         ),
       );
       return;
@@ -400,7 +400,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
       emit(
         AccountsLoaded(
           accounts: current.accounts,
-          passwordResetFailure: 'Another action is already in progress. Try again in a moment.',
+          passwordResetFailure: BlocNotice.actionInFlight,
         ),
       );
       return;

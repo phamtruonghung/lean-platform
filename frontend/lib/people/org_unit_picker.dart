@@ -13,6 +13,7 @@ import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import 'org_unit.dart';
 import 'org_unit_picker_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class OrgUnitPicker extends StatelessWidget {
   const OrgUnitPicker({super.key, this.enabled = true, this.height = 260});
@@ -316,7 +317,7 @@ class _TreeRow extends StatelessWidget {
           if (row.failure != null)
             Padding(
               padding: const EdgeInsets.only(left: 32, bottom: Spacing.xs),
-              child: Text(
+              child: NoticeText(
                 row.failure!,
                 style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.error),
               ),
@@ -474,7 +475,7 @@ class _PaneMessage extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          NoticeText(
             message,
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),

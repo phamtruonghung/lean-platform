@@ -17,6 +17,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lean_platform/l10n/app_localizations_en.dart';
+import 'package:lean_platform/l10n/vocabulary.dart';
 
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/production/handover_acknowledge_dialog.dart';
@@ -116,10 +118,11 @@ void main() {
 
       // The picker offers the API's eight states.
       await tapIn(tester, find.byKey(ShiftHandoverScreen.machineStateKey('a1')));
+      final en = AppLocalizationsEn();
       for (final state in HandoverVocabulary.machineStates) {
-        expect(find.text(state.label), findsWidgets);
+        expect(find.text(handoverMachineStateLabel(en, state)), findsWidgets);
       }
-      await tester.tap(find.text('Down').last);
+      await tester.tap(find.text(handoverMachineStateLabel(en, 'down')).last);
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byKey(ShiftHandoverScreen.machineNoteKey('a1')), 'Feed belt slipping');

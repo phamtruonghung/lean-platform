@@ -17,6 +17,7 @@ import '../theme.dart';
 import '../widgets/app_form_submit.dart';
 import 'auth_gateway.dart';
 import 'change_password_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class ChangePasswordDialog extends StatefulWidget {
   const ChangePasswordDialog({super.key});
@@ -138,7 +139,7 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
                       Padding(
                         key: ChangePasswordDialog.failureKey,
                         padding: const EdgeInsets.only(top: Spacing.md),
-                        child: Text(
+                        child: NoticeText(
                           failure,
                           style:
                               theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),

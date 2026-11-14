@@ -48,6 +48,8 @@ import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'supplier_ncr.dart';
 import 'supplier_ncr_detail_bloc.dart';
+import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class SupplierNcrDetailScreen extends StatelessWidget {
   const SupplierNcrDetailScreen({super.key, required this.supplierNcrId});
@@ -190,7 +192,7 @@ class _Loaded extends StatelessWidget {
                   Padding(
                     key: SupplierNcrDetailScreen.failureKey,
                     padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
+                    child: NoticeText(
                       failure!,
                       style: AppTypography.dense(context)
                           ?.copyWith(color: AppColors.of(context).statusDanger),
@@ -302,7 +304,7 @@ class _SummaryCard extends StatelessWidget {
                 ),
                 StatusChip(
                   key: SupplierNcrDetailScreen.statusKey,
-                  label: record.statusLabel,
+                  label: record.statusLabel(l10n),
                   tone: record.statusTone,
                 ),
                 if (record.isOverdue)
@@ -455,7 +457,7 @@ class _DispositionSection extends StatelessWidget {
       title: l10n.supplierNcrDetailTheSupplierSDisposition,
       children: [
         Text(
-          record.dispositionLabel,
+          record.dispositionLabel(l10n),
           key: SupplierNcrDetailScreen.dispositionKey,
           style: AppTypography.dense(context)
               ?.copyWith(color: palette.textPrimary, fontWeight: FontWeight.w500),

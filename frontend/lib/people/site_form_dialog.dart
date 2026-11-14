@@ -28,6 +28,7 @@ import '../widgets/app_search_field.dart';
 import '../widgets/failure_state.dart';
 import 'org_unit.dart';
 import 'org_unit_admin_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class SiteFormDialog extends StatefulWidget {
   const SiteFormDialog({super.key, this.site});
@@ -293,7 +294,7 @@ class _SiteFormDialogState extends State<SiteFormDialog> {
                     Padding(
                       key: SiteFormDialog.failureKey,
                       padding: const EdgeInsets.only(top: Spacing.md),
-                      child: Text(
+                      child: NoticeText(
                         _failure!,
                         style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                       ),

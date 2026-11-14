@@ -39,6 +39,8 @@ import '../widgets/app_scan_field.dart';
 import 'asset.dart';
 import 'assets_bloc.dart';
 import 'org_unit_chooser.dart';
+import '../widgets/notice_text.dart';
+import '../l10n/vocabulary.dart';
 
 class AssetFormDialog extends StatefulWidget {
   const AssetFormDialog({super.key, this.asset});
@@ -324,7 +326,10 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
                     ),
                     items: [
                       for (final type in AssetType.values)
-                        DropdownMenuItem<AssetType>(value: type, child: Text(type.label)),
+                        DropdownMenuItem<AssetType>(
+                          value: type,
+                          child: Text(assetTypeLabel(l10n, type.wire)),
+                        ),
                     ],
                     onChanged: _awaiting ? null : (value) => setState(() => _type = value),
                   ),
@@ -340,7 +345,10 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
                     ),
                     items: [
                       for (final level in Criticality.values)
-                        DropdownMenuItem<Criticality>(value: level, child: Text(level.label)),
+                        DropdownMenuItem<Criticality>(
+                          value: level,
+                          child: Text(assetCriticalityLabel(l10n, level.wire)),
+                        ),
                     ],
                     onChanged: _awaiting
                         ? null
@@ -379,7 +387,7 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
               Padding(
                 key: AssetFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),

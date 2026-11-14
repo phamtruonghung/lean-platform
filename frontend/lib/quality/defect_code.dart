@@ -62,9 +62,9 @@ abstract final class DefectCategory {
 
   static const List<String> values = [product, process, material, documentation, packaging];
 
-  /// The category as a person reads it — 'Product', 'Documentation'.
-  static String label(String category) =>
-      category.isEmpty ? category : category[0].toUpperCase() + category.substring(1);
+  /// The words are in `l10n/vocabulary.dart` (`defectCategoryLabel`): a code's
+  /// category is a wire, and the register prints it in the reader's language
+  /// (ADR-0062).
 }
 
 /// The severities a Defect code can start a Non-conformance at — the

@@ -18,6 +18,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../l10n/app_localizations.dart';
 import '../people/people.dart';
 import '../theme.dart';
+import '../widgets/notice_text.dart';
 
 class OrgUnitChooser extends StatelessWidget {
   const OrgUnitChooser({
@@ -230,7 +231,7 @@ class _ChooserMessage extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          NoticeText(
             message,
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),

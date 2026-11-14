@@ -47,6 +47,7 @@ import 'pm_schedule_form_dialog.dart';
 import 'pm_schedules_bloc.dart';
 import 'row_disclosure.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class PmSchedulesScreen extends StatelessWidget {
   const PmSchedulesScreen({super.key, required this.canAct});
@@ -229,7 +230,7 @@ class _Notice extends StatelessWidget {
                 Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
                 const SizedBox(width: Spacing.sm),
                 Expanded(
-                  child: Text(
+                  child: NoticeText(
                     message,
                     style: AppTypography.dense(context)
                         ?.copyWith(color: theme.colorScheme.onSecondaryContainer),

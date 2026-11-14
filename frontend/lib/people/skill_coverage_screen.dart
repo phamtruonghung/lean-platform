@@ -55,6 +55,7 @@ import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'skill.dart';
 import 'skill_coverage_bloc.dart';
+import '../l10n/vocabulary.dart';
 
 class SkillCoverageScreen extends StatelessWidget {
   const SkillCoverageScreen({super.key});
@@ -111,11 +112,8 @@ class SkillCoverageScreen extends StatelessWidget {
 
   /// The legend's own words for the tones the register paints — the tone's
   /// meaning, while the cell keeps the record's own words ("Short 2").
-  static String legendLabel(StatusTone tone) => switch (tone) {
-        StatusTone.danger => 'Nobody qualified',
-        StatusTone.warning => 'Partly qualified',
-        _ => 'Short',
-      };
+  static String legendLabel(AppLocalizations l10n, StatusTone tone) =>
+      skillCoverageLegendLabel(l10n, tone);
 
   @override
   Widget build(BuildContext context) {
@@ -435,7 +433,7 @@ class _Legend extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         for (final tone in tones)
-          StatusChip(label: SkillCoverageScreen.legendLabel(tone), tone: tone),
+          StatusChip(label: SkillCoverageScreen.legendLabel(AppLocalizations.of(context), tone), tone: tone),
       ],
     );
   }

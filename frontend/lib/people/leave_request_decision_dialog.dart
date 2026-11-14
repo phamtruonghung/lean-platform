@@ -27,6 +27,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'leave_request.dart';
 import 'leave_requests_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class LeaveRequestDecisionDialog extends StatefulWidget {
   const LeaveRequestDecisionDialog({super.key, required this.request, required this.approve});
@@ -134,7 +135,7 @@ class _LeaveRequestDecisionDialogState extends State<LeaveRequestDecisionDialog>
               Padding(
                 key: LeaveRequestDecisionDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

@@ -7921,4 +7921,269 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get safetySeverityRecordableSuffix => ' · phải báo cáo';
+
+  @override
+  String get complaintStatusOpen => 'Mở';
+
+  @override
+  String get complaintStatusInvestigating => 'Đang điều tra';
+
+  @override
+  String get complaintStatusResponded => 'Đã phản hồi';
+
+  @override
+  String get complaintStatusClosed => 'Đã đóng';
+
+  @override
+  String get complaintStatusRejected => 'Bị từ chối';
+
+  @override
+  String get complaintTypeQuality => 'Chất lượng';
+
+  @override
+  String get complaintTypeDelivery => 'Giao hàng';
+
+  @override
+  String get complaintTypeQuantity => 'Số lượng';
+
+  @override
+  String get complaintTypeDocumentation => 'Chứng từ';
+
+  @override
+  String get complaintTypePackaging => 'Đóng gói';
+
+  @override
+  String get complaintTypeService => 'Dịch vụ';
+
+  @override
+  String get supplierNcrStatusOpen => 'Mở';
+
+  @override
+  String get supplierNcrStatusIssued => 'Đã phát hành';
+
+  @override
+  String get supplierNcrStatusResponded => 'Đã phản hồi';
+
+  @override
+  String get supplierNcrStatusClosed => 'Đã đóng';
+
+  @override
+  String get supplierNcrStatusRejected => 'Bị từ chối';
+
+  @override
+  String get supplierNcrDispositionReturnToSupplier => 'Trả lại nhà cung cấp';
+
+  @override
+  String get supplierNcrDispositionScrap => 'Phế liệu';
+
+  @override
+  String get supplierNcrDispositionReworkAtCost =>
+      'Làm lại do nhà cung cấp chịu chi phí';
+
+  @override
+  String get supplierNcrDispositionSort => 'Phân loại';
+
+  @override
+  String get supplierNcrDispositionUseAsIs => 'Dùng như hiện trạng';
+
+  @override
+  String get downtimeStatusOpen => 'Đang dừng';
+
+  @override
+  String get downtimeStatusUnclassified => 'Chưa phân loại';
+
+  @override
+  String get downtimeStatusClosed => 'Đã đóng';
+
+  @override
+  String get assetTypeMachine => 'Máy';
+
+  @override
+  String get assetTypeCell => 'Cụm máy';
+
+  @override
+  String get assetTypeTool => 'Công cụ';
+
+  @override
+  String get assetTypeUtility => 'Tiện ích';
+
+  @override
+  String get assetTypeVehicle => 'Xe';
+
+  @override
+  String get assetTypeOther => 'Khác';
+
+  @override
+  String get assetCriticalityLow => 'Thấp';
+
+  @override
+  String get assetCriticalityMedium => 'Trung bình';
+
+  @override
+  String get assetCriticalityHigh => 'Cao';
+
+  @override
+  String get assetCriticalityCritical => 'Nghiêm trọng';
+
+  @override
+  String get defectCategoryProduct => 'Sản phẩm';
+
+  @override
+  String get defectCategoryProcess => 'Quy trình';
+
+  @override
+  String get defectCategoryMaterial => 'Vật tư';
+
+  @override
+  String get defectCategoryDocumentation => 'Chứng từ';
+
+  @override
+  String get defectCategoryPackaging => 'Đóng gói';
+
+  @override
+  String get boardKpiStatusOnTarget => 'Đạt mục tiêu';
+
+  @override
+  String get boardKpiStatusNearTarget => 'Gần mục tiêu';
+
+  @override
+  String get boardKpiStatusOffTarget => 'Không đạt mục tiêu';
+
+  @override
+  String get boardKpiStatusNoTarget => 'Chưa có mục tiêu';
+
+  @override
+  String get boardKpiStatusNoData => 'Chưa có dữ liệu';
+
+  @override
+  String get reviewStatusMet => 'Đạt';
+
+  @override
+  String get reviewStatusMissed => 'Không đạt';
+
+  @override
+  String get reviewStatusNotMeasured => 'Chưa đo';
+
+  @override
+  String get reviewStatusNotReviewed => 'Chưa xem xét';
+
+  @override
+  String get issueKindNonconformance => 'Sản phẩm không phù hợp';
+
+  @override
+  String get issueKindComplaint => 'Khiếu nại khách hàng';
+
+  @override
+  String get issueKindNonconformanceShort => 'NC';
+
+  @override
+  String get issueKindComplaintShort => 'Khiếu nại';
+
+  @override
+  String get handoverMachineRunning => 'Đang chạy';
+
+  @override
+  String get handoverMachineRunningManual => 'Chạy thủ công';
+
+  @override
+  String get handoverMachineIdle => 'Chờ';
+
+  @override
+  String get handoverMachineDown => 'Dừng máy';
+
+  @override
+  String get handoverMachineMaintenance => 'Bảo trì';
+
+  @override
+  String get handoverMachineCleaning => 'Vệ sinh';
+
+  @override
+  String get handoverMachineChangeover => 'Đổi sản phẩm';
+
+  @override
+  String get handoverMachineIsolated => 'Cô lập';
+
+  @override
+  String get handoverAbnormalityMinorFlaw => 'Lỗi nhỏ';
+
+  @override
+  String get handoverAbnormalityUnfulfilledBasicCondition =>
+      'Điều kiện cơ bản chưa đạt';
+
+  @override
+  String get handoverAbnormalityInaccessiblePlace => 'Vị trí khó tiếp cận';
+
+  @override
+  String get handoverAbnormalityContaminationSource => 'Nguồn nhiễm bẩn';
+
+  @override
+  String get handoverAbnormalityQualityDefectSource => 'Nguồn lỗi chất lượng';
+
+  @override
+  String get handoverAbnormalityUnnecessaryItem => 'Vật dụng không cần thiết';
+
+  @override
+  String get handoverAbnormalityUnsafePlace => 'Vị trí không an toàn';
+
+  @override
+  String get handoverDimensionMan => 'Con người';
+
+  @override
+  String get handoverDimensionMachine => 'Máy';
+
+  @override
+  String get handoverDimensionMaterial => 'Vật tư';
+
+  @override
+  String get handoverDimensionMethod => 'Phương pháp';
+
+  @override
+  String get handoverDispositionCarried => 'Chuyển tiếp';
+
+  @override
+  String get handoverDispositionReassigned => 'Giao lại';
+
+  @override
+  String get handoverDispositionClosed => 'Đã đóng';
+
+  @override
+  String get handoverWatchOk => 'Đạt';
+
+  @override
+  String get handoverWatchConcern => 'Cần lưu ý';
+
+  @override
+  String get handoverWatchNotRun => 'Chưa chạy';
+
+  @override
+  String get handoverDeviationNone => 'Không';
+
+  @override
+  String get handoverDeviationLate => 'Muộn';
+
+  @override
+  String get handoverDeviationPartial => 'Một phần';
+
+  @override
+  String get handoverDeviationNoIncomingTeamLeader =>
+      'Không có Tổ trưởng ca sau';
+
+  @override
+  String get handoverExceptionNoHandover => 'Không có bàn giao';
+
+  @override
+  String get handoverExceptionUnacknowledged => 'Chưa xác nhận';
+
+  @override
+  String get handoverExceptionAmendedAfterAcknowledgement =>
+      'Sửa sau khi xác nhận';
+
+  @override
+  String get skillCoverageNobodyQualified => 'Chưa ai đủ năng lực';
+
+  @override
+  String get skillCoveragePartlyQualified => 'Đủ năng lực một phần';
+
+  @override
+  String get skillCoverageLegendShort => 'Còn thiếu';
 }

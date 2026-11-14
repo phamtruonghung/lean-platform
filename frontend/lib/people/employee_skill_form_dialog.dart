@@ -34,6 +34,7 @@ import 'assignee_candidate.dart' show HeldSkill;
 import 'employee.dart';
 import 'employee_detail_bloc.dart';
 import 'skill.dart';
+import '../widgets/notice_text.dart';
 
 class EmployeeSkillFormDialog extends StatefulWidget {
   const EmployeeSkillFormDialog({super.key, required this.employee, required this.skills, this.existing});
@@ -308,7 +309,7 @@ class _EmployeeSkillFormDialogState extends State<EmployeeSkillFormDialog> {
                   Padding(
                     key: EmployeeSkillFormDialog.failureKey,
                     padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
+                    child: NoticeText(
                       _failure!,
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                     ),

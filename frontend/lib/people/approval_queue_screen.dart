@@ -54,6 +54,7 @@ import '../widgets/status_chip.dart';
 import 'admission_dialog.dart';
 import 'approval_queue_bloc.dart';
 import 'pending_account.dart';
+import '../widgets/notice_text.dart';
 
 class ApprovalQueueScreen extends StatelessWidget {
   const ApprovalQueueScreen({super.key});
@@ -190,7 +191,7 @@ class _Notice extends StatelessWidget {
                 Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
                 const SizedBox(width: Spacing.sm),
                 Expanded(
-                  child: Text(
+                  child: NoticeText(
                     message,
                     style: AppTypography.dense(context)
                         ?.copyWith(color: theme.colorScheme.onSecondaryContainer),

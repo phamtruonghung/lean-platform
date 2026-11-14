@@ -75,6 +75,7 @@ import 'training_raise_dialog.dart';
 import 'training_record.dart';
 import 'training_trainee_dialog.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class TrainingDetailScreen extends StatelessWidget {
   const TrainingDetailScreen({
@@ -642,7 +643,7 @@ class _FailureText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: Spacing.sm),
-      child: Text(
+      child: NoticeText(
         message,
         style: AppTypography.dense(context)
             ?.copyWith(color: AppColors.of(context).statusForeground(StatusTone.danger)),

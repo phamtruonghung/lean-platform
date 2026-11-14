@@ -33,6 +33,7 @@ import '../widgets/app_search_field.dart';
 import 'job_plan.dart';
 import 'job_plans_bloc.dart';
 import 'work_order.dart' show WorkType;
+import '../widgets/notice_text.dart';
 
 class JobPlanFormDialog extends StatefulWidget {
   const JobPlanFormDialog({super.key});
@@ -400,7 +401,7 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(
+                      child: NoticeText(
                         _skillsFailure ?? l10n.jobPlanFormSkillsFailed,
                         style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                       ),
@@ -429,7 +430,7 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
               Padding(
                 key: JobPlanFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),

@@ -33,6 +33,7 @@ import 'maintenance_api.dart';
 import 'meter.dart';
 import 'pm_schedule.dart';
 import 'pm_schedules_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class PmScheduleFormDialog extends StatefulWidget {
   const PmScheduleFormDialog({super.key, required this.siteId});
@@ -541,7 +542,7 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
               Padding(
                 key: PmScheduleFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),
@@ -603,7 +604,7 @@ class _AssetField extends StatelessWidget {
           key: PmScheduleFormDialog.assetsFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.commonAssetsFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
@@ -696,7 +697,7 @@ class _JobPlanField extends StatelessWidget {
           key: PmScheduleFormDialog.jobPlansFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.pmScheduleFormJobPlansFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
@@ -778,7 +779,7 @@ class _MeterField extends StatelessWidget {
           key: PmScheduleFormDialog.metersFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.pmScheduleFormMetersFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),

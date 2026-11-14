@@ -7946,4 +7946,268 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get safetySeverityRecordableSuffix => ' · recordable';
+
+  @override
+  String get complaintStatusOpen => 'Open';
+
+  @override
+  String get complaintStatusInvestigating => 'Investigating';
+
+  @override
+  String get complaintStatusResponded => 'Responded';
+
+  @override
+  String get complaintStatusClosed => 'Closed';
+
+  @override
+  String get complaintStatusRejected => 'Rejected';
+
+  @override
+  String get complaintTypeQuality => 'Quality';
+
+  @override
+  String get complaintTypeDelivery => 'Delivery';
+
+  @override
+  String get complaintTypeQuantity => 'Quantity';
+
+  @override
+  String get complaintTypeDocumentation => 'Documentation';
+
+  @override
+  String get complaintTypePackaging => 'Packaging';
+
+  @override
+  String get complaintTypeService => 'Service';
+
+  @override
+  String get supplierNcrStatusOpen => 'Open';
+
+  @override
+  String get supplierNcrStatusIssued => 'Issued';
+
+  @override
+  String get supplierNcrStatusResponded => 'Responded';
+
+  @override
+  String get supplierNcrStatusClosed => 'Closed';
+
+  @override
+  String get supplierNcrStatusRejected => 'Rejected';
+
+  @override
+  String get supplierNcrDispositionReturnToSupplier => 'Return to the Supplier';
+
+  @override
+  String get supplierNcrDispositionScrap => 'Scrap';
+
+  @override
+  String get supplierNcrDispositionReworkAtCost =>
+      'Rework at the Supplier\'s cost';
+
+  @override
+  String get supplierNcrDispositionSort => 'Sort';
+
+  @override
+  String get supplierNcrDispositionUseAsIs => 'Use as it is';
+
+  @override
+  String get downtimeStatusOpen => 'Open';
+
+  @override
+  String get downtimeStatusUnclassified => 'Unclassified';
+
+  @override
+  String get downtimeStatusClosed => 'Closed';
+
+  @override
+  String get assetTypeMachine => 'Machine';
+
+  @override
+  String get assetTypeCell => 'Cell';
+
+  @override
+  String get assetTypeTool => 'Tool';
+
+  @override
+  String get assetTypeUtility => 'Utility';
+
+  @override
+  String get assetTypeVehicle => 'Vehicle';
+
+  @override
+  String get assetTypeOther => 'Other';
+
+  @override
+  String get assetCriticalityLow => 'Low';
+
+  @override
+  String get assetCriticalityMedium => 'Medium';
+
+  @override
+  String get assetCriticalityHigh => 'High';
+
+  @override
+  String get assetCriticalityCritical => 'Critical';
+
+  @override
+  String get defectCategoryProduct => 'Product';
+
+  @override
+  String get defectCategoryProcess => 'Process';
+
+  @override
+  String get defectCategoryMaterial => 'Material';
+
+  @override
+  String get defectCategoryDocumentation => 'Documentation';
+
+  @override
+  String get defectCategoryPackaging => 'Packaging';
+
+  @override
+  String get boardKpiStatusOnTarget => 'On target';
+
+  @override
+  String get boardKpiStatusNearTarget => 'Near target';
+
+  @override
+  String get boardKpiStatusOffTarget => 'Off target';
+
+  @override
+  String get boardKpiStatusNoTarget => 'No target';
+
+  @override
+  String get boardKpiStatusNoData => 'No data';
+
+  @override
+  String get reviewStatusMet => 'Met';
+
+  @override
+  String get reviewStatusMissed => 'Missed';
+
+  @override
+  String get reviewStatusNotMeasured => 'Not measured';
+
+  @override
+  String get reviewStatusNotReviewed => 'Not reviewed';
+
+  @override
+  String get issueKindNonconformance => 'Non-conformance';
+
+  @override
+  String get issueKindComplaint => 'Customer complaint';
+
+  @override
+  String get issueKindNonconformanceShort => 'NC';
+
+  @override
+  String get issueKindComplaintShort => 'Complaint';
+
+  @override
+  String get handoverMachineRunning => 'Running';
+
+  @override
+  String get handoverMachineRunningManual => 'Running (manual)';
+
+  @override
+  String get handoverMachineIdle => 'Idle';
+
+  @override
+  String get handoverMachineDown => 'Down';
+
+  @override
+  String get handoverMachineMaintenance => 'Maintenance';
+
+  @override
+  String get handoverMachineCleaning => 'Cleaning';
+
+  @override
+  String get handoverMachineChangeover => 'Changeover';
+
+  @override
+  String get handoverMachineIsolated => 'Isolated';
+
+  @override
+  String get handoverAbnormalityMinorFlaw => 'Minor flaw';
+
+  @override
+  String get handoverAbnormalityUnfulfilledBasicCondition =>
+      'Unfulfilled basic condition';
+
+  @override
+  String get handoverAbnormalityInaccessiblePlace => 'Inaccessible place';
+
+  @override
+  String get handoverAbnormalityContaminationSource => 'Contamination source';
+
+  @override
+  String get handoverAbnormalityQualityDefectSource => 'Quality defect source';
+
+  @override
+  String get handoverAbnormalityUnnecessaryItem => 'Unnecessary item';
+
+  @override
+  String get handoverAbnormalityUnsafePlace => 'Unsafe place';
+
+  @override
+  String get handoverDimensionMan => 'Man';
+
+  @override
+  String get handoverDimensionMachine => 'Machine';
+
+  @override
+  String get handoverDimensionMaterial => 'Material';
+
+  @override
+  String get handoverDimensionMethod => 'Method';
+
+  @override
+  String get handoverDispositionCarried => 'Carried';
+
+  @override
+  String get handoverDispositionReassigned => 'Reassigned';
+
+  @override
+  String get handoverDispositionClosed => 'Closed';
+
+  @override
+  String get handoverWatchOk => 'OK';
+
+  @override
+  String get handoverWatchConcern => 'Concern';
+
+  @override
+  String get handoverWatchNotRun => 'Not run';
+
+  @override
+  String get handoverDeviationNone => 'None';
+
+  @override
+  String get handoverDeviationLate => 'Late';
+
+  @override
+  String get handoverDeviationPartial => 'Partial';
+
+  @override
+  String get handoverDeviationNoIncomingTeamLeader => 'No incoming Team Leader';
+
+  @override
+  String get handoverExceptionNoHandover => 'No handover recorded';
+
+  @override
+  String get handoverExceptionUnacknowledged => 'Unacknowledged';
+
+  @override
+  String get handoverExceptionAmendedAfterAcknowledgement =>
+      'Amended after acknowledgement';
+
+  @override
+  String get skillCoverageNobodyQualified => 'Nobody qualified';
+
+  @override
+  String get skillCoveragePartlyQualified => 'Partly qualified';
+
+  @override
+  String get skillCoverageLegendShort => 'Short';
 }

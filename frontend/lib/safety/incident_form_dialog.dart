@@ -51,6 +51,7 @@ import '../widgets/app_search_field.dart';
 import 'safety_incident.dart';
 import 'safety_incidents_bloc.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 /// How the optional Asset list is being read — the same three states, and
 /// the same reason, as the Non-conformance form's own Asset picker.
@@ -443,7 +444,7 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                     Padding(
                       key: SafetyIncidentFormDialog.failureKey,
                       padding: const EdgeInsets.only(top: Spacing.md),
-                      child: Text(
+                      child: NoticeText(
                         _failure!,
                         style:
                             theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
@@ -503,7 +504,7 @@ class _AssetField extends StatelessWidget {
           key: SafetyIncidentFormDialog.assetsFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.commonAssetsFailed,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
             ),

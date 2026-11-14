@@ -23,6 +23,7 @@ import '../widgets/app_dialog.dart';
 import 'action.dart';
 import 'action_detail_bloc.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 /// Resolves the Action the address names out of the detail read this Screen
 /// already holds, and refuses the address when the phase it names is no longer
@@ -249,7 +250,7 @@ class _ActionPhaseCompleteDialogState extends State<ActionPhaseCompleteDialog> {
                 Padding(
                   key: ActionPhaseCompleteDialog.failureKey,
                   padding: const EdgeInsets.only(top: Spacing.md),
-                  child: Text(
+                  child: NoticeText(
                     _failure!,
                     style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                   ),

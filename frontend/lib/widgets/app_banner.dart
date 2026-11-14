@@ -34,6 +34,7 @@ import 'package:flutter/material.dart';
 
 import '../status_tone.dart';
 import '../theme.dart';
+import 'notice_text.dart';
 
 class AppBanner extends StatelessWidget {
   const AppBanner({
@@ -95,7 +96,7 @@ class AppBanner extends StatelessWidget {
                 key: titleKey,
                 style: dense?.copyWith(fontWeight: FontWeight.w600, color: foreground),
               ),
-            Text(message, key: messageKey, style: dense?.copyWith(color: foreground)),
+            NoticeText(message, key: messageKey, style: dense?.copyWith(color: foreground)),
           ],
         );
 

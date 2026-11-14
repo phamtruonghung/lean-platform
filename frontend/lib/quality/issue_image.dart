@@ -35,15 +35,10 @@ abstract final class IssueKind {
   static String path(String kind) =>
       kind == nonconformance ? 'nonconformances' : 'complaints';
 
-  /// What the record is called wherever a person reads it (CONTEXT.md's own
-  /// words for the two).
-  static String label(String kind) =>
-      kind == nonconformance ? 'Non-conformance' : 'Customer complaint';
-
-  /// What the slide's own type chip says: short, because it sits beside a
-  /// number on a wall.
-  static String shortLabel(String kind) =>
-      kind == nonconformance ? 'NC' : 'Complaint';
+  /// What the record is called where a person reads it, and the two-letter chip
+  /// a wall display shows, are both in `l10n/vocabulary.dart`
+  /// (`issueKindLabel`, `issueKindShortLabel`): a model is built from JSON
+  /// without a `BuildContext` (ADR-0062).
 
   static StatusTone tone(String kind) =>
       kind == nonconformance ? StatusTone.warning : StatusTone.info;
@@ -162,8 +157,6 @@ class SlideIssue {
   /// Whether there is anything to put on the wall. A chosen issue with no
   /// picture is still chosen — the picker says so — but it is not a slide.
   bool get hasPicture => images.isNotEmpty;
-
-  String get typeLabel => IssueKind.shortLabel(kind);
 
   /// "Customer · Product", or "Org unit · Product" for a Non-conformance —
   /// whichever two names a reader on the floor recognises fastest.

@@ -45,6 +45,7 @@ import '../widgets/app_search_field.dart';
 import 'cost_rate.dart';
 import 'cost_rates_bloc.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 /// Which of the three acts this dialog is performing — see the class header.
 enum CostRateFormMode { add, correct, revise }
@@ -534,7 +535,7 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
                   Padding(
                     key: CostRateFormDialog.failureKey,
                     padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
+                    child: NoticeText(
                       _failure!,
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                     ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/notices.dart';
 import '../theme.dart';
+import 'notice_text.dart';
 
 /// The shared "that failed" state (issue #103): names what broke and offers
 /// a retry. Every call site of this widget reaches it from a read that
@@ -144,7 +145,7 @@ class PlatformScopeRefusedState extends StatelessWidget {
                 const SizedBox(height: Spacing.md),
                 Text(l10n.failureStateNotVisibleToYou2, style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
                 const SizedBox(height: Spacing.sm),
-                Text(
+                NoticeText(
                   message,
                   textAlign: TextAlign.center,
                   style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),

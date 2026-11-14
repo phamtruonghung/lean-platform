@@ -156,23 +156,8 @@ class BoardKpi {
   String get formattedValue =>
       value == null ? '—' : value!.toStringAsFixed(decimalPlaces);
 
-  /// The standing in words, for the status indicator.
-  String get statusLabel {
-    switch (status) {
-      case greenStatus:
-        return 'On target';
-      case amberStatus:
-        return 'Near target';
-      case redStatus:
-        return 'Off target';
-      case noTargetStatus:
-        return 'No target';
-      case noDataStatus:
-        return 'No data';
-      default:
-        return status;
-    }
-  }
+  /// The standing in words is `boardKpiStatusLabel`, in `l10n/vocabulary.dart`:
+  /// a model is built from JSON without a `BuildContext` (ADR-0062).
 }
 
 /// One Pillar and the KPIs that report under it, in the order the server sent

@@ -31,6 +31,7 @@ import 'action_escalated_to_filter_dialog.dart';
 import 'action_org_unit_filter_dialog.dart';
 import 'actions_bloc.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class ActionsScreen extends StatelessWidget {
   const ActionsScreen({super.key});
@@ -306,7 +307,7 @@ class _Notice extends StatelessWidget {
         child: Padding(
           key: ActionsScreen.noticeKey,
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.sm),
-          child: Text(message, style: theme.textTheme.bodyMedium),
+          child: NoticeText(message, style: theme.textTheme.bodyMedium),
         ),
       ),
     );

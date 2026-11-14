@@ -21,6 +21,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class NonconformanceReopenDialog extends StatefulWidget {
   const NonconformanceReopenDialog({super.key, required this.nonconformance});
@@ -165,7 +166,7 @@ class _NonconformanceReopenDialogState extends State<NonconformanceReopenDialog>
               Padding(
                 key: NonconformanceReopenDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

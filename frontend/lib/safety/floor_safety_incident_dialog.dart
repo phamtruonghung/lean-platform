@@ -35,6 +35,7 @@ import '../widgets/app_date_time_field.dart';
 import 'floor_safety_incident_bloc.dart';
 import 'safety_incident.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class FloorSafetyIncidentDialog extends StatefulWidget {
   const FloorSafetyIncidentDialog({super.key});
@@ -137,7 +138,7 @@ class _FloorSafetyIncidentDialogState extends State<FloorSafetyIncidentDialog> {
               child: switch (state) {
                 FloorSafetyIncidentUnavailable(message: final message) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: Spacing.xl),
-                    child: Text(message, style: Theme.of(context).textTheme.bodyLarge),
+                    child: NoticeText(message, style: Theme.of(context).textTheme.bodyLarge),
                   ),
                 FloorSafetyIncidentReady() => _form(
                     busy: state.isSubmitting || _awaiting,
@@ -276,7 +277,7 @@ class _FloorSafetyIncidentDialogState extends State<FloorSafetyIncidentDialog> {
           Padding(
             key: FloorSafetyIncidentDialog.failureKey,
             padding: const EdgeInsets.only(top: Spacing.md),
-            child: Text(
+            child: NoticeText(
               state.failure!,
               style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
             ),

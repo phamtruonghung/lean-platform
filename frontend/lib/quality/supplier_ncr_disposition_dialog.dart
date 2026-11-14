@@ -22,6 +22,8 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'supplier_ncr.dart';
 import 'supplier_ncr_detail_bloc.dart';
+import '../widgets/notice_text.dart';
+import '../l10n/vocabulary.dart';
 
 class SupplierNcrDispositionDialog extends StatefulWidget {
   const SupplierNcrDispositionDialog({super.key, required this.supplierNcr});
@@ -154,7 +156,7 @@ class _SupplierNcrDispositionDialogState extends State<SupplierNcrDispositionDia
                   DropdownMenuItem<String>(
                     value: disposition,
                     child: Text(
-                      SupplierNcrDisposition.label(disposition),
+                      supplierNcrDispositionLabel(l10n, disposition),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -191,7 +193,7 @@ class _SupplierNcrDispositionDialogState extends State<SupplierNcrDispositionDia
               Padding(
                 key: SupplierNcrDispositionDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

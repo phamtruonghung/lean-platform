@@ -24,6 +24,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'request.dart';
 import 'requests_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class RequestDuplicateDialog extends StatefulWidget {
   const RequestDuplicateDialog({super.key, required this.request, required this.candidates});
@@ -153,7 +154,7 @@ class _RequestDuplicateDialogState extends State<RequestDuplicateDialog> {
               Padding(
                 key: RequestDuplicateDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(_failure!, style: dense?.copyWith(color: palette.statusDanger)),
+                child: NoticeText(_failure!, style: dense?.copyWith(color: palette.statusDanger)),
               ),
           ],
         ),

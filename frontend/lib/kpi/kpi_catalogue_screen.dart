@@ -51,6 +51,7 @@ import 'add_kpi_dialog.dart';
 import 'kpi_catalogue.dart';
 import 'kpi_catalogue_bloc.dart';
 import 'kpi_matrix.dart';
+import '../l10n/vocabulary.dart';
 
 class KpiCatalogueScreen extends StatelessWidget {
   const KpiCatalogueScreen({super.key, required this.canWrite});
@@ -81,10 +82,6 @@ class KpiCatalogueScreen extends StatelessWidget {
   /// The body cell of one column of one KPI's row.
   static ValueKey<String> cellKey(int kpiId, String column) =>
       ValueKey<String>('kpi-catalogue-cell-$kpiId-$column');
-
-  /// The label a review state is shown under in the Today column.
-  static String todayLabel(KpiReviewEntry? review) =>
-      review == null ? 'Not reviewed' : ReviewStatus.label(review.status);
 
   @override
   Widget build(BuildContext context) {
@@ -348,7 +345,7 @@ class _KpiRowTileState extends State<_KpiRowTile> {
               cell(
                 _todayFlex,
                 'Today',
-                Text(KpiCatalogueScreen.todayLabel(kpi.review), style: _todayStyle(context)),
+                Text(reviewTodayLabel(l10n, kpi.review?.status), style: _todayStyle(context)),
               ),
             ],
           ),

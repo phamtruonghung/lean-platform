@@ -31,6 +31,7 @@ import '../widgets/app_dialog.dart';
 import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class NonconformanceRaiseConcernDialog extends StatefulWidget {
   const NonconformanceRaiseConcernDialog({super.key, required this.nonconformance});
@@ -187,7 +188,7 @@ class _NonconformanceRaiseConcernDialogState extends State<NonconformanceRaiseCo
               Padding(
                 key: NonconformanceRaiseConcernDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

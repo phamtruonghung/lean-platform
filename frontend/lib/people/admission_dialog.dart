@@ -26,6 +26,7 @@ import 'org_unit_picker.dart';
 import 'org_unit_picker_bloc.dart';
 import 'pending_account.dart';
 import 'role_choice.dart';
+import '../widgets/notice_text.dart';
 
 class AdmissionDialog extends StatefulWidget {
   const AdmissionDialog({super.key, required this.account});
@@ -284,7 +285,7 @@ class _Callout extends StatelessWidget {
             Icon(icon, size: 20, color: foreground),
             const SizedBox(width: Spacing.sm),
             Expanded(
-              child: Text(
+              child: NoticeText(
                 message,
                 style: theme.textTheme.bodySmall?.copyWith(color: foreground),
               ),

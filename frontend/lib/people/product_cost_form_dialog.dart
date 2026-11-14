@@ -27,6 +27,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'product_cost.dart';
 import 'product_costs_bloc.dart';
+import '../widgets/notice_text.dart';
 
 /// Which of the three acts this dialog is performing — see [CostRateFormMode],
 /// whose three values these mirror.
@@ -406,7 +407,7 @@ class _ProductCostFormDialogState extends State<ProductCostFormDialog> {
                   Padding(
                     key: ProductCostFormDialog.failureKey,
                     padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
+                    child: NoticeText(
                       _failure!,
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                     ),

@@ -33,15 +33,9 @@ abstract final class ComplaintStatus {
 
   static const List<String> values = [open, investigating, responded, closed, rejected];
 
-  static String label(String status) => switch (status) {
-        open => 'Open',
-        investigating => 'Investigating',
-        responded => 'Responded',
-        closed => 'Closed',
-        rejected => 'Rejected',
-        _ => status,
-      };
-
+  /// The wires are codes, not words: the label lives in `l10n/vocabulary.dart`
+  /// (`complaintStatusLabel`), because a model is built from JSON without a
+  /// `BuildContext` (ADR-0062).
   static StatusTone tone(String status) => switch (status) {
         open => StatusTone.warning,
         investigating => StatusTone.info,
@@ -63,15 +57,7 @@ abstract final class ComplaintType {
 
   static const List<String> values = [quality, delivery, quantity, documentation, packaging, service];
 
-  static String label(String type) => switch (type) {
-        quality => 'Quality',
-        delivery => 'Delivery',
-        quantity => 'Quantity',
-        documentation => 'Documentation',
-        packaging => 'Packaging',
-        service => 'Service',
-        _ => type,
-      };
+  /// The words are in `l10n/vocabulary.dart` (`complaintTypeLabel`).
 }
 
 /// The Non-conformance that controls the complained-of product, as the
@@ -249,11 +235,7 @@ class CustomerComplaint {
 
   final ComplaintNonconformance? nonconformance;
 
-  String get statusLabel => ComplaintStatus.label(status);
-
   StatusTone get statusTone => ComplaintStatus.tone(status);
-
-  String get typeLabel => ComplaintType.label(complaintType);
 
   bool get isFinished => status == ComplaintStatus.closed || status == ComplaintStatus.rejected;
 

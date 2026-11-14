@@ -52,6 +52,7 @@ import '../widgets/status_chip.dart';
 import 'attendance.dart';
 import 'attendance_picker_bloc.dart';
 import 'org_unit_picker_bloc.dart';
+import '../widgets/notice_text.dart';
 
 /// The height a `SkeletonList` is given when it stands in for a list inside a
 /// page that is itself scrolling: the placeholder scrolls its own rows, so it
@@ -298,9 +299,9 @@ class _OrgUnitBrowser extends StatelessWidget {
         ),
       );
     } else if (state.sitesStatus == SitesStatus.failed) {
-      body = Text(state.sitesFailure ?? l10n.commonTheSitesAreUnavailable);
+      body = NoticeText(state.sitesFailure ?? l10n.commonTheSitesAreUnavailable);
     } else if (state.rootsFailure != null) {
-      body = Text(state.rootsFailure!);
+      body = NoticeText(state.rootsFailure!);
     } else if (state.sites.isEmpty) {
       body = Text(l10n.commonThereAreNoSitesToBrowseYet);
     } else if (state.rows.isEmpty) {

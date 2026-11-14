@@ -55,6 +55,7 @@ import 'injury_type.dart';
 import 'safety_api.dart';
 import 'safety_incident.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 /// How the two catalogues are being read — the same three states, and the same
 /// reason, as the record form's own Asset picker.
@@ -476,7 +477,7 @@ class _SafetyIncidentClassifyDialogState extends State<SafetyIncidentClassifyDia
                   Padding(
                     key: SafetyIncidentClassifyDialog.failureKey,
                     padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
+                    child: NoticeText(
                       _failure!,
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                     ),

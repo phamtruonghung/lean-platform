@@ -50,6 +50,7 @@ import 'nonconformance_detail_bloc.dart';
 import 'nonconformances_bloc.dart';
 import 'product.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 /// How the optional Asset list is being read — the same three states, and the
 /// same reason, as the Work order form's own Asset picker.
@@ -548,7 +549,7 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                     Padding(
                       key: NonconformanceFormDialog.failureKey,
                       padding: const EdgeInsets.only(top: Spacing.md),
-                      child: Text(
+                      child: NoticeText(
                         _failure!,
                         style: theme.textTheme.bodyMedium
                             ?.copyWith(color: theme.colorScheme.error),
@@ -612,7 +613,7 @@ class _AssetField extends StatelessWidget {
           key: NonconformanceFormDialog.assetsFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.commonAssetsFailed,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
             ),

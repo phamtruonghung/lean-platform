@@ -15,6 +15,7 @@ import '../widgets/app_date_field.dart';
 import '../widgets/app_dialog.dart';
 import 'employee.dart';
 import 'employee_detail_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class EmployeeDepartureDialog extends StatefulWidget {
   const EmployeeDepartureDialog({super.key, required this.employee});
@@ -167,7 +168,7 @@ class _EmployeeDepartureDialogState extends State<EmployeeDepartureDialog> {
                 Padding(
                   key: EmployeeDepartureDialog.failureKey,
                   padding: const EdgeInsets.only(top: Spacing.md),
-                  child: Text(
+                  child: NoticeText(
                     _failure!,
                     style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                   ),
@@ -209,7 +210,7 @@ class _EmployeeDepartureDialogState extends State<EmployeeDepartureDialog> {
                 Padding(
                   key: EmployeeDepartureDialog.failureKey,
                   padding: const EdgeInsets.only(top: Spacing.md),
-                  child: Text(
+                  child: NoticeText(
                     _failure!,
                     style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                   ),

@@ -48,6 +48,8 @@ import 'downtime_classify_dialog.dart';
 import 'downtime_close_dialog.dart';
 import 'downtime_event.dart';
 import 'row_disclosure.dart';
+import '../widgets/notice_text.dart';
+import '../l10n/vocabulary.dart';
 
 class DowntimeScreen extends StatelessWidget {
   const DowntimeScreen({super.key, required this.canAct});
@@ -268,7 +270,7 @@ class _Notice extends StatelessWidget {
                 Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
                 const SizedBox(width: Spacing.sm),
                 Expanded(
-                  child: Text(
+                  child: NoticeText(
                     message,
                     style: AppTypography.dense(context)
                         ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
@@ -538,7 +540,7 @@ class _DowntimeTableRow extends StatelessWidget {
               DisclosingText('${event.assetCode} · ${event.orgUnitName}', style: muted),
             ],
           ),
-          shrinkWrapTargets(StatusChip(label: event.statusLabel, tone: event.statusTone)),
+          shrinkWrapTargets(StatusChip(label: event.statusLabel(l10n), tone: event.statusTone)),
           Text(
             _formatInstant(event.startedAt, l10n),
             maxLines: 1,
@@ -693,7 +695,7 @@ class _DowntimeCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: Spacing.md),
-                StatusChip(label: event.statusLabel, tone: event.statusTone),
+                StatusChip(label: event.statusLabel(l10n), tone: event.statusTone),
               ],
             ),
             const SizedBox(height: Spacing.sm),

@@ -21,6 +21,7 @@ import 'asset.dart';
 import 'maintenance_api.dart';
 import 'work_order.dart';
 import 'work_orders_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class WorkOrderFormDialog extends StatefulWidget {
   const WorkOrderFormDialog({super.key, required this.siteId});
@@ -279,7 +280,7 @@ class _WorkOrderFormDialogState extends State<WorkOrderFormDialog> {
               Padding(
                 key: WorkOrderFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),
@@ -337,7 +338,7 @@ class _AssetField extends StatelessWidget {
           key: WorkOrderFormDialog.assetsFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.commonAssetsFailed,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
             ),

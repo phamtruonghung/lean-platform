@@ -32,6 +32,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'action.dart';
 import 'action_detail_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class OpenCapaDialog extends StatefulWidget {
   const OpenCapaDialog({super.key, required this.concern});
@@ -266,7 +267,7 @@ class _OpenCapaDialogState extends State<OpenCapaDialog> {
                   Padding(
                     key: OpenCapaDialog.failureKey,
                     padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
+                    child: NoticeText(
                       _failure!,
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                     ),

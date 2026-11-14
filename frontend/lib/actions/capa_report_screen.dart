@@ -64,18 +64,6 @@ import 'capa.dart';
 import 'capa_detail_bloc.dart';
 import '../l10n/vocabulary.dart';
 
-/// The words this report prints for a Disposition's kind.
-///
-/// A deliberate second copy of Quality's `DispositionType.label` rather than a
-/// shared one, and the seam is why: the client's dependency runs one way
-/// (`quality` imports `actions` — see `actions.dart`), and this is the one
-/// Screen in this Module that has to *print* the words, because a report is
-/// read on paper and cannot link to the record that owns them. Four strings are
-/// the cheaper half of that trade; if a second caller in this Module needs
-/// them, they move into Quality's client entry point and this map goes.
-///
-/// `use_as_is` is labelled by [LinkedDisposition.isConcession] rather than by
-/// its wire value, the same way Quality's own model labels it.
 // The words a report prints for a Disposition and for a Safety incident's
 // severity are `l10n/vocabulary.dart`'s (`dispositionTypeLabel`,
 // `safetySeverityLabel`) — one lookup for the whole tree, in the reader's

@@ -41,6 +41,7 @@ import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'observation_detail_bloc.dart';
 import 'safety_observation.dart';
+import '../widgets/notice_text.dart';
 
 class SafetyObservationDetailScreen extends StatelessWidget {
   const SafetyObservationDetailScreen({super.key, required this.observationId});
@@ -320,7 +321,7 @@ class _ActionsCard extends StatelessWidget {
             ),
             if (notice != null) ...[
               const SizedBox(height: Spacing.sm),
-              Text(
+              NoticeText(
                 key: SafetyObservationDetailScreen.actionNoticeKey,
                 notice!,
                 style: theme.textTheme.bodyMedium,

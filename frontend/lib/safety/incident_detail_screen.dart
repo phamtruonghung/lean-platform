@@ -80,6 +80,7 @@ import '../widgets/status_chip.dart';
 import 'body_part.dart';
 import 'incident_detail_bloc.dart';
 import 'safety_incident.dart';
+import '../widgets/notice_text.dart';
 
 class SafetyIncidentDetailScreen extends StatelessWidget {
   const SafetyIncidentDetailScreen({super.key, required this.incidentId});
@@ -403,7 +404,7 @@ class _Loaded extends StatelessWidget {
               Padding(
                 key: SafetyIncidentDetailScreen.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   state.mutationFailure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),
@@ -586,7 +587,7 @@ class _ConcernsCard extends StatelessWidget {
             ),
             if (notice != null) ...[
               const SizedBox(height: Spacing.sm),
-              Text(
+              NoticeText(
                 key: SafetyIncidentDetailScreen.concernNoticeKey,
                 notice!,
                 style: theme.textTheme.bodyMedium,

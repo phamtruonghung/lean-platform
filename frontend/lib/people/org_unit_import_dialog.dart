@@ -28,6 +28,7 @@ import '../people_api.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'org_unit_admin_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class OrgUnitImportDialog extends StatefulWidget {
   const OrgUnitImportDialog({super.key, required this.siteId});
@@ -171,7 +172,7 @@ class _OrgUnitImportDialogState extends State<OrgUnitImportDialog> {
                       Padding(
                         key: OrgUnitImportDialog.parseFailureKey,
                         padding: const EdgeInsets.only(top: Spacing.md),
-                        child: Text(
+                        child: NoticeText(
                           _parseFailure!,
                           style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                         ),
@@ -179,7 +180,7 @@ class _OrgUnitImportDialogState extends State<OrgUnitImportDialog> {
                     if (state.importFailure != null) ...[
                       Padding(
                         padding: const EdgeInsets.only(top: Spacing.md),
-                        child: Text(
+                        child: NoticeText(
                           // Nothing was applied — ADR-0011's own all-or-nothing rule
                           // — so the banner never implies a partial import landed.
                           state.importFailure!,

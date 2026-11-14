@@ -44,6 +44,7 @@ import 'account_roles_dialog.dart';
 import 'accounts_bloc.dart';
 import 'managed_account.dart';
 import 'pending_account.dart' show waitingFor;
+import '../widgets/notice_text.dart';
 
 class AccountsScreen extends StatelessWidget {
   const AccountsScreen({super.key, required this.selfAccountId});
@@ -260,7 +261,7 @@ class _Notice extends StatelessWidget {
                 Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
                 const SizedBox(width: Spacing.sm),
                 Expanded(
-                  child: Text(
+                  child: NoticeText(
                     message,
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
@@ -866,7 +867,7 @@ class _RowActions extends StatelessWidget {
       accountName: account.displayName,
     );
     if (notice == null || !context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(notice)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: NoticeText(notice)));
   }
 }
 

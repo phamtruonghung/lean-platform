@@ -45,6 +45,7 @@ import 'action.dart';
 import 'capa.dart';
 import 'capa_detail_bloc.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class CapaDetailScreen extends StatelessWidget {
   const CapaDetailScreen({super.key, required this.capaId});
@@ -397,7 +398,7 @@ class _SummaryCard extends StatelessWidget {
             ),
             if (notice != null) ...[
               const SizedBox(height: Spacing.md),
-              Text(
+              NoticeText(
                 notice!,
                 key: CapaDetailScreen.noticeKey,
                 style: AppTypography.dense(context),
@@ -405,7 +406,7 @@ class _SummaryCard extends StatelessWidget {
             ],
             if (failure != null) ...[
               const SizedBox(height: Spacing.sm),
-              Text(
+              NoticeText(
                 failure!,
                 key: CapaDetailScreen.failureKey,
                 style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),

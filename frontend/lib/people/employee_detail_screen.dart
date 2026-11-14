@@ -64,6 +64,7 @@ import 'employee_skill_form_dialog.dart';
 import 'period_format.dart';
 import 'skill.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class EmployeeDetailScreen extends StatelessWidget {
   const EmployeeDetailScreen({
@@ -202,7 +203,7 @@ class _Detail extends StatelessWidget {
                       Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
                       const SizedBox(width: Spacing.sm),
                       Expanded(
-                        child: Text(
+                        child: NoticeText(
                           noticeText(l10n, state.notice!),
                           style: AppTypography.dense(context)
                               ?.copyWith(color: theme.colorScheme.onSecondaryContainer),

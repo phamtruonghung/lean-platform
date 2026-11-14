@@ -14,6 +14,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'work_order.dart';
 import 'work_order_detail_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class TaskReadingDialog extends StatefulWidget {
   const TaskReadingDialog({super.key, required this.task});
@@ -146,7 +147,7 @@ class _TaskReadingDialogState extends State<TaskReadingDialog> {
               Padding(
                 key: TaskReadingDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),

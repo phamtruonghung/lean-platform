@@ -28,6 +28,7 @@ import '../theme.dart';
 import 'floor_safety_observation_bloc.dart';
 import 'safety_observation.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class FloorSafetyObservationDialog extends StatefulWidget {
   const FloorSafetyObservationDialog({super.key});
@@ -126,7 +127,7 @@ class _FloorSafetyObservationDialogState extends State<FloorSafetyObservationDia
               child: switch (state) {
                 FloorSafetyObservationUnavailable(message: final message) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: Spacing.xl),
-                    child: Text(message, style: Theme.of(context).textTheme.bodyLarge),
+                    child: NoticeText(message, style: Theme.of(context).textTheme.bodyLarge),
                   ),
                 FloorSafetyObservationReady() => _form(
                     busy: state.isSubmitting || _awaiting,
@@ -275,7 +276,7 @@ class _FloorSafetyObservationDialogState extends State<FloorSafetyObservationDia
           Padding(
             key: FloorSafetyObservationDialog.failureKey,
             padding: const EdgeInsets.only(top: Spacing.md),
-            child: Text(
+            child: NoticeText(
               state.failure!,
               style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
             ),

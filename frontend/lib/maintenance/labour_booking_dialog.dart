@@ -29,6 +29,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'work_order.dart';
 import 'work_order_detail_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class LabourBookingDialog extends StatefulWidget {
   const LabourBookingDialog({super.key, required this.workOrderId});
@@ -270,7 +271,7 @@ class _LabourBookingDialogState extends State<LabourBookingDialog> {
               Padding(
                 key: LabourBookingDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),
@@ -328,7 +329,7 @@ class _EmployeeField extends StatelessWidget {
           key: LabourBookingDialog.employeesFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.labourBookingEmployeesFailed,
               style: AppTypography.floor(context)?.copyWith(color: palette.statusDanger),
             ),

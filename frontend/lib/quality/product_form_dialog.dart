@@ -38,6 +38,7 @@ import '../widgets/failure_state.dart';
 import 'product.dart';
 import 'products_bloc.dart';
 import 'quality_api.dart';
+import '../widgets/notice_text.dart';
 
 class ProductFormDialog extends StatefulWidget {
   const ProductFormDialog({super.key, this.product});
@@ -304,7 +305,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
               Padding(
                 key: ProductFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

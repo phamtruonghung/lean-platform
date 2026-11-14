@@ -38,6 +38,7 @@ import '../widgets/status_chip.dart';
 import 'action.dart';
 import 'action_detail_bloc.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class ActionDetailScreen extends StatelessWidget {
   const ActionDetailScreen({super.key, required this.actionId});
@@ -353,7 +354,7 @@ class _SummaryCard extends StatelessWidget {
             ],
             if (notice != null) ...[
               const SizedBox(height: Spacing.sm),
-              Text(
+              NoticeText(
                 notice!,
                 key: ActionDetailScreen.noticeKey,
                 style: AppTypography.dense(context),

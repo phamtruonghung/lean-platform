@@ -30,6 +30,7 @@ import 'task_reading_dialog.dart';
 import 'work_order.dart';
 import 'work_order_detail_bloc.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class WorkOrderDetailScreen extends StatelessWidget {
   const WorkOrderDetailScreen({
@@ -136,7 +137,7 @@ class _Notice extends StatelessWidget {
                 Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
                 const SizedBox(width: Spacing.sm),
                 Expanded(
-                  child: Text(
+                  child: NoticeText(
                     message,
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(color: theme.colorScheme.onSecondaryContainer),

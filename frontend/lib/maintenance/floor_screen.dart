@@ -36,6 +36,7 @@ import 'floor_technician_dialog.dart';
 import 'maintenance_api.dart';
 import 'work_order.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class FloorScreen extends StatelessWidget {
   const FloorScreen({super.key});
@@ -455,7 +456,7 @@ class _FloorFrame extends StatelessWidget {
             width: double.infinity,
             color: Theme.of(context).colorScheme.secondaryContainer,
             padding: const EdgeInsets.symmetric(horizontal: Spacing.lg, vertical: Spacing.sm),
-            child: Text(notice!, style: Theme.of(context).textTheme.bodyLarge),
+            child: NoticeText(notice!, style: Theme.of(context).textTheme.bodyLarge),
           ),
         Expanded(child: child),
       ],

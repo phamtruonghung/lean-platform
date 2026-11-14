@@ -13,6 +13,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'training_record.dart';
+import '../l10n/notices.dart';
 
 sealed class TrainingDetailEvent {
   const TrainingDetailEvent();
@@ -164,7 +165,7 @@ class TrainingDetailBloc extends Bloc<TrainingDetailEvent, TrainingDetailState> 
   Future<void> _onRequested(TrainingDetailRequested event, Emitter<TrainingDetailState> emit) async {
     final token = _auth.currentAccessToken;
     if (token == null) {
-      emit(const TrainingDetailUnavailable(message: 'This session has ended. Sign in again to continue.'));
+      emit(const TrainingDetailUnavailable(message: BlocNotice.sessionEnded));
       return;
     }
     emit(const TrainingDetailLoading());
@@ -210,7 +211,7 @@ class TrainingDetailBloc extends Bloc<TrainingDetailEvent, TrainingDetailState> 
     if (current is! TrainingDetailLoaded || current.isWriting) return;
     final token = _auth.currentAccessToken;
     if (token == null) {
-      emit(_failed(current.record, _Write.discard, 'This session has ended. Sign in again to continue.'));
+      emit(_failed(current.record, _Write.discard, BlocNotice.sessionEnded));
       return;
     }
     emit(TrainingDetailLoaded(record: current.record, isWriting: true));
@@ -242,7 +243,7 @@ class TrainingDetailBloc extends Bloc<TrainingDetailEvent, TrainingDetailState> 
     if (current is! TrainingDetailLoaded || current.isWriting) return;
     final token = _auth.currentAccessToken;
     if (token == null) {
-      emit(_failed(current.record, kind, 'This session has ended. Sign in again to continue.'));
+      emit(_failed(current.record, kind, BlocNotice.sessionEnded));
       return;
     }
     emit(TrainingDetailLoaded(record: current.record, isWriting: true));

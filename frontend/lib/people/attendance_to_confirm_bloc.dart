@@ -17,6 +17,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'attendance.dart';
+import '../l10n/notices.dart';
 
 sealed class AttendanceToConfirmEvent {
   const AttendanceToConfirmEvent();
@@ -151,7 +152,7 @@ class AttendanceToConfirmBloc extends Bloc<AttendanceToConfirmEvent, AttendanceT
   Future<void> _reload(Emitter<AttendanceToConfirmState> emit) async {
     final token = _auth.currentAccessToken;
     if (token == null) {
-      emit(state.copyWith(isLoading: false, failure: 'This session has ended. Sign in again to continue.'));
+      emit(state.copyWith(isLoading: false, failure: BlocNotice.sessionEnded));
       return;
     }
 

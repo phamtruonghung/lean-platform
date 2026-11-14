@@ -27,6 +27,7 @@ import 'customer_complaint.dart';
 import 'nonconformance.dart';
 import 'quality_api.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class ComplaintLinkDialog extends StatefulWidget {
   const ComplaintLinkDialog({super.key, required this.complaint});
@@ -202,7 +203,7 @@ class _ComplaintLinkDialogState extends State<ComplaintLinkDialog> {
               Padding(
                 key: ComplaintLinkDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

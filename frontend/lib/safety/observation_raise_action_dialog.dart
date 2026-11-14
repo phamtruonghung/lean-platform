@@ -33,6 +33,7 @@ import '../widgets/app_dialog.dart';
 import 'observation_detail_bloc.dart';
 import 'safety_observation.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class SafetyObservationRaiseActionDialog extends StatefulWidget {
   const SafetyObservationRaiseActionDialog({super.key, required this.observation});
@@ -215,7 +216,7 @@ class _SafetyObservationRaiseActionDialogState
               Padding(
                 key: SafetyObservationRaiseActionDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

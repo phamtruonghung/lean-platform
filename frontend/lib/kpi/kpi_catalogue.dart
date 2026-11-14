@@ -317,12 +317,8 @@ abstract final class ReviewStatus {
 
   static const List<String> all = [met, missed, notMeasured];
 
-  static String label(String status) => switch (status) {
-        met => 'Met',
-        missed => 'Missed',
-        notMeasured => 'Not measured',
-        _ => status,
-      };
+  /// The words are in `l10n/vocabulary.dart` (`reviewStatusLabel`), because a
+  /// model is built from JSON without a `BuildContext` (ADR-0062).
 }
 
 /// One entry of `POST /api/kpi/review`'s `entries`. The server writes the

@@ -32,6 +32,7 @@ import 'asset.dart';
 import 'maintenance_api.dart';
 import 'my_requests_bloc.dart';
 import 'request.dart';
+import '../widgets/notice_text.dart';
 
 class RequestFormDialog extends StatefulWidget {
   const RequestFormDialog({super.key, required this.siteId});
@@ -257,7 +258,7 @@ class _RequestFormDialogState extends State<RequestFormDialog> {
               Padding(
                 key: RequestFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),
@@ -319,7 +320,7 @@ class _AssetField extends StatelessWidget {
           key: RequestFormDialog.assetsFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.commonAssetsFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),

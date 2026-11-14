@@ -42,6 +42,7 @@ import 'request.dart';
 import 'request_form_dialog.dart';
 import 'row_disclosure.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class MyRequestsScreen extends StatelessWidget {
   const MyRequestsScreen({super.key, required this.canRaiseRequest});
@@ -238,7 +239,7 @@ class _Notice extends StatelessWidget {
                 Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
                 const SizedBox(width: Spacing.sm),
                 Expanded(
-                  child: Text(
+                  child: NoticeText(
                     message,
                     style: AppTypography.dense(context)
                         ?.copyWith(color: theme.colorScheme.onSecondaryContainer),

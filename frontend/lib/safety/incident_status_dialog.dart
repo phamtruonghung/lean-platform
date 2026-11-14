@@ -21,6 +21,7 @@ import '../widgets/app_dialog.dart';
 import 'incident_detail_bloc.dart';
 import 'safety_incident.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class SafetyIncidentStatusDialog extends StatefulWidget {
   const SafetyIncidentStatusDialog({super.key, required this.incident});
@@ -125,7 +126,7 @@ class _SafetyIncidentStatusDialogState extends State<SafetyIncidentStatusDialog>
             : Padding(
                 key: SafetyIncidentStatusDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

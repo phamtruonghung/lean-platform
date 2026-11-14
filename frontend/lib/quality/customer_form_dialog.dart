@@ -28,6 +28,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_scan_field.dart';
 import 'customer.dart';
 import 'customers_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class CustomerFormDialog extends StatefulWidget {
   const CustomerFormDialog({super.key, this.customer});
@@ -223,7 +224,7 @@ class _CustomerFormDialogState extends State<CustomerFormDialog> {
               Padding(
                 key: CustomerFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

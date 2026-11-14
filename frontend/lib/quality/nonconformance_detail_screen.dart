@@ -72,6 +72,7 @@ import 'nonconformance_detail_bloc.dart';
 import 'quality_api.dart';
 import 'quality_photo_picker.dart';
 import 'slide_show_toggle.dart';
+import '../widgets/notice_text.dart';
 
 class NonconformanceDetailScreen extends StatelessWidget {
   const NonconformanceDetailScreen({super.key, required this.nonconformanceId});
@@ -319,7 +320,7 @@ class _Loaded extends StatelessWidget {
                         Padding(
                           key: NonconformanceDetailScreen.failureKey,
                           padding: const EdgeInsets.only(top: Spacing.md),
-                          child: Text(
+                          child: NoticeText(
                             state.mutationFailure!,
                             style: AppTypography.dense(context)
                                 ?.copyWith(color: palette.statusDanger),
@@ -898,7 +899,7 @@ class _ConcernsSection extends StatelessWidget {
           style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
         ),
         if (notice != null)
-          Text(
+          NoticeText(
             key: NonconformanceDetailScreen.concernNoticeKey,
             notice!,
             style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),

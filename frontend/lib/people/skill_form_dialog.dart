@@ -32,6 +32,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_scan_field.dart';
 import 'skill.dart';
 import 'skills_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class SkillFormDialog extends StatefulWidget {
   const SkillFormDialog({super.key, this.skill});
@@ -258,7 +259,7 @@ class _SkillFormDialogState extends State<SkillFormDialog> {
               Padding(
                 key: SkillFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   failure,
                   style: AppTypography.dense(context)
                       ?.copyWith(color: AppColors.of(context).statusForeground(StatusTone.danger)),

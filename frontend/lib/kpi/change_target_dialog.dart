@@ -30,6 +30,7 @@ import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_dialog.dart';
 import 'kpi_targets_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class ChangeTargetDialog extends StatefulWidget {
   const ChangeTargetDialog({super.key, required this.siteToday});
@@ -223,7 +224,7 @@ class _ChangeTargetDialogState extends State<ChangeTargetDialog> {
               Padding(
                 key: ChangeTargetDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

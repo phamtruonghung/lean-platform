@@ -39,6 +39,7 @@ import '../widgets/failure_state.dart';
 import 'training_answer_dialog.dart';
 import 'training_record.dart';
 import 'training_to_confirm_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class TrainingToConfirmScreen extends StatelessWidget {
   const TrainingToConfirmScreen({super.key});
@@ -109,7 +110,7 @@ class _Body extends StatelessWidget {
             Padding(
               key: TrainingToConfirmScreen.answerFailureKey,
               padding: const EdgeInsets.only(top: Spacing.sm),
-              child: Text(
+              child: NoticeText(
                 state.answerFailure!,
                 style: Theme.of(context)
                     .textTheme

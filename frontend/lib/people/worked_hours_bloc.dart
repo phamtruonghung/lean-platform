@@ -14,6 +14,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'worked_hours.dart';
+import '../l10n/notices.dart';
 
 sealed class WorkedHoursEvent {
   const WorkedHoursEvent();
@@ -100,7 +101,7 @@ class WorkedHoursBloc extends Bloc<WorkedHoursEvent, WorkedHoursState> {
   Future<void> _reload(Emitter<WorkedHoursState> emit, {String? from, String? to}) async {
     final token = _auth.currentAccessToken;
     if (token == null) {
-      emit(state.copyWith(failure: 'This session has ended. Sign in again to continue.', isLoading: false));
+      emit(state.copyWith(failure: BlocNotice.sessionEnded, isLoading: false));
       return;
     }
 

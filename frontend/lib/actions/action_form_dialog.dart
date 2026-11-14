@@ -28,6 +28,7 @@ import 'action.dart';
 import 'actions_api.dart';
 import 'actions_bloc.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class ActionFormDialog extends StatefulWidget {
   const ActionFormDialog({super.key, required this.siteId});
@@ -344,7 +345,7 @@ class _ActionFormDialogState extends State<ActionFormDialog> {
                     Padding(
                       key: ActionFormDialog.failureKey,
                       padding: const EdgeInsets.only(top: Spacing.md),
-                      child: Text(
+                      child: NoticeText(
                         _failure!,
                         style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                       ),

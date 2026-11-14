@@ -34,6 +34,7 @@ import '../widgets/app_scan_field.dart';
 import 'defect_code.dart';
 import 'defect_codes_bloc.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class DefectCodeFormDialog extends StatefulWidget {
   const DefectCodeFormDialog({super.key, this.defectCode, this.codes = const []});
@@ -238,7 +239,7 @@ class _DefectCodeFormDialogState extends State<DefectCodeFormDialog> {
                 for (final category in DefectCategory.values)
                   DropdownMenuItem<String>(
                     value: category,
-                    child: Text(DefectCategory.label(category)),
+                    child: Text(defectCategoryLabel(l10n, category)),
                   ),
               ],
               onChanged: _awaiting ? null : (value) => setState(() => _category = value!),
@@ -301,7 +302,7 @@ class _DefectCodeFormDialogState extends State<DefectCodeFormDialog> {
               Padding(
                 key: DefectCodeFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

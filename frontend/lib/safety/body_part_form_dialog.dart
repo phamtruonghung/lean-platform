@@ -31,6 +31,7 @@ import '../widgets/app_scan_field.dart';
 import 'body_part.dart';
 import 'body_parts_bloc.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class BodyPartFormDialog extends StatefulWidget {
   const BodyPartFormDialog({super.key, this.bodyPart});
@@ -224,7 +225,7 @@ class _BodyPartFormDialogState extends State<BodyPartFormDialog> {
               Padding(
                 key: BodyPartFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

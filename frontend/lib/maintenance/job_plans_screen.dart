@@ -44,6 +44,7 @@ import 'job_plan_form_dialog.dart';
 import 'job_plans_bloc.dart';
 import 'name_with_chip.dart';
 import 'row_disclosure.dart';
+import '../widgets/notice_text.dart';
 
 class JobPlansScreen extends StatelessWidget {
   const JobPlansScreen({super.key, required this.isAdmin});
@@ -183,7 +184,7 @@ class _Notice extends StatelessWidget {
                 Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
                 const SizedBox(width: Spacing.sm),
                 Expanded(
-                  child: Text(
+                  child: NoticeText(
                     message,
                     style: AppTypography.dense(context)
                         ?.copyWith(color: theme.colorScheme.onSecondaryContainer),

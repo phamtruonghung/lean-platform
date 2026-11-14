@@ -62,6 +62,35 @@ that renders it resolves it through `noticeText(l10n, message)`. A message that
 does not start with `notice:` is prose — a server's own error text — and passes
 through untouched, which is the whole rule.
 
+**And the render itself resolves it — at every boundary.** A code that reaches a
+`Text` is the bug, so the rendering is where the rule is enforced, not a habit at
+each site:
+
+- `frontend/lib/widgets/notice_text.dart` holds `NoticeText`, a drop-in for
+  `Text` whose first argument is the Bloc-held message. Every surface that prints
+  one uses it: 147 sites across 128 files, including the standard "the write was
+  refused" block every `*dialog*.dart` keeps in its own `child:` (93 of them), the
+  per-Screen `_Notice` banners, and the four Maintenance Screens that used to
+  print `state.notice` / `state.failure` raw.
+- `AppDialog`'s own `description` resolves the same way, so a dialog's refusal
+  sentence is covered by the shell rather than by each caller (this is the path
+  `action_escalate_dialog` reaches).
+- `PlatformFailureState` already did (it is what the first pass wired, and it is
+  the one site the tree had right).
+
+`noticeText` returns prose unchanged, so `NoticeText` is safe everywhere, not
+only where a code is expected — that is why the rule can be stated as "no
+`notice:` value reaches a `Text`" rather than a list of call sites to remember.
+
+**Where the boundary of the rule is.** What this ADR forbids is a *word living
+where no language exists*: on a model, on a Bloc, or in a static that cannot see
+an `AppLocalizations`. A switch that already takes `l10n` is the same mechanism
+wherever it sits — the router's 67 screen titles and one screen's own prose
+switch (`action_phase_complete_dialog`) stay where they are, because moving them
+would buy nothing and hide the sentence from the file that says it. The
+catalogue is the home of the *vocabulary* (statuses, types, roles, severities,
+the board's and handover's fixed sets), not of every sentence a Screen writes.
+
 ### What this cost, stated plainly
 
 - **Call sites.** Every read of a label gained an argument: 131 instance-getter
@@ -84,6 +113,29 @@ through untouched, which is the whole rule.
 - **An English typo went with them.** `RequestWorkOrder.statusLabel` looked a
   Work order's status up in the *Request* map (a latent bug the model's own
   comment admitted). It is now read with the Work order vocabulary.
+
+### Round 2: the registers the first pass did not reach
+
+The first pass converted the words a *Screen* printed through a model getter and
+wired the notice resolver at ten render sites. Both left work behind, and it was
+the same defect in two shapes — an English word or a raw code still reaching a
+reader:
+
+- **Seven more model-level vocabularies**, each a table of English words beside
+  its codes: `ComplaintStatus`/`ComplaintType`, `SupplierNcrStatus`/
+  `SupplierNcrDisposition`, Downtime's `_statuses`, `AssetType`/`Criticality`
+  (enum `label` fields), `DefectCategory`, `BoardKpi.statusLabel`, and
+  `IssueKind.label`/`shortLabel` — plus `ReviewStatus` (the KPI Review's
+  Met/Missed/Not measured) and the skill coverage legend. `HandoverVocabulary`
+  was a `HandoverChoice(wire, label)` pair repeated seven times; it is now seven
+  `List<String>` of wires, with the words in the adapter.
+- **The Bloc's own copy, in the two places it was still literal**: the four
+  `AccountsBloc` sites that inline "Another action is already in progress…" and
+  the eight that inline "This session has ended. Sign in again to continue." now
+  emit `BlocNotice.actionInFlight` / `BlocNotice.sessionEnded`.
+- **The render boundary, everywhere.** Ten sites resolved notices and the rest
+  printed the code: `notice:session-ended` was reachable in a dialog. `NoticeText`
+  (above) and `AppDialog.description` close that class.
 
 ## Alternatives considered
 
@@ -112,8 +164,21 @@ through untouched, which is the whole rule.
   constant on the model, the ARB entry in both catalogues, and one arm of the
   lookup. The `_ => code` arm is what keeps a forgotten one visible rather than
   fatal.
-- Not converted by this ADR, and still English: the ~150 interpolated notices a
-  Bloc composes inline (`'${action.actionNo} was called off.'`), and the
-  sentence-shaped getters that read as prose rather than vocabulary
-  (`LeaveRequest.periodLabel`, `CostRate.amountLabel`). They are the next
-  slice; the vocabulary and the notice registry are what it will build on.
+- Not converted by this ADR, and still English. The list is bounded and measured
+  (grep, not a census) rather than "everything else", and
+  `docs/agents/domain.md` carries it so the next slice starts from a list:
+  - **21 English `static const String`s in 6 files** outside `l10n/` — the KPI
+    targets table's own column headings, the palette toggle's tooltips, the slide
+    show's tooltip, the KPI Review's two hints, one attendance sheet label;
+  - **33 notices a Bloc still composes inline** (`notice: '${…} was called off.'`)
+    — the parameterised registry covers the ones the sweep converted, not these;
+  - **3 sentence-shaped model getters** (`CustomerComplaint.quantityLabel` /
+    `dueLabel`, `SupplierNcr.dueLabel`) and `PlatformFailureState.retryLabel`'s
+    English default;
+  - **one filter count line** (`AppFilterField.countLabel`) and **two form-mode
+    title sets** (`product_cost_form_dialog`, `cost_rate_form_dialog`).
+
+  Every *status, type, role, severity and code* word is converted. What is left
+  is prose the tree composes from several values at once, which is a different
+  mechanism (a parameterised message, not a code → word lookup) and is why it is
+  named here rather than quietly included.

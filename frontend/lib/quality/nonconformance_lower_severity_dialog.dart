@@ -22,6 +22,7 @@ import 'defect_code.dart';
 import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class NonconformanceLowerSeverityDialog extends StatefulWidget {
   const NonconformanceLowerSeverityDialog({super.key, required this.nonconformance});
@@ -196,7 +197,7 @@ class _NonconformanceLowerSeverityDialogState extends State<NonconformanceLowerS
               Padding(
                 key: NonconformanceLowerSeverityDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

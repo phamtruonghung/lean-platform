@@ -17,11 +17,10 @@ import 'package:flutter/foundation.dart';
 import '../status_tone.dart';
 
 /// The Downtime event states, mirroring the GENERATED `downtime_events.status`
-/// column. A label for each known value, with the wire string itself as the
-/// fallback for one this build does not know about — the same fallback
-/// `WorkOrder.statusLabel` and `Request.statusLabel` follow.
-/// One map per state set — label and tone together, the same shape
-/// `WorkOrder`'s own map uses (issue #168).
+/// column. The words for each are in `l10n/vocabulary.dart`
+/// (`downtimeStatusLabel`) — a model is built from JSON without a
+/// `BuildContext` (ADR-0062) — and the tone stays here, because a tone is not a
+/// language.
 ///
 /// `open` is `warning` — an Asset that is not running is the thing a shift is
 /// losing minutes to, so it is the one state that has to catch the eye.
@@ -32,10 +31,10 @@ import '../status_tone.dart';
 /// Only `open` reaches a reader today: the log is served open stops and the
 /// Screen offers no history toggle, so the other two tones are here for the
 /// model's own completeness rather than for a surface that shows them.
-const Map<String, (String, StatusTone)> _statuses = {
-  'open': ('Open', StatusTone.warning),
-  'unclassified': ('Unclassified', StatusTone.info),
-  'closed': ('Closed', StatusTone.success),
+const Map<String, StatusTone> _tones = {
+  'open': StatusTone.warning,
+  'unclassified': StatusTone.info,
+  'closed': StatusTone.success,
 };
 
 /// One Downtime reason from `GET /api/maintenance/downtime-reasons` — the
@@ -127,12 +126,13 @@ class DowntimeEvent {
   static const String unclassifiedStatus = 'unclassified';
   static const String closedStatus = 'closed';
 
-  String get statusLabel => _statuses[status]?.$1 ?? status;
+  /// What this stop's status reads as is `downtimeStatusLabel`, in
+  /// `l10n/vocabulary.dart` — the words are not the model's to know (ADR-0062).
 
   /// What [status] means to somebody reading the log (issue #168) — the tone
   /// `widgets/status_chip.dart` paints. Falls back to [StatusTone.neutral] for
-  /// a status this build does not know about, matching [statusLabel].
-  StatusTone get statusTone => _statuses[status]?.$2 ?? StatusTone.neutral;
+  /// a status this build does not know about, matching the label lookup.
+  StatusTone get statusTone => _tones[status] ?? StatusTone.neutral;
 
   /// Whether the stop is still running — the one state Close is offered in.
   bool get isOpen => status == openStatus;

@@ -20,6 +20,7 @@ import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/app_scan_field.dart';
 import 'floor_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class FloorTechnicianDialog extends StatefulWidget {
   const FloorTechnicianDialog({
@@ -184,7 +185,7 @@ class _FloorTechnicianDialogState extends State<FloorTechnicianDialog> {
               Padding(
                 key: FloorTechnicianDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),

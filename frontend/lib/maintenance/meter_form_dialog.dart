@@ -25,6 +25,7 @@ import 'asset.dart';
 import 'maintenance_api.dart';
 import 'meter.dart';
 import 'meters_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class MeterFormDialog extends StatefulWidget {
   const MeterFormDialog({super.key, required this.siteId});
@@ -304,7 +305,7 @@ class _MeterFormDialogState extends State<MeterFormDialog> {
               Padding(
                 key: MeterFormDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                 ),
@@ -366,7 +367,7 @@ class _AssetField extends StatelessWidget {
           key: MeterFormDialog.assetsFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.commonAssetsFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
@@ -449,7 +450,7 @@ class _UomField extends StatelessWidget {
           key: MeterFormDialog.uomFailedKey,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            NoticeText(
               failure ?? l10n.meterFormUomFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),

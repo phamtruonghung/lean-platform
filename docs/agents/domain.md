@@ -65,20 +65,29 @@ arm of the lookup — the `_ => code` arm is what makes a forgotten one visible.
 
 These still render as their own English/code value in every language, in the
 vocabulary's own fallback. They are the residue of the sweep, not a decision
-that they need no translation:
+that they need no translation. The **status / type / role / severity words are
+all converted** (ADR-0062's round 2 closed the model-level tables: complaints,
+supplier NCRs, downtime, assets, defect categories, the KPI board and Review,
+the slide show's kinds, the skill coverage legend and the Shift handover's seven
+sets). What follows is prose, measured by grep at the end of that round:
 
-| Code set | Where | Codes |
+| Code set / prose | Where | What is still English |
 | --- | --- | --- |
-| KPI measurement outcome | `lib/kpi/kpi_catalogue.dart` | `met`, `missed`, `not_measured` |
-| An Account's standing | `lib/people/managed_account.dart` | `rejected`, `approved` (active / deactivated), awaiting approval |
 | A Trainee's answer | `lib/people/training_form_screen.dart` | `declined` |
-| Skill coverage legend | `lib/people/skill_coverage_screen.dart` | "Nobody qualified", "Partly qualified", "Short" |
 | Form-mode titles | `lib/people/{product_cost, cost_rate}_form_dialog.dart` | add / correct / revise |
 | A filter's count line | `lib/widgets/app_filter_field.dart` | "Showing N of M" |
 | The measure dialog's help text | `lib/actions/action_measure_dialog.dart` | per measure type |
+| Register column headings kept as constants | `lib/kpi/kpi_targets_screen.dart`, `lib/people/attendance_sheet_screen.dart` | "Valid from", "Grain", "Entered by", … |
+| Widget tooltips kept as constants | `lib/widgets/palette_toggle.dart`, `lib/quality/slide_show_toggle.dart` | the palette and slide-show tooltips |
+| The KPI Review's two hints | `lib/kpi/kpi_review_screen.dart` | "No target — set one first", the clears-note sentence |
+| Model prose getters | `lib/quality/{customer_complaint,supplier_ncr}.dart` | `quantityLabel`, `dueLabel` — "No quantity given" |
+| A failed read's retry label | `lib/widgets/failure_state.dart` | `retryLabel`'s English default ("Try again") |
 
 A **Bloc's interpolated notices** (`'${action.actionNo} was called off.'`) are
 the other half: `notices.dart` covers the constant messages and the parameterised
-ones the sweep converted (`BlocNotice.employeeLeft`, `assetBack`, …); a notice a
-Bloc still composes inline is English until a later slice turns it into a code.
+ones the sweep converted (`BlocNotice.employeeLeft`, `assetBack`, …), and **every
+render of a Bloc-held message goes through `NoticeText`** (`lib/widgets/notice_text.dart`)
+or `AppDialog`'s own `description`, so a code cannot reach a reader unresolved —
+but a notice a Bloc still composes inline is English until a later slice turns it
+into a code. Measured at 33 such literals.
 

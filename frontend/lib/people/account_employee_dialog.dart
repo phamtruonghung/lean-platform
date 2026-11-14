@@ -15,6 +15,7 @@ import 'accounts_bloc.dart';
 import 'employee_link_picker.dart';
 import 'employee_ref.dart';
 import 'managed_account.dart';
+import '../widgets/notice_text.dart';
 
 class AccountEmployeeDialog extends StatefulWidget {
   const AccountEmployeeDialog({super.key, required this.account});
@@ -123,7 +124,7 @@ class _AccountEmployeeDialogState extends State<AccountEmployeeDialog> {
                     Padding(
                       key: AccountEmployeeDialog.failureKey,
                       padding: const EdgeInsets.only(top: Spacing.md),
-                      child: Text(
+                      child: NoticeText(
                         _failure!,
                         style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                       ),

@@ -27,6 +27,7 @@ import 'supplier_ncr.dart';
 import 'nonconformance.dart';
 import 'quality_api.dart';
 import '../l10n/vocabulary.dart';
+import '../widgets/notice_text.dart';
 
 class SupplierNcrLinkDialog extends StatefulWidget {
   const SupplierNcrLinkDialog({super.key, required this.supplierNcr});
@@ -202,7 +203,7 @@ class _SupplierNcrLinkDialogState extends State<SupplierNcrLinkDialog> {
               Padding(
                 key: SupplierNcrLinkDialog.failureKey,
                 padding: const EdgeInsets.only(top: Spacing.md),
-                child: Text(
+                child: NoticeText(
                   _failure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),

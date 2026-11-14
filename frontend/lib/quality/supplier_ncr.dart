@@ -33,15 +33,9 @@ abstract final class SupplierNcrStatus {
 
   static const List<String> values = [open, issued, responded, closed, rejected];
 
-  static String label(String status) => switch (status) {
-        open => 'Open',
-        issued => 'Issued',
-        responded => 'Responded',
-        closed => 'Closed',
-        rejected => 'Rejected',
-        _ => status,
-      };
-
+  /// The wires are codes, not words: the label lives in `l10n/vocabulary.dart`
+  /// (`supplierNcrStatusLabel`), because a model is built from JSON without a
+  /// `BuildContext` (ADR-0062).
   static StatusTone tone(String status) => switch (status) {
         open => StatusTone.warning,
         issued => StatusTone.info,
@@ -63,14 +57,8 @@ abstract final class SupplierNcrDisposition {
 
   static const List<String> values = [returnToSupplier, scrap, reworkAtCost, sort, useAsIs];
 
-  static String label(String disposition) => switch (disposition) {
-        returnToSupplier => 'Return to the Supplier',
-        scrap => 'Scrap',
-        reworkAtCost => 'Rework at the Supplier\'s cost',
-        sort => 'Sort',
-        useAsIs => 'Use as it is',
-        _ => disposition,
-      };
+  /// The words are in `l10n/vocabulary.dart` (`supplierNcrDispositionLabel`):
+  /// the form offers these wires, and the register prints the labelled one.
 }
 
 /// The Non-conformance that controls the received lot, as the NCR's own read
@@ -244,11 +232,7 @@ class SupplierNcr {
 
   final SupplierNcrNonconformance? nonconformance;
 
-  String get statusLabel => SupplierNcrStatus.label(status);
-
   StatusTone get statusTone => SupplierNcrStatus.tone(status);
-
-  String get dispositionLabel => SupplierNcrDisposition.label(disposition);
 
   bool get isFinished => status == SupplierNcrStatus.closed || status == SupplierNcrStatus.rejected;
 

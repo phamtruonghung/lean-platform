@@ -42,6 +42,7 @@ import 'app_role.dart';
 import 'role_form_dialog.dart';
 import 'role_permissions_dialog.dart';
 import 'roles_bloc.dart';
+import '../widgets/notice_text.dart';
 
 class RolesScreen extends StatelessWidget {
   const RolesScreen({super.key});
@@ -118,7 +119,7 @@ class _Loaded extends StatelessWidget {
             ),
             if (notice != null) ...[
               const SizedBox(height: Spacing.md),
-              Text(
+              NoticeText(
                 notice,
                 key: RolesScreen.noticeKey,
                 style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
