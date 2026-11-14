@@ -61,3 +61,13 @@ refusal to read as a bug the next person "fixes". This ADR belongs beside
 them for the same reason — the shared device changes the shape of who a
 session can be trusted to represent, and that is exactly the kind of decision
 this repo records rather than makes in passing.
+
+## Scope, amended by ADR-0063
+
+This ADR decides *what a floor surface must be*. It does not decide that the
+client owes one yet. ADR-0063 records the scope half: the floor surface stays out
+of scope until a card can name the device and the acts a technician performs at
+it, and — this ADR's own prohibition, restated there — no Screen becomes "the
+floor surface" merely because it was made to fit a narrow box. The provisioning
+seam in `frontend/lib/platform/floor_device_gateway.dart` is the seam and nothing
+more; ADR-0047's wrong-pin backoff is behind it.

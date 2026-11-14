@@ -138,3 +138,19 @@ the handover.
 **A supervisor co-signature in this slice.** Deferred, not rejected: the plant's
 current form may have one, and adding a second signature later is additive. The
 record carries the columns a second act would need (who, when, role of the act).
+
+## Amended by ADR-0065 — the completeness rule
+
+One rule this ADR set is amended. It required a Machine status line for **every
+active Asset in the Section**, enforced by an anti-join in `requireComplete`
+(`backend/src/modules/production/handovers.js:438-524`) that refuses with `409
+INCOMPLETE_HANDOVER`. ADR-0065 makes the lines exception-driven: a line exists for
+an Asset only when the shift had something to hand over about it, derived from
+`downtime_events` for that shift instance, and `missingAssets` goes.
+
+What does **not** change is as important: a line whose state is not normal running
+still carries a reason and a reference. Everything else this ADR decided — one
+record per Section per shift instance, frozen when the incoming Team Leader
+acknowledges it, an amendment being a new row set rather than an edit — stands
+untouched, and no migration is involved because the record already holds
+`shift_handover_machine_lines`.

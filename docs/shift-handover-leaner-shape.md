@@ -1,9 +1,10 @@
 # A leaner shift-handover form
 
-**Status:** design note (a recommendation, not a decision). The shape proposed
-here needs a product decision before anything is built; it is tracked in the
-companion GitHub issue (#355). The decision that follows should be recorded as
-an ADR.
+**Status:** decided. ADR-0065 answers the four product questions this note left
+open and records the shape as the decision: machine lines are exception-driven,
+derived from the Platform's own `downtime_events`, with the non-normal-running
+reason kept. The implementation is its own card; this note stays as the evidence
+and the change-point list behind that ADR.
 
 This is a rewrite of the first draft of this note. That draft described the
 handover as "greenfield" — that premise was false. The Platform already ships
@@ -246,7 +247,19 @@ so this note remains a recommendation rather than a ticket to change the schema
 — but the change it recommends is smaller, not larger, than the first draft
 suggested.
 
-## Product decisions to make
+## Product decisions — taken, see ADR-0065
+
+1. **Exception-driven, yes.** A normally running machine produces no line.
+2. **The Platform's own `downtime_events` only.** mtu-dashboard enrichment is
+   deferred; when it comes it is a read-only hint, never a precondition of Submit.
+3. **The note, plus a disposition (reason and reference) for each derived abnormal
+   Asset.** `missingAssets` goes; the reason on an abnormal line stays.
+4. **The glossary loses "Every active Asset in the Section has one"** and names the
+   derived set — applied with the implementation, not before it, so `CONTEXT.md`
+   never describes a form the code does not ship.
+
+The original four questions are kept below, as they were asked, so the answers can
+be read against them:
 
 1. Is exception-driven acceptable — a normally running machine produces no line
    (recommended) — or must every active Asset still be shown so nothing is
