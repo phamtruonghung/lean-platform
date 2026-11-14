@@ -508,11 +508,26 @@ String attendanceStatusLabel(AppLocalizations l10n, String status) => switch (st
       _ => status,
     };
 
+/// The attendance sheet's legend: what a cell's tone means.
+///
+/// Read off the tone rather than off a record, because the legend names the
+/// tones the sheet actually paints — the same shape `skillCoverageLegendLabel`
+/// gives the skill coverage register. `info` is a booked absence *or* a training
+/// day, both of which the sheet paints the same amber, so the word is the one
+/// the shift covers with: leave.
+String attendanceToneLegendLabel(AppLocalizations l10n, StatusTone tone) => switch (tone) {
+      StatusTone.success => l10n.attendanceStatusPresent,
+      StatusTone.info => l10n.attendanceStatusLeave,
+      StatusTone.danger => l10n.attendanceStatusAbsentUnplanned,
+      _ => l10n.commonNotRecorded,
+    };
+
 /// What an attendance sheet's own state reads as.
 String attendanceSheetStateLabel(AppLocalizations l10n, String sheetState) =>
     switch (sheetState) {
       'missing' => l10n.attendanceSheetStateMissing,
       'unconfirmed' => l10n.attendanceSheetStateUnconfirmed,
+      'confirmed' => l10n.attendanceSheetConfirmed,
       _ => sheetState,
     };
 
@@ -1101,6 +1116,14 @@ extension BoardKpiWords on BoardKpi {
 extension SlideIssueWords on SlideIssue {
   /// What this picture's record is, in words.
   String typeLabel(AppLocalizations l10n) => issueKindLabel(l10n, kind);
+
+  /// What the record's stored status reads as — the Non-conformance's own set
+  /// for an NC, the Customer complaint's for a complaint. The wall display used
+  /// to print the wire here (`open`, `contained`, `investigating`), which is
+  /// the same code in every language.
+  String statusLabel(AppLocalizations l10n) => kind == IssueKind.nonconformance
+      ? nonconformanceStatusLabel(l10n, status)
+      : complaintStatusLabel(l10n, status);
 
   /// The two-letter chip a wall display shows.
   String shortTypeLabel(AppLocalizations l10n) => issueKindShortLabel(l10n, kind);

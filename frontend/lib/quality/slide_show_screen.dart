@@ -424,7 +424,7 @@ class _Overlay extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         StatusChip(label: issue.shortTypeLabel(AppLocalizations.of(context)), tone: IssueKind.tone(issue.kind)),
-        StatusChip(label: issue.status, tone: StatusTone.neutral),
+        StatusChip(label: issue.statusLabel(AppLocalizations.of(context)), tone: StatusTone.neutral),
         Text(
           issueAgeLabel(issue.occurredAt),
           style: theme.textTheme.bodySmall?.copyWith(color: palette.textMuted),

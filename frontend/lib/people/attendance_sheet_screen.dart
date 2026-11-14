@@ -253,24 +253,29 @@ class _Legend extends StatelessWidget {
 
   final List<AttendanceRecord> records;
 
-  /// One entry per tone the sheet can paint, in the order a reader meets them.
-  static const List<(StatusTone, String)> _words = [
-    (StatusTone.success, 'Present'),
-    (StatusTone.info, 'Leave'),
-    (StatusTone.danger, 'Absent'),
-    (StatusTone.neutral, 'Not recorded'),
+  /// The tones the sheet can paint, in the order a reader meets them. The word
+  /// for each is the domain's (`attendanceToneLegendLabel`) — the same words the
+  /// cells themselves carry, so the amber that means leave on a row means leave
+  /// in the legend beside it.
+  static const List<StatusTone> _tones = [
+    StatusTone.success,
+    StatusTone.info,
+    StatusTone.danger,
+    StatusTone.neutral,
   ];
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final painted = {for (final record in records) attendanceRecordTone(record)};
     return Wrap(
       key: AttendanceSheetScreen.legendKey,
       spacing: Spacing.sm,
       runSpacing: Spacing.xs,
       children: [
-        for (final (tone, word) in _words)
-          if (painted.contains(tone)) StatusChip(label: word, tone: tone),
+        for (final tone in _tones)
+          if (painted.contains(tone))
+            StatusChip(label: attendanceToneLegendLabel(l10n, tone), tone: tone),
       ],
     );
   }

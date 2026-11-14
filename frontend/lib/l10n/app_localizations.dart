@@ -12803,6 +12803,12 @@ abstract class AppLocalizations {
   /// **'Absent (unplanned)'**
   String get attendanceStatusAbsentUnplanned;
 
+  /// The attendance sheet's legend: away on booked leave (or a training day), for the tone a row paints.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get attendanceStatusLeave;
+
   /// An attendance row: on a training course instead of the line.
   ///
   /// In en, this message translates to:

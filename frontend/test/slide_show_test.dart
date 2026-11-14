@@ -23,7 +23,9 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:lean_platform/platform/locale_cubit.dart';
 import 'package:lean_platform/quality/complaint_detail_screen.dart';
 import 'package:lean_platform/quality/issue_images_section.dart';
 import 'package:lean_platform/quality/nonconformance_detail_screen.dart';
@@ -520,5 +522,51 @@ void main() {
     expect(wire.slideShowChoiceRequests, [('complaint', '801', true)]);
     expect(_switchValue(tester, toggle), isTrue);
     expect(find.text('On the slide show'), findsOneWidget);
+  });
+
+  testWidgets('a slide\'s status chip is a catalogue word under Vietnamese, not the wire',
+      (tester) async {
+    // The chip printed `issue.status` itself — the wire `slide-show.js` sends,
+    // `open` / `contained` / `investigating` — which is the same code in every
+    // language while the type chip beside it was translated. `SlideIssueWords`
+    // `.statusLabel` reads each kind's own status set.
+    SharedPreferences.setMockInitialValues({LocaleCubit.storageKey: 'vi'});
+
+    final wire = _wire(slideShowIssues: [
+      _slide(
+        kind: 'nonconformance',
+        id: '701',
+        number: 'NC-HCM-2026-00001',
+        status: 'contained',
+        position: 1,
+        images: [_picture('1')],
+      ),
+    ]);
+    await _pump(tester, wire, location: '/slide-show', settle: false);
+    await _settleLoad(tester);
+
+    expect(find.text('Đã khoanh vùng'), findsOneWidget);
+    expect(find.text('contained'), findsNothing);
+
+    // A complaint's status is the complaint's own set, read through the same
+    // extension: `investigating` is not a Non-conformance's word.
+    await tester.pumpWidget(const SizedBox.shrink());
+    final complaintWire = _wire(slideShowIssues: [
+      _slide(
+        kind: 'complaint',
+        id: '801',
+        number: 'CC-2026-00001',
+        status: 'investigating',
+        position: 1,
+        partyName: 'Acme Bearings',
+        images: [_picture('2')],
+      ),
+    ]);
+    await _pump(tester, complaintWire, location: '/slide-show', settle: false);
+    await _settleLoad(tester);
+
+    expect(find.text('Đang điều tra'), findsOneWidget);
+    expect(find.text('investigating'), findsNothing);
+    expect(find.text('Contained'), findsNothing);
   });
 }

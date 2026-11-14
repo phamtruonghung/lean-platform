@@ -7686,6 +7686,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get attendanceStatusAbsentUnplanned => 'Absent (unplanned)';
 
   @override
+  String get attendanceStatusLeave => 'Leave';
+
+  @override
   String get attendanceStatusTraining => 'Training';
 
   @override

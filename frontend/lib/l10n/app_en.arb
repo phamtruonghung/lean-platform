@@ -5270,6 +5270,8 @@
   "@attendanceStatusAbsentPlanned": {"description": "An attendance row: away, and the absence was booked."},
   "attendanceStatusAbsentUnplanned": "Absent (unplanned)",
   "@attendanceStatusAbsentUnplanned": {"description": "An attendance row: away with no notice."},
+  "attendanceStatusLeave": "Leave",
+  "@attendanceStatusLeave": {"description": "The attendance sheet's legend: away on booked leave (or a training day), for the tone a row paints."},
   "attendanceStatusTraining": "Training",
   "@attendanceStatusTraining": {"description": "An attendance row: on a training course instead of the line."},
   "attendanceStatusNotScheduled": "Not scheduled",

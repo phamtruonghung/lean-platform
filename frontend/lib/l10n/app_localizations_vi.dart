@@ -7661,6 +7661,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get attendanceStatusAbsentUnplanned => 'Vắng (không báo trước)';
 
   @override
+  String get attendanceStatusLeave => 'Nghỉ';
+
+  @override
   String get attendanceStatusTraining => 'Đào tạo';
 
   @override
