@@ -1392,9 +1392,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'What is wrong with it. The severity starts at this code own default.';
 
   @override
-  String get nonconformanceFormChooseCode => 'Choose a code';
-
-  @override
   String get nonconformanceFormDetectionPoint => 'Detection point';
 
   @override
@@ -4887,9 +4884,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get complaintFormWhatTheCustomerSaysIsWrongA =>
       'What the customer says is wrong. A Non-conformance recorded from this complaint carries it.';
-
-  @override
-  String get commonNotKnownYet => 'Not known yet';
 
   @override
   String get complaintFormQuantityOptional => 'Quantity (optional)';

@@ -253,7 +253,12 @@ void main() {
     expect(wire.nonconformanceListRequests.length, listRequestsBefore);
     expect(searchFieldText(tester, NonconformanceFormDialog.productFieldKey()), 'Gearbox (PRD-1)');
 
-    await _choose(tester, NonconformanceFormDialog.defectCodeKey, 'Out of tolerance · DIM-OOT');
+    await pickSuggestion(
+      tester,
+      fieldKey: NonconformanceFormDialog.defectCodeFieldKey(),
+      term: 'DIM-OOT',
+      suggestionKey: NonconformanceFormDialog.defectCodeSuggestionKey('41'),
+    );
     await _choose(tester, NonconformanceFormDialog.detectionPointKey, 'Final inspection');
     await tester.enterText(find.byKey(NonconformanceFormDialog.quantityKey), '12');
     await tester.pump();
@@ -298,7 +303,12 @@ void main() {
       term: 'Gear',
       suggestionKey: NonconformanceFormDialog.productSuggestionKey('40'),
     );
-    await _choose(tester, NonconformanceFormDialog.defectCodeKey, 'Out of tolerance · DIM-OOT');
+    await pickSuggestion(
+      tester,
+      fieldKey: NonconformanceFormDialog.defectCodeFieldKey(),
+      term: 'DIM-OOT',
+      suggestionKey: NonconformanceFormDialog.defectCodeSuggestionKey('41'),
+    );
     await _choose(tester, NonconformanceFormDialog.detectionPointKey, 'In process');
     await tester.enterText(find.byKey(NonconformanceFormDialog.quantityKey), '3');
     await tester.pump();
@@ -325,7 +335,12 @@ void main() {
 
     // A Defect code whose default is `major`: `minor` is not on offer, and
     // `critical` is.
-    await _choose(tester, NonconformanceFormDialog.defectCodeKey, 'Out of tolerance · DIM-OOT');
+    await pickSuggestion(
+      tester,
+      fieldKey: NonconformanceFormDialog.defectCodeFieldKey(),
+      term: 'DIM-OOT',
+      suggestionKey: NonconformanceFormDialog.defectCodeSuggestionKey('41'),
+    );
     await tapIn(tester, find.byKey(NonconformanceFormDialog.severityKey));
     expect(_openedMenuValues(tester), contains('critical'));
     // `minor` is below the Defect code's own default, and this slice refuses
