@@ -159,6 +159,10 @@ Phân loại có thể phát hiện nhiều hơn con số ban đầu, nên chỉ
 sau** được giải quyết trong **Nhật ký hành động**, dưới dạng **Concern** — và một
 vấn đề xuất hiện nhiều lần vẫn chỉ là **một** Concern.
 
+![Ảnh 05.5 — Màn hình Chi tiết Sản phẩm không phù hợp, bước 1](images/screens/05-1-chi-tiet-khong-phu-hop.png)
+
+***Ảnh 05.5.** Phát hiện gì, có thể làm gì, nguyên nhân, ảnh, và lịch sử số lượng — mỗi nút là một thao tác có ghi dấu.*
+
 ---
 
 ## Ghi nhận phương án xử lý
@@ -179,11 +183,6 @@ chức của bản ghi. (Không cần thẩm quyền Chất lượng — xem b�
 ![Ảnh 05.6 — Màn hình Ghi nhận phương án xử lý, bước 1](images/screens/05-1-phuong-an-xu-ly.png)
 
 ***Ảnh 05.6.** Phương án xử lý đóng bản ghi lại bằng lý do và cách xử lý; số lượng đã xử lý được ghi riêng nên không mất dấu phần còn lại.*
-
-
-![Ảnh 05.5 — Màn hình Chi tiết Sản phẩm không phù hợp, bước 1](images/screens/05-1-chi-tiet-khong-phu-hop.png)
-
-***Ảnh 05.5.** Phát hiện gì, có thể làm gì, nguyên nhân, ảnh, và lịch sử số lượng — mỗi nút là một thao tác có ghi dấu.*
 
 
 **Điểm then chốt.** Bản ghi **tự đóng** khi **toàn bộ** số lượng đã có phương án.
@@ -260,6 +259,10 @@ Ghi: `QLT_CUSTOMERS_CHANGE` — **chỉ quản trị viên**.
 | 1 | **Thêm Khách hàng**: **Mã**, **Tên**. | Danh sách dùng chung cho mọi Nhà máy. | |
 | 2 | Sửa: **Điều chỉnh**. | | |
 
+![Ảnh 05.7 — Màn hình Khách hàng, bước 1](images/screens/05-1-khach-hang.png)
+
+***Ảnh 05.7.** Danh sách Khách hàng: thêm và sửa là hộp thoại trên danh sách, để bản sửa nằm trong ngữ cảnh nó thuộc về.*
+
 ---
 
 ## Khiếu nại khách hàng
@@ -281,11 +284,6 @@ Ghi nhận: `QLT_COMPLAINTS_RECORD` — **mọi vai trò**.
 ![Ảnh 05.8 — Màn hình Khiếu nại khách hàng, bước 1](images/screens/05-1-khieu-nai-khach-hang.png)
 
 ***Ảnh 05.8.** Sổ khiếu nại: khách nào, về cái gì, và đã trả lời chưa.*
-
-
-![Ảnh 05.7 — Màn hình Khách hàng, bước 1](images/screens/05-1-khach-hang.png)
-
-***Ảnh 05.7.** Danh sách Khách hàng: thêm và sửa là hộp thoại trên danh sách, để bản sửa nằm trong ngữ cảnh nó thuộc về.*
 
 
 ---
@@ -350,6 +348,10 @@ Ghi: `QLT_SUPPLIERS_CHANGE` — **chỉ quản trị viên**.
 **Các bước chính:** **Thêm Nhà cung cấp** (Mã, Tên) / **Điều chỉnh**. Danh sách dùng
 chung cho mọi Nhà máy.
 
+![Ảnh 05.10 — Màn hình Nhà cung cấp, bước 1](images/screens/05-1-nha-cung-cap.png)
+
+***Ảnh 05.10.** Danh sách Nhà cung cấp — cùng hình thức với Khách hàng: danh sách, và hộp thoại thêm/sửa.*
+
 ---
 
 ## NCR nhà cung cấp
@@ -371,11 +373,6 @@ Ghi nhận: `QLT_SUPPLIER_NCRS_RECORD` — **mọi vai trò**.
 ![Ảnh 05.11 — Màn hình NCR nhà cung cấp, bước 1](images/screens/05-1-ncr-nha-cung-cap.png)
 
 ***Ảnh 05.11.** Sổ NCR: hàng của nhà cung cấp nào không đạt, và đang chờ xử lý gì.*
-
-
-![Ảnh 05.10 — Màn hình Nhà cung cấp, bước 1](images/screens/05-1-nha-cung-cap.png)
-
-***Ảnh 05.10.** Danh sách Nhà cung cấp — cùng hình thức với Khách hàng: danh sách, và hộp thoại thêm/sửa.*
 
 
 **Điểm then chốt.** NCR **không** tự tạo Sản phẩm không phù hợp, cũng như khiếu nại.

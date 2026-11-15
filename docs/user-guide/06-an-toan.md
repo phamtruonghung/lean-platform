@@ -52,7 +52,7 @@ thẩm quyền An toàn** ở Đơn vị tổ chức.
 
 ***Ảnh 06.1.** Đã xảy ra chuyện gì, ở đâu, và nằm ở mức nào trên thang mức độ — lọc được theo Đơn vị tổ chức và trạng thái.*
 
-![Ảnh 06.2 — Màn hình Ghi nhận sự cố an toàn, bước 2](images/screens/06-1-ghi-nhan-su-co.png)
+![Ảnh 06.2 — Màn hình Ghi nhận sự cố an toàn, bước 1](images/screens/06-1-ghi-nhan-su-co.png)
 
 ***Ảnh 06.2.** Loại sự việc và mức độ là lựa chọn; mô tả điều đã xảy ra và hành động tức thời là ô gõ. Đây là bản ghi mà mọi cuộc điều tra sau đó dựa vào.*
 
@@ -91,6 +91,10 @@ quyết định riêng. Đừng dạy chung hai nhóm.
 > xảy ra với **sản phẩm** là quyết định kinh doanh. Hai câu hỏi khác nhau, hai luật
 > khác nhau.
 
+![Ảnh 06.3 — Màn hình Chi tiết Sự cố an toàn, bước 1](images/screens/06-1-chi-tiet-su-co.png)
+
+***Ảnh 06.3.** Ba phần: đã xảy ra chuyện gì, thương tích, lịch sử thay đổi — cùng các lối hạn điều tra, chuyển trạng thái và phân loại.*
+
 ---
 
 ## Phân loại thương tích
@@ -115,11 +119,6 @@ sự cố.
 ![Ảnh 06.4 — Màn hình Phân loại thương tích, bước 1](images/screens/06-1-phan-loai-thuong-tich.png)
 
 ***Ảnh 06.4.** Loại thương tích và bộ phận cơ thể lấy từ hai danh mục dùng chung — đây là chỗ chúng gặp nhau thành một con số đếm được.*
-
-
-![Ảnh 06.3 — Màn hình Chi tiết Sự cố an toàn, bước 1](images/screens/06-1-chi-tiet-su-co.png)
-
-***Ảnh 06.3.** Ba phần: đã xảy ra chuyện gì, thương tích, lịch sử thay đổi — cùng các lối hạn điều tra, chuyển trạng thái và phân loại.*
 
 
 **Điểm then chốt.** Không có **thẩm quyền An toàn** thì nút này không mở được, dù bạn
@@ -178,7 +177,7 @@ Ghi nhận: `SAF_OBSERVATIONS_RECORD` — **mọi vai trò**, cộng quyền ghi
 
 ***Ảnh 06.5.** Những gì được thấy **trước khi** có chuyện xảy ra, xếp từ nặng nhất theo hậu quả xấu nhất có thể hình dung.*
 
-![Ảnh 06.6 — Màn hình Ghi nhận quan sát an toàn, bước 2](images/screens/06-1-ghi-nhan-quan-sat.png)
+![Ảnh 06.6 — Màn hình Ghi nhận quan sát an toàn, bước 1](images/screens/06-1-ghi-nhan-quan-sat.png)
 
 ***Ảnh 06.6.** Ghi điều đã thấy và hậu quả có thể có: một quan sát không cần là một sự cố, và đó chính là giá trị của nó.*
 

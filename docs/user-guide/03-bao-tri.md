@@ -199,7 +199,7 @@ chức của Tài sản.
 | 1 | Tìm trong ô **Tìm một người** theo **tên, mã nhân viên, hoặc chứng nhận họ có**. | Danh sách chỉ gồm người **đủ điều kiện theo phạm vi**; rỗng nghĩa là không có ai để giao. | |
 | 2 | Bấm tên người. | | |
 
-![Ảnh 03.10 — Màn hình Phân công Lệnh công việc, bước 1](images/screens/03-2-phan-cong-lenh.png)
+![Ảnh 03.10 — Màn hình Phân công Lệnh công việc, bước 1](images/screens/03-1-phan-cong-lenh.png)
 
 ***Ảnh 03.10.** Chọn người theo tên, mã nhân viên hoặc chứng nhận họ có. Hộp thoại này chỉ liệt kê người có quyền sửa ở Đơn vị tổ chức của Tài sản.*
 
@@ -220,6 +220,10 @@ ra. Gõ mã nhân viên trực tiếp để chắc chắn.
 | --- | --- | --- | --- |
 | 1 | Ghi **Đã phát hiện gì**. | Đây là trường bắt buộc về mặt thực hành, không chỉ hình thức. | |
 | 2 | Bấm **Hoàn thành Lệnh công việc này**. | | |
+
+![Ảnh 03.11 — Màn hình Hoàn thành Lệnh công việc, bước 1](images/screens/03-1-hoan-thanh-lenh.png)
+
+***Ảnh 03.11.** Đóng lệnh: ghi điều đã làm. Lệnh đã hoàn thành vẫn còn trong sổ — nó không bị xoá, và mọi giờ công, phụ tùng đã ghi vẫn trỏ về nó.*
 
 ## Huỷ Lệnh công việc
 
@@ -250,11 +254,6 @@ mọi Tài khoản làm được.
 ![Ảnh 03.12 — Màn hình Yêu cầu của tôi, bước 1 — hộp thoại Nêu một yêu cầu](images/screens/03-1-neu-yeu-cau.png)
 
 ***Ảnh 03.12.** Người vận hành chỉ cần nói máy nào và chuyện gì; việc phân loại, phân công là của giám sát.*
-
-
-![Ảnh 03.11 — Màn hình Hoàn thành Lệnh công việc, bước 1](images/screens/03-1-hoan-thanh-lenh.png)
-
-***Ảnh 03.11.** Đóng lệnh: ghi điều đã làm. Lệnh đã hoàn thành vẫn còn trong sổ — nó không bị xoá, và mọi giờ công, phụ tùng đã ghi vẫn trỏ về nó.*
 
 
 > **Điểm then chốt cho người đào tạo.** **Mức khẩn** bạn chọn **không** phải mức ưu

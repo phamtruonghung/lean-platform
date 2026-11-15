@@ -38,7 +38,7 @@ Ghi: `PPL_DIRECTORY_CHANGE` — **chỉ quản trị viên**.
 
 ***Ảnh 02.1.** Gõ một phần tên vào ô tìm: danh sách lọc ngay, vẫn giữ nguyên bộ lọc Đơn vị tổ chức bên cạnh.*
 
-![Ảnh 02.2 — Màn hình Danh bạ, bước 2 — hộp thoại Thêm Nhân viên](images/screens/02-1-them-nhan-vien.png)
+![Ảnh 02.2 — Màn hình Danh bạ — nút Thêm Nhân viên](images/screens/02-danh-ba-them-nhan-vien.png)
 
 ***Ảnh 02.2.** Hộp thoại chỉ hỏi những gì Danh bạ sở hữu; Đơn vị tổ chức và chức danh là lựa chọn, không phải ô gõ tay.*
 
@@ -140,7 +140,7 @@ Ghi: `PPL_JOB_ROLES_CHANGE` — chỉ quản trị viên.
 | 2 | Bấm **Thêm chức danh**: điền **Mã**, **Tên**. | Mã nên ngắn, không dấu, viết hoa — vì mã xuất hiện trong danh sách chọn ở hồ sơ Nhân viên. | |
 | 3 | Để ngừng dùng một chức danh, bấm **Điều chỉnh** và bỏ **Đang làm**. | Ngừng dùng **không** làm mất chức danh khỏi hồ sơ người đang giữ nó. | Danh mục là lịch sử, không phải danh sách hiện hành. |
 
-![Ảnh 02.5 — Màn hình Chức danh công việc, bước 1](images/screens/02-3-chuc-danh.png)
+![Ảnh 02.5 — Màn hình Chức danh công việc, bước 1](images/screens/02-1-chuc-danh.png)
 
 ***Ảnh 02.5.** Danh mục khai báo một lần, dùng chung cho mọi Nhà máy — đây là chỗ chức danh được đặt tên.*
 
@@ -271,6 +271,10 @@ và chỉ thấy các Đơn vị tổ chức mình xác nhận được.
 này** (hoặc quản trị viên). Một người vận hành mở địa chỉ này sẽ thấy câu "Chưa có
 ai có quyền sửa ở đây mở bảng này" — đó là câu trả lời đúng, không phải lỗi.
 
+![Ảnh 02.9 — Màn hình Bảng chấm công một ca, bước 3](images/screens/02-3-bang-cham-cong.png)
+
+***Ảnh 02.9.** Từng người trong ca với số phút đã làm và số phút ngoài giờ, cùng hai thao tác trên mỗi dòng: **Đánh dấu ngoại lệ** và **Bỏ khỏi bảng**.*
+
 ---
 
 ## Đào tạo
@@ -295,11 +299,6 @@ Tự trả lời đào tạo của mình: `PPL_TRAINING_ANSWER_OWN` — **mọi 
 ![Ảnh 02.10 — Màn hình Đào tạo, bước 1 — hộp thoại tạo bản ghi](images/screens/02-1-dao-tao-tao-ban-ghi.png)
 
 ***Ảnh 02.10.** Tạo bản ghi đào tạo từ danh sách: chọn người, kỹ năng và người hướng dẫn; bản ghi sau đó đi theo vòng đời của nó.*
-
-
-![Ảnh 02.9 — Màn hình Bảng chấm công một ca, bước 3](images/screens/02-3-bang-cham-cong.png)
-
-***Ảnh 02.9.** Từng người trong ca với số phút đã làm và số phút ngoài giờ, cùng hai thao tác trên mỗi dòng: **Đánh dấu ngoại lệ** và **Bỏ khỏi bảng**.*
 
 
 **Các bước chính — học viên**

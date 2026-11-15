@@ -65,7 +65,7 @@ tổ chức của mình.
 | 3 | Chọn **Trụ cột** và **Đến hạn** nếu có. | | |
 | 4 | Bấm gửi. | | |
 
-![Ảnh 04.2 — Màn hình Nêu một Concern, bước 2](images/screens/04-1-neu-mot-concern.png)
+![Ảnh 04.2 — Màn hình Nêu một Concern, bước 2](images/screens/04-2-neu-mot-concern.png)
 
 ***Ảnh 04.2.** Một dòng mô tả là đủ để mở Hành động. **Nguyên nhân ghi ở giai đoạn Plan**, không phải ở đây — nêu vấn đề trước, tìm nguyên nhân sau.*
 

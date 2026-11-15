@@ -57,7 +57,9 @@ lại một ảnh, để lần sau ai sửa màn hình còn chụp lại đượ
   **tiếng Anh** để minh hoạ chính bước đổi ngôn ngữ.
 - **Tên tệp**: `<chương>-<bước>-<việc>.png`, ví dụ `03-2-them-tai-san.png` — chương 03,
   bước 2 của bảng **Các bước chính**, việc "thêm tài sản". Một bước có hai ảnh thì đặt
-  tên khác phần việc, đừng đánh số lại.
+  tên khác phần việc, đừng đánh số lại. Ảnh chụp một **nút** của màn hình, không ứng với
+  bước nào trong bảng, thì **bỏ phần `<bước>`** — `02-danh-ba-them-nhan-vien.png` — và chú
+  thích theo nút, không ghi "bước n".
 - **Chú thích**: mỗi ảnh là một khối `![Ảnh <ch>.<số> — <tên màn hình>, bước <n>](…)`
   rồi một dòng `***Ảnh <ch>.<số>.** …*` ngay dưới. Khối này nằm **ngay sau bảng Các bước
   chính của việc đó**, không gom vào một phòng trưng bày ở cuối chương: trong PDF ảnh
