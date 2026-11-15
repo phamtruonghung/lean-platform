@@ -554,10 +554,11 @@ these), PDCA stage
 
 **Shift handover**:
 The record a Section's outgoing Team Leader completes at the end of a shift
-instance and the incoming Team Leader acknowledges: one line per machine, the
-numbers the shift closed on, the abnormalities and change points the next shift
-inherits, and the actions carried forward. One per Section per shift instance,
-and it is the transfer of responsibility rather than a report about the shift.
+instance and the incoming Team Leader acknowledges: a line for each machine the
+shift instance's own Downtime events flag, the numbers the shift closed on, the
+abnormalities and change points the next shift inherits, and the actions carried
+forward. One per Section per shift instance, and it is the transfer of
+responsibility rather than a report about the shift.
 _Avoid_: Shift report (a report is a read of the shift, not a transfer of
 responsibility), shift log, handover sheet, turnover, briefing, end-of-shift
 checklist
