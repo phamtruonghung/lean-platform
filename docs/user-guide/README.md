@@ -110,11 +110,61 @@ từng phiếu.
 | **03.13** | [Đồng hồ đo](03-bao-tri.md#đồng-hồ-đo) | 3 | 1 |
 | **03.14** | [Kế hoạch công việc](03-bao-tri.md#kế-hoạch-công-việc) | 3 | 1 |
 
-**Chương 04–10 chưa có phiếu.** Nhóm **Hành động**, **Chất lượng**, **An toàn**,
-**Sản xuất**, **Phân tích**, **Quản trị** và thiết bị **Xưởng** vẫn đang ở dạng mô tả
-chức năng; chúng được chuyển sang bảng phân tích công việc theo hai đợt (04–06 và
-07–10). Cho tới lúc đó, một người chỉ được đào tạo trên những thao tác đã có phiếu ở
-trên — **đừng dạy bằng chương chưa chuyển**.
+**04 · Hành động**
+
+| Phiếu | Việc | Bước chính | Ảnh |
+| --- | --- | ---: | ---: |
+| **04.1** | [Nhật ký hành động](04-hanh-dong.md#nhật-ký-hành-động) | 4 | 1 |
+| **04.2** | [Nêu một Concern](04-hanh-dong.md#nêu-một-concern) | 5 | 1 |
+| **04.3** | [Chi tiết Hành động](04-hanh-dong.md#chi-tiết-hành-động) | 7 | 1 |
+| **04.4** | [Hoàn thành một giai đoạn](04-hanh-dong.md#hoàn-thành-một-giai-đoạn) | 4 | 1 |
+| **04.5** | [Chuyển Hành động lên trên](04-hanh-dong.md#chuyển-hành-động-lên-trên) | 3 | — |
+| **04.6** | [Huỷ một Hành động](04-hanh-dong.md#huỷ-một-hành-động) | 3 | — |
+| **04.7** | [Thêm một biện pháp](04-hanh-dong.md#thêm-một-biện-pháp) | 5 | — |
+| **04.8** | [CAPA](04-hanh-dong.md#capa) | 3 | 1 |
+| **04.9** | [Mở một CAPA](04-hanh-dong.md#mở-một-capa) | 4 | 1 |
+| **04.10** | [Chi tiết CAPA](04-hanh-dong.md#chi-tiết-capa) | 7 | 1 |
+| **04.11** | [Chuỗi Why](04-hanh-dong.md#chuỗi-why) | 4 | — |
+| **04.12** | [Nguyên nhân và kết luận](04-hanh-dong.md#nguyên-nhân-và-kết-luận) | 4 | — |
+| **04.13** | [Ghi bước kiểm tra hiệu quả](04-hanh-dong.md#ghi-bước-kiểm-tra-hiệu-quả) | 4 | — |
+| **04.14** | [Báo cáo CAPA](04-hanh-dong.md#báo-cáo-capa) | 3 | 1 |
+
+**05 · Chất lượng**
+
+| Phiếu | Việc | Bước chính | Ảnh |
+| --- | --- | ---: | ---: |
+| **05.1** | [Sản phẩm](05-chat-luong.md#sản-phẩm) | 3 | 1 |
+| **05.2** | [Mã lỗi](05-chat-luong.md#mã-lỗi) | 3 | 1 |
+| **05.3** | [Sản phẩm không phù hợp](05-chat-luong.md#sản-phẩm-không-phù-hợp) | 7 | 2 |
+| **05.4** | [Chi tiết Sản phẩm không phù hợp](05-chat-luong.md#chi-tiết-sản-phẩm-không-phù-hợp) | 6 | 1 |
+| **05.5** | [Ghi nhận phương án xử lý](05-chat-luong.md#ghi-nhận-phương-án-xử-lý) | 4 | 1 |
+| **05.6** | [Bốn quyết định cần thẩm quyền Chất lượng](05-chat-luong.md#bốn-quyết-định-cần-thẩm-quyền-chất-lượng) | 4 | — |
+| **05.7** | [Nêu hoặc Liên kết một Concern](05-chat-luong.md#nêu-hoặc-liên-kết-một-concern) | 4 | — |
+| **05.8** | [Khách hàng](05-chat-luong.md#khách-hàng) | 2 | 1 |
+| **05.9** | [Khiếu nại khách hàng](05-chat-luong.md#khiếu-nại-khách-hàng) | 4 | 1 |
+| **05.10** | [Chi tiết Khiếu nại](05-chat-luong.md#chi-tiết-khiếu-nại) | 4 | 1 |
+| **05.11** | [Trình chiếu](05-chat-luong.md#trình-chiếu) | 5 | — |
+| **05.12** | [Nhà cung cấp](05-chat-luong.md#nhà-cung-cấp) | 2 | 1 |
+| **05.13** | [NCR nhà cung cấp](05-chat-luong.md#ncr-nhà-cung-cấp) | 4 | 1 |
+| **05.14** | [Chi tiết NCR nhà cung cấp](05-chat-luong.md#chi-tiết-ncr-nhà-cung-cấp) | 4 | 1 |
+
+**06 · An toàn**
+
+| Phiếu | Việc | Bước chính | Ảnh |
+| --- | --- | ---: | ---: |
+| **06.1** | [Sự cố](06-an-toan.md#sự-cố) | 7 | 2 |
+| **06.2** | [Chi tiết Sự cố an toàn](06-an-toan.md#chi-tiết-sự-cố-an-toàn) | 5 | 1 |
+| **06.3** | [Phân loại thương tích](06-an-toan.md#phân-loại-thương-tích) | 4 | 1 |
+| **06.4** | [Sửa mức độ và Ghi nhận số ngày](06-an-toan.md#sửa-mức-độ-và-ghi-nhận-số-ngày) | 5 | — |
+| **06.5** | [Đóng sự cố và Nêu Concern](06-an-toan.md#đóng-sự-cố-và-nêu-concern) | 3 | — |
+| **06.6** | [Quan sát](06-an-toan.md#quan-sát) | 7 | 2 |
+| **06.7** | [Chi tiết Quan sát an toàn](06-an-toan.md#chi-tiết-quan-sát-an-toàn) | 4 | 1 |
+| **06.8** | [Nêu Hành động từ một quan sát](06-an-toan.md#nêu-hành-động-từ-một-quan-sát) | 3 | — |
+| **06.9** | [Hai danh mục chẩn đoán](06-an-toan.md#hai-danh-mục-chẩn-đoán) | 3 | 2 |
+**Chương 07–10 chưa có phiếu.** Nhóm **Sản xuất**, **Phân tích**, **Quản trị** và
+thiết bị **Xưởng** vẫn đang ở dạng mô tả chức năng; chúng là đợt chuyển tiếp theo. Cho
+tới lúc đó, một người chỉ được đào tạo trên những thao tác đã có phiếu ở trên —
+**đừng dạy bằng chương chưa chuyển**.
 
 ### 3. Chuẩn bị đủ
 
@@ -293,8 +343,8 @@ cột "Ghi" là mã quyền của các thao tác ghi trên màn hình đó (ghi 
 | Chất lượng | NCR nhà cung cấp | `/supplier-ncrs` | `QLT_SUPPLIER_NCRS_DISPLAY` | `QLT_SUPPLIER_NCRS_RECORD` | [05](05-chat-luong.md#ncr-nhà-cung-cấp) |
 | An toàn | Sự cố | `/safety/incidents` | `SAF_INCIDENTS_DISPLAY` | `SAF_INCIDENTS_RECORD` · `SAF_CLASSIFY` | [06](06-an-toan.md#sự-cố) |
 | An toàn | Quan sát | `/safety/observations` | `SAF_OBSERVATIONS_DISPLAY` | `SAF_OBSERVATIONS_RECORD` | [06](06-an-toan.md#quan-sát) |
-| An toàn | Loại thương tích | `/safety/injury-types` | `SAF_INJURY_TYPES_MAINTAIN` | `SAF_INJURY_TYPES_MAINTAIN` | [06](06-an-toan.md#loại-thương-tích) |
-| An toàn | Bộ phận cơ thể | `/safety/body-parts` | `SAF_BODY_PARTS_MAINTAIN` | `SAF_BODY_PARTS_MAINTAIN` | [06](06-an-toan.md#bộ-phận-cơ-thể) |
+| An toàn | Loại thương tích | `/safety/injury-types` | `SAF_INJURY_TYPES_MAINTAIN` | `SAF_INJURY_TYPES_MAINTAIN` | [06](06-an-toan.md#hai-danh-mục-chẩn-đoán) |
+| An toàn | Bộ phận cơ thể | `/safety/body-parts` | `SAF_BODY_PARTS_MAINTAIN` | `SAF_BODY_PARTS_MAINTAIN` | [06](06-an-toan.md#hai-danh-mục-chẩn-đoán) |
 | Sản xuất | Bàn giao ca | `/production/sections` | `PRD_HANDOVER_DISPLAY` | `PRD_HANDOVER_WRITE` · `PRD_HANDOVER_ACKNOWLEDGE` | [07](07-san-xuat.md#bàn-giao-ca) |
 | Phân tích | Bảng phân cấp | `/tier-board` | `INS_TIER_BOARD_DISPLAY` | — | [08](08-phan-tich.md#bảng-phân-cấp) |
 | Phân tích | Độ phủ kỹ năng | `/skill-coverage` | `INS_SKILL_COVERAGE_DISPLAY` | — | [08](08-phan-tich.md#độ-phủ-kỹ-năng) |
@@ -335,22 +385,22 @@ của chức năng mẹ, và — với mọi thao tác ghi — phạm vi Đơn v
 | Chi tiết Hành động | `/actions/:id` | Mang `ACT_LOG_DISPLAY` | [04](04-hanh-dong.md#chi-tiết-hành-động) |
 | Hoàn thành một giai đoạn | `/actions/:id/phases/:phase/complete` | Mang `ACT_MEASURE` / `ACT_VERIFY` theo giai đoạn | [04](04-hanh-dong.md#hoàn-thành-một-giai-đoạn) |
 | Chuyển Hành động lên trên | `/actions/:id/escalate` | Mang `ACT_CHANGE` | [04](04-hanh-dong.md#chuyển-hành-động-lên-trên) |
-| Mở một CAPA | `/actions/:id/capa` | Mang `ACT_CAPA_OPEN` | [04](04-hanh-dong.md#mở-một-capa) |
+| Mở một CAPA | `/actions/:id/capa` | Mang `ACT_CAPA_OPEN` **và** thẩm quyền Chất lượng | [04](04-hanh-dong.md#mở-một-capa) |
 | Huỷ một Hành động | `/actions/:id/cancel` | Mang `ACT_CHANGE` | [04](04-hanh-dong.md#huỷ-một-hành-động) |
-| Bỏ liên kết Sản phẩm không phù hợp | `/actions/:id/nonconformances/:nonconformanceId/unlink` | Mang `ACT_CHANGE` | [04](04-hanh-dong.md#bỏ-liên-kết-sản-phẩm-không-phù-hợp) |
+| Bỏ liên kết Sản phẩm không phù hợp | `/actions/:id/nonconformances/:nonconformanceId/unlink` | Mang `ACT_CHANGE` | [04](04-hanh-dong.md#chi-tiết-hành-động) |
 | Thêm một biện pháp | `/actions/:id/measures/:measureType/new` | Mang `ACT_MEASURE` | [04](04-hanh-dong.md#thêm-một-biện-pháp) |
 | Chi tiết CAPA | `/actions/capas/:id` | Mang `ACT_CAPA_DISPLAY` | [04](04-hanh-dong.md#chi-tiết-capa) |
 | Thêm / sửa / bỏ một Why | `/actions/capas/:id/whys/:chain/new`, `/actions/capas/:id/whys/:chain/:whyId/edit`, `/actions/capas/:id/whys/:chain/:whyId/remove` | Mang `ACT_CAPA_VERIFY` | [04](04-hanh-dong.md#chuỗi-why) |
 | Thêm / sửa / kết luận / bỏ một nguyên nhân | `/actions/capas/:id/causes/:category/new`, `/actions/capas/:id/causes/:category/:causeId/edit`, `/actions/capas/:id/causes/:category/:causeId/verdict`, `/actions/capas/:id/causes/:category/:causeId/remove`, `/actions/capas/:id/causes/:category/:causeId/why` | Mang `ACT_CAPA_VERIFY` | [04](04-hanh-dong.md#nguyên-nhân-và-kết-luận) |
-| Ghi bước kiểm tra hiệu quả | `/actions/capas/:id/effectiveness` | Mang `ACT_CAPA_EFFECTIVENESS` | [04](04-hanh-dong.md#ghi-bước-kiểm-tra-hiệu-quả) |
+| Ghi bước kiểm tra hiệu quả | `/actions/capas/:id/effectiveness` | Mang `ACT_CAPA_EFFECTIVENESS` **và** thẩm quyền Chất lượng — trưởng nhóm không ghi được | [04](04-hanh-dong.md#ghi-bước-kiểm-tra-hiệu-quả) |
 | Báo cáo CAPA | `/actions/capas/:id/report` | Mang `ACT_CAPA_DISPLAY` | [04](04-hanh-dong.md#báo-cáo-capa) |
 | Ghi nhận Sản phẩm không phù hợp | `/non-conformances/new` | Mang `QLT_NONCONFORMANCES_RECORD` | [05](05-chat-luong.md#sản-phẩm-không-phù-hợp) |
 | Chi tiết Sản phẩm không phù hợp | `/non-conformances/:id` | Mang `QLT_NONCONFORMANCES_DISPLAY` | [05](05-chat-luong.md#chi-tiết-sản-phẩm-không-phù-hợp) |
 | Tăng số lượng · Nâng mức độ/ngăn chặn | `/non-conformances/:id/quantity`, `/non-conformances/:id/update` | Mang `QLT_NONCONFORMANCES_RECORD` | [05](05-chat-luong.md#chi-tiết-sản-phẩm-không-phù-hợp) |
-| Ghi nhận phương án xử lý | `/non-conformances/:id/disposition` | Mang `QLT_NONCONFORMANCES_DISPOSE` | [05](05-chat-luong.md#ghi-nhận-phương-án-xử-lý) |
-| Cho phép nhượng bộ | `/non-conformances/:id/concession` | Mang `QLT_NONCONFORMANCES_DISPOSE` | [05](05-chat-luong.md#cho-phép-nhượng-bộ) |
-| Hạ mức độ | `/non-conformances/:id/lower-severity` | Mang `QLT_NONCONFORMANCES_DISPOSE` | [05](05-chat-luong.md#hạ-mức-độ) |
-| Mở lại · Huỷ vì ghi nhầm | `/non-conformances/:id/reopen`, `/non-conformances/:id/cancel` | Mang `QLT_NONCONFORMANCES_RECORD` | [05](05-chat-luong.md#mở-lại-và-huỷ-vì-ghi-nhầm) |
+| Ghi nhận phương án xử lý | `/non-conformances/:id/disposition` | Mang `QLT_NONCONFORMANCES_RECORD` | [05](05-chat-luong.md#ghi-nhận-phương-án-xử-lý) |
+| Cho phép nhượng bộ | `/non-conformances/:id/concession` | Mang `QLT_NONCONFORMANCES_DISPOSE` **và** thẩm quyền Chất lượng | [05](05-chat-luong.md#bốn-quyết-định-cần-thẩm-quyền-chất-lượng) |
+| Hạ mức độ | `/non-conformances/:id/lower-severity` | Mang `QLT_NONCONFORMANCES_DISPOSE` **và** thẩm quyền Chất lượng | [05](05-chat-luong.md#bốn-quyết-định-cần-thẩm-quyền-chất-lượng) |
+| Mở lại · Huỷ vì ghi nhầm | `/non-conformances/:id/reopen`, `/non-conformances/:id/cancel` | Mang `QLT_NONCONFORMANCES_DISPOSE` **và** thẩm quyền Chất lượng | [05](05-chat-luong.md#bốn-quyết-định-cần-thẩm-quyền-chất-lượng) |
 | Nêu / Liên kết một Concern | `/non-conformances/:id/raise-concern`, `/non-conformances/:id/link-concern` | Mang `QLT_NONCONFORMANCES_RECORD` | [05](05-chat-luong.md#nêu-hoặc-liên-kết-một-concern) |
 | Ghi nhận khiếu nại | `/complaints/new` | Mang `QLT_COMPLAINTS_RECORD` | [05](05-chat-luong.md#khiếu-nại-khách-hàng) |
 | Chi tiết Khiếu nại khách hàng | `/complaints/:id` | Mang `QLT_COMPLAINTS_DISPLAY` | [05](05-chat-luong.md#chi-tiết-khiếu-nại) |
@@ -358,12 +408,12 @@ của chức năng mẹ, và — với mọi thao tác ghi — phạm vi Đơn v
 | Ghi nhận NCR nhà cung cấp | `/supplier-ncrs/new` | Mang `QLT_SUPPLIER_NCRS_RECORD` | [05](05-chat-luong.md#ncr-nhà-cung-cấp) |
 | Chi tiết NCR nhà cung cấp | `/supplier-ncrs/:id` | Mang `QLT_SUPPLIER_NCRS_DISPLAY` | [05](05-chat-luong.md#chi-tiết-ncr-nhà-cung-cấp) |
 | Phương án xử lý · Ghi nhận/liên kết không phù hợp | `/supplier-ncrs/:id/disposition`, `/supplier-ncrs/:id/nonconformance`, `/supplier-ncrs/:id/link` | Mang `QLT_SUPPLIER_NCRS_RECORD` | [05](05-chat-luong.md#chi-tiết-ncr-nhà-cung-cấp) |
-| Ghi nhận sự cố an toàn | `/safety/incidents/record` | Mang `SAF_INCIDENTS_RECORD` | [06](06-an-toan.md#sự-cố) |
+| Ghi nhận sự cố an toàn | `/safety/incidents/record` | Mang `SAF_INCIDENTS_RECORD`; nêu người bị thương / loại thương tích / bộ phận cơ thể thêm `SAF_CLASSIFY` **và** thẩm quyền An toàn | [06](06-an-toan.md#sự-cố) |
 | Chi tiết Sự cố an toàn | `/safety/incidents/:id` | Mang `SAF_INCIDENTS_DISPLAY` | [06](06-an-toan.md#chi-tiết-sự-cố-an-toàn) |
 | Hạn điều tra · Chuyển trạng thái | `/safety/incidents/:id/due-date`, `/safety/incidents/:id/status` | Mang `SAF_INCIDENTS_RECORD` | [06](06-an-toan.md#chi-tiết-sự-cố-an-toàn) |
-| Phân loại thương tích | `/safety/incidents/:id/classify` | Mang `SAF_CLASSIFY` | [06](06-an-toan.md#phân-loại-thương-tích) |
-| Sửa mức độ · Ghi nhận số ngày | `/safety/incidents/:id/severity`, `/safety/incidents/:id/days` | Mang `SAF_INCIDENTS_RECORD` | [06](06-an-toan.md#sửa-mức-độ-và-ghi-nhận-số-ngày) |
-| Đóng sự cố · Nêu Concern | `/safety/incidents/:id/close`, `/safety/incidents/:id/raise-concern` | Mang `SAF_INCIDENTS_RECORD` | [06](06-an-toan.md#đóng-sự-cố-và-nêu-concern) |
+| Phân loại thương tích | `/safety/incidents/:id/classify` | Mang `SAF_CLASSIFY` **và** thẩm quyền An toàn | [06](06-an-toan.md#phân-loại-thương-tích) |
+| Sửa mức độ · Ghi nhận số ngày | `/safety/incidents/:id/severity`, `/safety/incidents/:id/days` | Mang `SAF_CLASSIFY` (mức độ) và `SAF_INCIDENTS_RECORD` (số ngày), cả hai **và** thẩm quyền An toàn | [06](06-an-toan.md#sửa-mức-độ-và-ghi-nhận-số-ngày) |
+| Đóng sự cố · Nêu Concern | `/safety/incidents/:id/close`, `/safety/incidents/:id/raise-concern` | Mang `SAF_INCIDENTS_RECORD` **và** thẩm quyền An toàn (đóng) · `ACT_RAISE` (Concern) | [06](06-an-toan.md#đóng-sự-cố-và-nêu-concern) |
 | Ghi nhận quan sát an toàn | `/safety/observations/record` | Mang `SAF_OBSERVATIONS_RECORD` | [06](06-an-toan.md#quan-sát) |
 | Chi tiết Quan sát an toàn | `/safety/observations/:id` | Mang `SAF_OBSERVATIONS_DISPLAY` | [06](06-an-toan.md#chi-tiết-quan-sát-an-toàn) |
 | Nêu một Hành động từ quan sát | `/safety/observations/:id/raise-action` | Mang `SAF_OBSERVATIONS_RECORD` **và** `ACT_RAISE` | [06](06-an-toan.md#nêu-hành-động-từ-một-quan-sát) |
