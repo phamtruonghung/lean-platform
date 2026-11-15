@@ -1,73 +1,190 @@
-# Hướng dẫn sử dụng Nền tảng (lean-platform)
+# Hướng dẫn vận hành Nền tảng (lean-platform)
 
-Tài liệu này viết cho **người dùng trên sàn máy** và **người đào tạo họ** — không
-phải cho lập trình viên. Nó dạy cách làm từng việc một trên Nền tảng, theo hình
-thức **TWI Job Instruction**: mỗi chức năng là một thẻ gồm bốn phần, đúng thứ tự
-một người đào tạo sẽ nói với một người vận hành.
-
-| Phần của thẻ | Trả lời câu hỏi |
-| --- | --- |
-| **Việc này để làm gì** | Một câu. Khi nào thì mở màn hình này ra. |
-| **Ai thao tác được** | Vai trò nào mở được, vai trò nào ghi được — lấy từ mã quyền trong mã nguồn, không phải phỏng đoán. |
-| **Các bước chính** | Làm theo thứ tự. Mỗi bước một dòng. |
-| **Điểm then chốt · Vì sao** | Chỗ hay sai, và cái gì hỏng nếu sai. Đây là phần biến một danh sách bước thành một buổi đào tạo. |
+Tài liệu này viết cho **người vận hành trên sàn máy** và **người đào tạo họ** — không
+phải cho lập trình viên. Nó là một bộ **TWI Job Instruction** đầy đủ, không phải một
+quyển mô tả chức năng: **bốn điểm chuẩn bị** (dưới đây), **một thẻ cách hướng dẫn bốn
+bước**, và **một Bảng phân tích công việc cho mỗi thao tác** — bảng nằm ở chương của
+thao tác đó, mỗi chương một nhóm việc.
 
 Tên nút, tên trường và tên màn hình trong tài liệu là **chữ tiếng Việt đúng như
 trên màn hình** (lấy từ `frontend/lib/l10n/app_vi.arb`). Nếu màn hình của bạn
 đang để tiếng Anh, vào **Cài đặt → Ngôn ngữ → Tiếng Việt**.
 
+## Chuẩn bị hướng dẫn
+
+Bốn việc phải xong **trước** buổi đào tạo đầu tiên. Thiếu một việc là buổi đào tạo
+dừng giữa chừng để đi tìm thứ đáng lẽ có sẵn.
+
+### 1. Thời biểu đào tạo
+
+Ai học việc gì, xong trước ngày nào. Ngày là kế hoạch đang áp dụng của Ban Lean —
+đổi lịch thì sửa **bảng này**, đừng sửa từng phiếu.
+
+| Người học | Phải làm được | Phiếu | Hoàn thành trước |
+| --- | --- | --- | --- |
+| Người vận hành mới | Đăng nhập, đổi mật khẩu tạm, chọn tiếng Việt, đọc Trang chủ, nêu một Yêu cầu và đọc kết quả | 01.1–01.8, 03.9 | 22/11/2026 — trước ca đầu tiên |
+| Nhân viên khối văn phòng | Như trên, cộng: tìm người trong Danh bạ, đọc hồ sơ của mình, lưu Chữ ký, gửi đơn xin nghỉ, tự xác nhận đào tạo | + 02.1–02.4, 02.12, 02.15, 02.16 | 29/11/2026 |
+| Giám sát mới | Như trên, cộng: mở và xác nhận Bảng chấm công, tổ chức một buổi đào tạo, duyệt đơn xin nghỉ, và toàn bộ nhóm Bảo trì trừ **Phụ tùng** | + 02.8–02.11, 02.17, 03.1, 03.3–03.13 | 06/12/2026 |
+| Kỹ sư và Quản lý | Toàn bộ nhóm Bảo trì, kể cả **Thêm/sửa Phụ tùng** | + 03.2 | 13/12/2026 |
+| Quản trị viên | Tất cả, cộng: thêm Nhân viên, Chức danh, Kỹ năng, Đơn vị tổ chức, Đơn giá giờ, Chi phí chuẩn, Kế hoạch công việc | + 02.2, 02.5–02.7, 02.18, 02.19, 03.14 | 20/12/2026 |
+
+### 2. Phân tích công việc
+
+Mỗi thao tác có **một Bảng phân tích công việc** (Job Breakdown Sheet) đã viết xong.
+Bảng gồm hai phần, không có phần thứ ba:
+
+- **Khối đầu phiếu, bảy dòng, đúng thứ tự này:** **Công việc** (tên thao tác, màn hình,
+  đường dẫn) · **Ai thao tác được** (vai trò mở được, vai trò ghi được) · **Vật tư, dữ
+  liệu có trước** (bản ghi phải tồn tại trước khi bắt đầu) · **Công cụ** (màn hình, nút,
+  mã quyền ghi) · **An toàn** (cảnh báo trước khi làm) · **Thiết bị đào tạo** (ảnh chụp
+  dùng trong bảng) · **Chủ tài liệu · Rev · Ngày · Trang**.
+- **Một bảng, cột đúng là `Các bước chính · Điểm then chốt · Vì sao · Minh hoạ`** — ba
+  cột TWI (WHAT / HOW / WHY) cộng ảnh chụp đặt ngay tại bước nó minh hoạ. Bài học nằm ở
+  cột **Vì sao**: một điểm then chốt không có lý do thì bị xoá, không phải được giữ.
+
+Một **điểm then chốt** chỉ thuộc ba loại, ghi ngay trong ô: **`[Hỏng]`** — làm đúng mới
+ra việc; **`[An toàn]`** — sai thì hại người, hại máy hoặc ghi bẩn dữ liệu thật;
+**`[Dễ]`** — làm công việc dễ hơn. Điểm đúng cho **mọi** bước được viết một lần ở dòng
+**Chung** đầu bảng, không lặp lại ở từng bước. Một bảng không quá **~10 bước chính**;
+việc dài hơn thì tách thành hai phiếu.
+
+**"Trang"** trong dòng cuối là **số phiếu** (`03.4`), không phải số trang in: số trang
+PDF đổi theo mỗi lần dựng lại, còn số phiếu thì đứng yên và là thứ để gọi phiếu ra.
+
+Danh sách phiếu — bấm tên để mở bảng. Cột **Bước chính** và **Ảnh** là số đếm thật của
+từng phiếu.
+
+**01 · Vào cửa và Tài khoản**
+
+| Phiếu | Việc | Bước chính | Ảnh |
+| --- | --- | ---: | ---: |
+| **01.1** | [Đăng nhập](01-vao-cua-va-tai-khoan.md#đăng-nhập) | 4 | 2 |
+| **01.2** | [Chờ phê duyệt](01-vao-cua-va-tai-khoan.md#chờ-phê-duyệt) | 3 | 1 |
+| **01.3** | [Chọn mật khẩu mới (bắt buộc)](01-vao-cua-va-tai-khoan.md#chọn-mật-khẩu-mới-bắt-buộc) | 3 | 1 |
+| **01.4** | [Trang chủ](01-vao-cua-va-tai-khoan.md#trang-chủ) | 4 | 1 |
+| **01.5** | [Cài đặt](01-vao-cua-va-tai-khoan.md#cài-đặt) | 2 | 2 |
+| **01.6** | [Không tìm thấy màn hình](01-vao-cua-va-tai-khoan.md#không-tìm-thấy-màn-hình) | 2 | 1 |
+| **01.7** | [Không có quyền xem mục này](01-vao-cua-va-tai-khoan.md#không-có-quyền-xem-mục-này) | 2 | 1 |
+| **01.8** | [Không kiểm tra được phiên làm việc](01-vao-cua-va-tai-khoan.md#không-kiểm-tra-được-phiên-làm-việc) | 3 | 1 |
+
+**02 · Nhân sự**
+
+| Phiếu | Việc | Bước chính | Ảnh |
+| --- | --- | ---: | ---: |
+| **02.1** | [Danh bạ](02-nhan-su.md#danh-bạ) | 3 | 1 |
+| **02.2** | › [Thêm một Nhân viên](02-nhan-su.md#thêm-một-nhân-viên) | 3 | 1 |
+| **02.3** | [Hồ sơ Nhân viên](02-nhan-su.md#hồ-sơ-nhân-viên) | 5 | 1 |
+| **02.4** | [Giờ đã làm của một Nhân viên](02-nhan-su.md#giờ-đã-làm-của-một-nhân-viên) | 4 | 1 |
+| **02.5** | [Chức danh công việc](02-nhan-su.md#chức-danh-công-việc) | 3 | 1 |
+| **02.6** | [Kỹ năng](02-nhan-su.md#kỹ-năng) | 5 | 1 |
+| **02.7** | [Đơn vị tổ chức](02-nhan-su.md#đơn-vị-tổ-chức) | 6 | 1 |
+| **02.8** | [Chấm công](02-nhan-su.md#chấm-công) | 3 | 1 |
+| **02.9** | [Bảng chấm công một ca](02-nhan-su.md#bảng-chấm-công-một-ca) | 4 | 1 |
+| **02.10** | [Chấm công cần xác nhận](02-nhan-su.md#chấm-công-cần-xác-nhận) | 2 | — |
+| **02.11** | [Đào tạo](02-nhan-su.md#đào-tạo) | 4 | 1 |
+| **02.12** | › [Xác nhận một buổi đào tạo](02-nhan-su.md#xác-nhận-một-buổi-đào-tạo) | 3 | — |
+| **02.13** | [Bản ghi đào tạo (chi tiết)](02-nhan-su.md#bản-ghi-đào-tạo-chi-tiết) | 2 | — |
+| **02.14** | [Biểu mẫu in của bản ghi đào tạo](02-nhan-su.md#biểu-mẫu-in-của-bản-ghi-đào-tạo) | 2 | — |
+| **02.15** | [Chữ ký của tôi](02-nhan-su.md#chữ-ký-của-tôi) | 3 | 1 |
+| **02.16** | [Đơn xin nghỉ](02-nhan-su.md#đơn-xin-nghỉ) | 2 | 1 |
+| **02.17** | › [Duyệt hoặc từ chối một đơn](02-nhan-su.md#duyệt-hoặc-từ-chối-một-đơn) | 3 | — |
+| **02.18** | [Đơn giá giờ](02-nhan-su.md#đơn-giá-giờ) | 4 | 1 |
+| **02.19** | [Chi phí chuẩn sản phẩm](02-nhan-su.md#chi-phí-chuẩn-sản-phẩm) | 3 | 1 |
+
+**03 · Bảo trì**
+
+| Phiếu | Việc | Bước chính | Ảnh |
+| --- | --- | ---: | ---: |
+| **03.1** | [Tài sản](03-bao-tri.md#tài-sản) | 6 | 2 |
+| **03.2** | [Phụ tùng](03-bao-tri.md#phụ-tùng) | 3 | 1 |
+| **03.3** | [Kho](03-bao-tri.md#kho) | 3 | 2 |
+| **03.4** | [Lệnh công việc](03-bao-tri.md#lệnh-công-việc) | 7 | 2 |
+| **03.5** | [Chi tiết Lệnh công việc](03-bao-tri.md#chi-tiết-lệnh-công-việc) | 5 | 2 |
+| **03.6** | [Phân công Lệnh công việc](03-bao-tri.md#phân-công-lệnh-công-việc) | 1 | 1 |
+| **03.7** | [Hoàn thành Lệnh công việc](03-bao-tri.md#hoàn-thành-lệnh-công-việc) | 2 | 1 |
+| **03.8** | [Huỷ Lệnh công việc](03-bao-tri.md#huỷ-lệnh-công-việc) | 2 | — |
+| **03.9** | [Yêu cầu của tôi](03-bao-tri.md#yêu-cầu-của-tôi) | 3 | 1 |
+| **03.10** | [Hàng chờ phân loại](03-bao-tri.md#hàng-chờ-phân-loại) | 4 | 1 |
+| **03.11** | [Thời gian dừng máy](03-bao-tri.md#thời-gian-dừng-máy) | 4 | 1 |
+| **03.12** | [Lịch bảo trì định kỳ](03-bao-tri.md#lịch-bảo-trì-định-kỳ) | 4 | 1 |
+| **03.13** | [Đồng hồ đo](03-bao-tri.md#đồng-hồ-đo) | 3 | 1 |
+| **03.14** | [Kế hoạch công việc](03-bao-tri.md#kế-hoạch-công-việc) | 3 | 1 |
+
+**Chương 04–10 chưa có phiếu.** Nhóm **Hành động**, **Chất lượng**, **An toàn**,
+**Sản xuất**, **Phân tích**, **Quản trị** và thiết bị **Xưởng** vẫn đang ở dạng mô tả
+chức năng; chúng được chuyển sang bảng phân tích công việc theo hai đợt (04–06 và
+07–10). Cho tới lúc đó, một người chỉ được đào tạo trên những thao tác đã có phiếu ở
+trên — **đừng dạy bằng chương chưa chuyển**.
+
+### 3. Chuẩn bị đủ
+
+Những thứ phải có sẵn trước bước 1 của bất kỳ phiếu nào:
+
+- **Tài khoản của chính người học** — đã được **chấp nhận** ở **Phê duyệt** (phiếu
+  01.2), đã đổi khỏi mật khẩu tạm (phiếu 01.3), và đã gắn với một Nhân viên (Trang chủ
+  nói rõ nếu chưa). Đào tạo bằng Tài khoản quản trị viên là dạy một người trên quyền
+  của người khác — mọi thứ họ bấm đều thành công, kể cả thứ đáng lẽ bị từ chối.
+- **Vai trò và quyền đúng** — [§1](#1-sáu-vai-trò-và-cách-đọc-phần-ai-thao-tác-được) có
+  sáu vai trò và cách đọc dòng **Ai thao tác được**; bảng **84 mã quyền** ở
+  [`90-phu-luc-ma-quyen.md`](90-phu-luc-ma-quyen.md). Ba điều phải nói với người học
+  trước khi họ bấm nút đầu tiên: vào được màn hình **không** có nghĩa là ghi được; ghi
+  còn cần **phạm vi Đơn vị tổ chức**; đọc rộng — ghi hẹp là chủ ý, không phải lỗi.
+- **Dữ liệu mẫu đủ để làm hết phiếu.** Không có bản ghi thì bước 2 của nhiều phiếu
+  không chạy được (không có Tài sản thì không tạo được Lệnh công việc, không có Phụ
+  tùng thì không xuất được kho):
+
+  | Nhóm | Phải có trước |
+  | --- | --- |
+  | Nhân sự | 1 Nhà máy · 1 bộ phận và 2 tổ bên dưới · 3 Nhân viên đã được **Phân công** vào tổ · 1 Chức danh · 1 Kỹ năng có **chu kỳ đánh giá lại** |
+  | Bảo trì | 2 Tài sản, một cái có **Đồng hồ đo** · 2 Phụ tùng và 1 Kho · 1 Kế hoạch công việc · 1 Lệnh công việc đang mở · 1 Yêu cầu đang chờ phân loại |
+
+  Dạy trên **dữ liệu demo**: `dev/seed-demo.sql` (Nhà máy Demo) là bộ dữ liệu mà mọi
+  ảnh trong tài liệu này được chụp từ đó — không có tên người thật, không có số liệu
+  thật. Đừng dạy người mới trên dữ liệu sản xuất thật.
+
+### 4. Sắp xếp nơi làm việc
+
+Chỗ ngồi và cái máy, đúng như ảnh trong tài liệu:
+
+- **Một máy, một người, một trình duyệt.** Ngôn ngữ và giao diện sáng/tối lưu **theo
+  trình duyệt**, không theo Tài khoản: đổi người học thì đăng xuất, đừng để hai người
+  dùng chung một cửa sổ.
+- **Cửa sổ rộng 1440 × 900**, thanh điều hướng **mở rộng** (260 px). Dưới 700 px bề
+  ngang, thanh điều hướng thu về 64 px và **tên các mục biến mất** — người học mất
+  đường đi, và mọi ảnh trong tài liệu không còn khớp màn hình.
+- **Ngôn ngữ Tiếng Việt**, đặt ở **Cài đặt → Ngôn ngữ** (phiếu 01.5) và kiểm tra lại
+  đầu mỗi buổi: người ca trước có thể đã đổi về tiếng Anh trên cùng máy đó.
+- **Tắt thông báo**, để sẵn tab **Trang chủ** — người học bắt đầu từ đó, và đó cũng là
+  chỗ họ thấy việc đang chờ mình.
+- **Phiếu giấy cạnh máy**: in phiếu đang dạy từ bản PDF (xem [phụ lục](#phụ-lục-bản-pdf-sơ-đồ-và-ảnh-chụp)),
+  không mở điện thoại vừa bấm vừa đọc.
+
+## Cách hướng dẫn
+
+Một buổi đào tạo, bốn bước, đúng thứ tự này. Bước 2 và bước 3 là hai nửa của cùng một
+việc: người hướng dẫn làm trước, người học làm lại y hệt.
+
+| Bước | Nói và làm |
+| --- | --- |
+| **Bước 1 — Chuẩn bị người học** | Làm người học thoải mái · Nói rõ việc sắp học và hỏi xem họ đã biết gì · Gây hứng thú · Để họ đứng/ngồi đúng chỗ thao tác. |
+| **Bước 2 — Trình bày công việc** | Nói, làm mẫu và minh hoạ **từng bước chính một** · Nhấn từng **điểm then chốt** và **lý do** · Hướng dẫn rõ, đủ, kiên nhẫn · Không đưa nhiều hơn người học tiếp thu được một lúc. |
+| **Bước 3 — Người học làm thử** | Để người học làm, sửa lỗi · Để người học **nói lại từng bước chính, điểm then chốt, lý do** trong khi làm lại · Bảo đảm họ hiểu · Làm tiếp cho tới khi **bạn biết là người học biết**. |
+| **Bước 4 — Theo dõi tiếp** | Để họ tự làm · Chỉ rõ hỏi ai khi cần · Kiểm tra thường xuyên, khuyến khích đặt câu hỏi · Giảm dần việc kèm cặp. |
+
+> *Nếu người học chưa học được, người hướng dẫn chưa dạy đúng.*
+
+Ba điều rút ra từ chính các phiếu trong tài liệu này:
+
+1. **Điểm then chốt, không phải danh sách bước, mới là bài học.** Cột **Vì sao** là
+   thứ người học phải nói lại được ở bước 3 — nếu họ thuộc bước mà không nói được lý
+   do, họ sẽ bỏ qua điểm then chốt ngay khi có việc gấp.
+2. **Không dạy quá một phiếu một lúc.** Mỗi phiếu đã được cắt còn ~10 bước chính vì lý
+   do đó; hai phiếu trong một buổi là quá tải, trừ khi người học đã làm nghề.
+3. **Dạy trên dữ liệu demo, không dạy trên dữ liệu thật.** Một bước ghi sai trong lúc
+   học mà đã vào sổ thật thì phải sửa bằng nghiệp vụ, không phải bằng cách nói "làm
+   lại đi".
+
 ---
-
-## Bản PDF, và mười sơ đồ
-
-Tài liệu này đọc được hai cách: các tệp Markdown trong thư mục này (bản gốc, sửa được,
-xem thẳng trên GitHub), và một **bản PDF để đọc hoặc in**.
-
-- **Bản PDF**: [`pdf/huong-dan-su-dung.pdf`](pdf/huong-dan-su-dung.pdf) — toàn bộ chương
-  00–90 trong một tệp, kèm **mười sơ đồ** (mỗi sơ đồ in trên một **trang ngang** riêng) và
-  **ảnh chụp màn hình thật của ứng dụng** đặt ngay tại bước nó minh hoạ.
-- **Sinh lại bản PDF** sau khi sửa Markdown: `bash scripts/build-user-guide-pdf.sh`.
-  Script dựng lại ảnh sơ đồ rồi in PDF vào `pdf/`. Nó cần ba thứ, và dừng lại nói rõ
-  nếu thiếu cái nào:
-  - `node` + gói **playwright** — script tìm nó trong `docs/user-guide/diagrams/node_modules`
-    (chạy `cd docs/user-guide/diagrams && npm i playwright` một lần là đủ), rồi tới
-    bản cài sẵn của Hermes, rồi `NODE_PATH`;
-  - **Chromium** cho playwright — `npx playwright install chromium`, hoặc trỏ `CHROME`
-    vào một binary có sẵn;
-  - `python3` + module **markdown**, và tuỳ chọn ImageMagick `convert` (thiếu `convert`
-    thì PDF vẫn ra, chỉ nặng hơn).
-- **Nguồn của sơ đồ** là `diagrams/*.html` + `diagrams/diagram.css`, sinh ảnh bằng
-  `node docs/user-guide/diagrams/render.js` → `images/*.png`. Muốn đổi chữ trong sơ đồ
-  thì sửa HTML rồi render lại, đừng sửa thẳng tệp PNG.
-
-### Ảnh chụp màn hình: `images/screens/`
-
-Ảnh trong `images/screens/` là **ảnh chụp ứng dụng thật**, không phải hình vẽ. Cách chụp
-lại một ảnh, để lần sau ai sửa màn hình còn chụp lại được giống hệt:
-
-- **Môi trường**: `./scripts/review.sh` (dựng cả stack ở `http://localhost:3002`), dữ liệu
-  là `dev/seed-demo.sql` — Nhà máy Demo. Nhờ vậy ảnh **không có tên người thật, không có
-  mặt người, không có số liệu KPI/tài chính thật**: mọi tên trong ảnh là dữ liệu demo
-  (`Demo Admin`, `DEMO-001 Nour Haddad`, `Meridian Pumps`, `Widget A`). Không chụp từ
-  bản triển khai thật.
-- **Khung nhìn cố định**: rộng **1440 × 900** CSS px, `deviceScaleFactor: 2`, chụp toàn
-  bộ cửa sổ (kể cả thanh điều hướng), lưu PNG rồi thu về **1440 px** rộng cho nhẹ.
-- **Ngôn ngữ**: **Tiếng Việt** — vì các chương viết bằng tiếng Việt và tên nút trong
-  chương là chuỗi tiếng Việt lấy từ `app_vi.arb`. Chương 01 có thêm một ảnh ở trạng thái
-  **tiếng Anh** để minh hoạ chính bước đổi ngôn ngữ.
-- **Tên tệp**: `<chương>-<bước>-<việc>.png`, ví dụ `03-2-them-tai-san.png` — chương 03,
-  bước 2 của bảng **Các bước chính**, việc "thêm tài sản". Một bước có hai ảnh thì đặt
-  tên khác phần việc, đừng đánh số lại. Ảnh chụp một **nút** của màn hình, không ứng với
-  bước nào trong bảng, thì **bỏ phần `<bước>`** — `02-danh-ba-them-nhan-vien.png` — và chú
-  thích theo nút, không ghi "bước n".
-- **Chú thích**: mỗi ảnh là một khối `![Ảnh <ch>.<số> — <tên màn hình>, bước <n>](…)`
-  rồi một dòng `***Ảnh <ch>.<số>.** …*` ngay dưới. Khối này nằm **ngay sau bảng Các bước
-  chính của việc đó**, không gom vào một phòng trưng bày ở cuối chương: trong PDF ảnh
-  in ở cỡ trang, cùng trang với bước nó giải thích.
-- **Quy tắc dữ liệu**: một ảnh chỉ được commit khi không có tên người thật, mặt người,
-  danh tính khách hàng/nhà cung cấp thật, hay số liệu KPI/tài chính thật. Không chụp
-  được màn hình nào mà không vi phạm thì **bỏ ảnh đó và ghi lý do vào mô tả PR**, đừng
-  che bằng cách sửa số liệu.
 
 Chương [**00 · Toàn cảnh**](00-tong-quan.md) là bản đồ của cả tài liệu: Nền tảng gồm những
 nhóm việc gì, nhóm nào cấp dữ liệu cho nhóm nào, và một việc trên sàn đi qua những màn
@@ -290,3 +407,61 @@ của chức năng mẹ, và — với mọi thao tác ghi — phạm vi Đơn v
 - **Không** thay thế màn hình **Vai trò**: quản trị viên có thể đổi quyền của một
   vai trò bất cứ lúc nào, nên câu trả lời đúng nhất cho "tôi làm được gì" luôn là
   màn hình đó, không phải quyển tài liệu này.
+
+---
+
+## Phụ lục: bản PDF, sơ đồ và ảnh chụp
+
+
+Tài liệu này đọc được hai cách: các tệp Markdown trong thư mục này (bản gốc, sửa được,
+xem thẳng trên GitHub), và một **bản PDF để đọc hoặc in**.
+
+- **Bản PDF**: [`pdf/huong-dan-su-dung.pdf`](pdf/huong-dan-su-dung.pdf) — toàn bộ chương
+  00–90 trong một tệp, kèm **mười sơ đồ** (mỗi sơ đồ in trên một **trang ngang** riêng) và
+  **ảnh chụp màn hình thật của ứng dụng** đặt ngay tại bước nó minh hoạ.
+- **Sinh lại bản PDF** sau khi sửa Markdown: `bash scripts/build-user-guide-pdf.sh`.
+  Script dựng lại ảnh sơ đồ rồi in PDF vào `pdf/`. Nó cần ba thứ, và dừng lại nói rõ
+  nếu thiếu cái nào:
+  - `node` + gói **playwright** — script tìm nó trong `docs/user-guide/diagrams/node_modules`
+    (chạy `cd docs/user-guide/diagrams && npm i playwright` một lần là đủ), rồi tới
+    bản cài sẵn của Hermes, rồi `NODE_PATH`;
+  - **Chromium** cho playwright — `npx playwright install chromium`, hoặc trỏ `CHROME`
+    vào một binary có sẵn;
+  - `python3` + module **markdown**, và tuỳ chọn ImageMagick `convert` (thiếu `convert`
+    thì PDF vẫn ra, chỉ nặng hơn).
+- **Nguồn của sơ đồ** là `diagrams/*.html` + `diagrams/diagram.css`, sinh ảnh bằng
+  `node docs/user-guide/diagrams/render.js` → `images/*.png`. Muốn đổi chữ trong sơ đồ
+  thì sửa HTML rồi render lại, đừng sửa thẳng tệp PNG.
+
+### Ảnh chụp màn hình: `images/screens/`
+
+Ảnh trong `images/screens/` là **ảnh chụp ứng dụng thật**, không phải hình vẽ. Cách chụp
+lại một ảnh, để lần sau ai sửa màn hình còn chụp lại được giống hệt:
+
+- **Môi trường**: `./scripts/review.sh` (dựng cả stack ở `http://localhost:3002`), dữ liệu
+  là `dev/seed-demo.sql` — Nhà máy Demo. Nhờ vậy ảnh **không có tên người thật, không có
+  mặt người, không có số liệu KPI/tài chính thật**: mọi tên trong ảnh là dữ liệu demo
+  (`Demo Admin`, `DEMO-001 Nour Haddad`, `Meridian Pumps`, `Widget A`). Không chụp từ
+  bản triển khai thật.
+- **Khung nhìn cố định**: rộng **1440 × 900** CSS px, `deviceScaleFactor: 2`, chụp toàn
+  bộ cửa sổ (kể cả thanh điều hướng), lưu PNG rồi thu về **1440 px** rộng cho nhẹ.
+- **Ngôn ngữ**: **Tiếng Việt** — vì các chương viết bằng tiếng Việt và tên nút trong
+  chương là chuỗi tiếng Việt lấy từ `app_vi.arb`. Chương 01 có thêm một ảnh ở trạng thái
+  **tiếng Anh** để minh hoạ chính bước đổi ngôn ngữ.
+- **Tên tệp**: `<chương>-<bước>-<việc>.png`, ví dụ `03-2-them-tai-san.png` — chương 03,
+  bước 2 của bảng **Các bước chính**, việc "thêm tài sản". Một bước có hai ảnh thì đặt
+  tên khác phần việc, đừng đánh số lại. Ảnh chụp một **nút** của màn hình, không ứng với
+  bước nào trong bảng, thì **bỏ phần `<bước>`** — `02-danh-ba-them-nhan-vien.png` — và chú
+  thích theo nút, không ghi "bước n". Số trong tên tệp là **bước tại lúc chụp**: phiếu
+  được biên tập lại thì tên tệp giữ nguyên, còn số hiệu để dẫn trong phiếu là số của
+  **Ảnh <chương>.<số>** — đánh lại theo thứ tự trong chương, và là thứ cột **Minh hoạ**
+  cùng dòng **Thiết bị đào tạo** phải khớp.
+- **Chú thích**: mỗi ảnh là một khối `![Ảnh <ch>.<số> — <tên màn hình>](…)` rồi một dòng
+  `***Ảnh <ch>.<số>.** …*` ngay dưới. Khối này nằm **ngay sau bảng Các bước chính của
+  việc đó**, không gom vào một phòng trưng bày ở cuối chương: trong PDF ảnh in ở cỡ
+  trang, cùng trang với bước nó giải thích. Một bước không có ảnh thì ô **Minh hoạ** ghi
+  `—`, không vẽ sơ đồ thay ảnh chụp màn hình.
+- **Quy tắc dữ liệu**: một ảnh chỉ được commit khi không có tên người thật, mặt người,
+  danh tính khách hàng/nhà cung cấp thật, hay số liệu KPI/tài chính thật. Không chụp
+  được màn hình nào mà không vi phạm thì **bỏ ảnh đó và ghi lý do vào mô tả PR**, đừng
+  che bằng cách sửa số liệu.

@@ -440,7 +440,9 @@ def build_html() -> tuple[str, str]:
   <div class="eyebrow">lean-platform · Nền tảng quản trị nhà máy</div>
   <h1>Hướng dẫn sử dụng<br>Nền tảng</h1>
   <div class="sub">Dành cho người dùng trên sàn máy và người đào tạo họ — không phải cho
-  lập trình viên. Mỗi chức năng là một thẻ bốn phần, đúng thứ tự một người đào tạo sẽ nói.</div>
+  lập trình viên. Mỗi thao tác là một bảng phân tích công việc: khối đầu bảy dòng, rồi
+  bảng <strong>Các bước chính · Điểm then chốt · Vì sao · Minh hoạ</strong> — đúng thứ tự
+  một người hướng dẫn sẽ nói.</div>
   <div class="rule"></div>
   <div class="meta">
     <p><strong>{len(CHAPTERS)} chương</strong> · <strong>{len(all_captions)} sơ đồ</strong> · <strong>{len(screen_images)} ảnh chụp màn hình</strong></p>
