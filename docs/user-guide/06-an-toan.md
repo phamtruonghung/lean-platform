@@ -124,16 +124,24 @@ thương, loại thương tích hay bộ phận cơ thể cần thẩm quyền A
 | **Vật tư, dữ liệu có trước** | Sự cố đã ghi nhận; với số ngày, đã biết người bị thương nghỉ bao nhiêu ngày. |
 | **Công cụ** | Hộp thoại **Sửa mức độ** (**Nâng mức độ lên** / mức mới) và **Ghi nhận số ngày**; ô **Số ngày nghỉ do thương tích** và **Số ngày làm hạn chế**. |
 | **An toàn** | Số ngày **chỉ tăng** — người bị thương nghỉ thêm thì ghi thêm. Ghi **0** nghĩa là "đã xác nhận không mất ngày nào", không phải "chưa biết", và nó là câu trả lời chốt. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 06.5 · Ảnh 06.6 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 06.4 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** **Sửa mức độ**: mở hộp thoại, chọn mức mới, xác nhận | [Hỏng] Dùng `SAF_CLASSIFY` **và** thẩm quyền An toàn cho **cả** nâng lẫn hạ — không giống Chất lượng | Đừng dạy chung hai nhóm: ở Chất lượng hạ mức độ là một quyết định riêng, ở An toàn thì không | — |
-| **2.** **Ghi nhận số ngày**: ghi số ngày người bị thương nghỉ | [An toàn] Số ngày cần **thẩm quyền An toàn** — đây là con số nuôi **SAF-LTIFR**, cộng dồn **12 tháng trượt** | Một con số sai ở đây sai chỉ số an toàn của cả năm, và không ai thấy nó sai | — |
+| **1.** **Sửa mức độ**: mở hộp thoại, chọn mức mới, xác nhận | [Hỏng] Dùng `SAF_CLASSIFY` **và** thẩm quyền An toàn cho **cả** nâng lẫn hạ — không giống Chất lượng | Đừng dạy chung hai nhóm: ở Chất lượng hạ mức độ là một quyết định riêng, ở An toàn thì không | Ảnh 06.5 |
+| **2.** **Ghi nhận số ngày**: ghi số ngày người bị thương nghỉ | [An toàn] Số ngày cần **thẩm quyền An toàn** — đây là con số nuôi **SAF-LTIFR**, cộng dồn **12 tháng trượt** | Một con số sai ở đây sai chỉ số an toàn của cả năm, và không ai thấy nó sai | Ảnh 06.6 |
 | **3.** Nếu người bị thương còn làm việc hạn chế: ghi **Số ngày làm hạn chế** | [Dễ] Đây là trường riêng, không cộng vào số ngày nghỉ | Gộp hai loại ngày vào một ô là mất khả năng phân biệt ca nhẹ với ca nặng | — |
 | **4.** Nếu chưa biết: để trống; nếu đã xác nhận không mất ngày: ghi **0** | [An toàn] **0 là một câu trả lời thật** và nó chốt con số; để trống là "chưa biết" | Chỉ số an toàn không có số liệu cho tới khi được xác nhận — đừng để trống cho xong | — |
 | **5.** Sự cố đã đóng thì số ngày **không sửa được** | [Hỏng] Hộp thoại nói đúng câu đó khi sự cố đã đóng | Chốt số ngày là hậu quả của việc đóng sự cố; ghi nốt số ngày **trước** khi đóng | — |
+
+![Ảnh 06.5 — Hộp thoại Sửa mức độ](images/screens/06-1-sua-muc-do.png)
+
+***Ảnh 06.5.** Sửa mức độ khai lại khoảng thời gian sự cố đã xảy ra, nên phải ghi **Vì sao sửa mức độ**.*
+
+![Ảnh 06.6 — Hộp thoại Ghi nhận số ngày](images/screens/06-2-ghi-nhan-so-ngay.png)
+
+***Ảnh 06.6.** Số ngày nghỉ do thương tích và số ngày làm hạn chế: ghi **0** khi đã xác nhận không mất ngày, để trống khi chưa biết.*
 
 ---
 
@@ -146,14 +154,18 @@ thương, loại thương tích hay bộ phận cơ thể cần thẩm quyền A
 | **Vật tư, dữ liệu có trước** | Đã điều tra xong và **đã ghi nốt số ngày**; lý do đóng đã có trong tay. |
 | **Công cụ** | Hộp thoại đóng với ô **Vì sao đóng sự cố này.**; lối **Nêu một Concern**. |
 | **An toàn** | Đóng sự cố **chốt luôn số ngày** — sau đó không sửa được. Và sự cố đã đóng **vẫn nằm trong sổ**, không bị xoá: đóng không phải xoá. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 06.7 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 06.5 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
 | **1.** Ghi nốt **số ngày** trước khi đóng (phiếu 06.4) | [An toàn] Đóng sự cố là chốt số ngày; đóng rồi thì số ngày không sửa được nữa | Người mới đóng trước rồi mới nhớ ra còn ngày chưa ghi, và không sửa được | — |
-| **2.** Đóng Sự cố an toàn, ghi **Vì sao đóng sự cố này.** | [An toàn] Đóng cần **thẩm quyền An toàn**, không chỉ quyền ghi sự cố | Kết luận điều tra là thứ người đọc sau này có, và nó phải do người có thẩm quyền chốt | — |
+| **2.** Đóng Sự cố an toàn, ghi **Vì sao đóng sự cố này.** | [An toàn] Đóng cần **thẩm quyền An toàn**, không chỉ quyền ghi sự cố | Kết luận điều tra là thứ người đọc sau này có, và nó phải do người có thẩm quyền chốt | Ảnh 06.7 |
 | **3.** Nếu cần điều tra nguyên nhân gốc: **Nêu một Concern** | [Hỏng] Concern **rơi vào Đơn vị tổ chức của sự cố**, không phải đơn vị của bạn — bạn không chọn được đơn vị khác | Vấn đề được giải quyết ở nơi nó xảy ra, bởi người có quyền ở đó | — |
+
+![Ảnh 06.7 — Hộp thoại Đóng Sự cố an toàn](images/screens/06-2-dong-su-co.png)
+
+***Ảnh 06.7.** Đóng sự cố ghi **Vì sao đóng sự cố này.**; Concern nêu từ sự cố, nếu có, vẫn tiếp tục xử lý nguyên nhân độc lập.*
 
 ---
 
@@ -166,26 +178,26 @@ thương, loại thương tích hay bộ phận cơ thể cần thẩm quyền A
 | **Vật tư, dữ liệu có trước** | Đơn vị tổ chức nơi quan sát được thực hiện. |
 | **Công cụ** | Nút **Ghi nhận quan sát**; ô **Loại**, **Hạng mục**, **Mức độ tiềm ẩn**, **Mô tả**, **Hành động đã làm (không bắt buộc)**, **Đã dùng quyền dừng việc**, **Quan sát lúc (không bắt buộc)**, **Được thấy ở đâu**. |
 | **An toàn** | **Mức độ tiềm ẩn** là **hậu quả xấu nhất có thể**, không phải hậu quả đã xảy ra. Một quan sát "chưa ai bị gì" vẫn có thể ở mức nặng nhất — và đó chính là giá trị của nó. |
-| **Thiết bị đào tạo** | Ảnh 06.5, Ảnh 06.6 |
+| **Thiết bị đào tạo** | Ảnh 06.8, Ảnh 06.9 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 06.6 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Bấm **Ghi nhận quan sát** và chọn **Được thấy ở đâu** — Đơn vị tổ chức nơi quan sát được thực hiện | [An toàn] Đây là điều quyết định **ai thao tác được** trên quan sát này | Chọn nhầm đơn vị là quan sát rơi vào người không nhìn thấy điều kiện đó | Ảnh 06.6 |
-| **2.** Chọn **Loại**: một hành vi an toàn, một hành vi không an toàn, hoặc một điều kiện không an toàn | [Hỏng] **Hành vi an toàn** là một loại thật, không phải chỗ để trống | Chỉ ghi cái sai thì sổ chỉ còn lỗi, và người ta thôi ghi để khỏi mang tiếng | Ảnh 06.6 |
-| **3.** Chọn **Hạng mục** và **Mức độ tiềm ẩn** | [An toàn] **Mức độ tiềm ẩn** là **hậu quả nặng nhất có thể tin được**, không phải điều đã thực sự xảy ra | Một quan sát "chưa ai bị gì" vẫn có thể là mức nặng nhất — đó chính là giá trị của nó | Ảnh 06.6 |
-| **4.** Ghi **Mô tả** — đã thấy gì | [Dễ] Viết về **hành vi** và **điều kiện**, không viết về con người | Quan sát không phải là chỉ trích cá nhân — đây là điều làm người ta còn dám ghi | Ảnh 06.6 |
-| **5.** Ghi **Hành động đã làm (không bắt buộc)**; tích **Đã dùng quyền dừng việc** nếu có | [An toàn] **Đã dùng quyền dừng việc** là dấu hiệu mạnh nhất rằng văn hoá an toàn là thật — tích đúng dù việc dừng đó nhỏ | Dừng việc là quyền của người đứng đó; ghi lại là cách duy nhất nhà máy biết nó đã được dùng | Ảnh 06.6 |
-| **6.** Ghi **Quan sát lúc (không bắt buộc)** và ghi nhận | [Dễ] Ô này quyết định ngày sản xuất và ca mà quan sát thuộc về — bỏ trống thì lấy lúc ghi | Một quan sát ca đêm ghi lúc sáng hôm sau sẽ vào nhầm ca | Ảnh 06.5 |
-| **7.** Lọc sổ theo **Đơn vị tổ chức**, **Loại**, **Hạng mục**, **Mức độ tiềm ẩn**, **Dừng việc**, **Hành động**, **Quan sát từ ngày** / **Quan sát đến ngày** | [Dễ] Bộ lọc **Loại** và **Hạng mục** là thứ biến sổ quan sát thành dữ liệu phân tích được | Sổ không ai lọc là một danh sách, không phải một chỉ số | Ảnh 06.5 |
+| **1.** Bấm **Ghi nhận quan sát** và chọn **Được thấy ở đâu** — Đơn vị tổ chức nơi quan sát được thực hiện | [An toàn] Đây là điều quyết định **ai thao tác được** trên quan sát này | Chọn nhầm đơn vị là quan sát rơi vào người không nhìn thấy điều kiện đó | Ảnh 06.9 |
+| **2.** Chọn **Loại**: một hành vi an toàn, một hành vi không an toàn, hoặc một điều kiện không an toàn | [Hỏng] **Hành vi an toàn** là một loại thật, không phải chỗ để trống | Chỉ ghi cái sai thì sổ chỉ còn lỗi, và người ta thôi ghi để khỏi mang tiếng | Ảnh 06.9 |
+| **3.** Chọn **Hạng mục** và **Mức độ tiềm ẩn** | [An toàn] **Mức độ tiềm ẩn** là **hậu quả nặng nhất có thể tin được**, không phải điều đã thực sự xảy ra | Một quan sát "chưa ai bị gì" vẫn có thể là mức nặng nhất — đó chính là giá trị của nó | Ảnh 06.9 |
+| **4.** Ghi **Mô tả** — đã thấy gì | [Dễ] Viết về **hành vi** và **điều kiện**, không viết về con người | Quan sát không phải là chỉ trích cá nhân — đây là điều làm người ta còn dám ghi | Ảnh 06.9 |
+| **5.** Ghi **Hành động đã làm (không bắt buộc)**; tích **Đã dùng quyền dừng việc** nếu có | [An toàn] **Đã dùng quyền dừng việc** là dấu hiệu mạnh nhất rằng văn hoá an toàn là thật — tích đúng dù việc dừng đó nhỏ | Dừng việc là quyền của người đứng đó; ghi lại là cách duy nhất nhà máy biết nó đã được dùng | Ảnh 06.9 |
+| **6.** Ghi **Quan sát lúc (không bắt buộc)** và ghi nhận | [Dễ] Ô này quyết định ngày sản xuất và ca mà quan sát thuộc về — bỏ trống thì lấy lúc ghi | Một quan sát ca đêm ghi lúc sáng hôm sau sẽ vào nhầm ca | Ảnh 06.8 |
+| **7.** Lọc sổ theo **Đơn vị tổ chức**, **Loại**, **Hạng mục**, **Mức độ tiềm ẩn**, **Dừng việc**, **Hành động**, **Quan sát từ ngày** / **Quan sát đến ngày** | [Dễ] Bộ lọc **Loại** và **Hạng mục** là thứ biến sổ quan sát thành dữ liệu phân tích được | Sổ không ai lọc là một danh sách, không phải một chỉ số | Ảnh 06.8 |
 
-![Ảnh 06.5 — Màn hình Quan sát an toàn](images/screens/06-1-so-quan-sat.png)
+![Ảnh 06.8 — Màn hình Quan sát an toàn](images/screens/06-1-so-quan-sat.png)
 
-***Ảnh 06.5.** Những gì được thấy **trước khi** có chuyện xảy ra, xếp từ nặng nhất theo hậu quả xấu nhất có thể hình dung.*
+***Ảnh 06.8.** Những gì được thấy **trước khi** có chuyện xảy ra, xếp từ nặng nhất theo hậu quả xấu nhất có thể hình dung.*
 
-![Ảnh 06.6 — Hộp thoại Ghi nhận quan sát an toàn](images/screens/06-1-ghi-nhan-quan-sat.png)
+![Ảnh 06.9 — Hộp thoại Ghi nhận quan sát an toàn](images/screens/06-1-ghi-nhan-quan-sat.png)
 
-***Ảnh 06.6.** Ghi điều đã thấy và hậu quả có thể có: một quan sát không cần là một sự cố, và đó chính là giá trị của nó.*
+***Ảnh 06.9.** Ghi điều đã thấy và hậu quả có thể có: một quan sát không cần là một sự cố, và đó chính là giá trị của nó.*
 
 ---
 
@@ -198,19 +210,19 @@ thương, loại thương tích hay bộ phận cơ thể cần thẩm quyền A
 | **Vật tư, dữ liệu có trước** | Quan sát đã ghi nhận (phiếu 06.6). |
 | **Công cụ** | Các khối **Mô tả**, **Hạng mục**, **Đơn vị tổ chức**, **Quan sát lúc**, **Đã xử lý**, **Ghi nhận bởi**; khối **Khép vòng**; nút **Nêu một Hành động**. |
 | **An toàn** | **Quan sát không có trạng thái.** Không có nút đóng nào cả — vòng khép lại bằng các **Hành động** nêu từ nó, mỗi Hành động có trạng thái riêng của nó. Dạy nhầm là dạy một nút không tồn tại. |
-| **Thiết bị đào tạo** | Ảnh 06.7 |
+| **Thiết bị đào tạo** | Ảnh 06.10 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 06.7 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Đọc **Mô tả**, **Mức độ tiềm ẩn**, **Đã xử lý** | [Dễ] Ba thông tin này là toàn bộ nội dung của một quan sát; không có trạng thái nào để đọc thêm | Người mới tìm cột trạng thái và không thấy — vì quan sát không có trạng thái | Ảnh 06.7 |
-| **2.** Đáng làm một việc: bấm **Nêu một Hành động** (phiếu 06.8) | [An toàn] Đây là **cách duy nhất** để một quan sát có người chịu trách nhiệm | Quan sát không có hành động là một dòng chữ không ai làm gì về nó | Ảnh 06.7 |
-| **3.** Đọc khối **Khép vòng**: các Hành động nêu từ quan sát này, kèm trạng thái riêng của từng cái | [Hỏng] **Không có nút đóng quan sát** — vòng khép lại khi các Hành động đó xong | Dạy sai điều này làm người học đi tìm một nút không tồn tại, và bỏ quên việc thật | Ảnh 06.7 |
-| **4.** Chưa có gì được làm: màn hình nói **Chưa có gì được làm về việc này** — đó là việc cần làm, không phải lỗi | [An toàn] Dòng đó là danh sách việc của người giám sát đơn vị | Một sổ quan sát đầy mà không có Hành động nào là một sổ không thay đổi gì | Ảnh 06.7 |
+| **1.** Đọc **Mô tả**, **Mức độ tiềm ẩn**, **Đã xử lý** | [Dễ] Ba thông tin này là toàn bộ nội dung của một quan sát; không có trạng thái nào để đọc thêm | Người mới tìm cột trạng thái và không thấy — vì quan sát không có trạng thái | Ảnh 06.10 |
+| **2.** Đáng làm một việc: bấm **Nêu một Hành động** (phiếu 06.8) | [An toàn] Đây là **cách duy nhất** để một quan sát có người chịu trách nhiệm | Quan sát không có hành động là một dòng chữ không ai làm gì về nó | Ảnh 06.10 |
+| **3.** Đọc khối **Khép vòng**: các Hành động nêu từ quan sát này, kèm trạng thái riêng của từng cái | [Hỏng] **Không có nút đóng quan sát** — vòng khép lại khi các Hành động đó xong | Dạy sai điều này làm người học đi tìm một nút không tồn tại, và bỏ quên việc thật | Ảnh 06.10 |
+| **4.** Chưa có gì được làm: màn hình nói **Chưa có gì được làm về việc này** — đó là việc cần làm, không phải lỗi | [An toàn] Dòng đó là danh sách việc của người giám sát đơn vị | Một sổ quan sát đầy mà không có Hành động nào là một sổ không thay đổi gì | Ảnh 06.10 |
 
-![Ảnh 06.7 — Màn hình Chi tiết Quan sát an toàn](images/screens/06-3-chi-tiet-quan-sat.png)
+![Ảnh 06.10 — Màn hình Chi tiết Quan sát an toàn](images/screens/06-3-chi-tiet-quan-sat.png)
 
-***Ảnh 06.7.** Một quan sát không có nút đóng: **Khép vòng** là các Hành động nêu từ nó, và **Nêu một Hành động** là lối biến nó thành việc có người chịu trách nhiệm.*
+***Ảnh 06.10.** Một quan sát không có nút đóng: **Khép vòng** là các Hành động nêu từ nó, và **Nêu một Hành động** là lối biến nó thành việc có người chịu trách nhiệm.*
 
 ---
 
@@ -223,14 +235,18 @@ thương, loại thương tích hay bộ phận cơ thể cần thẩm quyền A
 | **Vật tư, dữ liệu có trước** | Quan sát đã ghi nhận và đã đọc; người sẽ nhận việc đã có hồ sơ Nhân viên. |
 | **Công cụ** | Ô **Cần làm gì?**, ô chọn loại (**Chọn một loại**), **Mô tả**; nút nêu. |
 | **An toàn** | Nêu Hành động **không đóng** quan sát — và cũng không có gì để đóng. Bỏ qua bước này là sổ an toàn còn một việc không ai làm mãi mãi. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 06.11 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 06.8 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Ghi **Cần làm gì?** — việc cần làm, không phải mô tả lại quan sát | [Hỏng] Hành động được đọc trong nhật ký hành động, nên nó phải nói **việc**, không nói lại **cảnh** | Chép lại mô tả quan sát là tạo một Hành động mà người nhận không biết phải làm gì | — |
+| **1.** Ghi **Cần làm gì?** — việc cần làm, không phải mô tả lại quan sát | [Hỏng] Hành động được đọc trong nhật ký hành động, nên nó phải nói **việc**, không nói lại **cảnh** | Chép lại mô tả quan sát là tạo một Hành động mà người nhận không biết phải làm gì | Ảnh 06.11 |
 | **2.** Chọn một loại trong ô **Chọn một loại**, rồi điền **Mô tả** (không bắt buộc) | [Dễ] Bản thân Quan sát an toàn đã được liên kết làm bằng chứng, nên mô tả ở đây là tuỳ chọn | Gõ lại bằng chứng đã có là thêm một chỗ để sai lệch | — |
 | **3.** Bấm nêu | [An toàn] Concern **rơi vào Đơn vị tổ chức của quan sát** — vấn đề được nhận tại nơi nó được thấy | Giao việc cho đơn vị khác là giao cho người không nhìn thấy điều kiện đó | — |
+
+![Ảnh 06.11 — Hộp thoại Nêu một Hành động](images/screens/06-1-neu-mot-hanh-dong.png)
+
+***Ảnh 06.11.** Hành động nêu từ quan sát: **Cần làm gì?** là việc cần làm, **Loại hành động** và **Mô tả** nói thêm; Mức ưu tiên mặc định P3.*
 
 ---
 
@@ -243,22 +259,22 @@ thương, loại thương tích hay bộ phận cơ thể cần thẩm quyền A
 | **Vật tư, dữ liệu có trước** | Thang mức độ đã thống nhất với an toàn; mã do bộ phận an toàn cấp. |
 | **Công cụ** | Nút **Thêm Loại thương tích**, **Thêm Bộ phận cơ thể**, **Điều chỉnh**; ô **Mã**, **Tên**, **Mức ưu tiên**, và **Vùng cơ thể** ở danh mục Bộ phận cơ thể. |
 | **An toàn** | Hai danh mục này là **dữ liệu y tế ở dạng chuẩn hoá**. Một bộ phận cơ thể thêm sai làm mọi báo cáo an toàn đọc sai, và không có cách nào sửa lại các bản ghi đã phân loại theo nó. |
-| **Thiết bị đào tạo** | Ảnh 06.8, Ảnh 06.9 |
+| **Thiết bị đào tạo** | Ảnh 06.12, Ảnh 06.13 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 06.9 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Màn hình **Loại thương tích**: bấm **Thêm Loại thương tích**: **Mã**, **Tên**, **Mức ưu tiên** (1 là nặng nhất) | [Hỏng] Mã trùng làm hai loại thương tích cùng nghĩa, và báo cáo chia đôi con số | Danh mục dùng chung cho mọi Nhà máy — khai một lần, dùng ở mọi nơi phân loại | Ảnh 06.8 |
-| **2.** Màn hình **Bộ phận cơ thể**: bấm **Thêm Bộ phận cơ thể**: **Mã**, **Tên**, **Vùng cơ thể** | [An toàn] Bộ phận cơ thể là **dữ liệu y tế** — chỉ quản trị viên sửa, vì một bộ phận thêm sai làm mọi báo cáo an toàn đọc sai | Mọi thống kê thương tích theo bộ phận đếm trên danh mục này | Ảnh 06.9 |
+| **1.** Màn hình **Loại thương tích**: bấm **Thêm Loại thương tích**: **Mã**, **Tên**, **Mức ưu tiên** (1 là nặng nhất) | [Hỏng] Mã trùng làm hai loại thương tích cùng nghĩa, và báo cáo chia đôi con số | Danh mục dùng chung cho mọi Nhà máy — khai một lần, dùng ở mọi nơi phân loại | Ảnh 06.12 |
+| **2.** Màn hình **Bộ phận cơ thể**: bấm **Thêm Bộ phận cơ thể**: **Mã**, **Tên**, **Vùng cơ thể** | [An toàn] Bộ phận cơ thể là **dữ liệu y tế** — chỉ quản trị viên sửa, vì một bộ phận thêm sai làm mọi báo cáo an toàn đọc sai | Mọi thống kê thương tích theo bộ phận đếm trên danh mục này | Ảnh 06.13 |
 | **3.** Sửa hoặc ngừng dùng một mục: **Điều chỉnh** | [Dễ] Mục đã dùng trong bản ghi cũ **không bị xoá** — ngừng dùng chỉ gỡ nó khỏi danh sách chọn | Xoá một mục đã dùng là sửa lịch sử thương tích của người khác | — |
 
-![Ảnh 06.8 — Màn hình Loại thương tích](images/screens/06-1-loai-thuong-tich.png)
+![Ảnh 06.12 — Màn hình Loại thương tích](images/screens/06-1-loai-thuong-tich.png)
 
-***Ảnh 06.8.** Danh mục dùng chung cho mọi Nhà máy: khai một lần, dùng ở mọi nơi phân loại thương tích.*
+***Ảnh 06.12.** Danh mục dùng chung cho mọi Nhà máy: khai một lần, dùng ở mọi nơi phân loại thương tích.*
 
-![Ảnh 06.9 — Màn hình Bộ phận cơ thể](images/screens/06-1-bo-phan-co-the.png)
+![Ảnh 06.13 — Màn hình Bộ phận cơ thể](images/screens/06-1-bo-phan-co-the.png)
 
-***Ảnh 06.9.** Danh mục thứ hai của cùng phép phân loại; ghép với Loại thương tích thành cặp đếm được.*
+***Ảnh 06.13.** Danh mục thứ hai của cùng phép phân loại; ghép với Loại thương tích thành cặp đếm được.*
 
 ---
 

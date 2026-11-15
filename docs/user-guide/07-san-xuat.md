@@ -112,15 +112,19 @@ nữa.
 | **Vật tư, dữ liệu có trước** | Bàn giao của ca trước đã **gửi** (chip **Đã gửi** trên bảng Bộ phận). |
 | **Công cụ** | Câu **Bạn đang nhận {Bộ phận} và ca {…}**; khối **Mỗi lượt theo dõi cho thấy gì** với ô **Đã thấy** và ô **Ghi chú (không bắt buộc)** cho từng điểm; ô **Ghi chú về bàn giao (không bắt buộc)**; hai nút **Huỷ** và **Xác nhận**. |
 | **An toàn** | Xác nhận **không phải** thủ tục: nó gắn tên bạn vào việc đã đọc, tại một thời điểm. Đọc câu **Bạn đang nhận …** trước khi bấm. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 07.4 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 07.4 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Đọc câu đầu: **Bạn đang nhận {Bộ phận} và ca {…}** | [An toàn] Đọc câu đó: sai ca là nhận trách nhiệm cho ca của người khác | Người nhận trách nhiệm là người đã xác nhận, không phải người đã gửi | — |
+| **1.** Đọc câu đầu: **Bạn đang nhận {Bộ phận} và ca {…}** | [An toàn] Đọc câu đó: sai ca là nhận trách nhiệm cho ca của người khác | Người nhận trách nhiệm là người đã xác nhận, không phải người đã gửi | Ảnh 07.4 |
 | **2.** Với mỗi điểm thay đổi: đọc **Theo dõi: {…}**, chọn **Đã thấy** — **Đạt**, **Cần lưu ý** hoặc **Chưa chạy** | [Hỏng] Để nguyên **Chưa trả lời** nghĩa là **không có kết quả**, không phải "đạt" | Bằng chứng duy nhất rằng bạn đã thực sự theo dõi là kết quả của từng lượt, không phải cái nút đã bấm | — |
 | **3.** Ghi **Ghi chú** cho lượt nào cần, và **Ghi chú về bàn giao** nếu có gì muốn nói thêm | [Dễ] Ô ghi chú từng lượt nằm ngay dưới ô **Đã thấy** của lượt đó | Một chữ "Cần lưu ý" không nói được là lưu ý điều gì | — |
 | **4.** Bấm **Xác nhận** | [Dễ] Nút đổi thành **Đang xác nhận…** trong lúc gửi. Ca trước khai **không có điểm thay đổi** thì hộp thoại nói rõ, và bạn vẫn xác nhận được | Không có gì để theo dõi không phải là không có gì để xác nhận | — |
+
+![Ảnh 07.4 — Hộp thoại Xác nhận bàn giao](images/screens/07-1-xac-nhan-ban-giao.png)
+
+***Ảnh 07.4.** Câu đầu nói bạn đang nhận Bộ phận và ca nào; mỗi điểm thay đổi một lượt theo dõi, và **Ghi chú về bàn giao** là chỗ nói thêm.*
 
 ---
 

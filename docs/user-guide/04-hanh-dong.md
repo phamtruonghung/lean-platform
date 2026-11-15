@@ -139,14 +139,18 @@ CAPA 8D đóng khi nào. Điều kiện đóng CAPA có bốn phần — xem c�
 | **Vật tư, dữ liệu có trước** | Hành động còn mở; Đơn vị tổ chức của nó **có đơn vị cấp trên** trong cùng Nhà máy. |
 | **Công cụ** | Danh sách đơn vị **cấp trên** kèm ghi chú "{mã} · đơn vị gần nhất ở trên"; nút **Chuyển lên trên**, **Để sau**. |
 | **An toàn** | Hành động **vẫn ở nguyên chỗ cũ**, giữ người phụ trách và chu kỳ. Đây là **yêu cầu cấp trên biết về nó**, không phải chuyển giao — dạy nhầm điều này thì không ai nhận việc. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 04.5 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 04.5 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
 | **1.** Mở **Chuyển lên trên…** trên Chi tiết Hành động | [Hỏng] Nút chỉ có khi đơn vị của Hành động **có cấp trên**; ở đơn vị cao nhất hộp thoại nói **Không có ai ở trên đơn vị này** | Ở cấp cao nhất không có gì để chuyển — đó là trạng thái đúng, không phải thiếu quyền | — |
-| **2.** Chọn đơn vị sẽ nhận trong danh sách cấp trên | [Hỏng] Danh sách chỉ có đơn vị **ở trên**, không có mọi đơn vị — chuyển ngang cấp không phải là chuyển lên | Chọn một đơn vị không phải cấp trên là gửi việc đi sai nhánh và mất dấu | — |
+| **2.** Chọn đơn vị sẽ nhận trong danh sách cấp trên | [Hỏng] Danh sách chỉ có đơn vị **ở trên**, không có mọi đơn vị — chuyển ngang cấp không phải là chuyển lên | Chọn một đơn vị không phải cấp trên là gửi việc đi sai nhánh và mất dấu | Ảnh 04.5 |
 | **3.** Bấm **Chuyển lên trên** | [An toàn] Hành động **không đổi chỗ, không đổi người phụ trách, không đổi chu kỳ** — chỉ cấp trên được báo | Người đào tạo phải nói đúng câu này: chuyển lên là **báo**, không phải **giao**. Ai tưởng là giao sẽ chờ một việc không bao giờ được nhận | — |
+
+![Ảnh 04.5 — Hộp thoại Chuyển lên trên](images/screens/04-2-chuyen-hanh-dong-len-tren.png)
+
+***Ảnh 04.5.** Danh sách đơn vị cấp trên kèm ghi chú đơn vị nào là đơn vị gần nhất ở trên; chọn một đơn vị rồi bấm **Chuyển lên trên**.*
 
 ---
 
@@ -159,14 +163,18 @@ CAPA 8D đóng khi nào. Điều kiện đóng CAPA có bốn phần — xem c�
 | **Vật tư, dữ liệu có trước** | Hành động **chưa đóng** và **chưa bị huỷ**; hộp thoại từ chối cả hai trường hợp bằng một câu riêng. |
 | **Công cụ** | Ô **Lý do (không bắt buộc)**; gợi ý **Nêu nhầm, bị trùng, hoặc đã bị việc khác vượt qua**; nút **Huỷ hành động**, **Để nguyên**. |
 | **An toàn** | Hành động đã huỷ **vẫn nằm trong nhật ký**. Xoá dấu một vấn đề đã nêu là điều nhật ký không cho phép — huỷ không phải xoá. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 04.6 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 04.6 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
 | **1.** Mở **Huỷ hành động…** trên Chi tiết Hành động | [Dễ] Hộp thoại nói trước hậu quả: kết thúc hồ sơ mà không khẳng định đã làm được gì | Người bấm cần biết mình đang kết thúc việc gì trước khi bấm | — |
-| **2.** Ghi **Lý do (không bắt buộc)** — nêu nhầm, bị trùng, hoặc đã bị việc khác vượt qua | [An toàn] Lý do **không bắt buộc** nhưng là thứ duy nhất người sau đọc được; để trống thì dòng chỉ có chữ "đã huỷ" | Sáu tháng sau, một dòng huỷ không lý do là một vấn đề không ai giải thích được | — |
+| **2.** Ghi **Lý do (không bắt buộc)** — nêu nhầm, bị trùng, hoặc đã bị việc khác vượt qua | [An toàn] Lý do **không bắt buộc** nhưng là thứ duy nhất người sau đọc được; để trống thì dòng chỉ có chữ "đã huỷ" | Sáu tháng sau, một dòng huỷ không lý do là một vấn đề không ai giải thích được | Ảnh 04.6 |
 | **3.** Bấm **Huỷ hành động** | [Hỏng] Dòng **vẫn còn** trên nhật ký, ở trạng thái đã huỷ, kèm lý do | Đây là điều làm nhật ký đáng tin: không có đường nào xoá một vấn đề đã nêu | — |
+
+![Ảnh 04.6 — Hộp thoại Huỷ hành động](images/screens/04-2-huy-mot-hanh-dong.png)
+
+***Ảnh 04.6.** Ô **Lý do (không bắt buộc)** mang gợi ý nêu nhầm, bị trùng, hoặc đã bị việc khác vượt qua; huỷ vẫn giữ dấu việc đã nêu.*
 
 ---
 
@@ -179,16 +187,20 @@ CAPA 8D đóng khi nào. Điều kiện đóng CAPA có bốn phần — xem c�
 | **Vật tư, dữ liệu có trước** | Concern đang mở; người sẽ nhận biện pháp đã có hồ sơ Nhân viên. |
 | **Công cụ** | Ô **Sẽ làm gì**, **Chi tiết (không bắt buộc)**, **Người phụ trách (không bắt buộc)**, **Đến hạn (không bắt buộc)**, **Mức ưu tiên**, **Công việc này diễn ra ở đâu**; nút **Thêm {loại}** (tên loại đã chọn, viết thường: *Thêm khoanh vùng*). |
 | **An toàn** | **Khoanh vùng** (containment) ≠ **Biện pháp khắc phục** (countermeasure) ≠ **Hành động phòng ngừa** (preventive). Chọn sai loại làm báo cáo CAPA thiếu D3 hoặc D5–D6, và bản sửa không chạm tới nguyên nhân. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 04.7 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 04.7 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Trên Chi tiết Hành động, bấm **Thêm biện pháp** và chọn **loại** | [An toàn] **Khoanh vùng** chặn hậu quả ngay; **Biện pháp khắc phục** loại bỏ nguyên nhân; **Hành động phòng ngừa** giữ nó không quay lại ở chỗ khác | Đây là chỗ hay lẫn nhất trong cả nhóm, và là chỗ quyết định CAPA có D3 hay D5–D6 | — |
+| **1.** Trên Chi tiết Hành động, bấm **Thêm biện pháp** và chọn **loại** | [An toàn] **Khoanh vùng** chặn hậu quả ngay; **Biện pháp khắc phục** loại bỏ nguyên nhân; **Hành động phòng ngừa** giữ nó không quay lại ở chỗ khác | Đây là chỗ hay lẫn nhất trong cả nhóm, và là chỗ quyết định CAPA có D3 hay D5–D6 | Ảnh 04.7 |
 | **2.** Ghi **Sẽ làm gì** — câu người nhận đọc | [Dễ] Viết như một việc, không phải như một mong muốn | Biện pháp không nói được "làm gì" thì không ai làm được nó | — |
 | **3.** Chọn **Người phụ trách**, **Đến hạn**, **Mức ưu tiên** | [Hỏng] Mỗi biện pháp là **một Hành động riêng** và phải chạy hết chu kỳ của nó tới giai đoạn **Chuẩn hoá** | Ghi biện pháp xong không có nghĩa là đã làm; nó chỉ mở một Hành động con | — |
 | **4.** Chọn **Công việc này diễn ra ở đâu** | [An toàn] Để trống thì biện pháp được ghi tại Đơn vị tổ chức **của Concern**; một sửa đổi thuộc nơi khác — kho, nhà cung cấp — có thể nêu đơn vị đó thay vào | Ghi nhầm đơn vị là giao việc cho người không thấy nó, hoặc cho người không có quyền ở đó | — |
 | **5.** Bấm nút **Thêm {loại}** | [Dễ] Nút mang đúng tên loại đã chọn (*Thêm khoanh vùng*, *Thêm biện pháp khắc phục*), nên đọc nút trước khi bấm là một lần kiểm tra | Bấm xong mới nhận ra chọn nhầm loại thì phải huỷ một Hành động con vừa mở | — |
+
+![Ảnh 04.7 — Hộp thoại Thêm một biện pháp (khoanh vùng)](images/screens/04-1-them-mot-bien-phap.png)
+
+***Ảnh 04.7.** Biện pháp ghi đủ **Sẽ làm gì**, **Chi tiết**, **Người phụ trách**, **Đến hạn**, **Mức ưu tiên** và **Công việc này diễn ra ở đâu**; đây là biện pháp khoanh vùng của một Concern.*
 
 ---
 
@@ -201,18 +213,18 @@ CAPA 8D đóng khi nào. Điều kiện đóng CAPA có bốn phần — xem c�
 | **Vật tư, dữ liệu có trước** | Đã có ít nhất một CAPA được mở trên một Concern. |
 | **Công cụ** | Ô lọc **Đơn vị tổ chức**, **Trạng thái**, và ô **Kiểm tra quá hạn**; mỗi dòng đọc **Nhóm**, số người trong nhóm, và ngày bước kiểm tra đến hạn. |
 | **An toàn** | Cột **Kiểm tra quá hạn** là việc gấp nhất trong cả danh sách: quá hạn nghĩa là đã qua thời hạn chứng minh vấn đề không quay lại, và không ai còn đang kiểm tra. |
-| **Thiết bị đào tạo** | Ảnh 04.5 |
+| **Thiết bị đào tạo** | Ảnh 04.8 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 04.8 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Bật **Kiểm tra quá hạn** trước, rồi mới lọc **Đơn vị tổ chức** và **Trạng thái** | [Hỏng] **Kiểm tra quá hạn** là việc gấp nhất — bật nó trước khi thu hẹp đơn vị | Lọc theo đơn vị trước là bỏ sót đúng những CAPA đã trễ hạn ở đơn vị khác | Ảnh 04.5 |
-| **2.** Đọc từng dòng: **Nhóm**, số người trong nhóm, và ngày kiểm tra | [Dễ] Dòng nói **đến hạn vào** ngày nào, hoặc **đã đến hạn vào** ngày nào | Một CAPA không có ngày là một CAPA chưa có mốc để trễ | Ảnh 04.5 |
+| **1.** Bật **Kiểm tra quá hạn** trước, rồi mới lọc **Đơn vị tổ chức** và **Trạng thái** | [Hỏng] **Kiểm tra quá hạn** là việc gấp nhất — bật nó trước khi thu hẹp đơn vị | Lọc theo đơn vị trước là bỏ sót đúng những CAPA đã trễ hạn ở đơn vị khác | Ảnh 04.8 |
+| **2.** Đọc từng dòng: **Nhóm**, số người trong nhóm, và ngày kiểm tra | [Dễ] Dòng nói **đến hạn vào** ngày nào, hoặc **đã đến hạn vào** ngày nào | Một CAPA không có ngày là một CAPA chưa có mốc để trễ | Ảnh 04.8 |
 | **3.** Bấm một dòng để mở **Chi tiết CAPA** (phiếu 04.10) | [Dễ] Danh sách là để đọc và chọn việc gấp; mọi thao tác nằm ở màn hình chi tiết | Người mới tìm nút ghi kết quả trên danh sách và kết luận không có quyền | — |
 
-![Ảnh 04.5 — Màn hình CAPA](images/screens/04-1-capa.png)
+![Ảnh 04.8 — Màn hình CAPA](images/screens/04-1-capa.png)
 
-***Ảnh 04.5.** Mọi cuộc điều tra trên Nền tảng và lần kiểm tra hiệu quả mà mỗi cuộc đang chờ.*
+***Ảnh 04.8.** Mọi cuộc điều tra trên Nền tảng và lần kiểm tra hiệu quả mà mỗi cuộc đang chờ.*
 
 ---
 
@@ -225,19 +237,19 @@ CAPA 8D đóng khi nào. Điều kiện đóng CAPA có bốn phần — xem c�
 | **Vật tư, dữ liệu có trước** | Concern đang mở và **chưa có CAPA** nào; nhóm điều tra đã có hồ sơ Nhân viên. |
 | **Công cụ** | Ô **Vấn đề (không bắt buộc)**, khối **Nhóm**, **Trưởng nhóm (không bắt buộc)**, **Thêm thành viên nhóm (không bắt buộc)**; nút **Mở CAPA**. |
 | **An toàn** | **Trưởng nhóm không được tự ghi bước kiểm tra hiệu quả của CAPA mình dẫn** — máy chủ từ chối. Cần người thứ hai xác nhận bản sửa có giữ được, nên chọn trưởng nhóm là chọn luôn ai **không** kiểm tra được. |
-| **Thiết bị đào tạo** | Ảnh 04.6 |
+| **Thiết bị đào tạo** | Ảnh 04.9 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 04.9 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
 | **1.** Trên Chi tiết Hành động, bấm **Mở một CAPA…** | [Hỏng] Nút mở CAPA chỉ chạy khi Concern **chưa có CAPA**; Concern đã có thì màn hình dẫn thẳng sang cuộc điều tra đó | Mỗi Concern chỉ có một cuộc điều tra — mở lần hai là mở một cuộc điều tra không bao giờ đóng | — |
-| **2.** Ghi **Vấn đề (không bắt buộc)** — mô tả vấn đề bằng lời của cả nhóm | [Dễ] Để trống vẫn mở được: màn hình điền sẵn nội dung của Concern | Mô tả là thứ cả nhóm đọc thay cho nhau, nên viết một lần cho đúng | Ảnh 04.6 |
-| **3.** Chọn **Nhóm** và **Trưởng nhóm (không bắt buộc)** từ Danh bạ Nhân viên | [An toàn] Trưởng nhóm **không được** ghi bước kiểm tra hiệu quả của CAPA mình dẫn | Đây là luật của máy chủ, không phải khuyến nghị: cần người thứ hai xác nhận bản sửa có giữ được | Ảnh 04.6 |
+| **2.** Ghi **Vấn đề (không bắt buộc)** — mô tả vấn đề bằng lời của cả nhóm | [Dễ] Để trống vẫn mở được: màn hình điền sẵn nội dung của Concern | Mô tả là thứ cả nhóm đọc thay cho nhau, nên viết một lần cho đúng | Ảnh 04.9 |
+| **3.** Chọn **Nhóm** và **Trưởng nhóm (không bắt buộc)** từ Danh bạ Nhân viên | [An toàn] Trưởng nhóm **không được** ghi bước kiểm tra hiệu quả của CAPA mình dẫn | Đây là luật của máy chủ, không phải khuyến nghị: cần người thứ hai xác nhận bản sửa có giữ được | Ảnh 04.9 |
 | **4.** Bấm **Mở CAPA** | [Dễ] Mở CAPA **không** đóng Concern — Concern vẫn chạy tiếp và phải đóng **trước** khi bước kiểm tra đến hạn | Truyền đạt nhầm điều này là dạy rằng điều tra thay thế được việc sửa | — |
 
-![Ảnh 04.6 — Hộp thoại Mở một CAPA](images/screens/04-2-mo-mot-capa.png)
+![Ảnh 04.9 — Hộp thoại Mở một CAPA](images/screens/04-2-mo-mot-capa.png)
 
-***Ảnh 04.6.** CAPA mở từ chính Hành động, nên vấn đề và người liên quan đi theo; hộp thoại chỉ hỏi ai tham gia.*
+***Ảnh 04.9.** CAPA mở từ chính Hành động, nên vấn đề và người liên quan đi theo; hộp thoại chỉ hỏi ai tham gia.*
 
 ---
 
@@ -250,22 +262,22 @@ CAPA 8D đóng khi nào. Điều kiện đóng CAPA có bốn phần — xem c�
 | **Vật tư, dữ liệu có trước** | CAPA đã mở (phiếu 04.9); danh mục hạng mục 6M có sẵn trong màn hình. |
 | **Công cụ** | Khối **Nhóm**, **Vấn đề**; biểu đồ xương cá với **Nguyên nhân ứng viên**; các nút **Ghi một nguyên nhân**, **Kết luận**, **Đây là nguyên nhân gốc**, **Đổi kết luận**, **Bỏ đánh dấu nguyên nhân gốc**, **Thêm một Why**, **Chuyển lên trước trong chuỗi**, **Chuyển ra sau trong chuỗi**, **Ghi bước kiểm tra hiệu quả**, **Báo cáo**. |
 | **An toàn** | Ứng viên **không** phải nguyên nhân gốc. Ghi thẳng "nguyên nhân gốc" ở bước ghi ứng viên là bỏ qua bước có bằng chứng, và cả cuộc điều tra thành một câu chuyện kể. |
-| **Thiết bị đào tạo** | Ảnh 04.7 |
+| **Thiết bị đào tạo** | Ảnh 04.10 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 04.10 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Đọc **Nhóm** và **Vấn đề** trước khi ghi bất cứ gì | [Dễ] Vấn đề ở đây là câu cả nhóm thống nhất, không phải nội dung của Concern chép lại | Điều tra một câu hỏi khác với vấn đề đã nêu là điều tra sai chỗ | Ảnh 04.7 |
-| **2.** Ghi **nguyên nhân ứng viên** dưới hạng mục 6M, kèm **Bằng chứng** | [An toàn] Ứng viên **không** phải nguyên nhân gốc — nó chỉ là cái nhóm nghi ngờ, và phải có bằng chứng | Ghi thẳng "nguyên nhân gốc" ở bước này làm hỏng cả cuộc điều tra | Ảnh 04.7 |
+| **1.** Đọc **Nhóm** và **Vấn đề** trước khi ghi bất cứ gì | [Dễ] Vấn đề ở đây là câu cả nhóm thống nhất, không phải nội dung của Concern chép lại | Điều tra một câu hỏi khác với vấn đề đã nêu là điều tra sai chỗ | Ảnh 04.10 |
+| **2.** Ghi **nguyên nhân ứng viên** dưới hạng mục 6M, kèm **Bằng chứng** | [An toàn] Ứng viên **không** phải nguyên nhân gốc — nó chỉ là cái nhóm nghi ngờ, và phải có bằng chứng | Ghi thẳng "nguyên nhân gốc" ở bước này làm hỏng cả cuộc điều tra | Ảnh 04.10 |
 | **3.** Khi có bằng chứng: **Kết luận** → **Đây là nguyên nhân gốc** | [Dễ] Đổi ý được: **Đổi kết luận** và **Bỏ đánh dấu nguyên nhân gốc** | Một điều tra tốt đổi kết luận khi bằng chứng đổi — không phải một lần phán rồi giữ | — |
 | **4.** Chạy **hai** chuỗi Why: *vì sao vấn đề xảy ra* và *vì sao nó không được phát hiện* (phiếu 04.11) | [An toàn] Thiếu chuỗi thứ hai là thiếu câu trả lời "tại sao QC không bắt được" | Một bản sửa không trả lời được vì sao lỗi lọt qua thì lỗi sau lọt qua y như vậy | — |
 | **5.** Đọc **Những gì Concern đã làm**: D3 khoanh vùng, D5–D6 khắc phục, D7 phòng ngừa | [Hỏng] Đây là nơi **đọc**, không phải nơi **ghi lại** — chúng được ghi trên Concern | Ghi trùng ở đây tạo hai bộ biện pháp khác nhau, và báo cáo 8D in ra cả hai | — |
 | **6.** Khi Concern đã đóng: **Ghi bước kiểm tra hiệu quả** (phiếu 04.13) | [Hỏng] Người ghi **không được là trưởng nhóm**, và phải có thẩm quyền Chất lượng ở Đơn vị tổ chức | Cần người thứ hai, sau một thời gian — bước kiểm tra mà trưởng nhóm tự ghi là tự chấm bài | — |
 | **7.** Bấm **Báo cáo** để đọc hoặc in bản 8D (phiếu 04.14) | [Dễ] Báo cáo mở ngoài khung điều hướng, nên in là ra đúng tờ báo cáo | In từ màn hình điều tra là in cả thanh điều hướng — sửa bằng cách mở đúng đường dẫn | — |
 
-![Ảnh 04.7 — Màn hình Chi tiết CAPA](images/screens/04-2-chi-tiet-capa.png)
+![Ảnh 04.10 — Màn hình Chi tiết CAPA](images/screens/04-2-chi-tiet-capa.png)
 
-***Ảnh 04.7.** Biểu đồ xương cá với bốn nhóm nguyên nhân: mỗi nhánh là một chỗ ghi nguyên nhân ứng viên, và mỗi nguyên nhân phải có phán quyết.*
+***Ảnh 04.10.** Biểu đồ xương cá với bốn nhóm nguyên nhân: mỗi nhánh là một chỗ ghi nguyên nhân ứng viên, và mỗi nguyên nhân phải có phán quyết.*
 
 > **Điều kiện đóng CAPA — nói đúng câu này khi đào tạo.** CAPA chỉ đóng khi **cả
 > hai** chuỗi đều có nguyên nhân gốc đã xác nhận, **Concern đã đóng**, **và** một
@@ -286,15 +298,19 @@ CAPA 8D đóng khi nào. Điều kiện đóng CAPA có bốn phần — xem c�
 | **Vật tư, dữ liệu có trước** | Đã có ít nhất một nguyên nhân **đã xác nhận** để bắt đầu chuỗi từ đó. |
 | **Công cụ** | Nút **Thêm một Why**; ô **Why** và **Bằng chứng**; **Sửa Why {số}** / **Xoá Why {số}?** trên từng dòng; **Chuyển lên trước trong chuỗi** / **Chuyển ra sau trong chuỗi**. |
 | **An toàn** | Có **hai** chuỗi — *vì sao xảy ra* và *vì sao không phát hiện*. Thêm Why vào nhầm chuỗi làm cuộc điều tra trả lời một câu hỏi khác, và chuỗi kia không bao giờ kết thúc. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 04.11 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 04.11 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
 | **1.** Bấm **Thêm một Why** trong **đúng chuỗi** | [An toàn] Hai chuỗi: *vì sao vấn đề xảy ra* và *vì sao nó không được phát hiện* | Chuỗi thứ hai là chuỗi chứng minh hệ kiểm soát có lỗ — thiếu nó thì vấn đề quay lại | — |
-| **2.** Ghi câu **Why** — mỗi câu phải trả lời được "vì sao" cho câu trên nó | [Dễ] Nói sao cho người sau theo được, không phải cho gọn | Một chuỗi Why mà mỗi câu không nối vào câu trước là một danh sách, không phải một lập luận | — |
+| **2.** Ghi câu **Why** — mỗi câu phải trả lời được "vì sao" cho câu trên nó | [Dễ] Nói sao cho người sau theo được, không phải cho gọn | Một chuỗi Why mà mỗi câu không nối vào câu trước là một danh sách, không phải một lập luận | Ảnh 04.11 |
 | **3.** Ghi **Bằng chứng** cho câu đó | [Hỏng] Why không có bằng chứng là một phỏng đoán được xếp thứ tự | Điều tra dựa trên phỏng đoán cho ra bản sửa đúng cho một nguyên nhân không tồn tại | — |
 | **4.** Sắp lại: **Chuyển lên trước trong chuỗi** / **Chuyển ra sau trong chuỗi**; bỏ một Why bằng **Xoá Why {số}?** | [Dễ] Bỏ một Why thì các Why sau nó dồn lên một bậc, phần còn lại không bị đụng | Sửa thứ tự là việc bình thường của một cuộc điều tra đang nghĩ, không phải dấu hiệu làm sai | — |
+
+![Ảnh 04.11 — Hộp thoại Thêm một Why](images/screens/04-2-chuoi-why.png)
+
+***Ảnh 04.11.** Một **Why** là một bước lập luận: câu Why phải trả lời được "vì sao" cho câu trên nó, và phải kèm **Bằng chứng**.*
 
 ---
 
@@ -307,15 +323,19 @@ CAPA 8D đóng khi nào. Điều kiện đóng CAPA có bốn phần — xem c�
 | **Vật tư, dữ liệu có trước** | CAPA đang chạy; hạng mục 6M có sẵn (Con người, Máy, Vật liệu, Phương pháp, Đo lường, Môi trường). |
 | **Công cụ** | **Ghi một nguyên nhân**, **Nguyên nhân ứng viên**, **Bằng chứng**, **Ghi kết luận**, **Đây là nguyên nhân gốc**, **Đổi kết luận**, **Bỏ đánh dấu nguyên nhân gốc**, **Bắt đầu chuỗi**, **Sửa nguyên nhân**, **Xoá nguyên nhân này?**. |
 | **An toàn** | Chỉ **một** nguyên nhân mỗi chuỗi được là nguyên nhân gốc. Bỏ đánh dấu là bỏ **vĩnh viễn** khỏi nhánh, và một chuỗi bắt đầu từ nó vẫn giữ Why đầu tiên. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 04.12 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 04.12 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** **Ghi một nguyên nhân** dưới một **hạng mục 6M** | [Hỏng] Hạng mục là cái làm báo cáo 8D đọc được — đừng dồn hết vào "Con người" | Một xương cá chỉ có nhánh Con người là dấu hiệu cuộc điều tra dừng ở chỗ dễ nhất | — |
+| **1.** **Ghi một nguyên nhân** dưới một **hạng mục 6M** | [Hỏng] Hạng mục là cái làm báo cáo 8D đọc được — đừng dồn hết vào "Con người" | Một xương cá chỉ có nhánh Con người là dấu hiệu cuộc điều tra dừng ở chỗ dễ nhất | Ảnh 04.12 |
 | **2.** Ghi **Bằng chứng** cho nguyên nhân đó | [An toàn] Ứng viên không có bằng chứng thì **không kết luận được** | Nút kết luận chỉ mở khi có bằng chứng — đó là máy chủ giữ luật, không phải người dùng | — |
 | **3.** **Ghi kết luận** → **Đây là nguyên nhân gốc** khi bằng chứng đã đủ | [Dễ] Một nguyên nhân đã xác nhận thì **Bắt đầu chuỗi** được từ nó | Đây là sợi dây nối xương cá với chuỗi Why: không có nó thì hai nửa điều tra rời nhau | — |
 | **4.** Đổi ý: **Đổi kết luận**, hoặc **Bỏ đánh dấu nguyên nhân gốc** | [Hỏng] Bỏ đánh dấu là bỏ **vĩnh viễn** khỏi nhánh, và một chuỗi bắt đầu từ nó vẫn giữ Why đầu tiên | Đây là thao tác có hậu quả không lùi được — nói trước khi bấm | — |
+
+![Ảnh 04.12 — Hộp thoại Ghi một nguyên nhân](images/screens/04-1-nguyen-nhan-va-ket-luan.png)
+
+***Ảnh 04.12.** Nguyên nhân ứng viên ghi dưới một hạng mục 6M — ở đây là **Con người** — kèm bằng chứng, rồi mới kết luận.*
 
 ---
 
@@ -328,15 +348,19 @@ CAPA 8D đóng khi nào. Điều kiện đóng CAPA có bốn phần — xem c�
 | **Vật tư, dữ liệu có trước** | **Concern đã đóng**; cả hai chuỗi đã có nguyên nhân gốc đã xác nhận. |
 | **Công cụ** | Khối **Người khác phải kiểm tra việc này** / **Không phải phần bạn được quyết**; ô **Bước kiểm tra tìm thấy gì**; cặp chọn giữ được / không giữ được. |
 | **An toàn** | Trả lời "không giữ được" **không phải thất bại của bạn** — đó là kết quả đúng và cần thiết, và nó mở lại Concern ở chu kỳ tiếp theo. Ghi "giữ được" khi chưa kiểm tra là làm hỏng đúng thứ bước này tồn tại để bảo vệ. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 04.13 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 04.13 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
 | **1.** Chờ **Concern đóng** | [Hỏng] Bước kiểm tra đến hạn **{n} ngày sau khi Concern đóng**; trước đó chưa có mốc, và hộp thoại nói đúng điều đó | Kiểm tra trước khi Concern đóng là kiểm tra khi bản sửa chưa chạy đủ lâu | — |
 | **2.** Đọc câu cảnh báo của màn hình trước khi ghi | [An toàn] Nếu bạn là trưởng nhóm, màn hình nói **Người khác phải kiểm tra việc này** và nói vì sao | Bước kiểm tra mà trưởng nhóm tự ghi là cây nhà lá vườn — cần người thứ hai | — |
-| **3.** Ghi **Bước kiểm tra tìm thấy gì** — bằng chứng cho kết luận | [Dễ] Đây là thứ người đọc sau cân nhắc được, không phải một câu kết | Một bước kiểm tra không có bằng chứng là một ý kiến có ngày tháng | — |
+| **3.** Ghi **Bước kiểm tra tìm thấy gì** — bằng chứng cho kết luận | [Dễ] Đây là thứ người đọc sau cân nhắc được, không phải một câu kết | Một bước kiểm tra không có bằng chứng là một ý kiến có ngày tháng | Ảnh 04.13 |
 | **4.** Trả lời giữ được hay không | [An toàn] **Không giữ được** thì Concern **mở lại ở chu kỳ tiếp theo** — công việc nằm trên màn hình của chính Concern đó | Ghi đúng để Concern mở lại là cách duy nhất vấn đề quay lại được xử lý | — |
+
+![Ảnh 04.13 — Hộp thoại Ghi bước kiểm tra hiệu quả](images/screens/04-3-kiem-tra-hieu-qua.png)
+
+***Ảnh 04.13.** Bước kiểm tra hiệu quả: chọn giữ được hay không giữ được, rồi ghi **Bước kiểm tra tìm thấy gì** làm bằng chứng cho kết luận.*
 
 ---
 
@@ -349,18 +373,18 @@ CAPA 8D đóng khi nào. Điều kiện đóng CAPA có bốn phần — xem c�
 | **Vật tư, dữ liệu có trước** | CAPA đã mở; càng nhiều phần đã ghi thì báo cáo càng đầy. |
 | **Công cụ** | Nút **Báo cáo** trên Chi tiết CAPA; trình duyệt tự in bằng **Ctrl+P** — không có nút in riêng. |
 | **An toàn** | Báo cáo mở **ngoài khung điều hướng**. In từ màn hình điều tra là in cả thanh điều hướng, và tờ 8D mất phần đầu trang. |
-| **Thiết bị đào tạo** | Ảnh 04.8 |
+| **Thiết bị đào tạo** | Ảnh 04.14 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 04.14 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Bấm **Báo cáo** trên Chi tiết CAPA | [Dễ] Màn hình mở ngoài khung điều hướng, nên nó in ra đúng tờ báo cáo | Đây là đường dẫn duy nhất in được một tờ 8D sạch | Ảnh 04.8 |
-| **2.** Đọc lại báo cáo trước khi in: mọi phần đã ghi đều hiện ở đây | [Hỏng] Phần nào còn trống trên báo cáo là phần chưa ghi — không phải lỗi in | Báo cáo là bản kiểm tra cuối cùng của cả cuộc điều tra, miễn phí | Ảnh 04.8 |
+| **1.** Bấm **Báo cáo** trên Chi tiết CAPA | [Dễ] Màn hình mở ngoài khung điều hướng, nên nó in ra đúng tờ báo cáo | Đây là đường dẫn duy nhất in được một tờ 8D sạch | Ảnh 04.14 |
+| **2.** Đọc lại báo cáo trước khi in: mọi phần đã ghi đều hiện ở đây | [Hỏng] Phần nào còn trống trên báo cáo là phần chưa ghi — không phải lỗi in | Báo cáo là bản kiểm tra cuối cùng của cả cuộc điều tra, miễn phí | Ảnh 04.14 |
 | **3.** In bằng **Ctrl+P** của trình duyệt | [Dễ] **Không có nút in riêng** — tìm nút đó là tìm một thứ không tồn tại | Người mới mất vài phút tìm nút in trên một màn hình chỉ để đọc | — |
 
-![Ảnh 04.8 — Màn hình Báo cáo CAPA](images/screens/04-7-bao-cao-capa.png)
+![Ảnh 04.14 — Màn hình Báo cáo CAPA](images/screens/04-7-bao-cao-capa.png)
 
-***Ảnh 04.8.** Cùng một cuộc điều tra, in ra thành báo cáo 8D — mở ngoài khung điều hướng nên in là ra đúng tờ báo cáo.*
+***Ảnh 04.14.** Cùng một cuộc điều tra, in ra thành báo cáo 8D — mở ngoài khung điều hướng nên in là ra đúng tờ báo cáo.*
 
 ---
 

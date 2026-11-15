@@ -169,15 +169,19 @@ soát hàng. Khiếu nại và NCR không tự sinh Sản phẩm không phù h�
 | **Vật tư, dữ liệu có trước** | Bản ghi đã được ghi nhận; với **mở lại**, bản ghi đã đóng; với **nhượng bộ**, đã có điều kiện chấp nhận. |
 | **Công cụ** | Hộp thoại **Cho phép nhượng bộ** (dùng nút **Cấp nhượng bộ**), **Hạ mức độ** (**Hạ mức độ xuống**), **Mở lại** (**Mở lại Sản phẩm không phù hợp này**), **Huỷ vì ghi nhầm**. |
 | **An toàn** | Đây là bốn quyết định, không phải bốn thao tác ghi sổ. **Nhượng bộ** là chấp nhận bán hàng lỗi; **huỷ** làm một bản ghi rời khỏi thống kê nhưng vẫn nằm trong sổ. Cả bốn đều có dấu tên người quyết. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 05.7 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 05.6 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** **Cho phép nhượng bộ**: mở hộp thoại, ghi điều kiện, bấm **Cấp nhượng bộ** | [An toàn] Điều kiện bạn ghi là thứ khách hàng và lần kiểm tra sau này đọc — đó là toàn bộ giá trị của một nhượng bộ | Nhượng bộ không có điều kiện là bán hàng lỗi mà không ai biết vì sao nó được chấp nhận | — |
+| **1.** **Cho phép nhượng bộ**: mở hộp thoại, ghi điều kiện, bấm **Cấp nhượng bộ** | [An toàn] Điều kiện bạn ghi là thứ khách hàng và lần kiểm tra sau này đọc — đó là toàn bộ giá trị của một nhượng bộ | Nhượng bộ không có điều kiện là bán hàng lỗi mà không ai biết vì sao nó được chấp nhận | Ảnh 05.7 |
 | **2.** **Hạ mức độ**: bấm **Hạ mức độ**, chọn mức mới, xác nhận | [An toàn] Hạ mức độ là **quyết định về sản phẩm**, nên nó cần thẩm quyền Chất lượng, không chỉ quyền ghi bản ghi | Hạ mức độ làm con số chất lượng đẹp lên — đó chính là lý do nó là một quyết định | — |
 | **3.** **Mở lại**: bấm **Mở lại**, xác nhận **Mở lại Sản phẩm không phù hợp này** | [Hỏng] Số lượng và phương án đã ghi **giữ nguyên**; bản ghi về trạng thái đã có phương án xử lý, và mốc thời gian đóng bị bỏ theo | Mở lại không phải làm lại từ đầu — nó chỉ bỏ mốc đóng | — |
 | **4.** **Huỷ vì ghi nhầm**: bấm **Huỷ vì ghi nhầm** | [An toàn] Bản ghi **vẫn nằm trong sổ** ở trạng thái đã huỷ, có lý do — huỷ không phải xoá | Đây là điều làm sổ chất lượng đáng tin: không có đường nào xoá một bản ghi đã ghi | — |
+
+![Ảnh 05.7 — Hộp thoại Cho phép nhượng bộ](images/screens/05-1-nhuong-bo.png)
+
+***Ảnh 05.7.** Nhượng bộ ghi **Số lượng được chấp nhận nguyên trạng**, **Số tham chiếu** và **Ghi chú**; tên người cấp nằm lại trên bản ghi **DEMO-NC-1**.*
 
 ---
 
@@ -190,15 +194,19 @@ soát hàng. Khiếu nại và NCR không tự sinh Sản phẩm không phù h�
 | **Vật tư, dữ liệu có trước** | Bản ghi không phù hợp đã ghi nhận; nếu **liên kết** thì Concern đích đã tồn tại. |
 | **Công cụ** | Hai lối **Nêu một Concern** và **Liên kết với một Concern** trong khối **Có thể làm gì**. |
 | **An toàn** | Concern được nêu **rơi vào Đơn vị tổ chức của bản ghi không phù hợp**, không phải đơn vị của bạn — và bạn không chọn được đơn vị khác trong hộp thoại này. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 05.8 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 05.7 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
 | **1.** Tìm trong **Nhật ký hành động** xem vấn đề này đã có Concern chưa | [Hỏng] Nêu trùng là điều làm hỏng thống kê hành động | Một vấn đề lặp lại vẫn là **một** Concern; nêu lần hai làm báo cáo đếm hai vấn đề | — |
 | **2.** Đã có Concern: bấm **Liên kết với một Concern** và chọn Concern đó | [An toàn] **Luôn dùng cái này khi đã có Concern** — nó gắn bản ghi vào cuộc điều tra đang chạy | Nêu mới thay vì liên kết là mở một cuộc điều tra thứ hai cho cùng một nguyên nhân | — |
-| **3.** Chưa có: bấm **Nêu một Concern** và ghi **Nội dung**, **Mô tả** | [An toàn] Concern mới **rơi vào Đơn vị tổ chức của bản ghi**, nên vấn đề được giải quyết ở nơi nó xảy ra | Chọn tay đơn vị là giao vấn đề cho người không nhìn thấy hàng lỗi | — |
+| **3.** Chưa có: bấm **Nêu một Concern** và ghi **Nội dung**, **Mô tả** | [An toàn] Concern mới **rơi vào Đơn vị tổ chức của bản ghi**, nên vấn đề được giải quyết ở nơi nó xảy ra | Chọn tay đơn vị là giao vấn đề cho người không nhìn thấy hàng lỗi | Ảnh 05.8 |
 | **4.** Đọc lại dòng **được nêu từ bản ghi này** trên Chi tiết Sản phẩm không phù hợp | [Dễ] Dòng đó là dấu duy nhất nối sổ chất lượng với nhật ký hành động | Không có dòng đó thì hai sổ rời nhau, và người sau không biết vấn đề đã được nêu | — |
+
+![Ảnh 05.8 — Hộp thoại Nêu một Concern](images/screens/05-3-neu-mot-concern.png)
+
+***Ảnh 05.8.** Concern nêu từ bản ghi này: **Vấn đề cần giải quyết là gì?**, điều đã biết, và **Mức ưu tiên** — Concern được đọc trong Nhật ký hành động.*
 
 ---
 
@@ -211,17 +219,17 @@ soát hàng. Khiếu nại và NCR không tự sinh Sản phẩm không phù h�
 | **Vật tư, dữ liệu có trước** | Mã và tên khách hàng do bộ phận kinh doanh cấp. |
 | **Công cụ** | Nút **Thêm Khách hàng**, **Điều chỉnh**; ô **Mã**, **Tên**. |
 | **An toàn** | Danh sách dùng chung cho **mọi** Nhà máy. Một khách hàng khai hai lần là khiếu nại của họ bị chia làm hai, và không ai thấy được toàn bộ. |
-| **Thiết bị đào tạo** | Ảnh 05.7 |
+| **Thiết bị đào tạo** | Ảnh 05.9 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 05.8 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Bấm **Thêm Khách hàng**: **Mã**, **Tên** | [Hỏng] Tìm trong danh sách trước — khách hàng khai hai lần làm khiếu nại bị chia đôi | Mọi báo cáo theo khách hàng đếm trên danh mục này, nên trùng ở đây là sai ở mọi báo cáo | Ảnh 05.7 |
-| **2.** Sửa: **Điều chỉnh** trên dòng | [Dễ] Thêm và sửa đều là hộp thoại trên danh sách, để bản sửa nằm trong ngữ cảnh nó thuộc về | Danh mục dùng chung cho mọi Nhà máy — sửa ở đây là sửa cho toàn Nền tảng | Ảnh 05.7 |
+| **1.** Bấm **Thêm Khách hàng**: **Mã**, **Tên** | [Hỏng] Tìm trong danh sách trước — khách hàng khai hai lần làm khiếu nại bị chia đôi | Mọi báo cáo theo khách hàng đếm trên danh mục này, nên trùng ở đây là sai ở mọi báo cáo | Ảnh 05.9 |
+| **2.** Sửa: **Điều chỉnh** trên dòng | [Dễ] Thêm và sửa đều là hộp thoại trên danh sách, để bản sửa nằm trong ngữ cảnh nó thuộc về | Danh mục dùng chung cho mọi Nhà máy — sửa ở đây là sửa cho toàn Nền tảng | Ảnh 05.9 |
 
-![Ảnh 05.7 — Màn hình Khách hàng](images/screens/05-1-khach-hang.png)
+![Ảnh 05.9 — Màn hình Khách hàng](images/screens/05-1-khach-hang.png)
 
-***Ảnh 05.7.** Danh sách Khách hàng: thêm và sửa là hộp thoại trên danh sách, để bản sửa nằm trong ngữ cảnh nó thuộc về.*
+***Ảnh 05.9.** Danh sách Khách hàng: thêm và sửa là hộp thoại trên danh sách, để bản sửa nằm trong ngữ cảnh nó thuộc về.*
 
 ---
 
@@ -234,19 +242,19 @@ soát hàng. Khiếu nại và NCR không tự sinh Sản phẩm không phù h�
 | **Vật tư, dữ liệu có trước** | Khách hàng (phiếu 05.8), Sản phẩm (phiếu 05.1) và Mã lỗi (phiếu 05.2) đã có trong danh mục. |
 | **Công cụ** | Nút **Ghi nhận khiếu nại**; ô **Khách hàng**, **Sản phẩm**, **Mã lỗi (không bắt buộc)**, **Số lượng (không bắt buộc)**, **Loại** với mục **Yêu cầu bảo hành**, **Ai trả lời khiếu nại này**, **Khách hàng đã nói gì**, **Hạn phản hồi (không bắt buộc)**. |
 | **An toàn** | Ô **Ai trả lời khiếu nại này** quyết định **ai thao tác được** trên khiếu nại đó. Để trống hoặc chọn nhầm là khiếu nại không ai trả lời, và khách không nhận được câu nào. |
-| **Thiết bị đào tạo** | Ảnh 05.8 |
+| **Thiết bị đào tạo** | Ảnh 05.10 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 05.9 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Bấm **Ghi nhận khiếu nại**: **Khách hàng**, **Sản phẩm**, **Mã lỗi (không bắt buộc)** | [Dễ] **Mã lỗi** để trống được — có mã thì báo cáo Pareto chất lượng đếm được khiếu nại này | Một khiếu nại không mã lỗi không hiện trong bất kỳ phân tích lỗi nào | Ảnh 05.8 |
-| **2.** Chọn **Loại** — khiếu nại thường hoặc **Yêu cầu bảo hành** | [Hỏng] **Yêu cầu bảo hành** là một loại riêng, không phải một ghi chú | Bảo hành và khiếu nại thường được đếm riêng, nên chọn sai loại là vào nhầm báo cáo | Ảnh 05.8 |
-| **3.** Chọn **Ai trả lời khiếu nại này** | [An toàn] Đây là trường hay bị bỏ qua nhất, và nó quyết định **ai thao tác được** trên khiếu nại | Bỏ trống là khiếu nại rơi vào không ai, và khách chờ một câu trả lời không bao giờ tới | Ảnh 05.8 |
-| **4.** Ghi **Khách hàng đã nói gì** — lời của khách, không phải bản dịch của bạn | [Dễ] Điều khách nói được mang theo sang Sản phẩm không phù hợp ghi nhận từ khiếu nại này | Viết lại theo cách hiểu của mình là mất đúng thứ khách đã nói | Ảnh 05.8 |
+| **1.** Bấm **Ghi nhận khiếu nại**: **Khách hàng**, **Sản phẩm**, **Mã lỗi (không bắt buộc)** | [Dễ] **Mã lỗi** để trống được — có mã thì báo cáo Pareto chất lượng đếm được khiếu nại này | Một khiếu nại không mã lỗi không hiện trong bất kỳ phân tích lỗi nào | Ảnh 05.10 |
+| **2.** Chọn **Loại** — khiếu nại thường hoặc **Yêu cầu bảo hành** | [Hỏng] **Yêu cầu bảo hành** là một loại riêng, không phải một ghi chú | Bảo hành và khiếu nại thường được đếm riêng, nên chọn sai loại là vào nhầm báo cáo | Ảnh 05.10 |
+| **3.** Chọn **Ai trả lời khiếu nại này** | [An toàn] Đây là trường hay bị bỏ qua nhất, và nó quyết định **ai thao tác được** trên khiếu nại | Bỏ trống là khiếu nại rơi vào không ai, và khách chờ một câu trả lời không bao giờ tới | Ảnh 05.10 |
+| **4.** Ghi **Khách hàng đã nói gì** — lời của khách, không phải bản dịch của bạn | [Dễ] Điều khách nói được mang theo sang Sản phẩm không phù hợp ghi nhận từ khiếu nại này | Viết lại theo cách hiểu của mình là mất đúng thứ khách đã nói | Ảnh 05.10 |
 
-![Ảnh 05.8 — Màn hình Khiếu nại khách hàng](images/screens/05-1-khieu-nai-khach-hang.png)
+![Ảnh 05.10 — Màn hình Khiếu nại khách hàng](images/screens/05-1-khieu-nai-khach-hang.png)
 
-***Ảnh 05.8.** Sổ khiếu nại: khách nào, về cái gì, và đã trả lời chưa.*
+***Ảnh 05.10.** Sổ khiếu nại: khách nào, về cái gì, và đã trả lời chưa.*
 
 ---
 
@@ -259,19 +267,19 @@ soát hàng. Khiếu nại và NCR không tự sinh Sản phẩm không phù h�
 | **Vật tư, dữ liệu có trước** | Khiếu nại đã ghi nhận (phiếu 05.9); sản phẩm bị khiếu nại đã có trong danh mục Sản phẩm. |
 | **Công cụ** | Khối **Sản phẩm mà khiếu nại này nói tới**; các lối **Ghi nhận không phù hợp**, **Liên kết một bản đã có**, **Phản hồi**, **Đóng bằng phản hồi**. |
 | **An toàn** | Khiếu nại **không tự** sinh Sản phẩm không phù hợp. Ghi khiếu nại rồi đóng là **hàng lỗi không được kiểm soát ở đâu cả** — màn hình cảnh báo điều này bằng đỏ. |
-| **Thiết bị đào tạo** | Ảnh 05.9 |
+| **Thiết bị đào tạo** | Ảnh 05.11 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 05.10 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Đọc **Sản phẩm mà khiếu nại này nói tới** và cảnh báo đỏ nếu có | [An toàn] Cảnh báo "chưa có gì kiểm soát sản phẩm" là việc phải làm ngay, không phải lỗi hiển thị | Chưa có gì kiểm soát hàng bị khiếu nại là một lỗ hổng thật: hàng vẫn đang chạy | Ảnh 05.9 |
-| **2.** Kiểm soát hàng: **Ghi nhận không phù hợp** (cần `QLT_NONCONFORMANCES_RECORD`), hoặc **Liên kết một bản đã có** cho cùng Sản phẩm | [An toàn] Ghi nhận **từ** khiếu nại thì bản ghi mang theo nội dung khách nói | Bản ghi kiểm soát hàng nằm ở màn hình **Sản phẩm không phù hợp**, không nằm ở khiếu nại | Ảnh 05.9 |
-| **3.** Trả lời khách: bấm **Phản hồi**, ghi điều đã nói lại | [Dễ] Phản hồi là câu **đã gửi**, không phải ghi chú nội bộ | Đây là bản ghi duy nhất chứng minh khách đã được trả lời | Ảnh 05.9 |
+| **1.** Đọc **Sản phẩm mà khiếu nại này nói tới** và cảnh báo đỏ nếu có | [An toàn] Cảnh báo "chưa có gì kiểm soát sản phẩm" là việc phải làm ngay, không phải lỗi hiển thị | Chưa có gì kiểm soát hàng bị khiếu nại là một lỗ hổng thật: hàng vẫn đang chạy | Ảnh 05.11 |
+| **2.** Kiểm soát hàng: **Ghi nhận không phù hợp** (cần `QLT_NONCONFORMANCES_RECORD`), hoặc **Liên kết một bản đã có** cho cùng Sản phẩm | [An toàn] Ghi nhận **từ** khiếu nại thì bản ghi mang theo nội dung khách nói | Bản ghi kiểm soát hàng nằm ở màn hình **Sản phẩm không phù hợp**, không nằm ở khiếu nại | Ảnh 05.11 |
+| **3.** Trả lời khách: bấm **Phản hồi**, ghi điều đã nói lại | [Dễ] Phản hồi là câu **đã gửi**, không phải ghi chú nội bộ | Đây là bản ghi duy nhất chứng minh khách đã được trả lời | Ảnh 05.11 |
 | **4.** Đóng khiếu nại: bấm **Đóng bằng phản hồi** | [Hỏng] **Phải có phản hồi trước khi đóng** — nút đóng dựa vào chính phản hồi đó | Không có phản hồi thì khách không biết đã được xử lý, và khiếu nại đóng mà không ai trả lời | — |
 
-![Ảnh 05.9 — Màn hình Chi tiết Khiếu nại](images/screens/05-2-chi-tiet-khieu-nai.png)
+![Ảnh 05.11 — Màn hình Chi tiết Khiếu nại](images/screens/05-2-chi-tiet-khieu-nai.png)
 
-***Ảnh 05.9.** Một khiếu nại gom phần khách nói, phần trả lời, và các lối **Phản hồi**, **Ghi nhận không phù hợp** và **Liên kết một bản đã có**.*
+***Ảnh 05.11.** Một khiếu nại gom phần khách nói, phần trả lời, và các lối **Phản hồi**, **Ghi nhận không phù hợp** và **Liên kết một bản đã có**.*
 
 ---
 
@@ -284,7 +292,7 @@ soát hàng. Khiếu nại và NCR không tự sinh Sản phẩm không phù h�
 | **Vật tư, dữ liệu có trước** | Đã có ít nhất một Khiếu nại hoặc một Sản phẩm không phù hợp, **và một ảnh trên màn hình của vấn đề đó**. |
 | **Công cụ** | Nút **Thêm** trên màn hình của từng vấn đề; **Chuyển lên trước**, **Chuyển ra sau**, **Bỏ khỏi màn hình**; **Chạy trình chiếu**, **Tạm dừng trình chiếu**, **Trang trước**, **Trang sau**; dòng đếm đầu trang. |
 | **An toàn** | **Một trang trình chiếu cần ảnh.** Vấn đề chưa có ảnh **sẽ không hiện** — dòng đầu trang đếm sẵn cho bạn "{n} đã chọn nhưng chưa có ảnh". Đọc con số đó trước khi hỏi vì sao màn hình trống. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 05.12 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 05.11 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
@@ -293,7 +301,11 @@ soát hàng. Khiếu nại và NCR không tự sinh Sản phẩm không phù h�
 | **2.** Chọn vấn đề đó cho buổi trình chiếu | [Dễ] Chọn được từ danh sách hoặc từ màn hình của chính vấn đề | Hai lối vào cùng một việc, nên chọn ở đâu cũng được | — |
 | **3.** Sắp thứ tự: **Chuyển lên trước** / **Chuyển ra sau** | [Dễ] Thứ tự là thứ buổi trình chiếu chạy, nên sắp theo câu chuyện bạn muốn kể | Một buổi trình chiếu không có thứ tự là một chồng ảnh | — |
 | **4.** Đọc dòng đếm đầu trang: "{n} đã chọn nhưng chưa có ảnh" | [Hỏng] Con số này là câu trả lời cho "sao trình chiếu trống" | Kiểm tra ở đây rẻ hơn nhiều so với tìm lỗi trong lúc đang họp giao ban | — |
-| **5.** Chạy: **Chạy trình chiếu**, rồi **Tạm dừng trình chiếu**, **Trang trước** / **Trang sau** | [Dễ] **Bỏ khỏi màn hình** gỡ một vấn đề mà không đụng tới bản ghi của nó | Gỡ khỏi trình chiếu không phải xoá — bản ghi vẫn nguyên trong sổ | — |
+| **5.** Chạy: **Chạy trình chiếu**, rồi **Tạm dừng trình chiếu**, **Trang trước** / **Trang sau** | [Dễ] **Bỏ khỏi màn hình** gỡ một vấn đề mà không đụng tới bản ghi của nó | Gỡ khỏi trình chiếu không phải xoá — bản ghi vẫn nguyên trong sổ | Ảnh 05.12 |
+
+![Ảnh 05.12 — Màn hình Trình chiếu chất lượng](images/screens/05-5-trinh-chieu.png)
+
+***Ảnh 05.12.** Buổi trình chiếu chạy từng ảnh một: **Chạy trình chiếu**, **Tạm dừng trình chiếu** và **Trang trước** / **Trang sau** ngay trên màn hình.*
 
 ---
 
@@ -306,17 +318,17 @@ soát hàng. Khiếu nại và NCR không tự sinh Sản phẩm không phù h�
 | **Vật tư, dữ liệu có trước** | Mã và tên nhà cung cấp do bộ phận mua hàng cấp. |
 | **Công cụ** | Nút **Thêm Nhà cung cấp**, **Điều chỉnh**; ô **Mã**, **Tên**. |
 | **An toàn** | Danh sách dùng chung cho mọi Nhà máy. Một nhà cung cấp khai hai lần làm NCR của họ bị chia đôi, và số tiền thu hồi được không cộng lại được. |
-| **Thiết bị đào tạo** | Ảnh 05.10 |
+| **Thiết bị đào tạo** | Ảnh 05.13 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 05.12 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Bấm **Thêm Nhà cung cấp**: **Mã**, **Tên** | [Hỏng] Khai một lần, dùng ở mọi nơi — trùng mã làm NCR và số tiền thu hồi bị chia đôi | Số tiền đòi lại từ nhà cung cấp là con số quản lý đọc, và nó cộng trên danh mục này | Ảnh 05.10 |
-| **2.** Sửa: **Điều chỉnh** | [Dễ] Cùng hình thức với Khách hàng: danh sách, và hộp thoại thêm/sửa | Người đã biết màn hình Khách hàng thì dùng được màn hình này ngay | Ảnh 05.10 |
+| **1.** Bấm **Thêm Nhà cung cấp**: **Mã**, **Tên** | [Hỏng] Khai một lần, dùng ở mọi nơi — trùng mã làm NCR và số tiền thu hồi bị chia đôi | Số tiền đòi lại từ nhà cung cấp là con số quản lý đọc, và nó cộng trên danh mục này | Ảnh 05.13 |
+| **2.** Sửa: **Điều chỉnh** | [Dễ] Cùng hình thức với Khách hàng: danh sách, và hộp thoại thêm/sửa | Người đã biết màn hình Khách hàng thì dùng được màn hình này ngay | Ảnh 05.13 |
 
-![Ảnh 05.10 — Màn hình Nhà cung cấp](images/screens/05-1-nha-cung-cap.png)
+![Ảnh 05.13 — Màn hình Nhà cung cấp](images/screens/05-1-nha-cung-cap.png)
 
-***Ảnh 05.10.** Danh sách Nhà cung cấp — cùng hình thức với Khách hàng: danh sách, và hộp thoại thêm/sửa.*
+***Ảnh 05.13.** Danh sách Nhà cung cấp — cùng hình thức với Khách hàng: danh sách, và hộp thoại thêm/sửa.*
 
 ---
 
@@ -329,19 +341,19 @@ soát hàng. Khiếu nại và NCR không tự sinh Sản phẩm không phù h�
 | **Vật tư, dữ liệu có trước** | Nhà cung cấp (phiếu 05.12) và Sản phẩm (phiếu 05.1) đã có trong danh mục; phiếu giao hàng đã có trong tay. |
 | **Công cụ** | Nút **Ghi nhận NCR nhà cung cấp**; ô **Nhà cung cấp**, **Sản phẩm (không bắt buộc)**, **Số lượng**, **Số tham chiếu lô hàng về (không bắt buộc)**, **Số tham chiếu mua hàng (không bắt buộc)**, **Hạn trả lời (không bắt buộc)**. |
 | **An toàn** | **Số tham chiếu lô hàng về** là thứ duy nhất nối NCR với số hàng thật đang nằm trong kho. Không có số lô thì không biết phải giữ lại bao nhiêu hàng. |
-| **Thiết bị đào tạo** | Ảnh 05.11 |
+| **Thiết bị đào tạo** | Ảnh 05.14 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 05.13 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Bấm **Ghi nhận NCR nhà cung cấp**: **Nhà cung cấp**, **Sản phẩm (không bắt buộc)**, **Số lượng** | [Hỏng] **Số lượng** tính theo **đơn vị đo của Sản phẩm** đã chọn — đọc lại đơn vị trước khi gõ số | Ghi số lượng theo đơn vị khác là con số NCR sai, và số tiền thu hồi tính trên nó cũng sai | Ảnh 05.11 |
-| **2.** Ghi **Số tham chiếu lô hàng về (không bắt buộc)**, lấy từ phiếu giao hàng | [An toàn] Số lô là thứ nối NCR với số hàng thật trong kho — không có nó thì không biết giữ lại bao nhiêu | Lô hàng đã nhập kho mà không có số tham chiếu là hàng không truy được | Ảnh 05.11 |
+| **1.** Bấm **Ghi nhận NCR nhà cung cấp**: **Nhà cung cấp**, **Sản phẩm (không bắt buộc)**, **Số lượng** | [Hỏng] **Số lượng** tính theo **đơn vị đo của Sản phẩm** đã chọn — đọc lại đơn vị trước khi gõ số | Ghi số lượng theo đơn vị khác là con số NCR sai, và số tiền thu hồi tính trên nó cũng sai | Ảnh 05.14 |
+| **2.** Ghi **Số tham chiếu lô hàng về (không bắt buộc)**, lấy từ phiếu giao hàng | [An toàn] Số lô là thứ nối NCR với số hàng thật trong kho — không có nó thì không biết giữ lại bao nhiêu | Lô hàng đã nhập kho mà không có số tham chiếu là hàng không truy được | Ảnh 05.14 |
 | **3.** Ghi **Số tham chiếu mua hàng (không bắt buộc)** — đơn hàng mà lô này về theo | [Dễ] Đơn hàng là thứ bộ phận mua hàng đối chiếu khi đòi bồi thường | Không có số đơn thì cuộc đòi tiền bắt đầu bằng việc đi tìm đơn | — |
 | **4.** Ghi nhận xong, đọc lại sổ: lọc theo **Nhà cung cấp**, **Đơn vị tổ chức**, **Trạng thái** | [Hỏng] NCR **không** tự tạo Sản phẩm không phù hợp — phải làm ở bước tiếp (phiếu 05.14) | Vật tư sai mà không có bản ghi không phù hợp nào là vật tư không ai kiểm soát | — |
 
-![Ảnh 05.11 — Màn hình NCR nhà cung cấp](images/screens/05-1-ncr-nha-cung-cap.png)
+![Ảnh 05.14 — Màn hình NCR nhà cung cấp](images/screens/05-1-ncr-nha-cung-cap.png)
 
-***Ảnh 05.11.** Sổ NCR: hàng của nhà cung cấp nào không đạt, và đang chờ xử lý gì.*
+***Ảnh 05.14.** Sổ NCR: hàng của nhà cung cấp nào không đạt, và đang chờ xử lý gì.*
 
 ---
 
@@ -354,19 +366,19 @@ soát hàng. Khiếu nại và NCR không tự sinh Sản phẩm không phù h�
 | **Vật tư, dữ liệu có trước** | NCR đã ghi nhận (phiếu 05.13); nhà cung cấp đã trả lời hoặc đã có phương án. |
 | **Công cụ** | Khối **Phương án xử lý của Nhà cung cấp**; các lối **Sửa phương án xử lý**, **Ghi nhận không phù hợp**, **Liên kết một bản đã có**, **Đóng NCR**; ô **Chi phí thu hồi (không bắt buộc)** và đơn vị tiền. |
 | **An toàn** | Đây là **phương án của nhà cung cấp**, không phải của nhà máy. Ghi phương án của mình vào đây là ghi sai bên chịu trách nhiệm, và cuộc đòi bồi thường mất căn cứ. |
-| **Thiết bị đào tạo** | Ảnh 05.12 |
+| **Thiết bị đào tạo** | Ảnh 05.15 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 05.14 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Đọc **Phương án xử lý của Nhà cung cấp**; sửa bằng **Sửa phương án xử lý** khi họ đổi ý | [An toàn] Đây là **phương án của nhà cung cấp**, không phải của nhà máy | Ghi phương án của mình vào đây là ghi sai bên chịu trách nhiệm | Ảnh 05.12 |
-| **2.** Ghi **Chi phí thu hồi (không bắt buộc)** và đơn vị tiền, khi đã đòi được | [Hỏng] Để trống nếu **không đòi gì** — chi tiết hiện **Đã thu hồi {số tiền}** chỉ khi có số | Đây là con số duy nhất cho biết NCR có mang lại tiền về hay không, và nó cộng vào báo cáo chi phí | Ảnh 05.12 |
-| **3.** Kiểm soát vật tư: **Ghi nhận không phù hợp** từ NCR, hoặc **Liên kết một bản đã có** cho cùng lô | [An toàn] Chưa có gì kiểm soát vật tư là lỗ hổng thật — màn hình cảnh báo bằng đỏ | NCR là giấy đòi tiền; bản ghi không phù hợp mới là thứ kiểm soát hàng | Ảnh 05.12 |
+| **1.** Đọc **Phương án xử lý của Nhà cung cấp**; sửa bằng **Sửa phương án xử lý** khi họ đổi ý | [An toàn] Đây là **phương án của nhà cung cấp**, không phải của nhà máy | Ghi phương án của mình vào đây là ghi sai bên chịu trách nhiệm | Ảnh 05.15 |
+| **2.** Ghi **Chi phí thu hồi (không bắt buộc)** và đơn vị tiền, khi đã đòi được | [Hỏng] Để trống nếu **không đòi gì** — chi tiết hiện **Đã thu hồi {số tiền}** chỉ khi có số | Đây là con số duy nhất cho biết NCR có mang lại tiền về hay không, và nó cộng vào báo cáo chi phí | Ảnh 05.15 |
+| **3.** Kiểm soát vật tư: **Ghi nhận không phù hợp** từ NCR, hoặc **Liên kết một bản đã có** cho cùng lô | [An toàn] Chưa có gì kiểm soát vật tư là lỗ hổng thật — màn hình cảnh báo bằng đỏ | NCR là giấy đòi tiền; bản ghi không phù hợp mới là thứ kiểm soát hàng | Ảnh 05.15 |
 | **4.** **Đóng NCR** khi xong | [Dễ] NCR đã đóng vẫn nằm trong sổ kèm ngày đóng | Đóng để sổ nói đúng việc nào còn mở, không phải để giấu lịch sử | — |
 
-![Ảnh 05.12 — Màn hình Chi tiết NCR nhà cung cấp](images/screens/05-1-chi-tiet-ncr.png)
+![Ảnh 05.15 — Màn hình Chi tiết NCR nhà cung cấp](images/screens/05-1-chi-tiet-ncr.png)
 
-***Ảnh 05.12.** Chi tiết một NCR: lô hàng, cách xử lý, và các lối nêu không phù hợp hoặc liên kết sang bản ghi đã có.*
+***Ảnh 05.15.** Chi tiết một NCR: lô hàng, cách xử lý, và các lối nêu không phù hợp hoặc liên kết sang bản ghi đã có.*
 
 ---
 
