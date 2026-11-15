@@ -11,6 +11,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/maintenance/org_unit_chooser.dart';
@@ -287,6 +288,56 @@ void main() {
     // the server answered with.
     expect(find.byKey(NonconformanceFormDialog.submitKey), findsNothing);
     expect(find.text('NC-HCM-2026-00900'), findsOneWidget);
+  });
+
+  testWidgets('a scan of the tem fills the Product, the lot and the quantity in one pass', (tester) async {
+    final wire = _wire();
+    await _pump(tester, wire);
+
+    await tapIn(tester, find.byKey(NonconformancesScreen.recordKey));
+
+    // A reader types the whole tem into the form's first field — the symbol the
+    // plant prints, carrying the Product's code, the lot and the quantity —
+    // and ends with its own `Enter`.
+    await tester.enterText(
+      find.byKey(NonconformanceFormDialog.labelScanKey),
+      '*PRD-1*LOT-88*12*EA*01*\r\n',
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    // One scan, three fields. The Product was picked from the catalogue the
+    // register read, exactly as tapping its suggestion would have picked it.
+    expect(searchFieldText(tester, NonconformanceFormDialog.productFieldKey()), 'Gearbox (PRD-1)');
+    expect(
+      tester.widget<TextField>(find.byKey(NonconformanceFormDialog.quantityKey)).controller!.text,
+      '12',
+    );
+    expect(
+      tester.widget<TextField>(find.byKey(NonconformanceFormDialog.lotRefKey)).controller!.text,
+      'LOT-88',
+    );
+    expect(find.text('Read: PRD-1 · lot LOT-88 · qty 12'), findsOneWidget);
+
+    // The rest of the form, and the record carries what the scan read.
+    await pickSuggestion(
+      tester,
+      fieldKey: NonconformanceFormDialog.defectCodeFieldKey(),
+      term: 'DIM-OOT',
+      suggestionKey: NonconformanceFormDialog.defectCodeSuggestionKey('41'),
+    );
+    await _choose(tester, NonconformanceFormDialog.detectionPointKey, 'Final inspection');
+    await tapIn(tester, find.byKey(OrgUnitChooser.chooseKey('10')));
+    await tapIn(tester, find.byKey(NonconformanceFormDialog.submitKey));
+
+    expect(wire.nonconformancePosts.single, {
+      'orgUnitId': '10',
+      'productId': '40',
+      'defectCodeId': '41',
+      'detectionPoint': 'final_inspection',
+      'quantity': 12,
+      'lotRef': 'LOT-88',
+    });
   });
 
   testWidgets('a refused recording keeps the form open with its values and shows the refusal',

@@ -1884,6 +1884,37 @@ class AppLocalizationsVi extends AppLocalizations {
       'Hãy nhập mã bằng tay, hoặc dùng đầu đọc ở xưởng.';
 
   @override
+  String get labelScanField => 'Quét tem';
+
+  @override
+  String get labelScanFieldHelp =>
+      'Quét một lần là điền mã sản phẩm, số lô và số lượng.';
+
+  @override
+  String labelScanRead(String what) {
+    return 'Đọc được: $what';
+  }
+
+  @override
+  String labelScanLotPart(String value) {
+    return 'lô $value';
+  }
+
+  @override
+  String labelScanQuantityPart(String value) {
+    return 'SL $value';
+  }
+
+  @override
+  String labelScanUnknownProduct(String code) {
+    return 'Tem ghi $code — không có trong danh sách sản phẩm của phiếu này, hãy chọn trong danh sách.';
+  }
+
+  @override
+  String get labelScanNothingRead =>
+      'Tem không có mã sản phẩm, số lô hay số lượng.';
+
+  @override
   String get accountCorrectionChangeRoleAndGrants => 'Đổi vai trò và quyền';
 
   @override

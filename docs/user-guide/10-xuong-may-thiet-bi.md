@@ -118,7 +118,7 @@ hiện, không cần Tài khoản.
 | # | Bước | Điểm then chốt | Vì sao |
 | --- | --- | --- | --- |
 | 1 | Bấm **Sản phẩm không phù hợp**. | | |
-| 2 | Chọn **Sản phẩm**, **Mã lỗi**, ghi **Số lượng bao nhiêu**, **Số lô**, **Phát hiện lúc**, **Bạn đã thấy gì**. | Dòng dưới Mã lỗi nói **mức độ bắt đầu** — mức mặc định của mã đó. | Mức độ này dùng cho báo cáo chất lượng; ghi sai mã là sai cả mức độ. |
+| 2 | Quét **tem** vào ô **Quét tem** — hoặc chọn **Sản phẩm**, **Mã lỗi**, ghi **Số lượng bao nhiêu**, **Số lô**, **Phát hiện lúc**, **Bạn đã thấy gì**. | Một lần quét tem điền **Sản phẩm**, **Số lượng bao nhiêu** và **Số lô** cùng lúc. Dòng dưới Mã lỗi nói **mức độ bắt đầu** — mức mặc định của mã đó. | Mức độ này dùng cho báo cáo chất lượng; ghi sai mã là sai cả mức độ. |
 | 3 | Nhập **Mã nhân viên** và **PIN**. | Bản ghi được ghi nhận **là phát hiện của bạn**. | |
 | 4 | Bấm **Ghi nhận**. | | |
 
