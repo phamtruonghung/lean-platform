@@ -56,17 +56,17 @@ soát hàng. Khiếu nại và NCR không tự sinh Sản phẩm không phù h�
 
 | Hạng mục | Nội dung |
 | --- | --- |
-| **Công việc** | Khai báo các kiểu sai hỏng, mỗi mã có **mức độ khởi điểm** riêng — màn hình **Mã lỗi**, `/defect-codes`. Phiếu 05.2. |
+| **Công việc** | Khai báo các kiểu sai hỏng, mỗi mã có **Mức độ mặc định** riêng — màn hình **Mã lỗi**, `/defect-codes`. Phiếu 05.2. |
 | **Ai thao tác được** | Đọc: `QLT_DEFECT_CODES_DISPLAY` — mọi vai trò. Ghi: `QLT_DEFECT_CODES_CHANGE` — **chỉ quản trị viên**. |
 | **Vật tư, dữ liệu có trước** | Cây mã lỗi cha đã có; thang mức độ đã thống nhất với chất lượng. |
-| **Công cụ** | Nút **Thêm Mã lỗi**, **Điều chỉnh**; ô **Mã**, **Tên**, **mức độ bắt đầu**, và **Thuộc {mã cha}** với mục **Cấp cao nhất**. |
-| **An toàn** | Giá trị **mức độ bắt đầu** là mức độ một bản ghi mới **mặc định** nhận. Đặt cao quá thì mọi bản ghi của mã đó đều bị đẩy lên; đặt thấp quá thì lỗi nặng được ghi như lỗi nhẹ. |
+| **Công cụ** | Nút **Thêm Mã lỗi**, **Điều chỉnh**; ô **Mã**, **Tên**, **Mức độ mặc định**, và **Thuộc {mã cha}** với mục **Cấp cao nhất**. |
+| **An toàn** | Giá trị **Mức độ mặc định** là mức độ một bản ghi mới **mặc định** nhận. Đặt cao quá thì mọi bản ghi của mã đó đều bị đẩy lên; đặt thấp quá thì lỗi nặng được ghi như lỗi nhẹ. |
 | **Thiết bị đào tạo** | Ảnh 05.2 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 05.2 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Bấm **Thêm Mã lỗi**: **Mã**, **Tên**, **mức độ bắt đầu** | [Hỏng] Giá trị **mức độ bắt đầu** là mặc định của **mọi** bản ghi mới dùng mã này | Đây là chỗ duy nhất đặt mức độ cho cả một kiểu lỗi; sửa sau phải sửa từng bản ghi | Ảnh 05.2 |
+| **1.** Bấm **Thêm Mã lỗi**: **Mã**, **Tên**, **Mức độ mặc định** | [Hỏng] Giá trị **Mức độ mặc định** là mặc định của **mọi** bản ghi mới dùng mã này | Đây là chỗ duy nhất đặt mức độ cho cả một kiểu lỗi; sửa sau phải sửa từng bản ghi | Ảnh 05.2 |
 | **2.** Nếu là mã con: chọn **Thuộc {mã cha}**; nếu là mã gốc: để **Cấp cao nhất** | [Dễ] Mã con **kế thừa** ngữ cảnh của mã cha, và cây mã lỗi quyết định báo cáo Pareto đọc được hay không | Dồn mọi lỗi vào một mã gốc là mất khả năng phân tích — cây là thứ làm Pareto có nghĩa | Ảnh 05.2 |
 | **3.** Sửa: **Điều chỉnh** | [Hỏng] **Nâng** mức độ trên một bản ghi chỉ cần quyền ghi; **hạ** mức độ là quyết định riêng, cần thẩm quyền Chất lượng (phiếu 05.6) | Dạy nhầm điều này thì người vận hành tưởng mình hạ được mức độ, và bị từ chối giữa ca | — |
 

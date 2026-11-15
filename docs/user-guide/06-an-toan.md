@@ -52,7 +52,7 @@ thương, loại thương tích hay bộ phận cơ thể cần thẩm quyền A
 | **4.** Ghi **Mô tả** và **Đã làm gì ngay lúc đó** | [Dễ] Đây là bản ghi mà mọi cuộc điều tra sau đó dựa vào — viết cho người không có mặt đọc | Mô tả mơ hồ là cuộc điều tra bắt đầu bằng việc đi hỏi lại người đã quên | Ảnh 06.2 |
 | **5.** Nếu **có** người bị thương: điền **Nhân viên bị thương** | [An toàn] Ô này cần **thẩm quyền An toàn** ở Đơn vị tổ chức — không có thì hộp thoại từ chối cả phiếu, kèm lý do | Nêu tên người bị thương là ghi dữ liệu y tế về một người; không có thẩm quyền thì bỏ trống và ghi sự cố trước | — |
 | **6.** Bấm ghi nhận | [Dễ] Sự cố mới ở trạng thái **mới**, và **chưa phân loại** thương tích — hai việc khác nhau | Ghi xong không phải là điều tra xong; phân loại là phiếu 06.3 | — |
-| **7.** Lọc sổ theo **Đơn vị tổ chức**, **Mức độ**, **Trạng thái**, **Từ ngày / Đến ngày** | [Dễ] Khoảng ngày là **ngày sản xuất** của sự cố, không phải ngày ghi | Lọc theo ngày ghi là bỏ sót sự cố của ca đêm hôm trước | Ảnh 06.1 |
+| **7.** Lọc sổ theo **Đơn vị tổ chức**, **Mức độ**, **Trạng thái**, **Xảy ra từ ngày** / **Xảy ra đến ngày** | [Dễ] Khoảng ngày là **ngày sản xuất** của sự cố, không phải ngày ghi | Lọc theo ngày ghi là bỏ sót sự cố của ca đêm hôm trước | Ảnh 06.1 |
 
 ![Ảnh 06.1 — Màn hình Sự cố an toàn](images/screens/06-1-so-su-co.png)
 
@@ -177,7 +177,7 @@ thương, loại thương tích hay bộ phận cơ thể cần thẩm quyền A
 | **4.** Ghi **Mô tả** — đã thấy gì | [Dễ] Viết về **hành vi** và **điều kiện**, không viết về con người | Quan sát không phải là chỉ trích cá nhân — đây là điều làm người ta còn dám ghi | Ảnh 06.6 |
 | **5.** Ghi **Hành động đã làm (không bắt buộc)**; tích **Đã dùng quyền dừng việc** nếu có | [An toàn] **Đã dùng quyền dừng việc** là dấu hiệu mạnh nhất rằng văn hoá an toàn là thật — tích đúng dù việc dừng đó nhỏ | Dừng việc là quyền của người đứng đó; ghi lại là cách duy nhất nhà máy biết nó đã được dùng | Ảnh 06.6 |
 | **6.** Ghi **Quan sát lúc (không bắt buộc)** và ghi nhận | [Dễ] Ô này quyết định ngày sản xuất và ca mà quan sát thuộc về — bỏ trống thì lấy lúc ghi | Một quan sát ca đêm ghi lúc sáng hôm sau sẽ vào nhầm ca | Ảnh 06.5 |
-| **7.** Lọc sổ theo **Đơn vị tổ chức**, **Mức độ**, **Loại**, **Trạng thái**, **Từ ngày / Đến ngày** | [Dễ] Bộ lọc **Loại** và **Hạng mục** là thứ biến sổ quan sát thành dữ liệu phân tích được | Sổ không ai lọc là một danh sách, không phải một chỉ số | Ảnh 06.5 |
+| **7.** Lọc sổ theo **Đơn vị tổ chức**, **Loại**, **Hạng mục**, **Mức độ tiềm ẩn**, **Dừng việc**, **Hành động**, **Quan sát từ ngày** / **Quan sát đến ngày** | [Dễ] Bộ lọc **Loại** và **Hạng mục** là thứ biến sổ quan sát thành dữ liệu phân tích được | Sổ không ai lọc là một danh sách, không phải một chỉ số | Ảnh 06.5 |
 
 ![Ảnh 06.5 — Màn hình Quan sát an toàn](images/screens/06-1-so-quan-sat.png)
 
