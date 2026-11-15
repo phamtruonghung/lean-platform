@@ -80,14 +80,14 @@ từng phiếu.
 | **02.7** | [Đơn vị tổ chức](02-nhan-su.md#đơn-vị-tổ-chức) | 6 | 1 |
 | **02.8** | [Chấm công](02-nhan-su.md#chấm-công) | 3 | 1 |
 | **02.9** | [Bảng chấm công một ca](02-nhan-su.md#bảng-chấm-công-một-ca) | 4 | 1 |
-| **02.10** | [Chấm công cần xác nhận](02-nhan-su.md#chấm-công-cần-xác-nhận) | 2 | — |
+| **02.10** | [Chấm công cần xác nhận](02-nhan-su.md#chấm-công-cần-xác-nhận) | 2 | 1 |
 | **02.11** | [Đào tạo](02-nhan-su.md#đào-tạo) | 4 | 1 |
-| **02.12** | › [Xác nhận một buổi đào tạo](02-nhan-su.md#xác-nhận-một-buổi-đào-tạo) | 3 | — |
-| **02.13** | [Bản ghi đào tạo (chi tiết)](02-nhan-su.md#bản-ghi-đào-tạo-chi-tiết) | 2 | — |
-| **02.14** | [Biểu mẫu in của bản ghi đào tạo](02-nhan-su.md#biểu-mẫu-in-của-bản-ghi-đào-tạo) | 2 | — |
+| **02.12** | › [Xác nhận một buổi đào tạo](02-nhan-su.md#xác-nhận-một-buổi-đào-tạo) | 3 | 1 |
+| **02.13** | [Bản ghi đào tạo (chi tiết)](02-nhan-su.md#bản-ghi-đào-tạo-chi-tiết) | 2 | 1 |
+| **02.14** | [Biểu mẫu in của bản ghi đào tạo](02-nhan-su.md#biểu-mẫu-in-của-bản-ghi-đào-tạo) | 2 | 1 |
 | **02.15** | [Chữ ký của tôi](02-nhan-su.md#chữ-ký-của-tôi) | 3 | 1 |
 | **02.16** | [Đơn xin nghỉ](02-nhan-su.md#đơn-xin-nghỉ) | 2 | 1 |
-| **02.17** | › [Duyệt hoặc từ chối một đơn](02-nhan-su.md#duyệt-hoặc-từ-chối-một-đơn) | 3 | — |
+| **02.17** | › [Duyệt hoặc từ chối một đơn](02-nhan-su.md#duyệt-hoặc-từ-chối-một-đơn) | 3 | 1 |
 | **02.18** | [Đơn giá giờ](02-nhan-su.md#đơn-giá-giờ) | 4 | 1 |
 | **02.19** | [Chi phí chuẩn sản phẩm](02-nhan-su.md#chi-phí-chuẩn-sản-phẩm) | 3 | 1 |
 
@@ -102,7 +102,7 @@ từng phiếu.
 | **03.5** | [Chi tiết Lệnh công việc](03-bao-tri.md#chi-tiết-lệnh-công-việc) | 5 | 2 |
 | **03.6** | [Phân công Lệnh công việc](03-bao-tri.md#phân-công-lệnh-công-việc) | 1 | 1 |
 | **03.7** | [Hoàn thành Lệnh công việc](03-bao-tri.md#hoàn-thành-lệnh-công-việc) | 2 | 1 |
-| **03.8** | [Huỷ Lệnh công việc](03-bao-tri.md#huỷ-lệnh-công-việc) | 2 | — |
+| **03.8** | [Huỷ Lệnh công việc](03-bao-tri.md#huỷ-lệnh-công-việc) | 2 | 1 |
 | **03.9** | [Yêu cầu của tôi](03-bao-tri.md#yêu-cầu-của-tôi) | 3 | 1 |
 | **03.10** | [Hàng chờ phân loại](03-bao-tri.md#hàng-chờ-phân-loại) | 4 | 1 |
 | **03.11** | [Thời gian dừng máy](03-bao-tri.md#thời-gian-dừng-máy) | 4 | 1 |
@@ -118,15 +118,15 @@ từng phiếu.
 | **04.2** | [Nêu một Concern](04-hanh-dong.md#nêu-một-concern) | 5 | 1 |
 | **04.3** | [Chi tiết Hành động](04-hanh-dong.md#chi-tiết-hành-động) | 7 | 1 |
 | **04.4** | [Hoàn thành một giai đoạn](04-hanh-dong.md#hoàn-thành-một-giai-đoạn) | 4 | 1 |
-| **04.5** | [Chuyển Hành động lên trên](04-hanh-dong.md#chuyển-hành-động-lên-trên) | 3 | — |
-| **04.6** | [Huỷ một Hành động](04-hanh-dong.md#huỷ-một-hành-động) | 3 | — |
-| **04.7** | [Thêm một biện pháp](04-hanh-dong.md#thêm-một-biện-pháp) | 5 | — |
+| **04.5** | [Chuyển Hành động lên trên](04-hanh-dong.md#chuyển-hành-động-lên-trên) | 3 | 1 |
+| **04.6** | [Huỷ một Hành động](04-hanh-dong.md#huỷ-một-hành-động) | 3 | 1 |
+| **04.7** | [Thêm một biện pháp](04-hanh-dong.md#thêm-một-biện-pháp) | 5 | 1 |
 | **04.8** | [CAPA](04-hanh-dong.md#capa) | 3 | 1 |
 | **04.9** | [Mở một CAPA](04-hanh-dong.md#mở-một-capa) | 4 | 1 |
 | **04.10** | [Chi tiết CAPA](04-hanh-dong.md#chi-tiết-capa) | 7 | 1 |
-| **04.11** | [Chuỗi Why](04-hanh-dong.md#chuỗi-why) | 4 | — |
-| **04.12** | [Nguyên nhân và kết luận](04-hanh-dong.md#nguyên-nhân-và-kết-luận) | 4 | — |
-| **04.13** | [Ghi bước kiểm tra hiệu quả](04-hanh-dong.md#ghi-bước-kiểm-tra-hiệu-quả) | 4 | — |
+| **04.11** | [Chuỗi Why](04-hanh-dong.md#chuỗi-why) | 4 | 1 |
+| **04.12** | [Nguyên nhân và kết luận](04-hanh-dong.md#nguyên-nhân-và-kết-luận) | 4 | 1 |
+| **04.13** | [Ghi bước kiểm tra hiệu quả](04-hanh-dong.md#ghi-bước-kiểm-tra-hiệu-quả) | 4 | 1 |
 | **04.14** | [Báo cáo CAPA](04-hanh-dong.md#báo-cáo-capa) | 3 | 1 |
 
 **05 · Chất lượng**
@@ -138,12 +138,12 @@ từng phiếu.
 | **05.3** | [Sản phẩm không phù hợp](05-chat-luong.md#sản-phẩm-không-phù-hợp) | 7 | 2 |
 | **05.4** | [Chi tiết Sản phẩm không phù hợp](05-chat-luong.md#chi-tiết-sản-phẩm-không-phù-hợp) | 6 | 1 |
 | **05.5** | [Ghi nhận phương án xử lý](05-chat-luong.md#ghi-nhận-phương-án-xử-lý) | 4 | 1 |
-| **05.6** | [Bốn quyết định cần thẩm quyền Chất lượng](05-chat-luong.md#bốn-quyết-định-cần-thẩm-quyền-chất-lượng) | 4 | — |
-| **05.7** | [Nêu hoặc Liên kết một Concern](05-chat-luong.md#nêu-hoặc-liên-kết-một-concern) | 4 | — |
+| **05.6** | [Bốn quyết định cần thẩm quyền Chất lượng](05-chat-luong.md#bốn-quyết-định-cần-thẩm-quyền-chất-lượng) | 4 | 1 |
+| **05.7** | [Nêu hoặc Liên kết một Concern](05-chat-luong.md#nêu-hoặc-liên-kết-một-concern) | 4 | 1 |
 | **05.8** | [Khách hàng](05-chat-luong.md#khách-hàng) | 2 | 1 |
 | **05.9** | [Khiếu nại khách hàng](05-chat-luong.md#khiếu-nại-khách-hàng) | 4 | 1 |
 | **05.10** | [Chi tiết Khiếu nại](05-chat-luong.md#chi-tiết-khiếu-nại) | 4 | 1 |
-| **05.11** | [Trình chiếu](05-chat-luong.md#trình-chiếu) | 5 | — |
+| **05.11** | [Trình chiếu](05-chat-luong.md#trình-chiếu) | 5 | 1 |
 | **05.12** | [Nhà cung cấp](05-chat-luong.md#nhà-cung-cấp) | 2 | 1 |
 | **05.13** | [NCR nhà cung cấp](05-chat-luong.md#ncr-nhà-cung-cấp) | 4 | 1 |
 | **05.14** | [Chi tiết NCR nhà cung cấp](05-chat-luong.md#chi-tiết-ncr-nhà-cung-cấp) | 4 | 1 |
@@ -155,11 +155,11 @@ từng phiếu.
 | **06.1** | [Sự cố](06-an-toan.md#sự-cố) | 7 | 2 |
 | **06.2** | [Chi tiết Sự cố an toàn](06-an-toan.md#chi-tiết-sự-cố-an-toàn) | 5 | 1 |
 | **06.3** | [Phân loại thương tích](06-an-toan.md#phân-loại-thương-tích) | 4 | 1 |
-| **06.4** | [Sửa mức độ và Ghi nhận số ngày](06-an-toan.md#sửa-mức-độ-và-ghi-nhận-số-ngày) | 5 | — |
-| **06.5** | [Đóng sự cố và Nêu Concern](06-an-toan.md#đóng-sự-cố-và-nêu-concern) | 3 | — |
+| **06.4** | [Sửa mức độ và Ghi nhận số ngày](06-an-toan.md#sửa-mức-độ-và-ghi-nhận-số-ngày) | 5 | 2 |
+| **06.5** | [Đóng sự cố và Nêu Concern](06-an-toan.md#đóng-sự-cố-và-nêu-concern) | 3 | 1 |
 | **06.6** | [Quan sát](06-an-toan.md#quan-sát) | 7 | 2 |
 | **06.7** | [Chi tiết Quan sát an toàn](06-an-toan.md#chi-tiết-quan-sát-an-toàn) | 4 | 1 |
-| **06.8** | [Nêu Hành động từ một quan sát](06-an-toan.md#nêu-hành-động-từ-một-quan-sát) | 3 | — |
+| **06.8** | [Nêu Hành động từ một quan sát](06-an-toan.md#nêu-hành-động-từ-một-quan-sát) | 3 | 1 |
 | **06.9** | [Hai danh mục chẩn đoán](06-an-toan.md#hai-danh-mục-chẩn-đoán) | 3 | 2 |
 **07 · Sản xuất**
 
@@ -168,7 +168,7 @@ từng phiếu.
 | **07.1** | [Chọn Bộ phận](07-san-xuat.md#chọn-bộ-phận) | 3 | 1 |
 | **07.2** | [Bảng của một Bộ phận](07-san-xuat.md#bảng-của-một-bộ-phận) | 6 | 1 |
 | **07.3** | [Viết và gửi bàn giao](07-san-xuat.md#viết-và-gửi-bàn-giao) | 8 | 1 |
-| **07.4** | [Xác nhận bàn giao](07-san-xuat.md#xác-nhận-bàn-giao) | 4 | — |
+| **07.4** | [Xác nhận bàn giao](07-san-xuat.md#xác-nhận-bàn-giao) | 4 | 1 |
 
 **08 · Phân tích**
 
@@ -184,9 +184,9 @@ từng phiếu.
 
 | Phiếu | Việc | Bước chính | Ảnh |
 | --- | --- | ---: | ---: |
-| **09.1** | [Hàng chờ phê duyệt](09-quan-tri.md#hàng-chờ-phê-duyệt) | 7 | — |
-| **09.2** | [Tài khoản](09-quan-tri.md#tài-khoản) | 6 | — |
-| **09.3** | [Vai trò](09-quan-tri.md#vai-trò) | 5 | — |
+| **09.1** | [Hàng chờ phê duyệt](09-quan-tri.md#hàng-chờ-phê-duyệt) | 7 | 1 |
+| **09.2** | [Tài khoản](09-quan-tri.md#tài-khoản) | 6 | 1 |
+| **09.3** | [Vai trò](09-quan-tri.md#vai-trò) | 5 | 1 |
 
 **10 · Xưởng**
 
@@ -201,8 +201,10 @@ từng phiếu.
 
 **Mọi chương đã chuyển xong.** `00-tong-quan.md` và `90-phu-luc-ma-quyen.md` không phải
 chương thao tác nên không có phiếu: chương 00 vẽ bản đồ các Phân hệ nối với nhau ra sao,
-và phụ lục 90 là bảng tra 84 mã quyền. Ba phiếu KPI (08.2–08.4) và toàn bộ chương 10
-chưa có ảnh chụp — lý do ghi trong đầu mỗi chương, và `t_30897c2a` là thẻ chụp bổ sung.
+và phụ lục 90 là bảng tra 84 mã quyền. Chỉ còn ba phiếu KPI (08.2–08.4) và sáu phiếu
+chương 10 chưa có ảnh chụp: màn hình KPI cần `MTU_DATABASE_URL` mà dàn demo không đặt,
+còn màn hình Xưởng cần `FLOOR_DEVICE_CREDENTIAL` trong bản dựng — lý do ghi trong đầu
+mỗi chương. Không vẽ lại bằng sơ đồ, và không chụp từ bản triển khai thật.
 
 ### 3. Chuẩn bị đủ
 

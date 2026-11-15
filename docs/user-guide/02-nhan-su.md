@@ -248,13 +248,17 @@ phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng l
 | **Vật tư, dữ liệu có trước** | — |
 | **Công cụ** | Ô **Từ** / **Đến**, bộ lọc **Đơn vị tổ chức**, nút **Mở bảng chấm công** trên từng dòng; mã quyền `PPL_ATTENDANCE_CHANGE`. |
 | **An toàn** | Không có thao tác ghi ở chính màn hình này; mở bảng ra là bước sang phiếu 02.9, nơi có **Xác nhận**. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 02.10 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 02.10 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Đặt **Từ** / **Đến** và **Lọc theo Đơn vị tổ chức** | [Dễ] Danh sách xếp **cũ nhất trước** | Việc cũ nhất là việc đang chặn báo cáo giờ công tháng | — |
+| **1.** Đặt **Từ** / **Đến** và **Lọc theo Đơn vị tổ chức** | [Dễ] Danh sách xếp **cũ nhất trước** | Việc cũ nhất là việc đang chặn báo cáo giờ công tháng | Ảnh 02.10 |
 | **2.** Bấm **Mở bảng chấm công** trên một dòng, làm xong bảng rồi quay lại danh sách | [Dễ] Dòng đó biến mất khỏi danh sách | Còn hiện nghĩa là chưa bấm **Xác nhận** ở phiếu 02.9 | — |
+
+![Ảnh 02.10 — Màn hình Chấm công cần xác nhận](images/screens/02-1-cham-cong-can-xac-nhan.png)
+
+***Ảnh 02.10.** Danh sách các ca đã qua mà bảng chấm công chưa được xác nhận, lọc được theo Đơn vị tổ chức và khoảng ngày; mỗi dòng mở thẳng bảng chấm công của ca đó.*
 
 ---
 
@@ -267,19 +271,19 @@ phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng l
 | **Vật tư, dữ liệu có trước** | Nhân viên đã có trong Danh bạ (phiếu 02.2); Kỹ năng của buổi đó đã khai báo (phiếu 02.6) nếu cần gắn. |
 | **Công cụ** | Nút **Tạo bản ghi đào tạo**, hộp thoại của nó, nút **Thêm học viên**, **Gửi cho học viên**, **Bỏ bản nháp**; mã quyền ghi `PPL_TRAINING_CHANGE`. |
 | **An toàn** | Đã gửi là **chốt**: học viên đã thấy và đã ký. Sửa sau khi gửi là sửa việc người khác đã xác nhận. |
-| **Thiết bị đào tạo** | Ảnh 02.10 |
+| **Thiết bị đào tạo** | Ảnh 02.11 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 02.11 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Bấm **Tạo bản ghi đào tạo**: **Tiêu đề**, **Đào tạo ngày**, **Thời lượng (giờ)**, **Người đào tạo**, **Mục tiêu** | [Hỏng] **Thời lượng** dùng dấu phẩy thập phân: `1,5` | Dấu chấm bị hiểu là phân cách nghìn và thời lượng thành 15 giờ | Ảnh 02.10 |
+| **1.** Bấm **Tạo bản ghi đào tạo**: **Tiêu đề**, **Đào tạo ngày**, **Thời lượng (giờ)**, **Người đào tạo**, **Mục tiêu** | [Hỏng] **Thời lượng** dùng dấu phẩy thập phân: `1,5` | Dấu chấm bị hiểu là phân cách nghìn và thời lượng thành 15 giờ | Ảnh 02.11 |
 | **2.** Mở bản ghi vừa tạo, bấm **Thêm học viên**: chọn **Nhân viên của {đơn vị}** hoặc **Toàn bộ Danh bạ** | [Dễ] Chọn theo đơn vị trước, rồi tìm — danh sách ngắn hơn nhiều | Danh bạ toàn Nền tảng rất dài, dễ chọn nhầm người trùng tên | — |
 | **3.** Bấm **Gửi cho học viên** | [An toàn] Trước khi gửi là **bản nháp**: sửa và thêm người được; sau khi gửi là **chốt** | Sửa sau khi gửi là sửa việc người khác đã ký | — |
 | **4.** Ghi nhầm cả bản nháp: **Bỏ bản nháp** | [Hỏng] Chỉ làm được khi **chưa ai được hỏi** | Bản nháp đã gửi thì không bỏ được — phải xử lý bằng câu trả lời của học viên | — |
 
-![Ảnh 02.10 — Màn hình Đào tạo, hộp thoại tạo bản ghi](images/screens/02-1-dao-tao-tao-ban-ghi.png)
+![Ảnh 02.11 — Màn hình Đào tạo, hộp thoại tạo bản ghi](images/screens/02-1-dao-tao-tao-ban-ghi.png)
 
-***Ảnh 02.10.** Tạo bản ghi đào tạo từ danh sách: chọn người, kỹ năng và người hướng dẫn; bản ghi sau đó đi theo vòng đời của nó.*
+***Ảnh 02.11.** Tạo bản ghi đào tạo từ danh sách: chọn người, kỹ năng và người hướng dẫn; bản ghi sau đó đi theo vòng đời của nó.*
 
 ### Xác nhận một buổi đào tạo
 
@@ -290,14 +294,18 @@ phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng l
 | **Vật tư, dữ liệu có trước** | Một bản ghi đào tạo đã **Gửi cho học viên** và có tên bạn in phiếu 02.11. |
 | **Công cụ** | Danh sách **Đào tạo cần xác nhận**, các nút **Xác nhận**, **Từ chối**, **Dùng chữ ký của tôi**, **Vẽ ngay**, **Không có chữ ký**. |
 | **An toàn** | Sổ đào tạo chỉ có giá trị khi học viên **tự** bấm xác nhận — không có cách nào để người tổ chức xác nhận thay. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 02.12 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 02.12 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
 | **1.** Vào **Đào tạo cần xác nhận** (`/training/to-confirm`), hoặc ô "Đào tạo cần xác nhận" ở Trang chủ | [Dễ] Danh sách xếp **cũ nhất trước** và chỉ có bản gửi **cho chính bạn** | Không thấy bản của người khác là đúng thiết kế | — |
-| **2.** Bấm **Xác nhận** nếu bạn đã tham gia, hoặc **Từ chối** nếu bản ghi sai | [Hỏng] Từ chối khi bản ghi ghi sai tên, sai ngày hay sai nội dung — từ chối là câu trả lời đúng, không phải phá buổi học | Người tổ chức đọc được câu trả lời và sửa cho lần sau | — |
+| **2.** Bấm **Xác nhận** nếu bạn đã tham gia, hoặc **Từ chối** nếu bản ghi sai | [Hỏng] Từ chối khi bản ghi ghi sai tên, sai ngày hay sai nội dung — từ chối là câu trả lời đúng, không phải phá buổi học | Người tổ chức đọc được câu trả lời và sửa cho lần sau | Ảnh 02.12 |
 | **3.** Ký: **Dùng chữ ký của tôi**, hoặc **Vẽ ngay**, hoặc **Không có chữ ký** | [Hỏng] Chọn **Không có chữ ký** vẫn xác nhận được — người xác nhận không bị chặn | Có người chưa lưu chữ ký; chặn họ lại thì sổ đào tạo không khép được | — |
+
+![Ảnh 02.12 — Màn hình Đào tạo cần xác nhận](images/screens/02-2-dao-tao-can-xac-nhan.png)
+
+***Ảnh 02.12.** Bản ghi đào tạo gửi cho chính bạn, cũ nhất trước: **Xác nhận** nếu bạn đã tham gia, **Từ chối** nếu bản ghi sai.*
 
 ---
 
@@ -310,13 +318,17 @@ phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng l
 | **Vật tư, dữ liệu có trước** | Một bản ghi đào tạo (phiếu 02.11). |
 | **Công cụ** | Phần **Buổi đào tạo**, **Học viên (n)**, **Câu trả lời**, nút **Biểu mẫu**; mã quyền đọc `PPL_TRAINING_DISPLAY`. |
 | **An toàn** | Không có thao tác ghi ở đây ngoài phần sửa của người tổ chức — câu trả lời của học viên là bản ghi, đọc chứ không sửa. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 02.13 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 02.13 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Đọc phần **Buổi đào tạo** và **Học viên (n)**; cần bản in để ký giấy thì bấm **Biểu mẫu** (`/training/:id/form`, phiếu 02.14) | — | — | — |
+| **1.** Đọc phần **Buổi đào tạo** và **Học viên (n)**; cần bản in để ký giấy thì bấm **Biểu mẫu** (`/training/:id/form`, phiếu 02.14) | — | — | Ảnh 02.13 |
 | **2.** Đọc **Câu trả lời** của từng người: đã xác nhận hay từ chối | [Hỏng] Một người chưa trả lời không phải là đã tham gia | Sổ chỉ khép khi mọi học viên đã trả lời | — |
+
+![Ảnh 02.13 — Màn hình Bản ghi đào tạo (chi tiết)](images/screens/02-1-ban-ghi-dao-tao.png)
+
+***Ảnh 02.13.** Một buổi đào tạo gom phần **Buổi đào tạo**, danh sách **Học viên** và nút **Biểu mẫu**; câu trả lời của từng người nằm ngay trong cùng trang.*
 
 ---
 
@@ -329,13 +341,17 @@ phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng l
 | **Vật tư, dữ liệu có trước** | Bản ghi đào tạo có ít nhất một học viên. |
 | **Công cụ** | Biểu mẫu trong trình duyệt và hộp thoại in của trình duyệt (Ctrl+P). Không có nút in riêng của Nền tảng. |
 | **An toàn** | Giấy đã ký là bản ghi **bổ sung**, không được thay thế bản điện tử và không được là bản duy nhất. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 02.14 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 02.14 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Mở biểu mẫu từ trang chi tiết bản ghi, rồi in bằng **trình duyệt** (Ctrl+P) | [Dễ] Không có nút in riêng của Nền tảng | Một nút in riêng sẽ là đường thứ hai để sinh ra cùng một tài liệu | — |
+| **1.** Mở biểu mẫu từ trang chi tiết bản ghi, rồi in bằng **trình duyệt** (Ctrl+P) | [Dễ] Không có nút in riêng của Nền tảng | Một nút in riêng sẽ là đường thứ hai để sinh ra cùng một tài liệu | Ảnh 02.14 |
 | **2.** Ký giấy, rồi lưu bản giấy theo quy định của nhà máy | [Hỏng] Ký giấy là **thêm** vào sổ điện tử, không thay thế nó | Câu trả lời của học viên trong Nền tảng là bản có dấu thời gian | — |
+
+![Ảnh 02.14 — Biểu mẫu in của bản ghi đào tạo](images/screens/02-1-bieu-mau-dao-tao.png)
+
+***Ảnh 02.14.** Biểu mẫu in song ngữ mở trong trình duyệt, in bằng **Ctrl+P** — Nền tảng không có nút in riêng.*
 
 ---
 
@@ -348,18 +364,18 @@ phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng l
 | **Vật tư, dữ liệu có trước** | Ảnh chữ ký có sẵn trên giấy nếu muốn tải lên, hoặc chuột / ngón tay để vẽ. |
 | **Công cụ** | Nút **Tải ảnh lên**, khung **Vẽ tại đây**, nút **Giữ chữ ký này**, **Vẽ chữ ký mới**, **Thay bằng ảnh**, **Xoá**; mã quyền `PPL_SIGNATURE_OWN`. |
 | **An toàn** | Chữ ký là dấu của bạn: không đưa Tài khoản cho người khác dùng chung. **Thay chữ ký không làm thay đổi bảng nào bạn đã ký.** |
-| **Thiết bị đào tạo** | Ảnh 02.11 |
+| **Thiết bị đào tạo** | Ảnh 02.15 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 02.15 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Mở **Chữ ký của tôi** | [Dễ] Khi chưa có, màn hình nói rõ **chưa lưu** và cách vẽ | Không phải lỗi — chưa lưu là trạng thái bình thường của người mới | Ảnh 02.11 |
+| **1.** Mở **Chữ ký của tôi** | [Dễ] Khi chưa có, màn hình nói rõ **chưa lưu** và cách vẽ | Không phải lỗi — chưa lưu là trạng thái bình thường của người mới | Ảnh 02.15 |
 | **2.** **Tải ảnh lên** một ảnh chữ ký có sẵn, hoặc **Vẽ tại đây** rồi bấm **Giữ chữ ký này** | [Dễ] Ảnh cần nền sáng, nét đậm | Ảnh nền tối hoặc nét mảnh in ra không đọc được trên biên bản | — |
 | **3.** Đổi chữ ký: **Vẽ chữ ký mới** hoặc **Thay bằng ảnh**; bỏ hẳn: **Xoá** | [An toàn] Thay chữ ký **không** làm thay đổi bảng nào bạn đã ký | Chữ ký được gắn vào bản ghi tại thời điểm ký; nếu đổi mà bản ghi cũ đổi theo, một chữ ký mới hôm nay sẽ "ký lại" cả năm trước và biên bản mất giá trị | — |
 
-![Ảnh 02.11 — Màn hình Chữ ký của tôi](images/screens/02-1-chu-ky-cua-toi.png)
+![Ảnh 02.15 — Màn hình Chữ ký của tôi](images/screens/02-1-chu-ky-cua-toi.png)
 
-***Ảnh 02.11.** Chữ ký lưu một lần: khi chưa có, màn hình nói rõ **chưa lưu** và cách vẽ; thay chữ ký không làm thay đổi bảng đã ký.*
+***Ảnh 02.15.** Chữ ký lưu một lần: khi chưa có, màn hình nói rõ **chưa lưu** và cách vẽ; thay chữ ký không làm thay đổi bảng đã ký.*
 
 ---
 
@@ -372,17 +388,17 @@ phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng l
 | **Vật tư, dữ liệu có trước** | Tài khoản đã được chấp nhận, gắn với Nhân viên (Trang chủ báo nếu chưa gắn). |
 | **Công cụ** | Nút **Xin nghỉ**, ô **Loại nghỉ**, **Ngày đầu**, **Ngày cuối**, **Ghi chú**, tab **Của tôi**, nút **Huỷ đơn**; mã quyền `PPL_LEAVE_REQUESTS_RAISE`. |
 | **An toàn** | Đơn đi vào sổ nhân sự: ghi đúng ngày, đừng ghi dư "cho chắc". |
-| **Thiết bị đào tạo** | Ảnh 02.12 |
+| **Thiết bị đào tạo** | Ảnh 02.16 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 02.16 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Bấm **Xin nghỉ** (`/leave-requests/new`), chọn **Loại nghỉ**, **Ngày đầu**, **Ngày cuối**, **Ghi chú**, bấm gửi, rồi tìm đơn trong tab **Của tôi** | [Hỏng] **Ngày cuối** được tính luôn — đơn tính cả hai đầu | Nhập ngày cuối là ngày đi làm lại thì đơn dài hơn thực tế một ngày | Ảnh 02.12 |
+| **1.** Bấm **Xin nghỉ** (`/leave-requests/new`), chọn **Loại nghỉ**, **Ngày đầu**, **Ngày cuối**, **Ghi chú**, bấm gửi, rồi tìm đơn trong tab **Của tôi** | [Hỏng] **Ngày cuối** được tính luôn — đơn tính cả hai đầu | Nhập ngày cuối là ngày đi làm lại thì đơn dài hơn thực tế một ngày | Ảnh 02.16 |
 | **2.** Đổi ý khi **chưa có quyết định**: **Huỷ đơn** → **Huỷ đơn** | [Hỏng] Đơn đã duyệt rồi thì không huỷ được | Đơn đã duyệt đã vào sổ nhân sự và kế hoạch ca | — |
 
-![Ảnh 02.12 — Màn hình Đơn xin nghỉ](images/screens/02-2-don-xin-nghi.png)
+![Ảnh 02.16 — Màn hình Đơn xin nghỉ](images/screens/02-2-don-xin-nghi.png)
 
-***Ảnh 02.12.** Form gửi đơn: **Loại nghỉ** là lựa chọn có sẵn, ghi chú là tuỳ chọn; gửi xong đơn nằm ở danh sách chờ quyết định.*
+***Ảnh 02.16.** Form gửi đơn: **Loại nghỉ** là lựa chọn có sẵn, ghi chú là tuỳ chọn; gửi xong đơn nằm ở danh sách chờ quyết định.*
 
 ### Duyệt hoặc từ chối một đơn
 
@@ -393,14 +409,18 @@ phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng l
 | **Vật tư, dữ liệu có trước** | Đơn đã được gửi (phiếu 02.16). |
 | **Công cụ** | Tab **Cần quyết định**, nút **Duyệt**, **Từ chối**, ô **Ghi chú**; mã quyền `PPL_LEAVE_REQUESTS_DECIDE`. |
 | **An toàn** | Người quyết định là người có quyền trên **Đơn vị tổ chức của Nhân viên xin nghỉ**, không phải quản lý trực tiếp trong sơ đồ tổ chức. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 02.17 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 02.17 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Mở tab **Cần quyết định** | [Hỏng] "Không có gì cần quyết định" thường là chuyện phạm vi Đơn vị tổ chức, không phải hết việc | Đơn của người ngoài phạm vi không hiện ở đây, và không ai khác đang chờ bạn | — |
+| **1.** Mở tab **Cần quyết định** | [Hỏng] "Không có gì cần quyết định" thường là chuyện phạm vi Đơn vị tổ chức, không phải hết việc | Đơn của người ngoài phạm vi không hiện ở đây, và không ai khác đang chờ bạn | Ảnh 02.17 |
 | **2.** Bấm **Duyệt** hoặc **Từ chối**, ghi **Ghi chú** | [Dễ] Ghi chú đi vào sổ và người xin nghỉ đọc được | Lý do từ chối là thứ người xin nghỉ cần để sắp xếp lại | — |
 | **3.** Không quyết định cũng là một lựa chọn hợp lệ — đơn ở lại tab chờ | [Dễ] Đơn không tự hết hạn, nhưng cũng không tự duyệt | Người xin nghỉ vẫn thấy đơn đang chờ | — |
+
+![Ảnh 02.17 — Màn hình Đơn xin nghỉ, tab Cần quyết định](images/screens/02-1-don-xin-nghi-can-quyet-dinh.png)
+
+***Ảnh 02.17.** Tab **Cần quyết định** chỉ liệt kê đơn thuộc phạm vi bạn quyết định được; mỗi đơn một cặp nút **Duyệt** và **Từ chối**.*
 
 ---
 
@@ -413,19 +433,19 @@ phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng l
 | **Vật tư, dữ liệu có trước** | Nhà máy, Đơn vị tổ chức, Tài sản hoặc trung tâm chi phí sẽ gắn đơn giá — phải tồn tại trước. |
 | **Công cụ** | Nút **Thêm đơn giá giờ**, ô **Phạm vi**, **Loại đơn giá**, **Số tiền mỗi giờ**, **Tiền tệ**, **Hệ số**, **Có hiệu lực từ**, **Áp dụng đến**, nút **Thay thế**; mã quyền `PPL_COST_RATES_MAINTAIN`. |
 | **An toàn** | Đơn giá đã dùng để báo cáo chi phí tháng trước không được sửa — đổi giá là **Thay thế**, để con số cũ giữ nguyên. |
-| **Thiết bị đào tạo** | Ảnh 02.13 |
+| **Thiết bị đào tạo** | Ảnh 02.18 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 02.18 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Bấm **Thêm đơn giá giờ**, chọn **Phạm vi** (Nhà máy / Đơn vị tổ chức / Tài sản / trung tâm chi phí) và **Loại đơn giá** | [Hỏng] **Phạm vi** và **Loại đơn giá** không sửa được sau khi lưu | Muốn đổi thì thêm đơn giá cho phạm vi mới — hộp thoại nói rõ điều này | Ảnh 02.13 |
+| **1.** Bấm **Thêm đơn giá giờ**, chọn **Phạm vi** (Nhà máy / Đơn vị tổ chức / Tài sản / trung tâm chi phí) và **Loại đơn giá** | [Hỏng] **Phạm vi** và **Loại đơn giá** không sửa được sau khi lưu | Muốn đổi thì thêm đơn giá cho phạm vi mới — hộp thoại nói rõ điều này | Ảnh 02.18 |
 | **2.** Điền **Số tiền mỗi giờ**, **Tiền tệ**, **Hệ số**, **Có hiệu lực từ** | [Hỏng] **Hệ số** là số nhân, không phải phần trăm | `1,5` là gấp rưỡi cho giờ làm thêm; `150` sẽ ra số tiền gấp 150 lần | — |
 | **3.** Để **Áp dụng đến** trống nếu đây là đơn giá hiện hành | [Dễ] Đặt ngày kết thúc thì đơn giá đóng **vào ngày đó**, không tính ngày ấy | Một ngày lệch là một ngày chi phí không có đơn giá | — |
 | **4.** Đổi giá: bấm **Thay thế** trên đơn giá cũ | [Hỏng] Đơn giá cũ **bị đóng**, không bị ghi đè | Nếu sửa giá cũ, mọi báo cáo chi phí quá khứ đổi theo và báo cáo đã gửi cho quản lý thành sai | — |
 
-![Ảnh 02.13 — Màn hình Đơn giá giờ](images/screens/02-1-don-gia-gio.png)
+![Ảnh 02.18 — Màn hình Đơn giá giờ](images/screens/02-1-don-gia-gio.png)
 
-***Ảnh 02.13.** Các đơn giá đang hiệu lực, kèm **Thay thế** — đơn giá cũ không bị xoá, nó được đóng lại theo kỳ.*
+***Ảnh 02.18.** Các đơn giá đang hiệu lực, kèm **Thay thế** — đơn giá cũ không bị xoá, nó được đóng lại theo kỳ.*
 
 ---
 
@@ -438,18 +458,18 @@ phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng l
 | **Vật tư, dữ liệu có trước** | Sản phẩm đã có trong danh mục Chất lượng (`/products`). |
 | **Công cụ** | Nút **Thêm chi phí chuẩn**, ô chọn **Sản phẩm**, **Chi phí chuẩn, mỗi đơn vị**, **Tiền tệ**, **Có hiệu lực từ**, nút **Thay thế**; mã quyền `PPL_PRODUCT_COSTS_MAINTAIN`. |
 | **An toàn** | Chưa đặt chi phí thì hàng lỗi và hàng làm lại **không được tính giá** — số tiền hiện 0, không phải "miễn phí". |
-| **Thiết bị đào tạo** | Ảnh 02.14 |
+| **Thiết bị đào tạo** | Ảnh 02.19 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 02.19 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Bấm **Thêm chi phí chuẩn**, chọn **Sản phẩm** | [Hỏng] **Sản phẩm của một chi phí không sửa được** | Ghi chi phí cho Sản phẩm đúng, đừng sửa chi phí của Sản phẩm khác | Ảnh 02.14 |
+| **1.** Bấm **Thêm chi phí chuẩn**, chọn **Sản phẩm** | [Hỏng] **Sản phẩm của một chi phí không sửa được** | Ghi chi phí cho Sản phẩm đúng, đừng sửa chi phí của Sản phẩm khác | Ảnh 02.19 |
 | **2.** Điền **Chi phí chuẩn, mỗi đơn vị**, **Tiền tệ**, **Có hiệu lực từ** | — | — | — |
 | **3.** Đổi giá: **Thay thế** | [Hỏng] Chi phí cũ **đóng**, chi phí mới mở — cùng luật với Đơn giá giờ | Báo cáo chi phí đã gửi phải giữ nguyên con số của tháng đó | — |
 
-![Ảnh 02.14 — Màn hình Chi phí chuẩn sản phẩm](images/screens/02-1-chi-phi-chuan.png)
+![Ảnh 02.19 — Màn hình Chi phí chuẩn sản phẩm](images/screens/02-1-chi-phi-chuan.png)
 
-***Ảnh 02.14.** Chi phí chuẩn theo Sản phẩm và theo kỳ — con số mà mọi báo cáo chi phí sau đó dựa vào.*
+***Ảnh 02.19.** Chi phí chuẩn theo Sản phẩm và theo kỳ — con số mà mọi báo cáo chi phí sau đó dựa vào.*
 
 ---
 

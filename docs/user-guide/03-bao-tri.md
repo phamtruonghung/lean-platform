@@ -218,13 +218,17 @@ phòng ngừa, vòng đời của chính lệnh, và dừng máy chỉ để đo
 | **Vật tư, dữ liệu có trước** | Lệnh đang mở (phiếu 03.4). |
 | **Công cụ** | Ô **Vì sao huỷ?**, nút **Huỷ Lệnh công việc này**, nút **Để mở**; mã quyền ghi `MTN_WORK_ORDERS_CHANGE`. |
 | **An toàn** | Huỷ **không** xoá lệnh — nó chuyển trạng thái và hiện khi bật lịch sử. Không có đường hoàn tác, nên đọc lại trước khi bấm. |
-| **Thiết bị đào tạo** | — |
+| **Thiết bị đào tạo** | Ảnh 03.12 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 03.8 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Ghi **Vì sao huỷ?** | [Hỏng] Ghi lý do cho người đã nêu việc, không phải cho hồ sơ | Lý do là thứ duy nhất giải thích vì sao việc đã nêu mà không làm | — |
+| **1.** Ghi **Vì sao huỷ?** | [Hỏng] Ghi lý do cho người đã nêu việc, không phải cho hồ sơ | Lý do là thứ duy nhất giải thích vì sao việc đã nêu mà không làm | Ảnh 03.12 |
 | **2.** Bấm **Huỷ Lệnh công việc này**, hoặc **Để mở** để quay ra | [An toàn] Huỷ giữ dấu việc đã được nêu, nhưng lệnh đã huỷ không còn trong danh sách đang mở | Bấm nhầm thì lệnh vẫn còn trong sổ nhưng phải bật lịch sử mới thấy | — |
+
+![Ảnh 03.12 — Hộp thoại Huỷ Lệnh công việc](images/screens/03-1-huy-lenh-cong-viec.png)
+
+***Ảnh 03.12.** Huỷ lệnh mở từ dòng của lệnh trong danh sách: ghi **Vì sao huỷ?**, rồi **Huỷ Lệnh công việc này** — hoặc **Để mở** để quay ra.*
 
 ---
 
@@ -237,18 +241,18 @@ phòng ngừa, vòng đời của chính lệnh, và dừng máy chỉ để đo
 | **Vật tư, dữ liệu có trước** | Tài sản đã có trong danh mục (phiếu 03.1) để chọn đúng máy. |
 | **Công cụ** | Nút **Nêu một yêu cầu**: **Tài sản**, **Nội dung**, **Mô tả**, **Mức khẩn**, ô **Sản xuất đang dừng ngay lúc này**; cột **Kết quả**; mã quyền `MTN_REQUESTS_RAISE`. |
 | **An toàn** | **Mức khẩn** bạn chọn không phải mức ưu tiên của Lệnh công việc — người phân loại chọn mức ưu tiên riêng khi chấp nhận. Đừng dùng "khẩn" cho mọi việc. |
-| **Thiết bị đào tạo** | Ảnh 03.12 |
+| **Thiết bị đào tạo** | Ảnh 03.13 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 03.9 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Bấm **Nêu một yêu cầu**: **Tài sản**, **Nội dung**, **Mô tả**, **Mức khẩn** | [An toàn] Nếu máy đang dừng sản xuất, **bật ô "Sản xuất đang dừng ngay lúc này"** | Ô đó là thứ đẩy yêu cầu lên đầu hàng chờ của bảo trì; không bật thì yêu cầu xếp như mọi yêu cầu khác | Ảnh 03.12 |
+| **1.** Bấm **Nêu một yêu cầu**: **Tài sản**, **Nội dung**, **Mô tả**, **Mức khẩn** | [An toàn] Nếu máy đang dừng sản xuất, **bật ô "Sản xuất đang dừng ngay lúc này"** | Ô đó là thứ đẩy yêu cầu lên đầu hàng chờ của bảo trì; không bật thì yêu cầu xếp như mọi yêu cầu khác | Ảnh 03.13 |
 | **2.** Bấm gửi | [Dễ] Yêu cầu nằm ở cột **Kết quả** | Không có bước phân loại nào cho người nêu — việc đó của giám sát | — |
 | **3.** Theo dõi cột **Kết quả** | [Hỏng] Ba kết quả có thể: **Đã thành Lệnh công việc {số}**, **Bị từ chối: {lý do}**, hoặc đang chờ | Người nêu yêu cầu thấy được kết quả mà không phải hỏi bảo trì | — |
 
-![Ảnh 03.12 — Màn hình Yêu cầu của tôi, hộp thoại Nêu một yêu cầu](images/screens/03-1-neu-yeu-cau.png)
+![Ảnh 03.13 — Màn hình Yêu cầu của tôi, hộp thoại Nêu một yêu cầu](images/screens/03-1-neu-yeu-cau.png)
 
-***Ảnh 03.12.** Người vận hành chỉ cần nói máy nào và chuyện gì; việc phân loại, phân công là của giám sát.*
+***Ảnh 03.13.** Người vận hành chỉ cần nói máy nào và chuyện gì; việc phân loại, phân công là của giám sát.*
 
 ---
 
@@ -261,19 +265,19 @@ phòng ngừa, vòng đời của chính lệnh, và dừng máy chỉ để đo
 | **Vật tư, dữ liệu có trước** | Yêu cầu đã được nêu (phiếu 03.9). |
 | **Công cụ** | Danh sách chờ với cột **Mức khẩn** và dòng **Sản xuất đang dừng**; các nút **Chấp nhận**, **Từ chối**, **Đánh dấu trùng**, **Để chờ tiếp**; mã quyền `MTN_REQUESTS_TRIAGE`. |
 | **An toàn** | **Chấp nhận là tạo Lệnh công việc** — không có bước trung gian và không có cách hoàn tác. Nghi ngờ thì bấm **Để chờ tiếp**. |
-| **Thiết bị đào tạo** | Ảnh 03.13 |
+| **Thiết bị đào tạo** | Ảnh 03.14 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 03.10 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Đọc danh sách, chú ý cột **Mức khẩn** và dòng **Sản xuất đang dừng** | [Dễ] Yêu cầu có "Sản xuất đang dừng" xử lý trước | Máy đang dừng sản xuất là máy đang làm mất sản lượng ngay lúc đó | Ảnh 03.13 |
+| **1.** Đọc danh sách, chú ý cột **Mức khẩn** và dòng **Sản xuất đang dừng** | [Dễ] Yêu cầu có "Sản xuất đang dừng" xử lý trước | Máy đang dừng sản xuất là máy đang làm mất sản lượng ngay lúc đó | Ảnh 03.14 |
 | **2.** Bấm **Chấp nhận**: chọn **Mức ưu tiên** cho Lệnh công việc sẽ sinh ra | [Hỏng] **Mức ưu tiên do bạn quyết định, không phải mức khẩn người báo chọn** | Người báo nói "khẩn" cho mọi việc; người phân loại nhìn cả hàng chờ mới xếp được thứ tự | — |
 | **3.** Hoặc **Từ chối**: ghi **Vì sao từ chối yêu cầu này?** | [Dễ] Lý do từ chối đi về người đã nêu — viết câu người đó hiểu được | Người nêu việc đọc lý do ở cột **Kết quả** của phiếu 03.9 | — |
 | **4.** Yêu cầu trùng: **Đánh dấu trùng**, chọn **Yêu cầu nào được giữ lại** | [Hỏng] Bản bị đánh dấu trùng **rời hàng chờ**; bản giữ lại tiếp tục | Giữ lại bản có mô tả đầy đủ hơn và có người báo gần máy hơn | — |
 
-![Ảnh 03.13 — Màn hình Hàng chờ phân loại](images/screens/03-2-hang-cho-phan-loai.png)
+![Ảnh 03.14 — Màn hình Hàng chờ phân loại](images/screens/03-2-hang-cho-phan-loai.png)
 
-***Ảnh 03.13.** Các Yêu cầu đang chờ quyết định. **Chấp nhận** một yêu cầu sẽ tạo lệnh công việc cho nó — đó là lý do màn hình này chỉ dành cho giám sát trở lên.*
+***Ảnh 03.14.** Các Yêu cầu đang chờ quyết định. **Chấp nhận** một yêu cầu sẽ tạo lệnh công việc cho nó — đó là lý do màn hình này chỉ dành cho giám sát trở lên.*
 
 ---
 
@@ -286,19 +290,19 @@ phòng ngừa, vòng đời của chính lệnh, và dừng máy chỉ để đo
 | **Vật tư, dữ liệu có trước** | Tài sản đã có trong danh mục (phiếu 03.1). |
 | **Công cụ** | Nút **Báo máy hỏng** với **Tài sản**, **Bắt đầu lúc**, **Mô tả**; thao tác **Phân loại** với **Lý do** và **Mô tả**; nút **Đóng** với **Kết thúc lúc**; ô lọc theo **Tài sản, lý do hoặc mô tả**; mã quyền đọc `MTN_DOWNTIME_DISPLAY`, ghi `MTN_DOWNTIME_CHANGE`. |
 | **An toàn** | Hai thao tác **Phân loại** và **Đóng** là hai việc khác nhau — đóng mà chưa phân loại thì lần dừng đó không vào thống kê theo lý do. |
-| **Thiết bị đào tạo** | Ảnh 03.14 |
+| **Thiết bị đào tạo** | Ảnh 03.15 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 03.11 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** **Báo máy hỏng**: **Tài sản**, **Bắt đầu lúc**, **Mô tả** | [Hỏng] Để trống **Bắt đầu lúc** nghĩa là tính từ lúc bấm — dùng khi bạn vừa phát hiện máy dừng | Ghi lùi giờ là cách duy nhất tính đúng thời gian dừng đã xảy ra trước khi bạn tới | Ảnh 03.14 |
+| **1.** **Báo máy hỏng**: **Tài sản**, **Bắt đầu lúc**, **Mô tả** | [Hỏng] Để trống **Bắt đầu lúc** nghĩa là tính từ lúc bấm — dùng khi bạn vừa phát hiện máy dừng | Ghi lùi giờ là cách duy nhất tính đúng thời gian dừng đã xảy ra trước khi bạn tới | Ảnh 03.15 |
 | **2.** **Phân loại** lần dừng: chọn **Lý do**, ghi **Mô tả** (bắt buộc), hoặc **Để chưa phân loại** | [Hỏng] Chưa phân loại được, nhưng **đừng để lâu** — chỉ số dừng máy theo lý do sẽ thiếu | Số dừng máy theo lý do là thứ quyết định dòng máy nào đáng đầu tư | — |
 | **3.** Máy chạy lại: **Đóng**, ghi **Kết thúc lúc** | [Dễ] Máy chủ tự tính thời gian đã dừng | Không có trường "đã dừng bao lâu" để gõ tay | — |
 | **4.** Lọc theo **Tài sản, lý do hoặc mô tả** | — | — | — |
 
-![Ảnh 03.14 — Màn hình Thời gian dừng máy](images/screens/03-1-thoi-gian-dung-may.png)
+![Ảnh 03.15 — Màn hình Thời gian dừng máy](images/screens/03-1-thoi-gian-dung-may.png)
 
-***Ảnh 03.14.** Các lần dừng của máy theo lý do — dữ liệu này là thứ quyết định dòng máy nào xuất hiện trong bàn giao ca.*
+***Ảnh 03.15.** Các lần dừng của máy theo lý do — dữ liệu này là thứ quyết định dòng máy nào xuất hiện trong bàn giao ca.*
 
 ---
 
@@ -311,19 +315,19 @@ phòng ngừa, vòng đời của chính lệnh, và dừng máy chỉ để đo
 | **Vật tư, dữ liệu có trước** | Tài sản (phiếu 03.1); Kế hoạch công việc (phiếu 03.14); Đồng hồ đo đã định nghĩa nếu lịch tính theo lượng sử dụng (phiếu 03.13). |
 | **Công cụ** | Nút **Thêm lịch bảo trì định kỳ**: **Tài sản**, **Kế hoạch công việc**, **Chu kỳ tính theo** (**Thời gian đã trôi qua** / **Lượng sử dụng tích luỹ**), **Bao nhiêu ngày một lần**, **Đồng hồ đo**, **Bao nhiêu lượng sử dụng tích luỹ một lần**, **Tạo lệnh sớm bao nhiêu ngày**, **Mức ưu tiên**, **Ngày đến hạn đầu tiên**; nút **Lên lịch**; mã quyền đọc `MTN_PM_SCHEDULES_DISPLAY`, ghi `MTN_PM_SCHEDULES_CHANGE`. |
 | **An toàn** | Chọn sai **Chu kỳ tính theo** thì lịch không bao giờ đến hạn — và sẽ không có lệnh công việc nào được tạo, im lặng. |
-| **Thiết bị đào tạo** | Ảnh 03.15 |
+| **Thiết bị đào tạo** | Ảnh 03.16 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 03.12 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Bấm **Thêm lịch bảo trì định kỳ**: **Tài sản**, **Kế hoạch công việc**, **Chu kỳ tính theo** | [Hỏng] **Chu kỳ tính theo** có hai lựa chọn: **Thời gian đã trôi qua** (theo ngày) hoặc **Lượng sử dụng tích luỹ** (theo đồng hồ đo) | Chọn sai loại là lịch không bao giờ đến hạn, và không có lệnh nào được tạo | Ảnh 03.15 |
+| **1.** Bấm **Thêm lịch bảo trì định kỳ**: **Tài sản**, **Kế hoạch công việc**, **Chu kỳ tính theo** | [Hỏng] **Chu kỳ tính theo** có hai lựa chọn: **Thời gian đã trôi qua** (theo ngày) hoặc **Lượng sử dụng tích luỹ** (theo đồng hồ đo) | Chọn sai loại là lịch không bao giờ đến hạn, và không có lệnh nào được tạo | Ảnh 03.16 |
 | **2.** Theo ngày: điền **Bao nhiêu ngày một lần**. Theo đồng hồ: chọn **Đồng hồ đo** rồi điền **Bao nhiêu lượng sử dụng tích luỹ một lần** | [Hỏng] Chỉ **đồng hồ đo tích luỹ** mới đặt được lịch | Đồng hồ đo không tích luỹ (ví dụ nhiệt độ) không có "mỗi X một lần" | — |
 | **3.** Điền **Tạo lệnh sớm bao nhiêu ngày**, **Mức ưu tiên**, **Ngày đến hạn đầu tiên** | [Hỏng] **Tạo lệnh sớm bao nhiêu ngày** là thời gian chuẩn bị, không phải chu kỳ: đặt 7 nghĩa là lệnh xuất hiện **7 ngày trước** hạn | Đặt số này bằng chu kỳ là lịch chạy liên tục, lệnh này chưa đóng đã có lệnh sau | — |
 | **4.** Bấm **Lên lịch** | [Dễ] Để trống ngày đầu thì Nền tảng tính **một chu kỳ kể từ hôm nay** | Lịch mới chưa có lần đến hạn nào để so | — |
 
-![Ảnh 03.15 — Màn hình Lịch bảo trì định kỳ](images/screens/03-1-lich-bao-tri-dinh-ky.png)
+![Ảnh 03.16 — Màn hình Lịch bảo trì định kỳ](images/screens/03-1-lich-bao-tri-dinh-ky.png)
 
-***Ảnh 03.15.** Việc phòng ngừa theo chu kỳ hoặc theo đồng hồ đo; mỗi lịch sinh ra lệnh công việc khi đến hạn.*
+***Ảnh 03.16.** Việc phòng ngừa theo chu kỳ hoặc theo đồng hồ đo; mỗi lịch sinh ra lệnh công việc khi đến hạn.*
 
 ---
 
@@ -336,18 +340,18 @@ phòng ngừa, vòng đời của chính lệnh, và dừng máy chỉ để đo
 | **Vật tư, dữ liệu có trước** | Tài sản (phiếu 03.1) và số đọc trên mặt đồng hồ của nó. |
 | **Công cụ** | Ô **Tài sản**, **Mã**, **Tên**, **Loại đồng hồ đo**, **Đơn vị đo**; thao tác **Ghi chỉ số** với **Đồng hồ đang chỉ bao nhiêu**, **Ghi chú**; ô **Đồng hồ đã được đặt lại hoặc thay mới**, **Đồng hồ mới đang chỉ bao nhiêu**; mã quyền đọc `MTN_METERS_DISPLAY`, ghi `MTN_METERS_CHANGE`. |
 | **An toàn** | Số đọc sai làm lịch bảo trì theo giờ chạy sai theo, và không có gì báo cho bạn biết ngoài một lệnh không bao giờ tới hạn. |
-| **Thiết bị đào tạo** | Ảnh 03.16 |
+| **Thiết bị đào tạo** | Ảnh 03.17 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 03.13 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** **Định nghĩa đồng hồ đo**: **Tài sản**, **Mã**, **Tên**, **Loại đồng hồ đo**, **Đơn vị đo** | [Dễ] **Mã** là cách đồng hồ được gọi trên tài sản, ví dụ `RUN-HRS` | Người vận hành đọc mã đó, không đọc tên dài | Ảnh 03.16 |
+| **1.** **Định nghĩa đồng hồ đo**: **Tài sản**, **Mã**, **Tên**, **Loại đồng hồ đo**, **Đơn vị đo** | [Dễ] **Mã** là cách đồng hồ được gọi trên tài sản, ví dụ `RUN-HRS` | Người vận hành đọc mã đó, không đọc tên dài | Ảnh 03.17 |
 | **2.** **Ghi chỉ số**: điền **Đồng hồ đang chỉ bao nhiêu**, **Ghi chú** | [Hỏng] Ghi **đúng số trên mặt đồng hồ**, không tự cộng | Nền tảng tự tính lượng tích luỹ; tự cộng là đếm hai lần | — |
 | **3.** Đồng hồ bị đặt lại về 0 hoặc thay mới: bật **Đồng hồ đã được đặt lại hoặc thay mới**, điền **Đồng hồ mới đang chỉ bao nhiêu** | [An toàn] Không bật ô này thì tổng sử dụng tụt về gần 0 và **mọi lịch theo đồng hồ sai** | Nền tảng chuyển lượng tích luỹ sang phần bù để tổng không tụt — đó là cách duy nhất giữ lịch đúng | — |
 
-![Ảnh 03.16 — Màn hình Đồng hồ đo](images/screens/03-1-dong-ho-do.png)
+![Ảnh 03.17 — Màn hình Đồng hồ đo](images/screens/03-1-dong-ho-do.png)
 
-***Ảnh 03.16.** Các đồng hồ gắn vào Tài sản và số đọc gần nhất — nguồn của lịch bảo trì theo giờ chạy.*
+***Ảnh 03.17.** Các đồng hồ gắn vào Tài sản và số đọc gần nhất — nguồn của lịch bảo trì theo giờ chạy.*
 
 ---
 
@@ -360,18 +364,18 @@ phòng ngừa, vòng đời của chính lệnh, và dừng máy chỉ để đo
 | **Vật tư, dữ liệu có trước** | Kỹ năng yêu cầu của từng bước đã khai báo (phiếu 02.6); mã kế hoạch do kỹ thuật cấp. |
 | **Công cụ** | Nút **Thêm kế hoạch công việc**: **Mã**, **Tên**, **Mô tả**, **Loại công việc**, **Số giờ ước tính**, **Cần dừng máy**; nút **Thêm bước** (**Hướng dẫn**, **Số giờ**, **Kỹ năng yêu cầu**, **Ghi chú an toàn**), **Xoá bước này**, **Thêm kế hoạch**, **Ngừng kích hoạt**, **Kích hoạt lại**; mã quyền `MTN_JOB_PLANS_MAINTAIN`. |
 | **An toàn** | Lệnh công việc **đi theo** kế hoạch chứ không sửa kế hoạch: sửa kế hoạch không làm đổi các lệnh đã tạo từ nó. |
-| **Thiết bị đào tạo** | Ảnh 03.17 |
+| **Thiết bị đào tạo** | Ảnh 03.18 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 03.14 |
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Bấm **Thêm kế hoạch công việc**: **Mã**, **Tên**, **Mô tả**, **Loại công việc**, **Số giờ ước tính**, **Cần dừng máy** | [Dễ] **Cần dừng máy** là thông tin người lập kế hoạch sản xuất cần — đừng bỏ trống cho nhanh | Không có nó thì lịch dừng máy do bảo trì gây ra không được báo trước cho sản xuất | Ảnh 03.17 |
+| **1.** Bấm **Thêm kế hoạch công việc**: **Mã**, **Tên**, **Mô tả**, **Loại công việc**, **Số giờ ước tính**, **Cần dừng máy** | [Dễ] **Cần dừng máy** là thông tin người lập kế hoạch sản xuất cần — đừng bỏ trống cho nhanh | Không có nó thì lịch dừng máy do bảo trì gây ra không được báo trước cho sản xuất | Ảnh 03.18 |
 | **2.** Bấm **Thêm bước** cho từng bước: **Hướng dẫn**, **Số giờ**, **Kỹ năng yêu cầu**, **Ghi chú an toàn**, rồi bấm **Thêm kế hoạch** để lưu | [Dễ] Bước được đánh số theo thứ tự thêm vào; **Xoá bước này** bỏ một bước | Thứ tự các bước chính là thứ tự người thợ đọc trên lệnh công việc | — |
 | **3.** Ngừng dùng: **Ngừng kích hoạt**, và **Kích hoạt lại** khi cần | [An toàn] Kế hoạch đã tạo lệnh công việc rồi vẫn ngừng được — các lệnh cũ không đổi | Ngừng kích hoạt là chặn lịch mới, không phải sửa lịch sử | — |
 
-![Ảnh 03.17 — Màn hình Kế hoạch công việc](images/screens/03-1-ke-hoach-cong-viec.png)
+![Ảnh 03.18 — Màn hình Kế hoạch công việc](images/screens/03-1-ke-hoach-cong-viec.png)
 
-***Ảnh 03.17.** Một kế hoạch là danh sách các bước chuẩn cho một loại việc — chép vào lệnh công việc thay vì viết lại từ đầu.*
+***Ảnh 03.18.** Một kế hoạch là danh sách các bước chuẩn cho một loại việc — chép vào lệnh công việc thay vì viết lại từ đầu.*
 
 ---
 
