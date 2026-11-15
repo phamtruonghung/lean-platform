@@ -290,7 +290,7 @@ soát hàng. Khiếu nại và NCR không tự sinh Sản phẩm không phù h�
 | **Công việc** | Chọn các vấn đề chất lượng cho màn hình ở xưởng, sắp thứ tự, và chạy — màn hình **Trình chiếu**, `/slide-show`. Phiếu 05.11. |
 | **Ai thao tác được** | Đọc: `QLT_SLIDESHOW_DISPLAY`. Chọn và sắp thứ tự: `QLT_SLIDESHOW_CHOOSE` — **mọi vai trò**. |
 | **Vật tư, dữ liệu có trước** | Đã có ít nhất một Khiếu nại hoặc một Sản phẩm không phù hợp, **và một ảnh trên màn hình của vấn đề đó**. |
-| **Công cụ** | Nút **Thêm** trên màn hình của từng vấn đề; **Chuyển lên trước**, **Chuyển ra sau**, **Bỏ khỏi màn hình**; **Chạy trình chiếu**, **Tạm dừng trình chiếu**, **Trang trước**, **Trang sau**; dòng đếm đầu trang. |
+| **Công cụ** | Trên màn hình của từng vấn đề: ô bật/tắt in chữ "Không trong buổi trình chiếu" — bật lên thì chữ đổi thành "Đang trong buổi trình chiếu" (trong danh sách, cùng việc đó là một nút biểu tượng). Trên màn hình **Trình chiếu** chỉ hai chỗ in chữ: nút **Chọn thứ tự** và bộ đếm "1 of 2"; còn lại là **nút biểu tượng, tên chỉ hiện khi rê chuột**: mỗi dòng thứ tự có ↑ "Chuyển lên trước", ↓ "Chuyển ra sau", ⊖ "Bỏ khỏi màn hình"; đầu trang có ▶ "Chạy trình chiếu" (đang chạy thì chính nút đó đổi sang ký hiệu tạm dừng, tên "Tạm dừng trình chiếu") và ‹ "Trang trước" / › "Trang sau"; cộng dòng đếm đầu trang. |
 | **An toàn** | **Một trang trình chiếu cần ảnh.** Vấn đề chưa có ảnh **sẽ không hiện** — dòng đầu trang đếm sẵn cho bạn "{n} đã chọn nhưng chưa có ảnh". Đọc con số đó trước khi hỏi vì sao màn hình trống. |
 | **Thiết bị đào tạo** | Ảnh 05.12 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 05.11 |
@@ -299,13 +299,13 @@ soát hàng. Khiếu nại và NCR không tự sinh Sản phẩm không phù h�
 | --- | --- | --- | --- |
 | **1.** Mở màn hình của một vấn đề và **thêm ít nhất một ảnh** cho nó | [An toàn] **Không có ảnh thì vấn đề không hiện trên màn hình**, dù đã được chọn | Đây là lỗi phổ biến nhất: người dùng chọn vấn đề rồi thắc mắc sao màn hình trống | — |
 | **2.** Chọn vấn đề đó cho buổi trình chiếu | [Dễ] Chọn được từ danh sách hoặc từ màn hình của chính vấn đề | Hai lối vào cùng một việc, nên chọn ở đâu cũng được | — |
-| **3.** Sắp thứ tự: **Chuyển lên trước** / **Chuyển ra sau** | [Dễ] Thứ tự là thứ buổi trình chiếu chạy, nên sắp theo câu chuyện bạn muốn kể | Một buổi trình chiếu không có thứ tự là một chồng ảnh | — |
+| **3.** Sắp thứ tự: bấm **Chọn thứ tự**, rồi trên từng dòng dùng hai nút mũi tên ↑ "Chuyển lên trước" / ↓ "Chuyển ra sau" — chúng là nút biểu tượng, tên chỉ hiện khi rê chuột | [Dễ] Thứ tự là thứ buổi trình chiếu chạy, nên sắp theo câu chuyện bạn muốn kể | Một buổi trình chiếu không có thứ tự là một chồng ảnh | — |
 | **4.** Đọc dòng đếm đầu trang: "{n} đã chọn nhưng chưa có ảnh" | [Hỏng] Con số này là câu trả lời cho "sao trình chiếu trống" | Kiểm tra ở đây rẻ hơn nhiều so với tìm lỗi trong lúc đang họp giao ban | — |
-| **5.** Chạy: **Chạy trình chiếu**, rồi **Tạm dừng trình chiếu**, **Trang trước** / **Trang sau** | [Dễ] **Bỏ khỏi màn hình** gỡ một vấn đề mà không đụng tới bản ghi của nó | Gỡ khỏi trình chiếu không phải xoá — bản ghi vẫn nguyên trong sổ | Ảnh 05.12 |
+| **5.** Chạy: bấm nút ▶ ở đầu trang — tên "Chạy trình chiếu" chỉ hiện khi rê chuột; đang chạy thì chính nút đó đổi sang ký hiệu tạm dừng, tên "Tạm dừng trình chiếu". Lật trang bằng hai nút ‹ "Trang trước" / › "Trang sau" hai bên bộ đếm "1 of 2" | [Dễ] Nút ⊖ "Bỏ khỏi màn hình" gỡ một vấn đề mà không đụng tới bản ghi của nó | Gỡ khỏi trình chiếu không phải xoá — bản ghi vẫn nguyên trong sổ | Ảnh 05.12 |
 
 ![Ảnh 05.12 — Màn hình Trình chiếu chất lượng](images/screens/05-5-trinh-chieu.png)
 
-***Ảnh 05.12.** Buổi trình chiếu chạy từng ảnh một: **Chạy trình chiếu**, **Tạm dừng trình chiếu** và **Trang trước** / **Trang sau** ngay trên màn hình.*
+***Ảnh 05.12.** Buổi trình chiếu chạy từng ảnh một. Nút ▶ đầu trang và hai nút ‹ › hai bên bộ đếm "1 of 2" là nút biểu tượng: tên của chúng — "Chạy trình chiếu" / "Tạm dừng trình chiếu", "Trang trước", "Trang sau" — chỉ hiện khi rê chuột, còn trên màn hình là hình.*
 
 ---
 
