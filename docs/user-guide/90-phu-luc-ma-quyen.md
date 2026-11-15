@@ -2,6 +2,8 @@
 
 Sinh ra từ cơ sở dữ liệu sau khi chạy đủ migration tới `1804100000000_kpi-catalogue-write-roles` — không chép tay, nên không lệch được với mã nguồn.
 
+**Đây là bảng tra, không phải một phiếu.** Một phiếu dạy một việc và có các bước chính; một phụ lục trả lời một câu hỏi — "ai mang mã quyền này" — nên ở đây không có bước nào để làm theo. Muốn biết một màn hình dạy thế nào, mở chương của nhóm đó.
+
 `Mọi` = `ROLE_STANDARD`, nhóm mặc định mà **mọi Tài khoản đều mang**. Một vai trò mang quyền của chính nó **cộng** nhóm mặc định; bảng dưới đã tính sẵn phần cộng đó.
 
 `Quản trị viên` không đọc bảng này để biết mình làm được gì: máy chủ cho vai trò `ROLE_ADMIN` đi qua mọi mã quyền, nên admin làm được tất cả 84.
