@@ -88,10 +88,9 @@ phòng ngừa, vòng đời của chính lệnh, và dừng máy chỉ để đo
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Tìm kho theo **tên hoặc mã**, bấm một kho để mở **Tồn kho** | — | — | Ảnh 03.4 |
-| **2.** Trong Tồn kho, tìm phụ tùng theo **mã hoặc mô tả** | [Dễ] Kệ trống hiện **Kệ trống** — đó là trạng thái hợp lệ, không phải lỗi | Không có hàng là chưa nhập, không phải mất dữ liệu | — |
-| **3.** Nhập hàng về: bấm **Nhập kho**, chọn **Phụ tùng**, **Số lượng**, **Lý do** | [An toàn] Số lượng tính theo **Đơn vị đo** của phụ tùng — đọc lại đơn vị trước khi gõ số | Một lần nhập sai đơn vị là tồn kho sai cho tới lần kiểm kê sau | Ảnh 03.5 |
-| **4.** Lấy hàng ra để sửa máy: **không** làm ở đây — mở **Chi tiết Lệnh công việc → Xuất phụ tùng** (phiếu 03.5) | [Hỏng] Chỉ gắn với Lệnh công việc thì Nền tảng mới biết phụ tùng nằm trong chi phí của công việc nào | Xuất kho không gắn lệnh làm chi phí công việc thiếu, và cuối tháng không đối chiếu được | — |
+| **1.** Tìm kho theo **tên hoặc mã**, bấm một kho để mở **Tồn kho**, rồi tìm phụ tùng theo **mã hoặc mô tả** | [Dễ] Kệ trống hiện **Kệ trống** — đó là trạng thái hợp lệ, không phải lỗi | Không có hàng là chưa nhập, không phải mất dữ liệu | Ảnh 03.4 |
+| **2.** Nhập hàng về: bấm **Nhập kho**, chọn **Phụ tùng**, **Số lượng**, **Lý do** | [An toàn] Số lượng tính theo **Đơn vị đo** của phụ tùng — đọc lại đơn vị trước khi gõ số | Một lần nhập sai đơn vị là tồn kho sai cho tới lần kiểm kê sau | Ảnh 03.5 |
+| **3.** Lấy hàng ra để sửa máy: **không** làm ở đây — mở **Chi tiết Lệnh công việc → Xuất phụ tùng** (phiếu 03.5) | [Hỏng] Chỉ gắn với Lệnh công việc thì Nền tảng mới biết phụ tùng nằm trong chi phí của công việc nào | Xuất kho không gắn lệnh làm chi phí công việc thiếu, và cuối tháng không đối chiếu được | — |
 
 ![Ảnh 03.4 — Màn hình Kho](images/screens/03-1-kho.png)
 
@@ -179,8 +178,7 @@ phòng ngừa, vòng đời của chính lệnh, và dừng máy chỉ để đo
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Tìm trong ô **Tìm một người** theo **tên, mã nhân viên, hoặc chứng nhận họ có** | [Hỏng] Danh sách chỉ gồm người **đủ điều kiện theo phạm vi**; danh sách rỗng nghĩa là không có ai để giao | Người không hiện không phải vì Nền tảng "ghét" họ: hoặc ngoài phạm vi, hoặc bộ lọc chứng nhận đang lọc ra — gõ mã nhân viên trực tiếp để chắc chắn | Ảnh 03.10 |
-| **2.** Bấm tên người | — | — | — |
+| **1.** Tìm trong ô **Tìm một người** theo **tên, mã nhân viên, hoặc chứng nhận họ có**, rồi bấm tên người để giao lệnh | [Hỏng] Danh sách chỉ gồm người **đủ điều kiện theo phạm vi**; danh sách rỗng nghĩa là không có ai để giao | Người không hiện không phải vì Nền tảng "ghét" họ: hoặc ngoài phạm vi, hoặc bộ lọc chứng nhận đang lọc ra — gõ mã nhân viên trực tiếp để chắc chắn | Ảnh 03.10 |
 
 ![Ảnh 03.10 — Màn hình Phân công Lệnh công việc](images/screens/03-1-phan-cong-lenh.png)
 
@@ -368,9 +366,8 @@ phòng ngừa, vòng đời của chính lệnh, và dừng máy chỉ để đo
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
 | **1.** Bấm **Thêm kế hoạch công việc**: **Mã**, **Tên**, **Mô tả**, **Loại công việc**, **Số giờ ước tính**, **Cần dừng máy** | [Dễ] **Cần dừng máy** là thông tin người lập kế hoạch sản xuất cần — đừng bỏ trống cho nhanh | Không có nó thì lịch dừng máy do bảo trì gây ra không được báo trước cho sản xuất | Ảnh 03.17 |
-| **2.** Bấm **Thêm bước** cho từng bước: **Hướng dẫn**, **Số giờ**, **Kỹ năng yêu cầu**, **Ghi chú an toàn** | [Dễ] Bước được đánh số theo thứ tự thêm vào; **Xoá bước này** bỏ một bước | Thứ tự các bước chính là thứ tự người thợ đọc trên lệnh công việc | — |
-| **3.** Bấm **Thêm kế hoạch** | — | — | — |
-| **4.** Ngừng dùng: **Ngừng kích hoạt**, và **Kích hoạt lại** khi cần | [An toàn] Kế hoạch đã tạo lệnh công việc rồi vẫn ngừng được — các lệnh cũ không đổi | Ngừng kích hoạt là chặn lịch mới, không phải sửa lịch sử | — |
+| **2.** Bấm **Thêm bước** cho từng bước: **Hướng dẫn**, **Số giờ**, **Kỹ năng yêu cầu**, **Ghi chú an toàn**, rồi bấm **Thêm kế hoạch** để lưu | [Dễ] Bước được đánh số theo thứ tự thêm vào; **Xoá bước này** bỏ một bước | Thứ tự các bước chính là thứ tự người thợ đọc trên lệnh công việc | — |
+| **3.** Ngừng dùng: **Ngừng kích hoạt**, và **Kích hoạt lại** khi cần | [An toàn] Kế hoạch đã tạo lệnh công việc rồi vẫn ngừng được — các lệnh cũ không đổi | Ngừng kích hoạt là chặn lịch mới, không phải sửa lịch sử | — |
 
 ![Ảnh 03.17 — Màn hình Kế hoạch công việc](images/screens/03-1-ke-hoach-cong-viec.png)
 

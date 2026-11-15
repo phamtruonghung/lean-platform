@@ -4,7 +4,7 @@ Nhóm **Nhân sự** trả lời bốn câu: ai làm việc ở đây, họ làm
 nào, và ai đã được đào tạo cái gì. Ngoài ra có hai danh mục tiền (**Đơn giá giờ**,
 **Chi phí chuẩn sản phẩm**) và một màn hình tự phục vụ (**Chữ ký của tôi**).
 
-Mười tám phiếu dưới đây theo đúng thứ tự một buổi đào tạo nên đi: đọc trước, ghi
+Mười chín phiếu dưới đây theo đúng thứ tự một buổi đào tạo nên đi: đọc trước, ghi
 sau. **Đọc rộng, ghi hẹp** — Danh bạ, Chức danh, Kỹ năng, Đơn vị tổ chức, Đào tạo
 và Đơn xin nghỉ ai cũng đọc được; ghi thì phần lớn chỉ quản trị viên, và mọi thao
 tác ghi đều cần phạm vi **Đơn vị tổ chức**.
@@ -30,10 +30,9 @@ phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng l
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Gõ tên vào ô **Tìm theo tên** | [Hỏng] Tìm theo **tên**, không theo mã nhân viên | Mã nhân viên dùng để tìm trong các ô chọn Nhân viên khác, ví dụ khi thêm học viên đào tạo | Ảnh 02.1 |
+| **1.** Gõ tên vào ô **Tìm theo tên**, rồi bấm dòng đúng người để mở **Hồ sơ Nhân viên** | [Hỏng] Tìm theo **tên**, không theo mã nhân viên | Mã nhân viên dùng để tìm trong các ô chọn Nhân viên khác, ví dụ khi thêm học viên đào tạo | Ảnh 02.1 |
 | **2.** Thu hẹp bằng **Đơn vị tổ chức** và **Chức danh công việc** khi danh sách dài | [Dễ] Bộ lọc Đơn vị tổ chức **bao gồm mọi đơn vị bên dưới** nó | Chọn "Bộ phận Sản xuất" là thấy cả các tổ bên trong, không phải chọn từng tổ | — |
 | **3.** Không thấy người: bật **Gồm cả người đã rời** | [Hỏng] Đừng kết luận "không có người này" khi chưa bật ô đó | Người đã rời bị **ẩn** mặc định — đây là lỗi hay gặp nhất ở Danh bạ | — |
-| **4.** Bấm một dòng để mở **Hồ sơ Nhân viên** | — | — | — |
 
 ![Ảnh 02.1 — Màn hình Danh bạ](images/screens/02-1-danh-ba-tim-kiem.png)
 
@@ -53,10 +52,9 @@ phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng l
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Bấm **Thêm Nhân viên** | — | — | Ảnh 02.2 |
-| **2.** Điền **Mã nhân viên**, **Họ**, **Tên**, **Loại hình làm việc** | [Hỏng] Mã nhân viên không đổi được về sau, và là thứ công nhân quét ở thiết bị Xưởng | Sai mã là công nhân không đăng nhập được ở Xưởng, và phải sửa cả sổ đã ghi | Ảnh 02.2 |
-| **3.** Điền **Email công việc** nếu có | [Dễ] Không bắt buộc, nhưng là thứ để gắn Tài khoản về con người này sau | Thiếu email thì quản trị viên vẫn gắn được bằng tay ở **Tài khoản → Liên kết Nhân viên** | — |
-| **4.** Mở hồ sơ vừa tạo, bấm **Phân công**, gán vào Đơn vị tổ chức | [Hỏng] Một Nhân viên chưa phân công **chưa thuộc tổ nào** và không hiện trong bảng chấm công của ca | Đây là nguyên nhân số một của câu "người này không có trong bảng chấm công" | — |
+| **1.** Bấm **Thêm Nhân viên**, điền **Mã nhân viên**, **Họ**, **Tên**, **Loại hình làm việc** | [Hỏng] Mã nhân viên không đổi được về sau, và là thứ công nhân quét ở thiết bị Xưởng | Sai mã là công nhân không đăng nhập được ở Xưởng, và phải sửa cả sổ đã ghi | Ảnh 02.2 |
+| **2.** Điền **Email công việc** nếu có | [Dễ] Không bắt buộc, nhưng là thứ để gắn Tài khoản về con người này sau | Thiếu email thì quản trị viên vẫn gắn được bằng tay ở **Tài khoản → Liên kết Nhân viên** | — |
+| **3.** Mở hồ sơ vừa tạo, bấm **Phân công**, gán vào Đơn vị tổ chức | [Hỏng] Một Nhân viên chưa phân công **chưa thuộc tổ nào** và không hiện trong bảng chấm công của ca | Đây là nguyên nhân số một của câu "người này không có trong bảng chấm công" | — |
 
 ![Ảnh 02.2 — Hộp thoại Thêm Nhân viên](images/screens/02-danh-ba-them-nhan-vien.png)
 
@@ -256,8 +254,7 @@ phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng l
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
 | **1.** Đặt **Từ** / **Đến** và **Lọc theo Đơn vị tổ chức** | [Dễ] Danh sách xếp **cũ nhất trước** | Việc cũ nhất là việc đang chặn báo cáo giờ công tháng | — |
-| **2.** Bấm **Mở bảng chấm công** trên một dòng | — | — | — |
-| **3.** Làm xong bảng, quay lại danh sách | [Dễ] Dòng đó biến mất khỏi danh sách | Còn hiện nghĩa là chưa bấm **Xác nhận** ở phiếu 02.9 | — |
+| **2.** Bấm **Mở bảng chấm công** trên một dòng, làm xong bảng rồi quay lại danh sách | [Dễ] Dòng đó biến mất khỏi danh sách | Còn hiện nghĩa là chưa bấm **Xác nhận** ở phiếu 02.9 | — |
 
 ---
 
@@ -318,9 +315,8 @@ phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng l
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Đọc phần **Buổi đào tạo** và **Học viên (n)** | — | — | — |
+| **1.** Đọc phần **Buổi đào tạo** và **Học viên (n)**; cần bản in để ký giấy thì bấm **Biểu mẫu** (`/training/:id/form`, phiếu 02.14) | — | — | — |
 | **2.** Đọc **Câu trả lời** của từng người: đã xác nhận hay từ chối | [Hỏng] Một người chưa trả lời không phải là đã tham gia | Sổ chỉ khép khi mọi học viên đã trả lời | — |
-| **3.** Bấm **Biểu mẫu** khi cần bản in để ký giấy (`/training/:id/form`) | — | — | — |
 
 ---
 
@@ -338,9 +334,8 @@ phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng l
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Mở biểu mẫu từ trang chi tiết bản ghi | — | — | — |
-| **2.** In bằng **trình duyệt** (Ctrl+P) | [Dễ] Không có nút in riêng của Nền tảng | Một nút in riêng sẽ là đường thứ hai để sinh ra cùng một tài liệu | — |
-| **3.** Ký giấy, rồi lưu bản giấy theo quy định của nhà máy | [Hỏng] Ký giấy là **thêm** vào sổ điện tử, không thay thế nó | Câu trả lời của học viên trong Nền tảng là bản có dấu thời gian | — |
+| **1.** Mở biểu mẫu từ trang chi tiết bản ghi, rồi in bằng **trình duyệt** (Ctrl+P) | [Dễ] Không có nút in riêng của Nền tảng | Một nút in riêng sẽ là đường thứ hai để sinh ra cùng một tài liệu | — |
+| **2.** Ký giấy, rồi lưu bản giấy theo quy định của nhà máy | [Hỏng] Ký giấy là **thêm** vào sổ điện tử, không thay thế nó | Câu trả lời của học viên trong Nền tảng là bản có dấu thời gian | — |
 
 ---
 
@@ -382,10 +377,8 @@ phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng l
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Bấm **Xin nghỉ** (`/leave-requests/new`) | — | — | Ảnh 02.12 |
-| **2.** Chọn **Loại nghỉ**, **Ngày đầu**, **Ngày cuối**, **Ghi chú** | [Hỏng] **Ngày cuối** được tính luôn — đơn tính cả hai đầu | Nhập ngày cuối là ngày đi làm lại thì đơn dài hơn thực tế một ngày | Ảnh 02.12 |
-| **3.** Bấm gửi, rồi tìm đơn trong tab **Của tôi** | — | — | — |
-| **4.** Đổi ý khi **chưa có quyết định**: **Huỷ đơn** → **Huỷ đơn** | [Hỏng] Đơn đã duyệt rồi thì không huỷ được | Đơn đã duyệt đã vào sổ nhân sự và kế hoạch ca | — |
+| **1.** Bấm **Xin nghỉ** (`/leave-requests/new`), chọn **Loại nghỉ**, **Ngày đầu**, **Ngày cuối**, **Ghi chú**, bấm gửi, rồi tìm đơn trong tab **Của tôi** | [Hỏng] **Ngày cuối** được tính luôn — đơn tính cả hai đầu | Nhập ngày cuối là ngày đi làm lại thì đơn dài hơn thực tế một ngày | Ảnh 02.12 |
+| **2.** Đổi ý khi **chưa có quyết định**: **Huỷ đơn** → **Huỷ đơn** | [Hỏng] Đơn đã duyệt rồi thì không huỷ được | Đơn đã duyệt đã vào sổ nhân sự và kế hoạch ca | — |
 
 ![Ảnh 02.12 — Màn hình Đơn xin nghỉ](images/screens/02-2-don-xin-nghi.png)
 
@@ -425,11 +418,10 @@ phân công, bàn giao ca, báo cáo an toàn và độ phủ kỹ năng cùng l
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Bấm **Thêm đơn giá giờ** | — | — | Ảnh 02.13 |
-| **2.** Chọn **Phạm vi** (Nhà máy / Đơn vị tổ chức / Tài sản / trung tâm chi phí) và **Loại đơn giá** | [Hỏng] **Phạm vi** và **Loại đơn giá** không sửa được sau khi lưu | Muốn đổi thì thêm đơn giá cho phạm vi mới — hộp thoại nói rõ điều này | — |
-| **3.** Điền **Số tiền mỗi giờ**, **Tiền tệ**, **Hệ số**, **Có hiệu lực từ** | [Hỏng] **Hệ số** là số nhân, không phải phần trăm | `1,5` là gấp rưỡi cho giờ làm thêm; `150` sẽ ra số tiền gấp 150 lần | — |
-| **4.** Để **Áp dụng đến** trống nếu đây là đơn giá hiện hành | [Dễ] Đặt ngày kết thúc thì đơn giá đóng **vào ngày đó**, không tính ngày ấy | Một ngày lệch là một ngày chi phí không có đơn giá | — |
-| **5.** Đổi giá: bấm **Thay thế** trên đơn giá cũ | [Hỏng] Đơn giá cũ **bị đóng**, không bị ghi đè | Nếu sửa giá cũ, mọi báo cáo chi phí quá khứ đổi theo và báo cáo đã gửi cho quản lý thành sai | — |
+| **1.** Bấm **Thêm đơn giá giờ**, chọn **Phạm vi** (Nhà máy / Đơn vị tổ chức / Tài sản / trung tâm chi phí) và **Loại đơn giá** | [Hỏng] **Phạm vi** và **Loại đơn giá** không sửa được sau khi lưu | Muốn đổi thì thêm đơn giá cho phạm vi mới — hộp thoại nói rõ điều này | Ảnh 02.13 |
+| **2.** Điền **Số tiền mỗi giờ**, **Tiền tệ**, **Hệ số**, **Có hiệu lực từ** | [Hỏng] **Hệ số** là số nhân, không phải phần trăm | `1,5` là gấp rưỡi cho giờ làm thêm; `150` sẽ ra số tiền gấp 150 lần | — |
+| **3.** Để **Áp dụng đến** trống nếu đây là đơn giá hiện hành | [Dễ] Đặt ngày kết thúc thì đơn giá đóng **vào ngày đó**, không tính ngày ấy | Một ngày lệch là một ngày chi phí không có đơn giá | — |
+| **4.** Đổi giá: bấm **Thay thế** trên đơn giá cũ | [Hỏng] Đơn giá cũ **bị đóng**, không bị ghi đè | Nếu sửa giá cũ, mọi báo cáo chi phí quá khứ đổi theo và báo cáo đã gửi cho quản lý thành sai | — |
 
 ![Ảnh 02.13 — Màn hình Đơn giá giờ](images/screens/02-1-don-gia-gio.png)
 

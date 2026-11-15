@@ -62,17 +62,17 @@ từng phiếu.
 | **01.2** | [Chờ phê duyệt](01-vao-cua-va-tai-khoan.md#chờ-phê-duyệt) | 3 | 1 |
 | **01.3** | [Chọn mật khẩu mới (bắt buộc)](01-vao-cua-va-tai-khoan.md#chọn-mật-khẩu-mới-bắt-buộc) | 3 | 1 |
 | **01.4** | [Trang chủ](01-vao-cua-va-tai-khoan.md#trang-chủ) | 4 | 1 |
-| **01.5** | [Cài đặt](01-vao-cua-va-tai-khoan.md#cài-đặt) | 3 | 2 |
+| **01.5** | [Cài đặt](01-vao-cua-va-tai-khoan.md#cài-đặt) | 2 | 2 |
 | **01.6** | [Không tìm thấy màn hình](01-vao-cua-va-tai-khoan.md#không-tìm-thấy-màn-hình) | 2 | 1 |
-| **01.7** | [Không có quyền xem mục này](01-vao-cua-va-tai-khoan.md#không-có-quyền-xem-mục-này) | 3 | 1 |
+| **01.7** | [Không có quyền xem mục này](01-vao-cua-va-tai-khoan.md#không-có-quyền-xem-mục-này) | 2 | 1 |
 | **01.8** | [Không kiểm tra được phiên làm việc](01-vao-cua-va-tai-khoan.md#không-kiểm-tra-được-phiên-làm-việc) | 3 | 1 |
 
 **02 · Nhân sự**
 
 | Phiếu | Việc | Bước chính | Ảnh |
 | --- | --- | ---: | ---: |
-| **02.1** | [Danh bạ](02-nhan-su.md#danh-bạ) | 4 | 1 |
-| **02.2** | › [Thêm một Nhân viên](02-nhan-su.md#thêm-một-nhân-viên) | 4 | 1 |
+| **02.1** | [Danh bạ](02-nhan-su.md#danh-bạ) | 3 | 1 |
+| **02.2** | › [Thêm một Nhân viên](02-nhan-su.md#thêm-một-nhân-viên) | 3 | 1 |
 | **02.3** | [Hồ sơ Nhân viên](02-nhan-su.md#hồ-sơ-nhân-viên) | 5 | 1 |
 | **02.4** | [Giờ đã làm của một Nhân viên](02-nhan-su.md#giờ-đã-làm-của-một-nhân-viên) | 4 | 1 |
 | **02.5** | [Chức danh công việc](02-nhan-su.md#chức-danh-công-việc) | 3 | 1 |
@@ -80,15 +80,15 @@ từng phiếu.
 | **02.7** | [Đơn vị tổ chức](02-nhan-su.md#đơn-vị-tổ-chức) | 6 | 1 |
 | **02.8** | [Chấm công](02-nhan-su.md#chấm-công) | 3 | 1 |
 | **02.9** | [Bảng chấm công một ca](02-nhan-su.md#bảng-chấm-công-một-ca) | 4 | 1 |
-| **02.10** | [Chấm công cần xác nhận](02-nhan-su.md#chấm-công-cần-xác-nhận) | 3 | — |
+| **02.10** | [Chấm công cần xác nhận](02-nhan-su.md#chấm-công-cần-xác-nhận) | 2 | — |
 | **02.11** | [Đào tạo](02-nhan-su.md#đào-tạo) | 4 | 1 |
 | **02.12** | › [Xác nhận một buổi đào tạo](02-nhan-su.md#xác-nhận-một-buổi-đào-tạo) | 3 | — |
-| **02.13** | [Bản ghi đào tạo (chi tiết)](02-nhan-su.md#bản-ghi-đào-tạo-chi-tiết) | 3 | — |
-| **02.14** | [Biểu mẫu in của bản ghi đào tạo](02-nhan-su.md#biểu-mẫu-in-của-bản-ghi-đào-tạo) | 3 | — |
+| **02.13** | [Bản ghi đào tạo (chi tiết)](02-nhan-su.md#bản-ghi-đào-tạo-chi-tiết) | 2 | — |
+| **02.14** | [Biểu mẫu in của bản ghi đào tạo](02-nhan-su.md#biểu-mẫu-in-của-bản-ghi-đào-tạo) | 2 | — |
 | **02.15** | [Chữ ký của tôi](02-nhan-su.md#chữ-ký-của-tôi) | 3 | 1 |
-| **02.16** | [Đơn xin nghỉ](02-nhan-su.md#đơn-xin-nghỉ) | 4 | 1 |
+| **02.16** | [Đơn xin nghỉ](02-nhan-su.md#đơn-xin-nghỉ) | 2 | 1 |
 | **02.17** | › [Duyệt hoặc từ chối một đơn](02-nhan-su.md#duyệt-hoặc-từ-chối-một-đơn) | 3 | — |
-| **02.18** | [Đơn giá giờ](02-nhan-su.md#đơn-giá-giờ) | 5 | 1 |
+| **02.18** | [Đơn giá giờ](02-nhan-su.md#đơn-giá-giờ) | 4 | 1 |
 | **02.19** | [Chi phí chuẩn sản phẩm](02-nhan-su.md#chi-phí-chuẩn-sản-phẩm) | 3 | 1 |
 
 **03 · Bảo trì**
@@ -97,10 +97,10 @@ từng phiếu.
 | --- | --- | ---: | ---: |
 | **03.1** | [Tài sản](03-bao-tri.md#tài-sản) | 6 | 2 |
 | **03.2** | [Phụ tùng](03-bao-tri.md#phụ-tùng) | 3 | 1 |
-| **03.3** | [Kho](03-bao-tri.md#kho) | 4 | 2 |
+| **03.3** | [Kho](03-bao-tri.md#kho) | 3 | 2 |
 | **03.4** | [Lệnh công việc](03-bao-tri.md#lệnh-công-việc) | 7 | 2 |
 | **03.5** | [Chi tiết Lệnh công việc](03-bao-tri.md#chi-tiết-lệnh-công-việc) | 5 | 2 |
-| **03.6** | [Phân công Lệnh công việc](03-bao-tri.md#phân-công-lệnh-công-việc) | 2 | 1 |
+| **03.6** | [Phân công Lệnh công việc](03-bao-tri.md#phân-công-lệnh-công-việc) | 1 | 1 |
 | **03.7** | [Hoàn thành Lệnh công việc](03-bao-tri.md#hoàn-thành-lệnh-công-việc) | 2 | 1 |
 | **03.8** | [Huỷ Lệnh công việc](03-bao-tri.md#huỷ-lệnh-công-việc) | 2 | — |
 | **03.9** | [Yêu cầu của tôi](03-bao-tri.md#yêu-cầu-của-tôi) | 3 | 1 |
@@ -108,12 +108,12 @@ từng phiếu.
 | **03.11** | [Thời gian dừng máy](03-bao-tri.md#thời-gian-dừng-máy) | 4 | 1 |
 | **03.12** | [Lịch bảo trì định kỳ](03-bao-tri.md#lịch-bảo-trì-định-kỳ) | 4 | 1 |
 | **03.13** | [Đồng hồ đo](03-bao-tri.md#đồng-hồ-đo) | 3 | 1 |
-| **03.14** | [Kế hoạch công việc](03-bao-tri.md#kế-hoạch-công-việc) | 4 | 1 |
+| **03.14** | [Kế hoạch công việc](03-bao-tri.md#kế-hoạch-công-việc) | 3 | 1 |
 
 **Chương 04–10 chưa có phiếu.** Nhóm **Hành động**, **Chất lượng**, **An toàn**,
 **Sản xuất**, **Phân tích**, **Quản trị** và thiết bị **Xưởng** vẫn đang ở dạng mô tả
-chức năng; chúng được chuyển sang bảng phân tích công việc theo ba đợt (04–06, 07–08,
-09–10). Cho tới lúc đó, một người chỉ được đào tạo trên những thao tác đã có phiếu ở
+chức năng; chúng được chuyển sang bảng phân tích công việc theo hai đợt (04–06 và
+07–10). Cho tới lúc đó, một người chỉ được đào tạo trên những thao tác đã có phiếu ở
 trên — **đừng dạy bằng chương chưa chuyển**.
 
 ### 3. Chuẩn bị đủ

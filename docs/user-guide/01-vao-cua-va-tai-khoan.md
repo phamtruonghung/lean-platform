@@ -131,9 +131,8 @@ qua nhất khi đào tạo: đăng nhập được không có nghĩa là đã đ
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
 | **Chung** | [Hỏng] Kiểm tra ngôn ngữ **trước** khi báo lỗi "màn hình toàn tiếng Anh" | Ngôn ngữ theo trình duyệt chứ không theo Tài khoản, nên người ca trước đổi được | — |
-| **1.** Mở **Cài đặt** ở cuối thanh điều hướng | — | — | — |
-| **2.** Ở **Ngôn ngữ**, chọn **Tiếng Việt** hoặc **Tiếng Anh** | [Dễ] Áp dụng **ngay** cho toàn bộ Nền tảng, không cần tải lại trang | Toàn bộ chuỗi giao diện đổi cùng lúc; không có bước lưu | Ảnh 01.6, Ảnh 01.7 |
-| **3.** Đổi giao diện sáng/tối ở menu tài khoản | [Dễ] Lựa chọn được ghi nhớ trên trình duyệt này, máy khác giữ lựa chọn riêng | Không theo Tài khoản, nên không có gì để đồng bộ giữa các máy | — |
+| **1.** Mở **Cài đặt** ở cuối thanh điều hướng, chọn **Tiếng Việt** hoặc **Tiếng Anh** ở mục **Ngôn ngữ** | [Dễ] Áp dụng **ngay** cho toàn bộ Nền tảng, không cần tải lại trang | Toàn bộ chuỗi giao diện đổi cùng lúc; không có bước lưu | Ảnh 01.6, Ảnh 01.7 |
+| **2.** Đổi giao diện sáng/tối ở menu tài khoản | [Dễ] Lựa chọn được ghi nhớ trên trình duyệt này, máy khác giữ lựa chọn riêng | Không theo Tài khoản, nên không có gì để đồng bộ giữa các máy | — |
 
 ![Ảnh 01.6 — Màn hình Cài đặt, chọn tiếng Việt](images/screens/01-2-cai-dat-tieng-viet.png)
 
@@ -182,9 +181,8 @@ qua nhất khi đào tạo: đăng nhập được không có nghĩa là đã đ
 
 | Các bước chính | Điểm then chốt | Vì sao | Minh hoạ |
 | --- | --- | --- | --- |
-| **1.** Đọc câu trên màn hình | [Hỏng] Màn hình này **cố tình** không giả vờ là "không tìm thấy" | Nó nói thẳng là thiếu quyền, để bạn biết mình phải xin gì | Ảnh 01.9 |
-| **2.** Bấm **Về Trang chủ** | — | — | — |
-| **3.** Nếu cần quyền đó để làm việc: nói với quản trị viên và **nêu tên màn hình** | [Hỏng] Quản trị viên sửa ở **Vai trò** (thêm mã quyền cho vai trò) hoặc ở **Tài khoản** (gán thêm vai trò) | Không có tên màn hình thì quản trị viên phải đoán, và hay gán thừa quyền | — |
+| **1.** Đọc câu trên màn hình, rồi bấm **Về Trang chủ** | [Hỏng] Màn hình này **cố tình** không giả vờ là "không tìm thấy" | Nó nói thẳng là thiếu quyền, để bạn biết mình phải xin gì | Ảnh 01.9 |
+| **2.** Nếu cần quyền đó để làm việc: nói với quản trị viên và **nêu tên màn hình** | [Hỏng] Quản trị viên sửa ở **Vai trò** (thêm mã quyền cho vai trò) hoặc ở **Tài khoản** (gán thêm vai trò) | Không có tên màn hình thì quản trị viên phải đoán, và hay gán thừa quyền | — |
 
 ![Ảnh 01.9 — Màn hình Không có quyền](images/screens/01-1-khong-co-quyen.png)
 
