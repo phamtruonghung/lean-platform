@@ -161,10 +161,48 @@ từng phiếu.
 | **06.7** | [Chi tiết Quan sát an toàn](06-an-toan.md#chi-tiết-quan-sát-an-toàn) | 4 | 1 |
 | **06.8** | [Nêu Hành động từ một quan sát](06-an-toan.md#nêu-hành-động-từ-một-quan-sát) | 3 | — |
 | **06.9** | [Hai danh mục chẩn đoán](06-an-toan.md#hai-danh-mục-chẩn-đoán) | 3 | 2 |
-**Chương 07–10 chưa có phiếu.** Nhóm **Sản xuất**, **Phân tích**, **Quản trị** và
-thiết bị **Xưởng** vẫn đang ở dạng mô tả chức năng; chúng là đợt chuyển tiếp theo. Cho
-tới lúc đó, một người chỉ được đào tạo trên những thao tác đã có phiếu ở trên —
-**đừng dạy bằng chương chưa chuyển**.
+**07 · Sản xuất**
+
+| Phiếu | Việc | Bước chính | Ảnh |
+| --- | --- | ---: | ---: |
+| **07.1** | [Chọn Bộ phận](07-san-xuat.md#chọn-bộ-phận) | 3 | 1 |
+| **07.2** | [Bảng của một Bộ phận](07-san-xuat.md#bảng-của-một-bộ-phận) | 6 | 1 |
+| **07.3** | [Viết và gửi bàn giao](07-san-xuat.md#viết-và-gửi-bàn-giao) | 8 | 1 |
+| **07.4** | [Xác nhận bàn giao](07-san-xuat.md#xác-nhận-bàn-giao) | 4 | — |
+
+**08 · Phân tích**
+
+| Phiếu | Việc | Bước chính | Ảnh |
+| --- | --- | ---: | ---: |
+| **08.1** | [Bảng phân cấp](08-phan-tich.md#bảng-phân-cấp) | 5 | 1 |
+| **08.2** | [Danh mục KPI](08-phan-tich.md#danh-mục-kpi) | 5 | — |
+| **08.3** | [Mục tiêu của một KPI](08-phan-tich.md#mục-tiêu-của-một-kpi) | 5 | — |
+| **08.4** | [Đánh giá KPI](08-phan-tich.md#đánh-giá-kpi) | 6 | — |
+| **08.5** | [Độ phủ kỹ năng](08-phan-tich.md#độ-phủ-kỹ-năng) | 3 | 1 |
+
+**09 · Quản trị**
+
+| Phiếu | Việc | Bước chính | Ảnh |
+| --- | --- | ---: | ---: |
+| **09.1** | [Hàng chờ phê duyệt](09-quan-tri.md#hàng-chờ-phê-duyệt) | 7 | — |
+| **09.2** | [Tài khoản](09-quan-tri.md#tài-khoản) | 6 | — |
+| **09.3** | [Vai trò](09-quan-tri.md#vai-trò) | 5 | — |
+
+**10 · Xưởng**
+
+| Phiếu | Việc | Bước chính | Ảnh |
+| --- | --- | ---: | ---: |
+| **10.1** | [Màn hình Xưởng](10-xuong-may-thiet-bi.md#màn-hình-xưởng) | 4 | — |
+| **10.2** | [Bắt đầu và Hoàn thành một Lệnh công việc](10-xuong-may-thiet-bi.md#bắt-đầu-và-hoàn-thành-một-lệnh-công-việc) | 5 | — |
+| **10.3** | [Đào tạo của tôi](10-xuong-may-thiet-bi.md#đào-tạo-của-tôi) | 3 | — |
+| **10.4** | [Ghi nhận không phù hợp](10-xuong-may-thiet-bi.md#ghi-nhận-không-phù-hợp) | 5 | — |
+| **10.5** | [Báo sự cố an toàn](10-xuong-may-thiet-bi.md#báo-sự-cố-an-toàn) | 4 | — |
+| **10.6** | [Ghi nhận quan sát an toàn](10-xuong-may-thiet-bi.md#ghi-nhận-quan-sát-an-toàn) | 5 | — |
+
+**Mọi chương đã chuyển xong.** `00-tong-quan.md` và `90-phu-luc-ma-quyen.md` không phải
+chương thao tác nên không có phiếu: chương 00 vẽ bản đồ các Phân hệ nối với nhau ra sao,
+và phụ lục 90 là bảng tra 84 mã quyền. Ba phiếu KPI (08.2–08.4) và toàn bộ chương 10
+chưa có ảnh chụp — lý do ghi trong đầu mỗi chương, và `t_30897c2a` là thẻ chụp bổ sung.
 
 ### 3. Chuẩn bị đủ
 
@@ -345,12 +383,12 @@ cột "Ghi" là mã quyền của các thao tác ghi trên màn hình đó (ghi 
 | An toàn | Quan sát | `/safety/observations` | `SAF_OBSERVATIONS_DISPLAY` | `SAF_OBSERVATIONS_RECORD` | [06](06-an-toan.md#quan-sát) |
 | An toàn | Loại thương tích | `/safety/injury-types` | `SAF_INJURY_TYPES_MAINTAIN` | `SAF_INJURY_TYPES_MAINTAIN` | [06](06-an-toan.md#hai-danh-mục-chẩn-đoán) |
 | An toàn | Bộ phận cơ thể | `/safety/body-parts` | `SAF_BODY_PARTS_MAINTAIN` | `SAF_BODY_PARTS_MAINTAIN` | [06](06-an-toan.md#hai-danh-mục-chẩn-đoán) |
-| Sản xuất | Bàn giao ca | `/production/sections` | `PRD_HANDOVER_DISPLAY` | `PRD_HANDOVER_WRITE` · `PRD_HANDOVER_ACKNOWLEDGE` | [07](07-san-xuat.md#bàn-giao-ca) |
+| Sản xuất | Bàn giao ca | `/production/sections` | `PRD_HANDOVER_DISPLAY` | `PRD_HANDOVER_WRITE` · `PRD_HANDOVER_ACKNOWLEDGE` | [07](07-san-xuat.md#chọn-bộ-phận) |
 | Phân tích | Bảng phân cấp | `/tier-board` | `INS_TIER_BOARD_DISPLAY` | — | [08](08-phan-tich.md#bảng-phân-cấp) |
 | Phân tích | Độ phủ kỹ năng | `/skill-coverage` | `INS_SKILL_COVERAGE_DISPLAY` | — | [08](08-phan-tich.md#độ-phủ-kỹ-năng) |
 | Phân tích | Danh mục KPI | `/kpi` | `INS_KPI_CATALOGUE_DISPLAY` | `INS_KPI_CATALOGUE_CHANGE` | [08](08-phan-tich.md#danh-mục-kpi) |
 | Phân tích | Đánh giá KPI | `/kpi/review` | `INS_KPI_REVIEW_DISPLAY` | `INS_KPI_REVIEW_RECORD` | [08](08-phan-tich.md#đánh-giá-kpi) |
-| Quản trị | Phê duyệt | `/approvals` | `ADM_APPROVALS_DISPLAY` | `ADM_APPROVALS_DECIDE` | [09](09-quan-tri.md#phê-duyệt) |
+| Quản trị | Phê duyệt | `/approvals` | `ADM_APPROVALS_DISPLAY` | `ADM_APPROVALS_DECIDE` | [09](09-quan-tri.md#hàng-chờ-phê-duyệt) |
 | Quản trị | Tài khoản | `/accounts` | `ADM_ACCOUNTS_DISPLAY` | `ADM_ACCOUNTS_CHANGE` | [09](09-quan-tri.md#tài-khoản) |
 | Quản trị | Vai trò | `/roles` | `ADM_ROLES_DISPLAY` | `ADM_ROLES_CHANGE` | [09](09-quan-tri.md#vai-trò) |
 
@@ -419,7 +457,7 @@ của chức năng mẹ, và — với mọi thao tác ghi — phạm vi Đơn v
 | Nêu một Hành động từ quan sát | `/safety/observations/:id/raise-action` | Mang `SAF_OBSERVATIONS_RECORD` **và** `ACT_RAISE` | [06](06-an-toan.md#nêu-hành-động-từ-một-quan-sát) |
 | Bảng của một Bộ phận | `/production/sections/:orgUnitId/board` | Mang `PRD_HANDOVER_DISPLAY` | [07](07-san-xuat.md#bảng-của-một-bộ-phận) |
 | Xác nhận bàn giao | `/production/sections/:orgUnitId/board/acknowledge/:handoverId` | Mang `PRD_HANDOVER_ACKNOWLEDGE` | [07](07-san-xuat.md#xác-nhận-bàn-giao) |
-| Bàn giao ca của một ca | `/production/sections/:orgUnitId/handover/:shiftInstanceId` | Mang `PRD_HANDOVER_WRITE` để ghi, `PRD_HANDOVER_DISPLAY` để đọc | [07](07-san-xuat.md#bàn-giao-của-một-ca) |
+| Bàn giao ca của một ca | `/production/sections/:orgUnitId/handover/:shiftInstanceId` | Mang `PRD_HANDOVER_WRITE` để ghi, `PRD_HANDOVER_DISPLAY` để đọc | [07](07-san-xuat.md#viết-và-gửi-bàn-giao) |
 | Mục tiêu của một KPI | `/kpi/:kpiId/targets` | Mang `INS_KPI_CATALOGUE_DISPLAY` | [08](08-phan-tich.md#mục-tiêu-của-một-kpi) |
 | Đăng nhập | `/sign-in` | *(chưa đăng nhập)* | [01](01-vao-cua-va-tai-khoan.md#đăng-nhập) |
 | Chờ phê duyệt | `/awaiting-approval` | Tài khoản đã đăng nhập nhưng chưa được chấp nhận | [01](01-vao-cua-va-tai-khoan.md#chờ-phê-duyệt) |

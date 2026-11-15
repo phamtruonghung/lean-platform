@@ -69,9 +69,14 @@ trong tài liệu vẽ đường đó.
 
 ## 5. Đọc tài liệu này thế nào
 
-- **Mỗi chức năng là một thẻ bốn phần** — *Việc này để làm gì · Ai thao tác được · Các
-  bước chính · Điểm then chốt · Vì sao*. Đó là hình thức TWI Job Instruction: đúng thứ tự
-  một người đào tạo sẽ nói với một người vận hành.
+- **Mỗi thao tác là một phiếu Job Breakdown Sheet** — bảy dòng đầu phiếu (*Công việc · Ai
+  thao tác được · Vật tư, dữ liệu có trước · Công cụ · An toàn · Thiết bị đào tạo · Chủ
+  tài liệu · Rev · Ngày · Trang*), rồi **một** bảng `Các bước chính | Điểm then chốt |
+  Vì sao | Minh hoạ`. Đó là hình thức TWI Job Instruction, và nó đi đúng bốn bước một
+  người đào tạo đi qua: **chuẩn bị người học** (phiếu nói ai thao tác được, và phải có
+  gì trước), **trình bày thao tác** (các bước chính), **cho làm thử** (điểm then chốt
+  nói chỗ dễ hỏng và vì sao), **theo dõi** (ảnh chụp đặt ngay tại bước nó minh hoạ, và
+  bước cuối là bước kiểm cái đã ghi).
 - **Cuối mỗi chương có bảng tóm tắt** quyền theo vai trò. Tra bảng khi không chắc ai bấm
   được nút nào.
 - **Mười sơ đồ** trong tài liệu, đánh số 1–10, mỗi sơ đồ vẽ một luồng hoặc một quan hệ mà
