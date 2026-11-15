@@ -40,6 +40,15 @@ Ghi: `MTN_ASSETS_CHANGE` — cùng bốn vai trò đó.
 | 5 | Máy thanh lý: **Ngừng dùng**, xác nhận. | Máy được ghi **Đã ngừng dùng** chứ không bị xoá, và **Khôi phục** được. | Lịch sử công việc vẫn trỏ về máy đó. |
 | 6 | Xem cả máy đã ngừng: bật **Hiện cả đã ngừng dùng**. | | |
 
+![Ảnh 03.1 — Màn hình Tài sản, bước 1](images/screens/03-1-tai-san.png)
+
+***Ảnh 03.1.** Danh sách máy của Nhà máy: tên, mã · kiểu, Đơn vị tổ chức, mức trọng yếu, và lối **Ngừng sử dụng** trên từng dòng.*
+
+![Ảnh 03.2 — Màn hình Tài sản, bước 2 — hộp thoại Thêm Tài sản](images/screens/03-2-them-tai-san.png)
+
+***Ảnh 03.2.** Bốn trường và Đơn vị tổ chức. **Mã Tài sản là duy nhất trên toàn Nền tảng**, nên hộp thoại này từ chối mã đã dùng ở Nhà máy khác.*
+
+
 **Điểm then chốt.** Đổi Đơn vị tổ chức của Tài sản **không** làm chuyển công việc
 đã ghi nhận: chúng vẫn ở nơi chúng đã xảy ra. Chỉ công việc **mới** đi theo vị trí mới.
 
@@ -60,6 +69,11 @@ Ghi: `MTN_PARTS_CHANGE` — **engineer, manager, quản trị viên. Không có 
 | 1 | Tìm theo **mã phụ tùng hoặc mô tả**. | | |
 | 2 | Bấm **Thêm phụ tùng**: **Mã phụ tùng**, **Mô tả**, **Đơn vị đo**. | **Đơn vị đo** quyết định số lượng ở mọi chỗ khác (nhập kho, xuất kho). | Chọn sai đơn vị đo là mọi con số tồn kho sai theo. |
 | 3 | Sửa: **Điều chỉnh**. | | |
+
+![Ảnh 03.3 — Màn hình Phụ tùng, bước 1](images/screens/03-1-phu-tung.png)
+
+***Ảnh 03.3.** Danh mục dùng chung: mã, mô tả, **Đơn vị đo** — đơn vị đo là thứ quyết định mọi con số tồn kho về sau.*
+
 
 > **Điểm then chốt cho người đào tạo.** Đây là **chỗ duy nhất** trong nhóm Bảo trì
 > mà một giám sát bị chặn trong khi một kỹ sư thì không. Nếu giám sát không thấy
@@ -83,6 +97,15 @@ Ghi: `MTN_STORES_CHANGE` — supervisor trở lên.
 | 1 | Tìm kho theo **tên hoặc mã**, bấm một kho để mở **Tồn kho**. | | |
 | 2 | Trong Tồn kho, tìm phụ tùng theo **mã hoặc mô tả**. | Kệ trống hiện **Kệ trống** — đó là trạng thái hợp lệ, không phải lỗi. | |
 | 3 | Nhập hàng về: bấm **Nhập kho**, chọn **Phụ tùng**, **Số lượng**, **Lý do**. | | |
+
+![Ảnh 03.4 — Màn hình Kho, bước 1](images/screens/03-1-kho.png)
+
+***Ảnh 03.4.** Các kệ của Nhà máy; bấm một kệ để mở tồn kho của nó.*
+
+![Ảnh 03.5 — Màn hình Tồn kho, bước 3 — hộp thoại Nhập kho](images/screens/03-3-nhap-kho.png)
+
+***Ảnh 03.5.** Nhập kho hỏi phụ tùng, số lượng và đơn vị đo: một lần nhập là một dòng có dấu trong sổ kho.*
+
 
 **Điểm then chốt — đừng dạy sai.** **Xuất phụ tùng không làm ở màn hình Kho.** Nó
 làm ở **Chi tiết Lệnh công việc → Xuất phụ tùng**, vì mỗi lần lấy hàng phải gắn với
@@ -115,6 +138,15 @@ Ghi (tạo, phân công, hoàn thành, huỷ): `MTN_WORK_ORDERS_CHANGE` — supe
 | 6 | Không làm nữa: **Huỷ**, nêu **Vì sao huỷ** (không bắt buộc nhưng nên ghi). | | |
 | 7 | Xem việc đã xong: bật **Hiện cả đã hoàn thành và đã huỷ**. | | |
 
+![Ảnh 03.6 — Màn hình Lệnh công việc, bước 1](images/screens/03-1-lenh-cong-viec.png)
+
+***Ảnh 03.6.** Sổ lệnh công việc của Nhà máy: số lệnh, nội dung, Tài sản, Đơn vị tổ chức, trạng thái, người phụ trách — và các thao tác trên từng dòng.*
+
+![Ảnh 03.7 — Màn hình Lệnh công việc, bước 2 — hộp thoại Tạo lệnh công việc](images/screens/03-2-tao-lenh-cong-viec.png)
+
+***Ảnh 03.7.** Mô tả đã gõ; **Tài sản**, **Loại công việc** và **Mức ưu tiên** là lựa chọn. Lệnh công việc thuộc về Đơn vị tổ chức của Tài sản được chọn.*
+
+
 **Điểm then chốt.** Danh sách mặc định **chỉ hiện việc đang mở**. Một lệnh vừa
 hoàn thành **biến mất** khỏi danh sách — không phải mất dữ liệu.
 
@@ -140,6 +172,15 @@ phụ tùng, ghi chỉ số cần `MTN_WORK_ORDERS_CHANGE`.
 | 4 | Nếu Tài sản có đồng hồ đo: **Ghi chỉ số**. | | |
 | 5 | Đọc **Chi phí đến nay** ở cuối. | | |
 
+![Ảnh 03.8 — Màn hình Chi tiết Lệnh công việc, bước 1](images/screens/03-1-chi-tiet-lenh-cong-viec.png)
+
+***Ảnh 03.8.** Một lệnh gom bốn phần: **Các bước**, **Ghi giờ công**, **Xuất phụ tùng**, **Chi phí đến nay** — nhìn được ngay lệnh đang tốn bao nhiêu.*
+
+![Ảnh 03.9 — Màn hình Chi tiết Lệnh công việc, bước 3 — Xuất phụ tùng](images/screens/03-3-xuat-phu-tung.png)
+
+***Ảnh 03.9.** Xuất phụ tùng trừ tồn kho của Kho và cộng vào chi phí của lệnh; cùng một hộp thoại cũng là chỗ ghi lại phụ tùng đã lấy.*
+
+
 ---
 
 ## Phân công Lệnh công việc
@@ -158,6 +199,11 @@ chức của Tài sản.
 | 1 | Tìm trong ô **Tìm một người** theo **tên, mã nhân viên, hoặc chứng nhận họ có**. | Danh sách chỉ gồm người **đủ điều kiện theo phạm vi**; rỗng nghĩa là không có ai để giao. | |
 | 2 | Bấm tên người. | | |
 
+![Ảnh 03.10 — Màn hình Phân công Lệnh công việc, bước 1](images/screens/03-1-phan-cong-lenh.png)
+
+***Ảnh 03.10.** Chọn người theo tên, mã nhân viên hoặc chứng nhận họ có. Hộp thoại này chỉ liệt kê người có quyền sửa ở Đơn vị tổ chức của Tài sản.*
+
+
 **Điểm then chốt.** Một người không hiện trong danh sách ứng viên **không phải** vì
 Nền tảng "ghét" họ: hoặc họ không thuộc phạm vi, hoặc bộ lọc chứng nhận đang lọc họ
 ra. Gõ mã nhân viên trực tiếp để chắc chắn.
@@ -174,6 +220,10 @@ ra. Gõ mã nhân viên trực tiếp để chắc chắn.
 | --- | --- | --- | --- |
 | 1 | Ghi **Đã phát hiện gì**. | Đây là trường bắt buộc về mặt thực hành, không chỉ hình thức. | |
 | 2 | Bấm **Hoàn thành Lệnh công việc này**. | | |
+
+![Ảnh 03.11 — Màn hình Hoàn thành Lệnh công việc, bước 1](images/screens/03-1-hoan-thanh-lenh.png)
+
+***Ảnh 03.11.** Đóng lệnh: ghi điều đã làm. Lệnh đã hoàn thành vẫn còn trong sổ — nó không bị xoá, và mọi giờ công, phụ tùng đã ghi vẫn trỏ về nó.*
 
 ## Huỷ Lệnh công việc
 
@@ -201,6 +251,11 @@ mọi Tài khoản làm được.
 | 2 | Bấm gửi. Yêu cầu nằm ở cột **Kết quả**. | | |
 | 3 | Theo dõi **Kết quả** từng yêu cầu. | Ba kết quả có thể: **Đã thành Lệnh công việc {số}**, **Bị từ chối: {lý do}**, hoặc chờ. | Người nêu yêu cầu thấy được kết quả — không cần hỏi bảo trì. |
 
+![Ảnh 03.12 — Màn hình Yêu cầu của tôi, bước 1 — hộp thoại Nêu một yêu cầu](images/screens/03-1-neu-yeu-cau.png)
+
+***Ảnh 03.12.** Người vận hành chỉ cần nói máy nào và chuyện gì; việc phân loại, phân công là của giám sát.*
+
+
 > **Điểm then chốt cho người đào tạo.** **Mức khẩn** bạn chọn **không** phải mức ưu
 > tiên của Lệnh công việc. Người phân loại chọn **Mức ưu tiên** riêng khi chấp nhận.
 
@@ -221,6 +276,11 @@ hay là bản trùng.
 | 2 | Bấm **Chấp nhận**: chọn **Mức ưu tiên** cho Lệnh công việc sẽ sinh ra. | **Mức ưu tiên do bạn quyết định, không phải mức khẩn người báo chọn.** | Người báo nói "khẩn" cho mọi việc; người phân loại nhìn cả hàng chờ. |
 | 3 | Hoặc **Từ chối**: ghi **Vì sao từ chối yêu cầu này?**. | Lý do từ chối đi về người đã nêu — nên viết câu người đó hiểu được. | |
 | 4 | Yêu cầu trùng: **Đánh dấu trùng**, chọn **Yêu cầu nào được giữ lại**. | Bản bị đánh dấu trùng **rời hàng chờ**; bản giữ lại tiếp tục. | |
+
+![Ảnh 03.13 — Màn hình Hàng chờ phân loại, bước 2](images/screens/03-2-hang-cho-phan-loai.png)
+
+***Ảnh 03.13.** Các Yêu cầu đang chờ quyết định. **Chấp nhận** một yêu cầu sẽ tạo lệnh công việc cho nó — đó là lý do màn hình này chỉ dành cho giám sát trở lên.*
+
 
 **Điểm then chốt.** **Chấp nhận là tạo Lệnh công việc.** Không có bước trung gian —
 và không có cách hoàn tác. Nếu nghi ngờ, để yêu cầu chờ tiếp (nút **Để chờ tiếp**).
@@ -243,6 +303,11 @@ Ghi: `MTN_DOWNTIME_CHANGE` — supervisor trở lên.
 | 2 | **Phân loại** lần dừng: chọn **Lý do**, ghi **Mô tả** (bắt buộc), hoặc **Để chưa phân loại**. | Chưa phân loại được, nhưng **đừng để lâu** — chỉ số dừng máy theo lý do sẽ thiếu. | |
 | 3 | Máy chạy lại: **Đóng**, ghi **Kết thúc lúc**. | Máy chủ tự tính thời gian đã dừng. | |
 | 4 | Lọc theo **Tài sản, lý do hoặc mô tả**. | | |
+
+![Ảnh 03.14 — Màn hình Thời gian dừng máy, bước 1](images/screens/03-1-thoi-gian-dung-may.png)
+
+***Ảnh 03.14.** Các lần dừng của máy theo lý do — dữ liệu này là thứ quyết định dòng máy nào xuất hiện trong bàn giao ca.*
+
 
 **Điểm then chốt.** Hai thao tác **Phân loại** và **Đóng** là hai việc khác nhau.
 Đóng mà chưa phân loại thì lần dừng đó không vào thống kê theo lý do.
@@ -267,6 +332,11 @@ Ghi: `MTN_PM_SCHEDULES_CHANGE` — supervisor trở lên.
 | 3 | Điền **Tạo lệnh sớm bao nhiêu ngày**, **Mức ưu tiên**, **Ngày đến hạn đầu tiên**. | Để trống ngày đầu thì Nền tảng tính **một chu kỳ kể từ hôm nay**. | |
 | 4 | Bấm **Lên lịch**. | | |
 
+![Ảnh 03.15 — Màn hình Lịch bảo trì định kỳ, bước 1](images/screens/03-1-lich-bao-tri-dinh-ky.png)
+
+***Ảnh 03.15.** Việc phòng ngừa theo chu kỳ hoặc theo đồng hồ đo; mỗi lịch sinh ra lệnh công việc khi đến hạn.*
+
+
 **Điểm then chốt.** **Tạo lệnh sớm bao nhiêu ngày** là thời gian chuẩn bị, không
 phải chu kỳ. Đặt 7 nghĩa là lệnh công việc xuất hiện **7 ngày trước** hạn.
 
@@ -289,6 +359,11 @@ Ghi: `MTN_METERS_CHANGE` — supervisor trở lên.
 | 2 | **Ghi chỉ số**: điền **Đồng hồ đang chỉ bao nhiêu**, **Ghi chú**. | Ghi **đúng số trên mặt đồng hồ**, không tự cộng. | Nền tảng tự tính lượng tích luỹ. |
 | 3 | Đồng hồ bị đặt lại về 0 hoặc thay mới: bật **Đồng hồ đã được đặt lại hoặc thay mới**, điền **Đồng hồ mới đang chỉ bao nhiêu**. | Nền tảng chuyển lượng tích luỹ sang phần bù để tổng không tụt. | Không bật ô này thì tổng sử dụng tụt về gần 0 và mọi lịch theo đồng hồ sai. |
 
+![Ảnh 03.16 — Màn hình Đồng hồ đo, bước 1](images/screens/03-1-dong-ho-do.png)
+
+***Ảnh 03.16.** Các đồng hồ gắn vào Tài sản và số đọc gần nhất — nguồn của lịch bảo trì theo giờ chạy.*
+
+
 **Điểm then chốt quan trọng nhất.** Chỉ số **luôn tăng**. Nếu bạn thấy mình đang
 ghi một số nhỏ hơn lần trước, hoặc là bạn gõ nhầm, hoặc là đồng hồ đã đặt lại —
 trường hợp thứ hai phải bật ô đặt lại.
@@ -310,6 +385,11 @@ yêu cầu gì. Lệnh công việc **đi theo** kế hoạch chứ không sửa
 | 2 | Bấm **Thêm bước** cho từng bước: **Hướng dẫn**, **Số giờ**, **Kỹ năng yêu cầu**, **Ghi chú an toàn**. | Bước được đánh số theo thứ tự thêm vào; **Xoá bước này** bỏ một bước. | |
 | 3 | Bấm **Thêm kế hoạch**. | | |
 | 4 | Ngừng dùng: **Ngừng kích hoạt**, và **Kích hoạt lại** khi cần. | Kế hoạch đã tạo lệnh công việc rồi vẫn ngừng được — các lệnh cũ không đổi. | |
+
+![Ảnh 03.17 — Màn hình Kế hoạch công việc, bước 1](images/screens/03-1-ke-hoach-cong-viec.png)
+
+***Ảnh 03.17.** Một kế hoạch là danh sách các bước chuẩn cho một loại việc — chép vào lệnh công việc thay vì viết lại từ đầu.*
+
 
 ---
 

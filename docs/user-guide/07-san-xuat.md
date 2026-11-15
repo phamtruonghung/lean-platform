@@ -36,6 +36,11 @@ Xác nhận bản của ca trước: `PRD_HANDOVER_ACKNOWLEDGE`.
 | 3 | Đọc các dòng **Ca {bắt đầu}–{kết thúc}**, kèm **Bàn giao bởi {tên}** và những gì còn mở ở mốc chuyển ca. | **Không có ca nào được xếp** là câu trả lời đúng khi Bộ phận chưa có ca — không phải lỗi. | |
 | 4 | Bấm vào một ca để mở **Bàn giao ca** của ca đó. | | |
 
+![Ảnh 07.1 — Màn hình Bàn giao ca, bước 1](images/screens/07-1-chon-bo-phan.png)
+
+***Ảnh 07.1.** Chọn một Bộ phận trong cây để mở bảng của nó — cây này là cây Đơn vị tổ chức, dùng chung với nhóm Nhân sự.*
+
+
 **Điểm then chốt.** Một bản bàn giao đã **gửi** thì hiện **Chốt tại thời điểm gửi** —
 số liệu bên trong **không đổi nữa**, kể cả khi sự cố bên dưới được sửa sau đó.
 
@@ -65,6 +70,11 @@ việc gì còn mở, và ca sau phải để ý gì.
 | 6 | **Bằng chứng bàn giao** | Bật **Đã đi kiểm tra chung** nếu hai ca đã cùng đi một vòng; **Lưu bằng chứng**. | | |
 | 7 | **Gửi** | Bấm **Gửi bàn giao**. | Còn phần bắt buộc chưa xong thì câu **Chưa gửi được bản bàn giao này** ở đầu màn hình liệt kê đủ: máy đã dừng mà chưa có dòng, dòng nào thiếu lý do hay thiếu tham chiếu, phần nào chưa trả lời, Hành động nào chưa có cách xử lý. | |
 
+![Ảnh 07.2 — Màn hình Bàn giao của một ca, bước 1](images/screens/07-1-ban-giao-mot-ca.png)
+
+***Ảnh 07.2.** Bản bàn giao của ca đang mở: phần **Máy**, **Điểm thay đổi**, **Hạng mục quan trọng**, **Hành động chuyển tiếp** — điền theo đúng thứ tự này.*
+
+
 **Điểm then chốt — câu này quan trọng nhất của cả nhóm.** **Hành động chuyển tiếp
 không được bỏ trống.** Một Hành động đang mở mà không được chuyển tiếp, giao lại hay
 đóng thì bản bàn giao **không gửi được**.
@@ -93,6 +103,11 @@ những gì còn mở ở từng mốc chuyển ca.
 | 1 | Đọc các ca của ngày sản xuất, từ trên xuống. | | |
 | 2 | Dòng **xác nhận {lúc} sau khi ca bắt đầu** cho biết ca sau đã nhận bàn giao **lúc nào**. | "xác nhận sau khi ca bắt đầu" là **cờ vàng**: bàn giao được nhận muộn. | Bàn giao nhận muộn nghĩa là có một khoảng thời gian ca sau chạy mà không biết điều gì khác thường. |
 | 3 | Bấm **Thu gọn / Mở rộng** để xem gọn cả ngày. | | |
+
+![Ảnh 07.3 — Màn hình Bảng của một Bộ phận, bước 3](images/screens/07-3-bang-cua-mot-bo-phan.png)
+
+***Ảnh 07.3.** Cả ngày của một Bộ phận: số ca, số bàn giao, số chưa xác nhận và số nhận muộn — dòng **nhận muộn** là cờ vàng của người đào tạo.*
+
 
 ---
 

@@ -48,6 +48,15 @@ thẩm quyền An toàn** ở Đơn vị tổ chức.
 | 3 | Bấm ghi nhận. | | |
 | 4 | Lọc danh sách theo **Đơn vị tổ chức**, **Mức độ**, **Trạng thái**, **Từ ngày / Đến ngày**. | | |
 
+![Ảnh 06.1 — Màn hình Sự cố an toàn, bước 1](images/screens/06-1-so-su-co.png)
+
+***Ảnh 06.1.** Đã xảy ra chuyện gì, ở đâu, và nằm ở mức nào trên thang mức độ — lọc được theo Đơn vị tổ chức và trạng thái.*
+
+![Ảnh 06.2 — Màn hình Ghi nhận sự cố an toàn, bước 1](images/screens/06-1-ghi-nhan-su-co.png)
+
+***Ảnh 06.2.** Loại sự việc và mức độ là lựa chọn; mô tả điều đã xảy ra và hành động tức thời là ô gõ. Đây là bản ghi mà mọi cuộc điều tra sau đó dựa vào.*
+
+
 **Điểm then chốt.** Ghi nhận lúc **phát hiện**, không phải lúc điền xong giấy tờ.
 Một sự cố ghi sau ba ngày là một sự cố mà thống kê sẽ xếp vào tuần sau.
 
@@ -82,6 +91,10 @@ quyết định riêng. Đừng dạy chung hai nhóm.
 > xảy ra với **sản phẩm** là quyết định kinh doanh. Hai câu hỏi khác nhau, hai luật
 > khác nhau.
 
+![Ảnh 06.3 — Màn hình Chi tiết Sự cố an toàn, bước 1](images/screens/06-1-chi-tiet-su-co.png)
+
+***Ảnh 06.3.** Ba phần: đã xảy ra chuyện gì, thương tích, lịch sử thay đổi — cùng các lối hạn điều tra, chuyển trạng thái và phân loại.*
+
 ---
 
 ## Phân loại thương tích
@@ -102,6 +115,11 @@ sự cố.
 | 2 | Chọn **Loại thương tích** và **Bộ phận cơ thể** trong danh mục. | Danh mục do quản trị viên quản lý (xem hai mục cuối). | |
 | 3 | Ghi **số ngày mất làm việc** nếu có. | | |
 | 4 | Bấm ghi nhận. | | |
+
+![Ảnh 06.4 — Màn hình Phân loại thương tích, bước 1](images/screens/06-1-phan-loai-thuong-tich.png)
+
+***Ảnh 06.4.** Loại thương tích và bộ phận cơ thể lấy từ hai danh mục dùng chung — đây là chỗ chúng gặp nhau thành một con số đếm được.*
+
 
 **Điểm then chốt.** Không có **thẩm quyền An toàn** thì nút này không mở được, dù bạn
 ghi được sự cố. Nếu bạn cần phân loại thương tích, đề nghị quản trị viên cấp thẩm
@@ -155,6 +173,15 @@ Ghi nhận: `SAF_OBSERVATIONS_RECORD` — **mọi vai trò**, cộng quyền ghi
 | 2 | Ghi nhận **ai đã quan sát** và ở đâu nếu khác nơi ghi. | | |
 | 3 | Lọc theo **Đơn vị tổ chức**, **Mức độ**, **Loại**, **Trạng thái**, **Từ ngày / Đến ngày**. | | |
 
+![Ảnh 06.5 — Màn hình Quan sát an toàn, bước 1](images/screens/06-1-so-quan-sat.png)
+
+***Ảnh 06.5.** Những gì được thấy **trước khi** có chuyện xảy ra, xếp từ nặng nhất theo hậu quả xấu nhất có thể hình dung.*
+
+![Ảnh 06.6 — Màn hình Ghi nhận quan sát an toàn, bước 1](images/screens/06-1-ghi-nhan-quan-sat.png)
+
+***Ảnh 06.6.** Ghi điều đã thấy và hậu quả có thể có: một quan sát không cần là một sự cố, và đó chính là giá trị của nó.*
+
+
 **Điểm then chốt quan trọng nhất.** Quan sát **không phải** là chỉ trích cá nhân.
 Loại **hành vi không an toàn** nói về **hành vi**, và ghi nó ra là cách duy nhất để
 nó không thành sự cố.
@@ -174,6 +201,11 @@ nó không thành sự cố.
 | 1 | Đọc **Mô tả** và **hậu quả xấu nhất có thể**. | | |
 | 2 | Nếu đáng làm một việc: **Nêu một Hành động** (xem mục dưới). | | |
 | 3 | **Đóng quan sát**, ghi **đã làm gì**. | Quan sát đã đóng vẫn nằm trong sổ. | |
+
+
+![Ảnh 06.7 — Màn hình Chi tiết Quan sát an toàn, bước 3](images/screens/06-3-chi-tiet-quan-sat.png)
+
+***Ảnh 06.7.** Một quan sát đổi trạng thái qua các nút ở đầu màn hình; **Nêu Hành động** là lối biến nó thành việc có người chịu trách nhiệm.*
 
 ---
 
@@ -206,6 +238,11 @@ một mã).
 | 1 | **Thêm loại thương tích**: **Mã**, **Tên**, **mức độ khởi điểm**. | | |
 | 2 | Sửa / ngừng dùng: **Điều chỉnh**. | Danh mục dùng chung cho mọi Nhà máy. | |
 
+
+![Ảnh 06.8 — Màn hình Loại thương tích, bước 1](images/screens/06-1-loai-thuong-tich.png)
+
+***Ảnh 06.8.** Danh mục dùng chung cho mọi Nhà máy: khai một lần, dùng ở mọi nơi phân loại thương tích.*
+
 ---
 
 ## Bộ phận cơ thể
@@ -222,6 +259,11 @@ một mã).
 > **Điểm then chốt cho người đào tạo.** Hai danh mục này là **dữ liệu y tế** ở dạng
 > chuẩn hoá. Chỉ quản trị viên sửa, vì một bộ phận cơ thể thêm sai sẽ làm mọi báo cáo
 > an toàn đọc sai.
+
+
+![Ảnh 06.9 — Màn hình Bộ phận cơ thể, bước 1](images/screens/06-1-bo-phan-co-the.png)
+
+***Ảnh 06.9.** Danh mục thứ hai của cùng phép phân loại; ghép với Loại thương tích thành cặp đếm được.*
 
 ---
 

@@ -38,6 +38,11 @@ Ghi: `QLT_PRODUCTS_CHANGE` — **chỉ quản trị viên**.
 | 1 | Bấm **Thêm Sản phẩm**: **Mã**, **Tên**, **Đơn vị đo**. | **Đơn vị đo** là đơn vị mọi số lượng không phù hợp được đếm bằng. | Đổi đơn vị đo của một Sản phẩm đã có bản ghi là việc phải làm bằng Sản phẩm mới, không sửa. |
 | 2 | Sửa: **Điều chỉnh**. Ngừng dùng: bỏ **Đang làm** trong hộp thoại sửa. | | |
 
+![Ảnh 05.1 — Màn hình Sản phẩm, bước 1](images/screens/05-1-san-pham.png)
+
+***Ảnh 05.1.** Danh mục Sản phẩm của Nhà máy — thứ mà Sản phẩm không phù hợp và khiếu nại trỏ tới.*
+
+
 **Điểm then chốt.** Danh mục dùng chung cho **mọi** Nhà máy. Thêm một Sản phẩm ở đây
 là thêm cho toàn Nền tảng.
 
@@ -57,6 +62,11 @@ Ghi: `QLT_DEFECT_CODES_CHANGE` — **chỉ quản trị viên**.
 | --- | --- | --- | --- |
 | 1 | Bấm **Thêm Mã lỗi**: **Mã**, **Tên**, **mức độ bắt đầu**, và **Thuộc {mã cha}** nếu là mã con. | Mã con **kế thừa** ngữ cảnh của mã cha; **Cấp cao nhất** là mã gốc. | Cây mã lỗi quyết định báo cáo Pareto đọc được hay không. |
 | 2 | Sửa: **Điều chỉnh**. | | |
+
+![Ảnh 05.2 — Màn hình Mã lỗi, bước 1](images/screens/05-1-ma-loi.png)
+
+***Ảnh 05.2.** Cây Mã lỗi: mỗi nút là một cách sai, và **mức độ** của nó là giá trị mặc định khi ghi nhận.*
+
 
 **Điểm then chốt.** **Mức độ bắt đầu** của mã là mức độ mà một bản ghi mới **mặc
 định** nhận. Người ghi nhận vẫn **sửa được** mức độ trên bản ghi của mình — nhưng
@@ -82,6 +92,15 @@ vai trò**, nhưng cần **thẩm quyền Chất lượng** ở Đơn vị tổ 
 | 2 | Bấm **Ghi nhận không phù hợp**: **Sản phẩm**, **Mã lỗi**, **Số lượng**, **Điểm phát hiện**, **Đơn vị tổ chức ghi nhận cho**, **Tham chiếu lô**. | **Điểm phát hiện** là câu hỏi "lỗi bị bắt ở đâu" — đó là thứ dùng để biết bước nào đã chặn được. | |
 | 3 | Bấm một dòng để mở **Chi tiết**. | | |
 | 4 | Xử lý số lượng: xem **Ghi nhận phương án xử lý** bên dưới. | Bản ghi **tự đóng** khi **toàn bộ** số lượng đã có phương án xử lý. | |
+
+![Ảnh 05.3 — Màn hình Sản phẩm không phù hợp, bước 1](images/screens/05-1-so-san-pham-khong-phu-hop.png)
+
+***Ảnh 05.3.** Sổ không phù hợp: cái gì không đạt, phát hiện ở đâu, số lượng bao nhiêu — lọc được theo Đơn vị tổ chức và trạng thái.*
+
+![Ảnh 05.4 — Màn hình Ghi nhận không phù hợp, bước 2](images/screens/05-2-ghi-nhan-khong-phu-hop.png)
+
+***Ảnh 05.4.** Ô đầu tiên là **quét tem**: một lần quét điền Sản phẩm, số lô và số lượng. Bên dưới là Sản phẩm, Mã lỗi và mức độ.*
+
 
 **Quét tem thay vì chọn tay.** Ô **Quét tem** ở đầu phiếu nhận mã trên tem sản xuất:
 một lần quét điền **Sản phẩm** (khớp đúng **Mã** sản phẩm trong danh mục), **Số lượng** và
@@ -140,6 +159,10 @@ Phân loại có thể phát hiện nhiều hơn con số ban đầu, nên chỉ
 sau** được giải quyết trong **Nhật ký hành động**, dưới dạng **Concern** — và một
 vấn đề xuất hiện nhiều lần vẫn chỉ là **một** Concern.
 
+![Ảnh 05.5 — Màn hình Chi tiết Sản phẩm không phù hợp, bước 1](images/screens/05-1-chi-tiet-khong-phu-hop.png)
+
+***Ảnh 05.5.** Phát hiện gì, có thể làm gì, nguyên nhân, ảnh, và lịch sử số lượng — mỗi nút là một thao tác có ghi dấu.*
+
 ---
 
 ## Ghi nhận phương án xử lý
@@ -156,6 +179,11 @@ chức của bản ghi. (Không cần thẩm quyền Chất lượng — xem b�
 | 1 | Chọn **phương án** (nhượng bộ / làm lại / phế) và **số lượng**. | Xử lý **theo từng phần**: 100 cái lỗi có thể chia 60 làm lại + 40 phế. | |
 | 2 | Ghi **số phút làm lại** nếu chọn làm lại. | Số phút này là căn cứ tính chi phí làm lại, dùng **Chi phí chuẩn sản phẩm**. | |
 | 3 | Bấm ghi nhận. | Dòng **{đã xử lý}/{tổng} {đơn vị}** ở chi tiết cho biết còn lại bao nhiêu. | |
+
+![Ảnh 05.6 — Màn hình Ghi nhận phương án xử lý, bước 1](images/screens/05-1-phuong-an-xu-ly.png)
+
+***Ảnh 05.6.** Phương án xử lý đóng bản ghi lại bằng lý do và cách xử lý; số lượng đã xử lý được ghi riêng nên không mất dấu phần còn lại.*
+
 
 **Điểm then chốt.** Bản ghi **tự đóng** khi **toàn bộ** số lượng đã có phương án.
 Còn 1 cái chưa quyết định là bản ghi còn mở.
@@ -231,6 +259,10 @@ Ghi: `QLT_CUSTOMERS_CHANGE` — **chỉ quản trị viên**.
 | 1 | **Thêm Khách hàng**: **Mã**, **Tên**. | Danh sách dùng chung cho mọi Nhà máy. | |
 | 2 | Sửa: **Điều chỉnh**. | | |
 
+![Ảnh 05.7 — Màn hình Khách hàng, bước 1](images/screens/05-1-khach-hang.png)
+
+***Ảnh 05.7.** Danh sách Khách hàng: thêm và sửa là hộp thoại trên danh sách, để bản sửa nằm trong ngữ cảnh nó thuộc về.*
+
 ---
 
 ## Khiếu nại khách hàng
@@ -249,6 +281,11 @@ Ghi nhận: `QLT_COMPLAINTS_RECORD` — **mọi vai trò**.
 | 1 | Bấm **Ghi nhận khiếu nại**: **Khách hàng**, **Sản phẩm**, **Mã lỗi**, **Loại** (khiếu nại thường / **Yêu cầu bảo hành**), **Đơn vị tổ chức sẽ trả lời**. | **Đơn vị tổ chức trả lời** quyết định **ai** thao tác được trên khiếu nại này. | Đây là trường hay bị bỏ qua nhất. |
 | 2 | Mở khiếu nại để xử lý (xem **Chi tiết Khiếu nại**). | | |
 
+![Ảnh 05.8 — Màn hình Khiếu nại khách hàng, bước 1](images/screens/05-1-khieu-nai-khach-hang.png)
+
+***Ảnh 05.8.** Sổ khiếu nại: khách nào, về cái gì, và đã trả lời chưa.*
+
+
 ---
 
 ## Chi tiết Khiếu nại
@@ -265,6 +302,11 @@ Ghi nhận: `QLT_COMPLAINTS_RECORD` — **mọi vai trò**.
 | 2 | **Ghi nhận không phù hợp** từ khiếu nại (cần `QLT_NONCONFORMANCES_RECORD`), **hoặc** **Liên kết một bản đã có** cho cùng Sản phẩm (cần `QLT_COMPLAINTS_RECORD`). | Khiếu nại do khách phát hiện, nên nó là **nơi mọi việc bắt đầu** — nhưng bản ghi kiểm soát hàng thì nằm ở Sổ không phù hợp. | Chưa có gì kiểm soát sản phẩm bị khiếu nại là một lỗ hổng thật, và màn hình nói thẳng điều đó bằng đỏ. |
 | 3 | Trả lời khách: **Phản hồi**, ghi **Phản hồi** (`QLT_COMPLAINTS_RECORD`). | | |
 | 4 | Đóng khiếu nại: **Đóng bằng phản hồi**. | Phải có phản hồi trước khi đóng. | Không có phản hồi thì khách không biết đã được xử lý. |
+
+![Ảnh 05.9 — Màn hình Chi tiết Khiếu nại, bước 2](images/screens/05-2-chi-tiet-khieu-nai.png)
+
+***Ảnh 05.9.** Một khiếu nại gom phần khách nói, phần trả lời, và các lối **Trả lời**, **Nêu không phù hợp**, **Liên kết**.*
+
 
 **Điểm then chốt.** Khiếu nại **không tự** sinh Sản phẩm không phù hợp. Nếu bạn chỉ
 ghi khiếu nại rồi đóng, hàng lỗi không được kiểm soát ở đâu cả.
@@ -306,6 +348,10 @@ Ghi: `QLT_SUPPLIERS_CHANGE` — **chỉ quản trị viên**.
 **Các bước chính:** **Thêm Nhà cung cấp** (Mã, Tên) / **Điều chỉnh**. Danh sách dùng
 chung cho mọi Nhà máy.
 
+![Ảnh 05.10 — Màn hình Nhà cung cấp, bước 1](images/screens/05-1-nha-cung-cap.png)
+
+***Ảnh 05.10.** Danh sách Nhà cung cấp — cùng hình thức với Khách hàng: danh sách, và hộp thoại thêm/sửa.*
+
 ---
 
 ## NCR nhà cung cấp
@@ -323,6 +369,11 @@ Ghi nhận: `QLT_SUPPLIER_NCRS_RECORD` — **mọi vai trò**.
 | --- | --- | --- | --- |
 | 1 | Bấm **Ghi nhận NCR nhà cung cấp**: **Nhà cung cấp**, **Sản phẩm/vật tư**, **Số lượng**, **Đơn vị tổ chức**, **Tham chiếu lô**. | **Tham chiếu lô** là thứ nối NCR với số hàng thực tế đang nằm trong kho. | Không có số lô thì không biết phải giữ lại bao nhiêu hàng. |
 | 2 | Lọc theo **Nhà cung cấp**, **Đơn vị tổ chức**, **Trạng thái**. | | |
+
+![Ảnh 05.11 — Màn hình NCR nhà cung cấp, bước 1](images/screens/05-1-ncr-nha-cung-cap.png)
+
+***Ảnh 05.11.** Sổ NCR: hàng của nhà cung cấp nào không đạt, và đang chờ xử lý gì.*
+
 
 **Điểm then chốt.** NCR **không** tự tạo Sản phẩm không phù hợp, cũng như khiếu nại.
 Phải làm ở bước tiếp theo, hoặc vật tư sai không được kiểm soát.
@@ -343,6 +394,11 @@ Phải làm ở bước tiếp theo, hoặc vật tư sai không được kiểm
 | 2 | Ghi **số tiền thu hồi được** nếu có. | Chi tiết hiện **Đã thu hồi {số tiền}**. | Đây là con số duy nhất cho biết NCR có mang lại tiền về hay không. |
 | 3 | **Ghi nhận không phù hợp** từ NCR, **hoặc** **Liên kết một bản đã có** cho cùng lô. | | Chưa có gì kiểm soát vật tư là lỗ hổng thật. |
 | 4 | **Đóng NCR** khi xong. | | |
+
+![Ảnh 05.12 — Màn hình Chi tiết NCR nhà cung cấp, bước 1](images/screens/05-1-chi-tiet-ncr.png)
+
+***Ảnh 05.12.** Chi tiết một NCR: lô hàng, cách xử lý, và các lối nêu không phù hợp hoặc liên kết sang bản ghi đã có.*
+
 
 ---
 

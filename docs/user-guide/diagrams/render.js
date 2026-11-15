@@ -17,21 +17,35 @@ const path = require('path');
 
 function loadPlaywright() {
   const candidates = [
+    // A normal `npm i playwright` beside this script, then a checkout-relative
+    // guess at the Hermes skill that ships one, then that skill's absolute path.
+    path.join(__dirname, 'node_modules'),
     path.join(__dirname, '..', '..', '..', '..', 'hermes', 'skills', 'creative', 'deck-design-pdf', 'node_modules'),
     '/root/.hermes/skills/creative/deck-design-pdf/node_modules',
   ];
   for (const dir of candidates) {
     try { return require(path.join(dir, 'playwright')); } catch (_) { /* next */ }
+    try { return require(path.join(dir, 'playwright-core')); } catch (_) { /* next */ }
   }
-  throw new Error('playwright not found; expected the deck-design-pdf node_modules');
+  throw new Error(
+    'playwright not found. Install it next to this script — `cd docs/user-guide/diagrams'
+    + ' && npm i playwright` (no package.json is needed; node resolves the local'
+    + ' node_modules) — or point NODE_PATH at a directory that already has it.',
+  );
 }
 
 function chromiumBinary() {
-  const root = '/root/.cache/ms-playwright';
+  // `npx playwright install chromium` puts the build under the user's cache;
+  // PLAYWRIGHT_BROWSERS_PATH moves it, and CHROME overrides the binary
+  // outright (it is the same variable tools/build_pdf.py reads).
+  if (process.env.CHROME) return process.env.CHROME;
+  const root = process.env.PLAYWRIGHT_BROWSERS_PATH || path.join(process.env.HOME || '/root', '.cache', 'ms-playwright');
   const builds = fs.readdirSync(root)
     .filter((d) => /^chromium-\d+$/.test(d))
     .sort((a, b) => Number(a.split('-')[1]) - Number(b.split('-')[1]));
-  if (!builds.length) throw new Error(`no chromium build under ${root}`);
+  if (!builds.length) {
+    throw new Error(`no chromium build under ${root}; run \`npx playwright install chromium\` or set CHROME`);
+  }
   return path.join(root, builds[builds.length - 1], 'chrome-linux64', 'chrome');
 }
 

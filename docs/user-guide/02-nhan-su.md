@@ -34,6 +34,15 @@ Ghi: `PPL_DIRECTORY_CHANGE` — **chỉ quản trị viên**.
 | 3 | Người đã nghỉ việc **bị ẩn** cho tới khi bạn bật **Gồm cả người đã rời**. | Đừng kết luận "không có người này" khi chưa bật ô đó. | Đây là lỗi hay gặp nhất ở Danh bạ. |
 | 4 | Bấm một dòng để mở **Hồ sơ Nhân viên**. | | |
 
+![Ảnh 02.1 — Màn hình Danh bạ, bước 1](images/screens/02-1-danh-ba-tim-kiem.png)
+
+***Ảnh 02.1.** Gõ một phần tên vào ô tìm: danh sách lọc ngay, vẫn giữ nguyên bộ lọc Đơn vị tổ chức bên cạnh.*
+
+![Ảnh 02.2 — Màn hình Danh bạ — nút Thêm Nhân viên](images/screens/02-danh-ba-them-nhan-vien.png)
+
+***Ảnh 02.2.** Hộp thoại chỉ hỏi những gì Danh bạ sở hữu; Đơn vị tổ chức và chức danh là lựa chọn, không phải ô gõ tay.*
+
+
 **Điểm then chốt cho quản trị viên thêm người mới** (`PPL_DIRECTORY_CHANGE`):
 
 | # | Bước | Điểm then chốt | Vì sao |
@@ -71,6 +80,11 @@ cần `PPL_SKILLS_CHANGE` (quản trị viên).
 | 3 | Xem phần **Kỹ năng** và **Chữ ký**. | Nút **Ghi nhận kỹ năng** nằm ngay trên phần kỹ năng. | |
 | 4 | Bấm **Giờ đã làm** để xem số giờ theo ngày. | | |
 
+![Ảnh 02.3 — Màn hình Hồ sơ Nhân viên, bước 2](images/screens/02-2-ho-so-nhan-vien.png)
+
+***Ảnh 02.3.** Một hồ sơ gom: mã nhân viên, chức danh, đơn vị tổ chức, hình thức làm việc, và các mục con (giờ công, kỹ năng, đào tạo) — mỗi mục là một liên kết.*
+
+
 **Điểm then chốt.** **Ghi nhận đã rời** không xoá ai. Người đó chỉ chuyển sang
 trạng thái **Đã rời** và bị ẩn khỏi Danh bạ; **Khôi phục** đưa họ trở lại.
 
@@ -94,6 +108,11 @@ trạng thái **Đã rời** và bị ẩn khỏi Danh bạ; **Khôi phục** đ
 | 1 | Đặt **Từ** và **Đến**. | | |
 | 2 | Đọc bảng: **Ngày**, **Đã làm**, **Ngoài giờ**, và "trên {X} theo lịch". | Cột "theo lịch" là số giờ ca dự kiến, không phải giờ đã làm. | |
 | 3 | Đọc dòng **Tổng cộng**. | | |
+
+![Ảnh 02.4 — Màn hình Giờ đã làm, bước 4](images/screens/02-4-gio-da-lam.png)
+
+***Ảnh 02.4.** Tổng giờ theo từng ngày, kèm câu nhắc: **bảng chưa xác nhận chỉ là bản nháp** — chỉ giờ đã xác nhận mới được tính.*
+
 
 **Điểm then chốt quan trọng nhất.** **Chỉ chấm công đã xác nhận mới được tính.**
 Bảng chấm công chưa bấm **Xác nhận** chỉ là bản nháp và **không** hiện ở đây.
@@ -121,6 +140,11 @@ Ghi: `PPL_JOB_ROLES_CHANGE` — chỉ quản trị viên.
 | 2 | Bấm **Thêm chức danh**: điền **Mã**, **Tên**. | Mã nên ngắn, không dấu, viết hoa — vì mã xuất hiện trong danh sách chọn ở hồ sơ Nhân viên. | |
 | 3 | Để ngừng dùng một chức danh, bấm **Điều chỉnh** và bỏ **Đang làm**. | Ngừng dùng **không** làm mất chức danh khỏi hồ sơ người đang giữ nó. | Danh mục là lịch sử, không phải danh sách hiện hành. |
 
+![Ảnh 02.5 — Màn hình Chức danh công việc, bước 1](images/screens/02-1-chuc-danh.png)
+
+***Ảnh 02.5.** Danh mục khai báo một lần, dùng chung cho mọi Nhà máy — đây là chỗ chức danh được đặt tên.*
+
+
 ---
 
 ## Kỹ năng
@@ -141,6 +165,11 @@ trị viên**.
 | 2 | Bấm **Thêm kỹ năng**: **Mã**, **Tên**, **Hạng mục**, **Cần chứng nhận**, **Chu kỳ đánh giá lại (tháng)**. | Để trống chu kỳ đánh giá lại nghĩa là kỹ năng này **không bao giờ** hết hạn. | Điền chu kỳ cho mọi kỹ năng cần chứng nhận — đó là thứ Nền tảng dùng để cảnh báo hết hạn. |
 | 3 | Bấm **Ai đang có kỹ năng này** để xem danh sách người đủ điều kiện. | | |
 | 4 | Ghi nhận cho một người: mở **Hồ sơ Nhân viên → Ghi nhận kỹ năng**, chọn **Mức thành thạo (0–4, ILUO)**, **Đánh giá ngày**, **Hết hạn ngày**, **Tham chiếu minh chứng**. | **0 — không có** là một mức hợp lệ, nghĩa là không đạt. | Ghi 0 khác với không ghi gì: 0 là đã đánh giá và không đạt. |
+
+![Ảnh 02.6 — Màn hình Kỹ năng, bước 2](images/screens/02-2-ky-nang.png)
+
+***Ảnh 02.6.** Mỗi kỹ năng có lối **Ai đang có kỹ năng này** — câu hỏi thật của người đào tạo, không phải một cột trong bảng.*
+
 
 **Điểm then chốt.** **Hết hạn ngày** để trống thì Nền tảng tự tính từ **chu kỳ
 đánh giá lại** của kỹ năng đó.
@@ -166,6 +195,11 @@ Ghi: `PPL_ORG_UNITS_CHANGE` — **chỉ quản trị viên**.
 | 3 | Bấm **Thêm Đơn vị tổ chức ở đây** trên một đơn vị để thêm đơn vị con: **Mã**, **Tên**, **Loại đơn vị**, **Thứ tự sắp xếp**. | **Loại đơn vị** quyết định rất nhiều chỗ khác: bộ phận / tổ / khu vực. | Chọn sai loại là bảng chấm công và bảng Bộ phận không hiện đúng. |
 | 4 | Bấm **Thêm Nhà máy** khi bắt đầu một nhà máy mới: **Mã**, **Tên**, **Mã quốc gia (không bắt buộc)**. | Mọi Đơn vị tổ chức đều nằm dưới một Nhà máy — không có đơn vị nào đứng ngoài. | |
 | 5 | Để ngừng một đơn vị: bấm **Ngừng sử dụng**, xác nhận. | Đơn vị được **ghi là đã ngừng** chứ **không bị xoá**, và **Khôi phục** được bất cứ lúc nào. | Lịch sử công việc và chấm công vẫn trỏ về nó. |
+
+![Ảnh 02.7 — Màn hình Đơn vị tổ chức, bước 3](images/screens/02-3-don-vi-to-chuc.png)
+
+***Ảnh 02.7.** Cây Đơn vị tổ chức của Nhà máy, kèm lối sửa và thêm nhánh. Đây là cây mà mọi phạm vi ghi quyền bám vào.*
+
 
 **Điểm then chốt cho người nhập cây lớn.** **Nhập một nhánh** nhận **một mảng
 JSON**; mỗi dòng tham chiếu cha bằng **`parentCode`** — một dòng khác trong cùng
@@ -197,6 +231,11 @@ Một giám sát không có quyền sửa ở tổ đó **không mở được b
 | 4 | Người không có trong ca nhưng có mặt: bấm **Thêm người thay ca** rồi tìm trong **Danh bạ**. | | |
 | 5 | Người trong ca nhưng không đi làm: **Đánh dấu ngoại lệ**, không phải bỏ khỏi bảng. | **Bỏ khỏi bảng** là xoá người khỏi ca; **ngoại lệ** là có đi làm hay không. | Bỏ khỏi bảng làm mất dấu người đó đã được xếp ca. |
 | 6 | Bấm **Xác nhận**. | Bảng đã xác nhận hiện **Đã xác nhận**, và **chỉ từ lúc đó** giờ công mới vào **Giờ đã làm**. | |
+
+![Ảnh 02.8 — Màn hình Chấm công, bước 1](images/screens/02-1-cham-cong-chon-ca.png)
+
+***Ảnh 02.8.** Chọn một Đơn vị tổ chức và một **ngày sản xuất**; các ca của ngày đó hiện ra kèm số người cần xác nhận.*
+
 
 **Điểm then chốt quan trọng nhất.** Bảng ghi được **nhiều hơn một lần** — nhưng
 chỉ lần **Xác nhận** mới có giá trị. Đừng rời màn hình khi chưa bấm **Xác nhận**.
@@ -232,6 +271,10 @@ và chỉ thấy các Đơn vị tổ chức mình xác nhận được.
 này** (hoặc quản trị viên). Một người vận hành mở địa chỉ này sẽ thấy câu "Chưa có
 ai có quyền sửa ở đây mở bảng này" — đó là câu trả lời đúng, không phải lỗi.
 
+![Ảnh 02.9 — Màn hình Bảng chấm công một ca, bước 3](images/screens/02-3-bang-cham-cong.png)
+
+***Ảnh 02.9.** Từng người trong ca với số phút đã làm và số phút ngoài giờ, cùng hai thao tác trên mỗi dòng: **Đánh dấu ngoại lệ** và **Bỏ khỏi bảng**.*
+
 ---
 
 ## Đào tạo
@@ -252,6 +295,11 @@ Tự trả lời đào tạo của mình: `PPL_TRAINING_ANSWER_OWN` — **mọi 
 | 2 | Mở bản ghi vừa tạo, bấm **Thêm học viên**: chọn **Nhân viên của {đơn vị}** hoặc **Toàn bộ Danh bạ**. | | |
 | 3 | Bấm **Gửi cho học viên**. | Trước khi gửi, đây là **bản nháp**: sửa và thêm người được. Sau khi gửi thì **chốt**. | Sửa sau khi gửi là sửa việc người khác đã ký. |
 | 4 | Bỏ cả bản nháp nếu ghi nhầm: **Bỏ bản nháp**. | Chỉ làm được khi **chưa ai được hỏi**. | Bản nháp đã gửi thì không bỏ được. |
+
+![Ảnh 02.10 — Màn hình Đào tạo, bước 1 — hộp thoại tạo bản ghi](images/screens/02-1-dao-tao-tao-ban-ghi.png)
+
+***Ảnh 02.10.** Tạo bản ghi đào tạo từ danh sách: chọn người, kỹ năng và người hướng dẫn; bản ghi sau đó đi theo vòng đời của nó.*
+
 
 **Các bước chính — học viên**
 
@@ -321,6 +369,11 @@ nhưng ở **Hồ sơ Nhân viên → Chữ ký**, bằng `PPL_DIRECTORY_CHANGE`
 | 2 | Hoặc **Tải ảnh lên** một ảnh chữ ký có sẵn, hoặc **Vẽ tại đây** rồi bấm **Giữ chữ ký này**. | Ảnh cần nền sáng, nét đậm. | |
 | 3 | Đổi chữ ký: **Vẽ chữ ký mới** hoặc **Thay bằng ảnh**; bỏ hẳn: **Xoá**. | | |
 
+![Ảnh 02.11 — Màn hình Chữ ký của tôi, bước 1](images/screens/02-1-chu-ky-cua-toi.png)
+
+***Ảnh 02.11.** Chữ ký lưu một lần: khi chưa có, màn hình nói rõ **chưa lưu** và cách vẽ; thay chữ ký không làm thay đổi bảng đã ký.*
+
+
 > **Điểm then chốt quan trọng nhất.** **Thay chữ ký không làm thay đổi bảng nào
 > bạn đã ký.** Chữ ký được gắn vào bản ghi tại thời điểm ký.
 
@@ -348,6 +401,11 @@ Duyệt / Từ chối: `PPL_LEAVE_REQUESTS_DECIDE` — **supervisor trở lên**
 | 2 | Chọn **Loại nghỉ**, **Ngày đầu**, **Ngày cuối**, **Ghi chú**. | Kiểm tra kỹ **Ngày cuối** — đơn tính cả hai đầu. | Nhập ngày cuối là ngày đi làm lại thì đơn dài hơn thực tế một ngày. |
 | 3 | Bấm gửi. Đơn nằm trong tab **Của tôi**. | | |
 | 4 | Huỷ đơn khi **chưa có quyết định**: **Huỷ đơn** → **Huỷ đơn**. | Đơn đã duyệt rồi thì không huỷ được. | |
+
+![Ảnh 02.12 — Màn hình Đơn xin nghỉ, bước 2](images/screens/02-2-don-xin-nghi.png)
+
+***Ảnh 02.12.** Form gửi đơn: **Loại nghỉ** là lựa chọn có sẵn, ghi chú là tuỳ chọn; gửi xong đơn nằm ở danh sách chờ quyết định.*
+
 
 **Các bước chính — quyết định**
 
@@ -380,6 +438,11 @@ Nhà máy, và là căn cứ tính các số **Chi phí** trên bảng phân c�
 | 4 | Để **Áp dụng đến** trống nếu đây là đơn giá **hiện hành**. | Đặt ngày kết thúc thì đơn giá đóng **vào ngày đó**, không tính ngày ấy. | |
 | 5 | Đổi giá: bấm **Thay thế** trên đơn giá cũ. | Đơn giá cũ **bị đóng**, không bị ghi đè. | |
 
+![Ảnh 02.13 — Màn hình Đơn giá giờ, bước 1](images/screens/02-1-don-gia-gio.png)
+
+***Ảnh 02.13.** Các đơn giá đang hiệu lực, kèm **Thay thế** — đơn giá cũ không bị xoá, nó được đóng lại theo kỳ.*
+
+
 > **Điểm then chốt quan trọng nhất.** **Đơn giá không bao giờ bị ghi đè.** Chi phí
 > đã báo cho tháng trước giữ nguyên con số của tháng trước.
 
@@ -402,6 +465,11 @@ hàng làm lại.
 | 1 | Bấm **Thêm chi phí chuẩn**, chọn **Sản phẩm**. | **Sản phẩm của một chi phí không sửa được** — ghi chi phí cho Sản phẩm kia thay vì sửa. | |
 | 2 | Điền **Chi phí chuẩn, mỗi đơn vị**, **Tiền tệ**, **Có hiệu lực từ**. | | |
 | 3 | Đổi giá: **Thay thế**. | Chi phí cũ **đóng**, chi phí mới mở — cùng luật với Đơn giá giờ. | |
+
+![Ảnh 02.14 — Màn hình Chi phí chuẩn sản phẩm, bước 1](images/screens/02-1-chi-phi-chuan.png)
+
+***Ảnh 02.14.** Chi phí chuẩn theo Sản phẩm và theo kỳ — con số mà mọi báo cáo chi phí sau đó dựa vào.*
+
 
 **Điểm then chốt.** Chưa đặt chi phí thì **hàng lỗi và làm lại không được tính
 giá** — số tiền hiện là 0, không phải "miễn phí".
