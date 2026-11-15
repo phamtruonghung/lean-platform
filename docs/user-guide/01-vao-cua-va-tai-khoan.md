@@ -132,8 +132,8 @@ qua nhất khi đào tạo: đăng nhập được không có nghĩa là đã đ
 | --- | --- | --- | --- |
 | **Chung** | [Hỏng] Kiểm tra ngôn ngữ **trước** khi báo lỗi "màn hình toàn tiếng Anh" | Ngôn ngữ theo trình duyệt chứ không theo Tài khoản, nên người ca trước đổi được | — |
 | **1.** Mở **Cài đặt** ở cuối thanh điều hướng | — | — | — |
-| **2.** Ở **Ngôn ngữ**, chọn **Tiếng Việt** hoặc **Tiếng Anh** | [Dễ] Áp dụng **ngay** cho toàn bộ Nền tảng, không cần tải lại trang | Toàn bộ chuỗi giao diện đổi cùng lúc; không có bước lưu | Ảnh 01.6 |
-| **3.** Đổi giao diện sáng/tối ở menu tài khoản | [Dễ] Lựa chọn được ghi nhớ trên trình duyệt này, máy khác giữ lựa chọn riêng | Không theo Tài khoản, nên không có gì để đồng bộ giữa các máy | Ảnh 01.7 |
+| **2.** Ở **Ngôn ngữ**, chọn **Tiếng Việt** hoặc **Tiếng Anh** | [Dễ] Áp dụng **ngay** cho toàn bộ Nền tảng, không cần tải lại trang | Toàn bộ chuỗi giao diện đổi cùng lúc; không có bước lưu | Ảnh 01.6, Ảnh 01.7 |
+| **3.** Đổi giao diện sáng/tối ở menu tài khoản | [Dễ] Lựa chọn được ghi nhớ trên trình duyệt này, máy khác giữ lựa chọn riêng | Không theo Tài khoản, nên không có gì để đồng bộ giữa các máy | — |
 
 ![Ảnh 01.6 — Màn hình Cài đặt, chọn tiếng Việt](images/screens/01-2-cai-dat-tieng-viet.png)
 
