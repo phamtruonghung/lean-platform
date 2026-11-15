@@ -48,7 +48,7 @@ một bản**.
 | **Công việc** | Nhìn cả ngày của một Bộ phận: mọi ca, bàn giao của mỗi ca, vị trí của ca đang chạy, và máy của từng ca — màn hình **Bảng của một Bộ phận**, `/production/sections/:orgUnitId/board`. Phiếu 07.2. |
 | **Ai thao tác được** | Đọc: `PRD_HANDOVER_DISPLAY` — mọi vai trò. Nút **Xác nhận**: `PRD_HANDOVER_ACKNOWLEDGE`. |
 | **Vật tư, dữ liệu có trước** | Ca đã được xếp cho ngày sản xuất đó; muốn xác nhận thì ca trước phải đã **gửi** bàn giao. |
-| **Công cụ** | Ô **Ngày sản xuất**; mỗi ca một dòng **Ca {bắt đầu}–{kết thúc}** kèm chip trạng thái bàn giao, chip **Trễ** và các chip ngoại lệ; thanh vị trí ca và câu bên dưới; các ô máy mang **mã**, tên và trạng thái bằng chữ; nút mở bàn giao và nút **Xác nhận**. |
+| **Công cụ** | Bốn ô đếm phía trên các ca, in bằng tiếng Anh: **Shifts**, **No handover**, **Unacknowledged**, **Late**; ô **Ngày sản xuất**; mỗi ca một dòng **Ca {bắt đầu}–{kết thúc}** kèm chip trạng thái bàn giao, chip **Trễ** và các chip ngoại lệ; thanh vị trí ca và câu bên dưới; các ô máy mang **mã**, tên và trạng thái bằng chữ; nút mở bàn giao và nút **Xác nhận**. |
 | **An toàn** | Ba chip ngoại lệ là ba tình trạng khác nhau — **Không có bàn giao**, **Chưa xác nhận**, **Sửa sau khi xác nhận**. Đọc chúng trước khi kết luận ca đó đã bàn giao xong. |
 | **Thiết bị đào tạo** | Ảnh 07.2 |
 | **Chủ tài liệu · Rev · Ngày · Trang** | Ban Lean Nền tảng · Rev 2 · 2026-11-15 · 07.2 |
@@ -64,7 +64,7 @@ một bản**.
 
 ![Ảnh 07.2 — Màn hình Bảng của một Bộ phận](images/screens/07-3-bang-cua-mot-bo-phan.png)
 
-***Ảnh 07.2.** Cả ngày của một Bộ phận: số ca, số bàn giao, số chưa xác nhận và số nhận muộn — chip **Trễ** và câu **nhận muộn** là cờ vàng của người đào tạo.*
+***Ảnh 07.2.** Cả ngày của một Bộ phận: số ca, số bàn giao, số chưa xác nhận và số trễ — chip **Trễ** và câu **xác nhận {…} sau khi ca bắt đầu** là cờ vàng của người đào tạo.*
 
 ---
 

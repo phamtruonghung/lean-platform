@@ -129,7 +129,7 @@ số chỉ đúng khi đúng một điều kiện ở nguồn của nó.*
 | --- | --- |
 | **Công việc** | Đọc nơi Nhà máy này **chưa đạt yêu cầu kỹ năng của chính nó** — tức chỗ thiếu người đủ tay nghề — màn hình **Độ phủ kỹ năng**, `/skill-coverage`. Phiếu 08.5. |
 | **Ai thao tác được** | `INS_SKILL_COVERAGE_DISPLAY` — **chỉ quản trị viên**. |
-| **Vật tư, dữ liệu có trước** | Nhà máy đã đặt **Yêu cầu kỹ năng** (số người tối thiểu ở một bậc), và Nhân viên đã có bản ghi **Kỹ năng** kèm ngày đánh giá lại. |
+| **Vật tư, dữ liệu có trước** | Nhà máy đã đặt yêu cầu kỹ năng (số người tối thiểu ở một bậc — cột **Yêu cầu** trên màn hình), và Nhân viên đã có bản ghi **Kỹ năng** kèm ngày đánh giá lại. |
 | **Công cụ** | Ô **Nhà máy**; ô **Lọc độ phủ kỹ năng** (theo Đơn vị tổ chức hoặc kỹ năng); mỗi dòng một yêu cầu với **Cần {n} người ở bậc {m}+**, **Đủ điều kiện**, **Hết hạn**, **Thiếu {n}**; bấm một dòng mở danh sách người. |
 | **An toàn** | Màn hình chỉ đọc. Danh sách này là **chỗ thiếu**, không phải bảng điểm: một dòng vắng mặt nghĩa là yêu cầu đó đang đủ người. |
 | **Thiết bị đào tạo** | Ảnh 08.2 |
