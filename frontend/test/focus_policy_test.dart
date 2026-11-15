@@ -29,6 +29,7 @@ import 'package:lean_platform/platform/auth_gateway.dart';
 import 'package:lean_platform/platform/change_password_bloc.dart';
 import 'package:lean_platform/platform/change_password_dialog.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/platform/modal_layer.dart';
 import 'package:lean_platform/platform/shell.dart';
 import 'package:lean_platform/theme.dart';
 import 'package:lean_platform/widgets/app_confirm_dialog.dart';
@@ -60,6 +61,7 @@ Widget _shellHarness({MaterialTapTargetSize tapTargetSize = MaterialTapTargetSiz
           onSignOut: () {},
           darkPalette: false,
           onToggleDarkPalette: () {},
+          modalLayer: ModalLayer(),
           child: child,
         ),
         routes: [

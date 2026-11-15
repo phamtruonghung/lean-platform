@@ -193,6 +193,7 @@ import 'change_password_screen.dart';
 import 'destinations.dart';
 import 'dialog_page.dart';
 import 'floor_device_gateway.dart';
+import 'modal_layer.dart';
 import 'not_found_screen.dart';
 import 'settings_screen.dart';
 import 'shell.dart';
@@ -709,11 +710,16 @@ String documentTitle(String fullPath, {AppLocalizations? l10n}) {
 }
 
 GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}) {
+  // One observer for the whole app, on every navigator go_router builds: the
+  // popups live on the ShellRoutes' inner navigators, not on the root one, and
+  // the Shell shades its own column from what this hears (`modal_layer.dart`).
+  final ModalLayer modalLayer = ModalLayer();
   return GoRouter(
     initialLocation: initialLocation,
     refreshListenable: GoRouterRefreshStream(accountBloc.stream),
     redirect: (context, state) => accountRedirect(accountBloc.state, state),
     errorBuilder: (context, state) => NotFoundScreen(location: state.uri.toString()),
+    observers: <NavigatorObserver>[modalLayer],
     routes: [
       GoRoute(
         path: Routes.signIn,
@@ -892,6 +898,7 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
             darkPalette: themeMode.isDarkPalette(platformBrightness),
             onToggleDarkPalette: () =>
                 context.read<ThemeModeCubit>().toggle(platformBrightness),
+            modalLayer: modalLayer,
             child: child,
           );
         },
