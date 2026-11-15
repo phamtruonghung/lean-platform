@@ -41,6 +41,11 @@ tổ chức của mình.
 | 3 | Bật **Hiện cả việc đã đóng** để thấy lịch sử. | | |
 | 4 | Bấm một dòng để mở **Chi tiết Hành động**. | | |
 
+![Ảnh 04.1 — Màn hình Nhật ký hành động, bước 1](images/screens/04-1-nhat-ky-hanh-dong.png)
+
+***Ảnh 04.1.** Những gì nhà máy còn nợ, quá hạn trước: đã phát hiện gì, ai phụ trách, khi nào đến hạn.*
+
+
 ---
 
 ## Nêu một Concern
@@ -59,6 +64,11 @@ tổ chức của mình.
 | 2 | Ghi **Nội dung** (một câu) và **Mô tả**. | Nội dung là cái hiện trên nhật ký — viết sao cho người ngoài đọc hiểu. | |
 | 3 | Chọn **Trụ cột** và **Đến hạn** nếu có. | | |
 | 4 | Bấm gửi. | | |
+
+![Ảnh 04.2 — Màn hình Nêu một Concern, bước 2](images/screens/04-1-neu-mot-concern.png)
+
+***Ảnh 04.2.** Một dòng mô tả là đủ để mở Hành động. **Nguyên nhân ghi ở giai đoạn Plan**, không phải ở đây — nêu vấn đề trước, tìm nguyên nhân sau.*
+
 
 > **Điểm then chốt quan trọng nhất.** **Một vấn đề lặp lại nhiều lần vẫn là MỘT
 > Concern.** Lần xuất hiện thứ hai được **liên kết** vào Concern cũ, không nêu
@@ -90,6 +100,11 @@ liên kết cái gì với nó, và đóng nó.
 | 6 | Cần điều tra nguyên nhân gốc: **Mở một CAPA…** (`ACT_CAPA_OPEN`). | Xem mục **Mở một CAPA**. | |
 | 7 | Không còn đúng: **Huỷ hành động…** (`ACT_CHANGE`), ghi lý do. | | |
 
+![Ảnh 04.3 — Màn hình Chi tiết Hành động, bước 1](images/screens/04-1-chi-tiet-hanh-dong.png)
+
+***Ảnh 04.3.** Tình trạng hiện tại, chu kỳ PDCA, các biện pháp, CAPA và Sản phẩm không phù hợp liên quan — tất cả trên một màn hình.*
+
+
 **Điểm then chốt.** **Bỏ liên kết…** gỡ một Sản phẩm không phù hợp ra khỏi Concern.
 Chỉ làm khi đã liên kết nhầm.
 
@@ -110,6 +125,11 @@ Chỉ làm khi đã liên kết nhầm.
 | --- | --- | --- | --- |
 | 1 | Ghi **Ghi chú khi đóng**. | Không có ghi chú thì người sau chỉ thấy "đã xong", không biết xong thế nào. | |
 | 2 | Bấm hoàn thành. | Hành động **không còn giai đoạn nào** thì nó đã đóng. | |
+
+![Ảnh 04.4 — Màn hình Hoàn thành một giai đoạn, bước 1](images/screens/04-1-hoan-thanh-giai-doan.png)
+
+***Ảnh 04.4.** Mỗi giai đoạn PDCA đóng bằng một câu ghi lại việc đã làm; đóng giai đoạn là thứ làm Hành động tiến lên, không phải một cột trạng thái sửa tay.*
+
 
 ---
 
@@ -176,6 +196,11 @@ Ghi bước kiểm tra hiệu quả: `ACT_CAPA_EFFECTIVENESS` **và thẩm quy�
 | 1 | Lọc theo **Đơn vị tổ chức**, **Trạng thái**, và **Kiểm tra quá hạn**. | Cột **Kiểm tra quá hạn** là việc gấp nhất trong cả danh sách. | Bước kiểm tra quá hạn nghĩa là đã quá thời hạn chứng minh vấn đề không quay lại. |
 | 2 | Bấm một dòng để mở **Chi tiết CAPA**. | | |
 
+![Ảnh 04.5 — Màn hình CAPA, bước 1](images/screens/04-1-capa.png)
+
+***Ảnh 04.5.** Mọi cuộc điều tra trên Nền tảng và lần kiểm tra hiệu quả mà mỗi cuộc đang chờ.*
+
+
 ---
 
 ## Mở một CAPA
@@ -193,6 +218,11 @@ Ghi bước kiểm tra hiệu quả: `ACT_CAPA_EFFECTIVENESS` **và thẩm quy�
 | 1 | Chọn **phương pháp điều tra** (8D) và ghi **mô tả vấn đề**. | Mô tả vấn đề là thứ cả nhóm đọc thay cho nhau — viết một lần, cho đúng. | |
 | 2 | Chọn **nhóm** và **trưởng nhóm**. | **Trưởng nhóm không được tự ghi bước kiểm tra hiệu quả của CAPA mình dẫn.** | Đây là luật của máy chủ, không phải khuyến nghị: cần người thứ hai xác nhận bản sửa có giữ được. |
 | 3 | Bấm mở CAPA. | | |
+
+![Ảnh 04.6 — Màn hình Chi tiết Hành động, bước 2 — Mở một CAPA](images/screens/04-2-mo-mot-capa.png)
+
+***Ảnh 04.6.** CAPA mở từ chính Hành động, nên vấn đề và người liên quan đi theo; hộp thoại chỉ hỏi ai tham gia.*
+
 
 **Điểm then chốt.** Mở CAPA **không** đóng Concern. Concern vẫn chạy tiếp và phải
 đóng **trước** khi bước kiểm tra hiệu quả đến hạn.
@@ -221,6 +251,11 @@ Chất lượng.
 | 5 | Đọc **Những gì Concern đã làm**: D3 (ngăn chặn), D5–D6 (khắc phục), D7 (phòng ngừa). | Đây là nơi **đọc**, không phải nơi **ghi lại** — chúng được ghi trên Concern. | Ghi trùng ở đây sẽ tạo hai bộ biện pháp khác nhau. |
 | 6 | Khi Concern đã đóng: **Ghi bước kiểm tra hiệu quả**. | Người ghi **không được là trưởng nhóm**, và phải có thẩm quyền Chất lượng ở Đơn vị tổ chức. | |
 | 7 | Bấm **Báo cáo** để in/xem bản 8D. | | |
+
+![Ảnh 04.7 — Màn hình Chi tiết CAPA, bước 2](images/screens/04-2-chi-tiet-capa.png)
+
+***Ảnh 04.7.** Biểu đồ xương cá với bốn nhóm nguyên nhân: mỗi nhánh là một chỗ ghi nguyên nhân ứng viên, và mỗi nguyên nhân phải có phán quyết.*
+
 
 > **Điều kiện đóng CAPA — nói đúng câu này khi đào tạo.** CAPA chỉ đóng khi **cả
 > hai** chuỗi đều có nguyên nhân gốc đã xác nhận, **Concern đã đóng**, **và** một
@@ -287,6 +322,11 @@ máy chủ từ chối.
 **Ai thao tác được.** `ACT_CAPA_DISPLAY`. Đường dẫn `/actions/capas/:id/report`.
 
 Bản 8D để đọc hoặc in bằng trình duyệt (Ctrl+P). Không có nút in riêng.
+
+
+![Ảnh 04.8 — Màn hình Báo cáo CAPA, bước 7](images/screens/04-7-bao-cao-capa.png)
+
+***Ảnh 04.8.** Cùng một cuộc điều tra, in ra thành báo cáo 8D — mở ngoài khung điều hướng nên in là ra đúng tờ báo cáo.*
 
 ---
 

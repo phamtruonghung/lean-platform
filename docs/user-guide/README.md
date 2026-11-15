@@ -24,12 +24,48 @@ Tài liệu này đọc được hai cách: các tệp Markdown trong thư mục
 xem thẳng trên GitHub), và một **bản PDF để đọc hoặc in**.
 
 - **Bản PDF**: [`pdf/huong-dan-su-dung.pdf`](pdf/huong-dan-su-dung.pdf) — toàn bộ chương
-  00–90 trong một tệp, kèm **mười sơ đồ**, mỗi sơ đồ in trên một **trang ngang** riêng.
+  00–90 trong một tệp, kèm **mười sơ đồ** (mỗi sơ đồ in trên một **trang ngang** riêng) và
+  **ảnh chụp màn hình thật của ứng dụng** đặt ngay tại bước nó minh hoạ.
 - **Sinh lại bản PDF** sau khi sửa Markdown: `bash scripts/build-user-guide-pdf.sh`.
-  Script dò Chromium có sẵn trên máy, dựng lại ảnh sơ đồ và in PDF vào `pdf/`.
+  Script dựng lại ảnh sơ đồ rồi in PDF vào `pdf/`. Nó cần ba thứ, và dừng lại nói rõ
+  nếu thiếu cái nào:
+  - `node` + gói **playwright** — script tìm nó trong `docs/user-guide/diagrams/node_modules`
+    (chạy `cd docs/user-guide/diagrams && npm i playwright` một lần là đủ), rồi tới
+    bản cài sẵn của Hermes, rồi `NODE_PATH`;
+  - **Chromium** cho playwright — `npx playwright install chromium`, hoặc trỏ `CHROME`
+    vào một binary có sẵn;
+  - `python3` + module **markdown**, và tuỳ chọn ImageMagick `convert` (thiếu `convert`
+    thì PDF vẫn ra, chỉ nặng hơn).
 - **Nguồn của sơ đồ** là `diagrams/*.html` + `diagrams/diagram.css`, sinh ảnh bằng
   `node docs/user-guide/diagrams/render.js` → `images/*.png`. Muốn đổi chữ trong sơ đồ
   thì sửa HTML rồi render lại, đừng sửa thẳng tệp PNG.
+
+### Ảnh chụp màn hình: `images/screens/`
+
+Ảnh trong `images/screens/` là **ảnh chụp ứng dụng thật**, không phải hình vẽ. Cách chụp
+lại một ảnh, để lần sau ai sửa màn hình còn chụp lại được giống hệt:
+
+- **Môi trường**: `./scripts/review.sh` (dựng cả stack ở `http://localhost:3002`), dữ liệu
+  là `dev/seed-demo.sql` — Nhà máy Demo. Nhờ vậy ảnh **không có tên người thật, không có
+  mặt người, không có số liệu KPI/tài chính thật**: mọi tên trong ảnh là dữ liệu demo
+  (`Demo Admin`, `DEMO-001 Nour Haddad`, `Meridian Pumps`, `Widget A`). Không chụp từ
+  bản triển khai thật.
+- **Khung nhìn cố định**: rộng **1440 × 900** CSS px, `deviceScaleFactor: 2`, chụp toàn
+  bộ cửa sổ (kể cả thanh điều hướng), lưu PNG rồi thu về **1440 px** rộng cho nhẹ.
+- **Ngôn ngữ**: **Tiếng Việt** — vì các chương viết bằng tiếng Việt và tên nút trong
+  chương là chuỗi tiếng Việt lấy từ `app_vi.arb`. Chương 01 có thêm một ảnh ở trạng thái
+  **tiếng Anh** để minh hoạ chính bước đổi ngôn ngữ.
+- **Tên tệp**: `<chương>-<bước>-<việc>.png`, ví dụ `03-2-them-tai-san.png` — chương 03,
+  bước 2 của bảng **Các bước chính**, việc "thêm tài sản". Một bước có hai ảnh thì đặt
+  tên khác phần việc, đừng đánh số lại.
+- **Chú thích**: mỗi ảnh là một khối `![Ảnh <ch>.<số> — <tên màn hình>, bước <n>](…)`
+  rồi một dòng `***Ảnh <ch>.<số>.** …*` ngay dưới. Khối này nằm **ngay sau bảng Các bước
+  chính của việc đó**, không gom vào một phòng trưng bày ở cuối chương: trong PDF ảnh
+  in ở cỡ trang, cùng trang với bước nó giải thích.
+- **Quy tắc dữ liệu**: một ảnh chỉ được commit khi không có tên người thật, mặt người,
+  danh tính khách hàng/nhà cung cấp thật, hay số liệu KPI/tài chính thật. Không chụp
+  được màn hình nào mà không vi phạm thì **bỏ ảnh đó và ghi lý do vào mô tả PR**, đừng
+  che bằng cách sửa số liệu.
 
 Chương [**00 · Toàn cảnh**](00-tong-quan.md) là bản đồ của cả tài liệu: Nền tảng gồm những
 nhóm việc gì, nhóm nào cấp dữ liệu cho nhóm nào, và một việc trên sàn đi qua những màn

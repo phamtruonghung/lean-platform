@@ -42,6 +42,7 @@ except ImportError:  # pragma: no cover - environment problem, not a doc problem
 UG = Path(__file__).resolve().parent.parent          # docs/user-guide
 REPO = UG.parent.parent                              # repo root
 IMAGES = UG / "images"
+SCREENS = IMAGES / "screens"
 BUILD = UG / "build"
 PDF_OUT = UG / "pdf" / "huong-dan-su-dung.pdf"
 
@@ -179,6 +180,17 @@ figure.fig .tag {
   font-size: 8pt; letter-spacing: .16em; text-transform: uppercase;
   color: var(--soft); font-weight: 700; text-align: left; margin-bottom: 2mm;
 }
+
+/* ---------- screenshots: one per step, on the page beside the step ---------- */
+figure.shot { margin: 3mm 0 6mm; break-inside: avoid; }
+figure.shot img {
+  display: block; width: 100%; max-width: 165mm; margin: 0 auto;
+  border: .4pt solid var(--rule); border-radius: 1.5mm;
+}
+figure.shot figcaption {
+  margin: 2mm auto 0; max-width: 165mm; font-size: 8.4pt; color: var(--muted);
+}
+figure.shot figcaption strong { color: var(--ink); }
 """
 
 
@@ -208,7 +220,7 @@ def chrome_binary() -> str:
     sys.exit("no Chromium found: set CHROME=/path/to/chrome")
 
 
-def print_copy(image: Path, workdir: Path) -> Path:
+def print_copy(image: Path, workdir: Path, colors: int = PRINT_IMAGE_COLORS) -> Path:
     """A smaller copy of a diagram for embedding in the PDF.
 
     Uses ImageMagick when it is installed and falls back to the master PNG, so
@@ -219,8 +231,11 @@ def print_copy(image: Path, workdir: Path) -> Path:
         return image
     out = workdir / image.name
     subprocess.run(
-        [convert, str(image), "-resize", f"{PRINT_IMAGE_WIDTH}x", "-strip",
-         "-colors", str(PRINT_IMAGE_COLORS), f"PNG8:{out}"],
+        # `>` so an image narrower than the print width is never upscaled:
+        # upscaling invents colour noise that the palette quantisation then has
+        # to keep, which made the screenshots alone cost 20 MB.
+        [convert, str(image), "-resize", f"{PRINT_IMAGE_WIDTH}x>", "-strip",
+         "-colors", str(colors), f"PNG8:{out}"],
         check=True, capture_output=True,
     )
     return out
@@ -253,6 +268,55 @@ IMG_P = re.compile(r"<p>\s*<img(?P<attrs>[^>]*)src=\"images/(?P<name>[^\"]+)\"[^
 ALT_RE = re.compile(r'alt="(?P<alt>[^"]*)"', re.I)
 CAPTION_P = re.compile(r"\s*<p>\s*<em>(?P<cap>.*?)</em>\s*</p>", re.I | re.S)
 CAPTION_LABEL = re.compile(r"^<strong>(?P<label>.*?)</strong>\s*", re.S)
+
+
+def promote_screens(html: str, images: dict[str, str]) -> str:
+    """Turn `![Ảnh 3.2 — …](images/screens/x.png)` + an italic caption into a
+    screenshot that stays on the page at the step it belongs to.
+
+    A diagram is a whole landscape page of its own (`promote_figures`); a
+    screenshot is evidence for one step, so it has to sit beside the step:
+    page width, no page break, caption underneath, and `break-inside: avoid` so
+    a shot is never split across two pages.
+    """
+    out: list[str] = []
+    pos = 0
+    for match in IMG_P.finditer(html):
+        name = match.group("name")
+        if not name.startswith("screens/"):
+            continue
+        attrs = match.group("attrs") or ""
+        alt_match = ALT_RE.search(attrs)
+        alt = alt_match.group("alt") if alt_match else name
+        if name not in images:
+            python_warn(f"screenshot {name} is referenced but not committed")
+            continue
+        rest = html[match.end():]
+        cap_match = CAPTION_P.match(rest)
+        caption = cap_match.group("cap") if cap_match else ""
+        end = match.end() + (cap_match.end() if cap_match else 0)
+        # `***Ảnh 3.2.** Bấm …` — the label repeats the alt's own tag.
+        label_match = CAPTION_LABEL.match(caption)
+        if label_match:
+            caption = caption[label_match.end():].strip()
+
+        tag = re.match(r"(?P<label>Ảnh\s*\d+\.\d+)", alt)
+        label = tag.group("label") if tag else ""
+        title = re.sub(r"^Ảnh\s*\d+\.\d+\s*[—–-]\s*", "", alt) if tag else alt
+        prose = f"{title}." if title else ""
+        if caption:
+            prose = f"{prose} {caption}" if prose else caption
+
+        out.append(html[pos:match.start()])
+        out.append(
+            '<figure class="shot">'
+            f'<img src="{images[name]}" alt="{alt.replace(chr(34), "&quot;")}">'
+            f"<figcaption><strong>{label}</strong> {prose}</figcaption>"
+            "</figure>"
+        )
+        pos = end
+    out.append(html[pos:])
+    return "".join(out)
 
 
 def promote_figures(html: str, images: dict[str, str]) -> tuple[str, list[tuple[str, str]]]:
@@ -319,11 +383,18 @@ def build_html() -> tuple[str, str]:
     rendered_images = sorted(p.name for p in IMAGES.glob("*.png"))
     if not rendered_images:
         sys.exit(f"no diagram PNGs in {IMAGES}; run: node docs/user-guide/diagrams/render.js")
+    screen_images = sorted(p.name for p in SCREENS.glob("*.png")) if SCREENS.is_dir() else []
     workdir = Path(tempfile.mkdtemp(prefix="ug-print-"))
     atexit.register(shutil.rmtree, workdir, True)   # the downscaled copies are only for this run
     images = {
         name: data_uri(print_copy(IMAGES / name, workdir)) for name in rendered_images
     }
+    # Screenshots are flat-colour UI, not line art: they keep 128 colours so the
+    # text inside them stays legible and the PDF stays under a few MB.
+    images.update({
+        f"screens/{name}": data_uri(print_copy(SCREENS / name, workdir, colors=128))
+        for name in screen_images
+    })
 
     sections: list[str] = []
     all_captions: list[tuple[str, str, str]] = []
@@ -333,6 +404,7 @@ def build_html() -> tuple[str, str]:
         md.reset()
         body = md.convert((UG / filename).read_text(encoding="utf-8"))
         body = rewrite_links(body)
+        body = promote_screens(body, images)
         body, captions = promote_figures(body, images)
         all_captions.extend((anchor, label, caption) for label, caption in captions)
 
@@ -371,7 +443,7 @@ def build_html() -> tuple[str, str]:
   lập trình viên. Mỗi chức năng là một thẻ bốn phần, đúng thứ tự một người đào tạo sẽ nói.</div>
   <div class="rule"></div>
   <div class="meta">
-    <p><strong>{len(CHAPTERS)} chương</strong> · <strong>{len(all_captions)} sơ đồ</strong> · mỗi sơ đồ một trang ngang</p>
+    <p><strong>{len(CHAPTERS)} chương</strong> · <strong>{len(all_captions)} sơ đồ</strong> · <strong>{len(screen_images)} ảnh chụp màn hình</strong></p>
     <p>Ứng dụng: relats-lean-platform.digitalciapp.com</p>
     <p>Bản sinh ngày {date} từ <code>docs/user-guide/*.md</code> — đừng sửa tệp PDF này, sửa Markdown rồi dựng lại.</p>
   </div>
@@ -423,7 +495,7 @@ def main() -> int:
         "--no-pdf-header-footer", "--run-all-compositor-stages-before-draw",
         # Chrome prints no /Link annotations for in-page fragments, but it does
         # build a real PDF outline (bookmarks) from the h1–h6 headings — that is
-        # how a reader navigates an 86-page manual.
+        # how a reader navigates a manual of this length.
         "--generate-pdf-document-outline",
         f"--print-to-pdf={PDF_OUT}", html_path.as_uri(),
     ]

@@ -34,6 +34,11 @@ theo **năm Trụ cột**.
 | 3 | Đọc từng **Trụ cột**, mỗi dòng có **Giá trị** và **Trạng thái**. | **Chưa có dữ liệu** ≠ **Chưa có KPI nào được định nghĩa dưới Trụ cột này**. | Một cái là chưa ai làm; cái kia là chưa ai định nghĩa. Chỉ cái thứ hai mới là việc của quản trị viên. |
 | 4 | Lọc **Trạng thái** để chỉ xem cái đang đỏ. | | |
 
+![Ảnh 08.1 — Màn hình Bảng phân cấp, bước 1](images/screens/08-1-bang-phan-cap.png)
+
+***Ảnh 08.1.** Bốn Trụ cột đều hiện, kể cả Trụ cột chưa có gì báo cáo — chọn một kỳ, rồi đọc từng Trụ cột.*
+
+
 > **Điểm then chốt.** Mọi Trụ cột **luôn hiện**, kể cả trống. Một Trụ cột trống là một
 > thông tin, không phải một lỗi hiển thị.
 
@@ -137,6 +142,11 @@ tức là chỗ thiếu người đủ tay nghề.
 | 1 | Chọn **Nhà máy**, rồi lọc theo **Đơn vị tổ chức** hoặc **kỹ năng**. | Danh sách chỉ gồm chỗ **thiếu**; "Mọi yêu cầu đều đạt" là trạng thái tốt, không phải danh sách rỗng hỏng. | |
 | 2 | Đọc từng dòng: **Yêu cầu** {n} người ở bậc {m}+, **Đủ điều kiện**, **Hết hạn**, **Thiếu {n}**. | Người **hết hạn** đã có kỹ năng nhưng quá chu kỳ đánh giá lại — họ **không** tính vào "đủ điều kiện". | Đây là chỗ hai con số khác nhau hay bị đọc lẫn. |
 | 3 | Bấm một dòng để xem **ai đang có kỹ năng đó** và ai hết hạn. | | |
+
+![Ảnh 08.2 — Màn hình Độ phủ kỹ năng, bước 1](images/screens/08-1-do-phu-ky-nang.png)
+
+***Ảnh 08.2.** Nơi Nhà máy chưa đạt yêu cầu kỹ năng của chính nó — danh sách thiếu hụt, không phải một bảng điểm.*
+
 
 **Điểm then chốt.** Độ phủ tính trên **bậc tối thiểu** của yêu cầu. Một người ở bậc
 cao hơn vẫn tính; một người ở bậc thấp hơn thì **không**.
