@@ -6445,12 +6445,12 @@ class AppLocalizationsVi extends AppLocalizations {
   String get shiftHandoverMachines => 'Máy';
 
   @override
-  String get shiftHandoverOneLinePerAssetInTheSection =>
-      'Mỗi Tài sản trong Bộ phận một dòng.';
+  String get shiftHandoverALineForEachMachineThatStopped =>
+      'Mỗi máy đã dừng trong ca này một dòng — máy chạy bình thường không cần dòng nào.';
 
   @override
-  String get shiftHandoverThisSectionHasNoActiveAssets =>
-      'Bộ phận này không có Tài sản nào đang hoạt động.';
+  String get shiftHandoverNoMachineStoppedThisShift =>
+      'Không máy nào dừng trong ca này, nên không cần dòng nào.';
 
   @override
   String get shiftHandoverChangePoints => 'Điểm thay đổi';

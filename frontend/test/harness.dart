@@ -2687,6 +2687,7 @@ class FakeWire {
     // The Production Module's Shift handover (issue #339).
     Map<String, Map<String, dynamic>>? sectionDays,
     Map<String, List<Map<String, dynamic>>>? sectionAssets,
+    Map<String, List<Map<String, dynamic>>>? sectionAbnormalAssets,
     Map<String, Map<String, dynamic>>? handovers,
     this.submitHandoverStatus = 200,
     this.submitHandoverRefusal,
@@ -2790,6 +2791,7 @@ class FakeWire {
         capas = capas ?? {},
         sectionDays = sectionDays ?? {},
         sectionAssets = sectionAssets ?? {},
+        sectionAbnormalAssets = sectionAbnormalAssets ?? {},
         handovers = handovers ?? {},
         kpis = kpis ?? [],
         kpiTargets = kpiTargets ?? {},
@@ -2941,6 +2943,11 @@ class FakeWire {
   /// Assets, keyed by the Section's id.
   final Map<String, List<Map<String, dynamic>>> sectionAssets;
 
+  /// The Assets each Section's shift instance flags as abnormal, as the server
+  /// derives them from `downtime_events` (ADR-0065) — what a draft opened here
+  /// answers as its `abnormalAssets`.
+  final Map<String, List<Map<String, dynamic>>> sectionAbnormalAssets;
+
   /// Every Shift handover the fake holds, keyed by id, as
   /// [shiftHandoverJson] builds it. Each write changes the record and answers
   /// it whole, the way the real routes do.
@@ -3026,7 +3033,14 @@ class FakeWire {
       final orgUnitId = body!['orgUnitId'] as String;
       final shiftInstanceId = body['shiftInstanceId'] as String;
       final id = 'h${++_productionSequence}';
-      final handover = shiftHandoverJson(id, orgUnitId: orgUnitId, shiftInstanceId: shiftInstanceId);
+      final handover = shiftHandoverJson(
+        id,
+        orgUnitId: orgUnitId,
+        shiftInstanceId: shiftInstanceId,
+        // The opening read carries the derivation the Machines block seeds
+        // itself from (ADR-0065).
+        abnormalAssets: sectionAbnormalAssets[orgUnitId] ?? const [],
+      );
       handovers[id] = handover;
       return answer(handover, 201);
     }
@@ -10828,6 +10842,7 @@ Map<String, dynamic> shiftHandoverJson(
   Map<String, dynamic> snapshot = const {},
   List<Map<String, dynamic>> snapshotGaps = const [],
   List<Map<String, dynamic>> machineLines = const [],
+  List<Map<String, dynamic>> abnormalAssets = const [],
   Map<String, List<Map<String, dynamic>>> changePoints = const {},
   List<Map<String, dynamic>> actions = const [],
   List<Map<String, dynamic>> openActions = const [],
@@ -10867,6 +10882,7 @@ Map<String, dynamic> shiftHandoverJson(
         'status': 'closed',
       },
       'machineLines': [...machineLines],
+      'abnormalAssets': [...abnormalAssets],
       'changePoints': {
         for (final dimension in const ['man', 'machine', 'material', 'method'])
           dimension: [...?changePoints[dimension]],
@@ -10908,6 +10924,11 @@ Map<String, dynamic> handoverOpenActionJson(String id, String actionNo, String t
       'pdcaPhase': null,
       'lastCheckOutcome': null,
     };
+
+/// One Asset a shift instance's own Downtime events flag, as
+/// `getHandoverDetail`'s `abnormalAssets` sends it (ADR-0065).
+Map<String, dynamic> abnormalAssetJson(String id, String code, String name, {String? downtimeEventId}) =>
+    {'id': id, 'code': code, 'name': name, 'downtimeEventId': downtimeEventId};
 
 /// One active Asset of a Section, as `GET .../sections/:id/assets` sends it.
 Map<String, dynamic> sectionAssetJson(String id, String code, String name) =>

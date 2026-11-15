@@ -10640,17 +10640,17 @@ abstract class AppLocalizations {
   /// **'Machines'**
   String get shiftHandoverMachines;
 
-  /// No description provided for @shiftHandoverOneLinePerAssetInTheSection.
+  /// No description provided for @shiftHandoverALineForEachMachineThatStopped.
   ///
   /// In en, this message translates to:
-  /// **'One line per Asset in the Section.'**
-  String get shiftHandoverOneLinePerAssetInTheSection;
+  /// **'A line for each machine that stopped this shift — a machine that ran normally needs none.'**
+  String get shiftHandoverALineForEachMachineThatStopped;
 
-  /// No description provided for @shiftHandoverThisSectionHasNoActiveAssets.
+  /// No description provided for @shiftHandoverNoMachineStoppedThisShift.
   ///
   /// In en, this message translates to:
-  /// **'This Section has no active Assets.'**
-  String get shiftHandoverThisSectionHasNoActiveAssets;
+  /// **'No machine stopped this shift, so no line is owed.'**
+  String get shiftHandoverNoMachineStoppedThisShift;
 
   /// No description provided for @shiftHandoverChangePoints.
   ///

@@ -57,13 +57,13 @@ việc gì còn mở, và ca sau phải để ý gì.
 
 | # | Phần | Bước | Điểm then chốt | Vì sao |
 | --- | --- | --- | --- | --- |
-| 1 | **Máy** | Mỗi Tài sản của Bộ phận là một dòng. Ghi **Trạng thái** (chạy / không chạy). | Máy không chạy: **bắt buộc nêu vì sao**. | Một dòng "không chạy" không có lý do là một dòng vô dụng cho ca sau. |
+| 1 | **Máy** | Chỉ **máy đã xảy ra sự cố dừng** trong ca này mới có một dòng; máy chạy bình thường không có dòng nào. Ghi **Trạng thái** và lý do. | Máy đã dừng: **bắt buộc nêu vì sao**, và dòng đó tự mang tham chiếu tới lần dừng của ca. | Danh sách máy do chính dữ liệu dừng máy của ca quyết định, nên không ai phải điểm danh từng máy mỗi ca; máy không có dòng nghĩa là "không có gì để bàn giao". |
 | 2 | **Máy** | Ghi **Chiều** và các số đang chạy nếu Bộ phận có. | Đây là **các số liệu ca đã chốt**. | |
 | 3 | **Điểm thay đổi** | **Thêm điểm thay đổi**: điều gì khác, **Khác ở chỗ nào**, **Điều ca sau phải theo dõi**. | Ít nhất một điểm thay đổi, hoặc bấm xác nhận **Ca này không có điểm thay đổi**. | Không ai ghi gì thì ca sau không biết là "không có gì khác" hay "chưa ai điền". |
 | 4 | **Hạng mục quan trọng** | Ghi các hạng mục quan trọng của ca. | | |
 | 5 | **Hành động chuyển tiếp** | Mọi Hành động đang mở của Bộ phận đều phải **chuyển tiếp, giao lại, hoặc đóng**. | Đóng ngay tại đây được, với **Điều gì đã đóng nó**. | Đây là cơ chế để Hành động không bị bỏ quên qua ca. |
 | 6 | **Bằng chứng bàn giao** | Bật **Đã đi kiểm tra chung** nếu hai ca đã cùng đi một vòng; **Lưu bằng chứng**. | | |
-| 7 | **Gửi** | Bấm **Gửi bàn giao**. | Nút không bấm được khi còn phần bắt buộc chưa xong; câu **Chưa gửi được bản bàn giao này** nói thiếu gì. | |
+| 7 | **Gửi** | Bấm **Gửi bàn giao**. | Còn phần bắt buộc chưa xong thì câu **Chưa gửi được bản bàn giao này** ở đầu màn hình liệt kê đủ: máy đã dừng mà chưa có dòng, dòng nào thiếu lý do hay thiếu tham chiếu, phần nào chưa trả lời, Hành động nào chưa có cách xử lý. | |
 
 **Điểm then chốt — câu này quan trọng nhất của cả nhóm.** **Hành động chuyển tiếp
 không được bỏ trống.** Một Hành động đang mở mà không được chuyển tiếp, giao lại hay

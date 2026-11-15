@@ -102,16 +102,14 @@ class ShiftHandoverUnavailable extends ShiftHandoverState {
 class ShiftHandoverLoaded extends ShiftHandoverState {
   const ShiftHandoverLoaded({
     required this.handover,
-    required this.assets,
     this.isMutating = false,
     this.mutationFailure,
     this.refusal,
   });
 
+  /// The handover, with the Machines block's own derivation
+  /// ([ShiftHandover.machineRows]) read off it.
   final ShiftHandover handover;
-
-  /// The Section's active Assets: one Machine status line row each.
-  final List<SectionAsset> assets;
 
   final bool isMutating;
 
@@ -129,7 +127,6 @@ class ShiftHandoverLoaded extends ShiftHandoverState {
   }) =>
       ShiftHandoverLoaded(
         handover: handover ?? this.handover,
-        assets: assets,
         isMutating: isMutating ?? this.isMutating,
         // Always overwritten, never carried forward.
         mutationFailure: mutationFailure,
@@ -200,7 +197,6 @@ class ShiftHandoverBloc extends Bloc<ShiftHandoverEvent, ShiftHandoverState> {
     emit(const ShiftHandoverLoading());
     try {
       final day = await _api.fetchSectionDay(token, event.orgUnitId, date: event.date);
-      final assets = await _api.fetchSectionAssets(token, event.orgUnitId);
       final live = day.shiftFor(event.shiftInstanceId)?.handover;
       final handover = live != null
           ? await _api.fetchHandover(token, live.id)
@@ -209,7 +205,7 @@ class ShiftHandoverBloc extends Bloc<ShiftHandoverEvent, ShiftHandoverState> {
               orgUnitId: event.orgUnitId,
               shiftInstanceId: event.shiftInstanceId,
             );
-      emit(ShiftHandoverLoaded(handover: handover, assets: assets));
+      emit(ShiftHandoverLoaded(handover: handover));
     } on ProductionApiException catch (error) {
       emit(ShiftHandoverUnavailable(message: error.message));
     }

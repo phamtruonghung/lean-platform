@@ -5,12 +5,14 @@
 /// read.
 ///
 /// Covers the ticket's own criteria: the form renders one Machine status line
-/// row per Asset with a state picker, and a line written `down` with a note
-/// sends that body; a refused submit renders the gaps it named at the top of
-/// the form; declaring "no change points this shift" and adding a man Change
-/// point both render and post; an Action disposed of as `closed` sends nothing
-/// until it says what closed it; the Section board renders a shift with no
-/// handover, the late flag and the acknowledgement latency; and the
+/// row per Asset this shift instance's own Downtime events flag (ADR-0065),
+/// with a state picker, and a line written `down` with a note sends that body
+/// with the stop that flagged it as the line's reference; a shift where nothing
+/// stopped renders no row; a refused submit renders the gaps it named at the
+/// top of the form; declaring "no change points this shift" and adding a man
+/// Change point both render and post; an Action disposed of as `closed` sends
+/// nothing until it says what closed it; the Section board renders a shift with
+/// no handover, the late flag and the acknowledgement latency; and the
 /// acknowledgement dialog posts the watch results and the board then shows the
 /// handover acknowledged.
 library;
@@ -35,9 +37,16 @@ const _shift = '500';
 const _handoverAddress = '/production/sections/$_section/handover/$_shift?date=2026-05-05';
 const _boardAddress = '/production/sections/$_section/board?date=2026-05-05';
 
+/// The two machines this test's shift flags: an Asset with a stop in its
+/// `downtime_events`, and the stop the derived line's reference points at.
+List<Map<String, dynamic>> _flagged() => [
+      abnormalAssetJson('a1', 'PRESS-1', 'Press 1', downtimeEventId: 'de-1'),
+      abnormalAssetJson('a2', 'PRESS-2', 'Press 2', downtimeEventId: 'de-2'),
+    ];
+
 /// One Section with two Assets and one shift. [handover], when given, is the
 /// shift's live handover (resumed rather than opened); without it the form
-/// opens a draft.
+/// opens a draft, and the fake answers the derivation this Section's shift flags.
 FakeWire _wire({Map<String, dynamic> Function()? handover}) {
   final live = handover?.call();
   return FakeWire(
@@ -48,6 +57,7 @@ FakeWire _wire({Map<String, dynamic> Function()? handover}) {
         sectionAssetJson('a2', 'PRESS-2', 'Press 2'),
       ],
     },
+    sectionAbnormalAssets: {_section: _flagged()},
     sectionDays: {
       _section: sectionDayJson(_section, shifts: [sectionShiftJson(_shift, handover: live)]),
     },
@@ -55,8 +65,20 @@ FakeWire _wire({Map<String, dynamic> Function()? handover}) {
   );
 }
 
-Map<String, dynamic> _draft({List<Map<String, dynamic>> openActions = const []}) =>
-    shiftHandoverJson('h1', orgUnitId: _section, shiftInstanceId: _shift, openActions: openActions);
+Map<String, dynamic> _draft({
+  List<Map<String, dynamic>> openActions = const [],
+  List<Map<String, dynamic>>? abnormalAssets,
+}) =>
+    shiftHandoverJson(
+      'h1',
+      orgUnitId: _section,
+      shiftInstanceId: _shift,
+      openActions: openActions,
+      // The two machines this shift's own Downtime events flag: the set the
+      // Machines block seeds itself from (ADR-0065). A draft whose shift had no
+      // downtime passes an empty list.
+      abnormalAssets: abnormalAssets ?? _flagged(),
+    );
 
 Future<void> _pump(WidgetTester tester, FakeWire wire, String location) async {
   // Tall enough that the handover's six blocks are all built: a lazy
@@ -91,7 +113,7 @@ List<List<Object?>> _writesTo(FakeWire wire, String suffix) => [
 
 void main() {
   group('the Shift handover form', () {
-    testWidgets('opens a draft and renders one row per Asset with a state picker; a down line posts its note',
+    testWidgets('opens a draft and renders a row for each Asset the shift flagged; a down line posts its note and that stop',
         (tester) async {
       final wire = _wire();
       await _pump(tester, wire, _handoverAddress);
@@ -137,10 +159,25 @@ void main() {
           'note': 'Feed belt slipping',
           'watchNote': null,
           'walked': false,
+          // The writer supplies the reason; the derivation supplies the
+          // reference — the stop that flagged the Asset (ADR-0065).
+          'downtimeEventId': 'de-1',
         }],
       ]);
       // Nothing was written for the Asset that was not touched.
       expect(_writesTo(wire, '/machine-lines/a2'), isEmpty);
+    });
+
+    testWidgets('a shift where nothing stopped renders no machine row at all', (tester) async {
+      final wire = _wire(handover: () => _draft(abnormalAssets: const []));
+      await _pump(tester, wire, _handoverAddress);
+
+      expect(find.byKey(ShiftHandoverScreen.machineRowKey('a1')), findsNothing);
+      expect(find.byKey(ShiftHandoverScreen.machineRowKey('a2')), findsNothing);
+      final en = AppLocalizationsEn();
+      expect(find.text(en.shiftHandoverNoMachineStoppedThisShift), findsOneWidget);
+      // The block is still there: its absence of rows is the statement.
+      expect(find.text(en.shiftHandoverALineForEachMachineThatStopped), findsOneWidget);
     });
 
     testWidgets('a refused submit renders the named gaps at the top of the form, and Submit stays live',
@@ -148,12 +185,11 @@ void main() {
       final wire = _wire(handover: _draft)
         ..submitHandoverStatus = 409
         ..submitHandoverRefusal = {
-          'message': 'This handover cannot be submitted: no machine status line for PRESS-2',
+          'message': 'This handover cannot be submitted: PRESS-2 is missing its machine status line',
           'code': 'INCOMPLETE_HANDOVER',
-          'missingAssets': [
-            {'id': 'a2', 'code': 'PRESS-2', 'name': 'Press 2'},
+          'incompleteLines': [
+            {'id': 'a2', 'code': 'PRESS-2', 'name': 'Press 2', 'missing': ['machine status line']},
           ],
-          'incompleteLines': [],
           'unansweredBlocks': ['changePoints'],
           'undispositionedActions': [],
         };
@@ -169,7 +205,7 @@ void main() {
       final refusal = find.byKey(ShiftHandoverScreen.refusalKey);
       expect(refusal, findsOneWidget);
       expect(
-        find.descendant(of: refusal, matching: find.text('• No machine status line for PRESS-2 · Press 2')),
+        find.descendant(of: refusal, matching: find.text('• PRESS-2 · Press 2 is missing its machine status line')),
         findsOneWidget,
       );
       expect(

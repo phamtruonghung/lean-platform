@@ -1,9 +1,9 @@
 /// A Shift handover as the API answers it (issue #339), and the Section's day
 /// it sits in. Each class mirrors one shape from
-/// `backend/src/modules/production/handovers.js` — `getHandoverDetail`,
-/// `getSectionDay`, `listSectionAssets` and submit's completeness refusal —
-/// and reads it as sent: nothing here recomputes a number, a flag or an
-/// exception the server already decided.
+/// `backend/src/modules/production/handovers.js` — `getHandoverDetail`
+/// (including the `abnormalAssets` derivation, ADR-0065), `getSectionDay` and
+/// submit's completeness refusal — and reads it as sent: nothing here
+/// recomputes a number, a flag or an exception the server already decided.
 library;
 
 String? _string(Object? value) => value?.toString();
@@ -187,6 +187,7 @@ class ShiftHandover {
     this.snapshot = const HandoverSnapshot(<String, dynamic>{}),
     this.snapshotGaps = const [],
     this.machineLines = const [],
+    this.abnormalAssets = const [],
     this.changePoints = const {},
     this.actions = const [],
     this.openActions = const [],
@@ -215,6 +216,11 @@ class ShiftHandover {
   final List<SnapshotGap> snapshotGaps;
   final List<MachineLine> machineLines;
 
+  /// The Assets this shift instance's own Downtime events flag, from the
+  /// server's derivation (ADR-0065): the set the Machines block offers a line
+  /// for. A shift where every machine ran normally sends none.
+  final List<SectionAsset> abnormalAssets;
+
   /// Keyed by dimension, every dimension present in the server's own order.
   final Map<String, List<ChangePoint>> changePoints;
   final List<HandoverActionLink> actions;
@@ -232,6 +238,30 @@ class ShiftHandover {
       if (line.assetId == assetId) return line;
     }
     return null;
+  }
+
+  /// The Assets the Machines block renders (ADR-0065). On a draft: every Asset
+  /// this shift instance's Downtime events flag, followed by any Asset that
+  /// already has a line — a line can outlive its flag (a stop reclassified away,
+  /// or one written before this rule), so the block is the union. On a sealed
+  /// handover: its lines and nothing else, because a late machine feed must not
+  /// add a row to a form nobody may write to.
+  List<SectionAsset> get machineRows {
+    SectionAsset rowFor(MachineLine line) => SectionAsset(
+          id: line.assetId,
+          code: line.assetCode,
+          name: line.assetName,
+          downtimeEventId: line.downtimeEventId,
+        );
+    if (!isDraft) return [for (final line in machineLines) rowFor(line)];
+
+    final rows = [...abnormalAssets];
+    final flagged = {for (final asset in abnormalAssets) asset.id};
+    for (final line in machineLines) {
+      if (flagged.contains(line.assetId)) continue;
+      rows.add(rowFor(line));
+    }
+    return rows;
   }
 
   factory ShiftHandover.fromJson(Map<String, dynamic> json) {
@@ -270,6 +300,10 @@ class ShiftHandover {
         for (final line in json['machineLines'] as List<dynamic>? ?? const [])
           MachineLine.fromJson(line as Map<String, dynamic>),
       ],
+      abnormalAssets: [
+        for (final asset in json['abnormalAssets'] as List<dynamic>? ?? const [])
+          SectionAsset.fromJson(asset as Map<String, dynamic>),
+      ],
       changePoints: {
         if (grouped is Map<String, dynamic>)
           for (final entry in grouped.entries)
@@ -290,18 +324,28 @@ class ShiftHandover {
   }
 }
 
-/// One of the Section's active Assets — a machine the handover owes a line for.
+/// One Asset this shift instance had something to hand over about: its own
+/// Downtime events flag it (ADR-0065), and that is the only reason a Machine
+/// status line exists. [downtimeEventId] is the newest of those stops, which is
+/// the reference a line written from this row points at.
 class SectionAsset {
-  const SectionAsset({required this.id, required this.code, required this.name});
+  const SectionAsset({
+    required this.id,
+    required this.code,
+    required this.name,
+    this.downtimeEventId,
+  });
 
   final String id;
   final String code;
   final String name;
+  final String? downtimeEventId;
 
   factory SectionAsset.fromJson(Map<String, dynamic> json) => SectionAsset(
         id: json['id'].toString(),
         code: json['code'] as String? ?? '',
         name: json['name'] as String? ?? '',
+        downtimeEventId: json['downtimeEventId'] == null ? null : '${json['downtimeEventId']}',
       );
 }
 
@@ -383,31 +427,25 @@ class HandoverGapRecord {
 }
 
 /// Submit's completeness refusal (409, `INCOMPLETE_HANDOVER`): everything
-/// missing at once, so one round trip names the whole of what is left.
+/// missing at once, so one round trip names the whole of what is left. Machine
+/// lines are named through [incompleteLines] — an Asset the shift's own Downtime
+/// events flag and no line exists for appears there missing its machine status
+/// line (ADR-0065).
 class HandoverRefusal {
   const HandoverRefusal({
     required this.message,
-    this.missingAssets = const [],
     this.incompleteLines = const [],
     this.unansweredBlocks = const [],
     this.undispositionedActions = const [],
   });
 
   final String message;
-  final List<HandoverGapRecord> missingAssets;
   final List<HandoverGapRecord> incompleteLines;
   final List<String> unansweredBlocks;
   final List<HandoverGapRecord> undispositionedActions;
 
   factory HandoverRefusal.fromJson(Map<String, dynamic> json) => HandoverRefusal(
         message: json['message'] as String? ?? 'This handover cannot be submitted yet.',
-        missingAssets: [
-          for (final asset in json['missingAssets'] as List<dynamic>? ?? const [])
-            HandoverGapRecord(
-              code: (asset as Map<String, dynamic>)['code'] as String? ?? '',
-              name: asset['name'] as String? ?? '',
-            ),
-        ],
         incompleteLines: [
           for (final line in json['incompleteLines'] as List<dynamic>? ?? const [])
             HandoverGapRecord(

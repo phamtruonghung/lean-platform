@@ -162,13 +162,15 @@ async function insertDowntimeReason(parentCode, lossCategory) {
   return row;
 }
 
-// `org_unit_id` is filled from the Asset by the baseline's own trigger.
+// `org_unit_id` and `shift_instance_id` are filled from the Asset and the
+// start time by the baseline's own triggers.
 async function insertDowntimeEvent(assetId, reasonId, startedAt, endedAt) {
-  await pool.query(
+  const { rows: [row] } = await pool.query(
     `INSERT INTO downtime_events (asset_id, downtime_reason_id, started_at, ended_at)
-     VALUES ($1, $2, $3, $4)`,
+     VALUES ($1, $2, $3, $4) RETURNING id`,
     [assetId, reasonId, startedAt, endedAt]
   );
+  return row;
 }
 
 // A product with a default ideal cycle time, and optionally a faster or
@@ -268,14 +270,19 @@ async function deleteChangePoint(token, handoverId, changePointId) {
   );
 }
 
-// Every active Asset the Section lists gets a normal-running line, and the
-// change point block is declared none this shift, so submit's completeness
-// rules (issues #335 and #336) are met and a test can reach what it is about.
-async function fillRunningLines(handoverId, { declareNoChangePoints = true } = {}) {
-  const listed = await get(teamLeader.token, `/sections/${section.id}/assets`);
-  assert.strictEqual(listed.status, 200, JSON.stringify(listed.body));
-  for (const asset of listed.body.assets) {
-    const written = await putLine(teamLeader.token, handoverId, asset.id, { state: 'running' });
+// The lines a draft owes before submit asks it for nothing more: one per Asset
+// this shift instance's own Downtime events flag, each carrying a reason and the
+// stop that explains it (ADR-0065) — a shift that had no downtime owes no line
+// at all, which is the normal case. The change point block is declared none this
+// shift unless the test wants it unanswered, so submit's other rules (issues
+// #336 and #337) are met and a test can reach what it is about.
+async function fillDerivedLines(handoverId, { declareNoChangePoints = true } = {}) {
+  const read = await get(teamLeader.token, `/handovers/${handoverId}`);
+  assert.strictEqual(read.status, 200, JSON.stringify(read.body));
+  for (const asset of read.body.handover.abnormalAssets) {
+    const written = await putLine(teamLeader.token, handoverId, asset.id, {
+      state: 'running', note: 'Back up after the stop', downtimeEventId: asset.downtimeEventId
+    });
     assert.strictEqual(written.status, 200, JSON.stringify(written.body));
   }
   if (declareNoChangePoints) {
@@ -614,7 +621,7 @@ test('submit seals the handover with every snapshot number, OEE rolled up from s
   );
 
   const draft = await openDraft(snapshotShift.id);
-  await fillRunningLines(draft.id);
+  await fillDerivedLines(draft.id);
   const response = await submit(teamLeader.token, draft.id);
   const submitted = await json(response);
   assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.body));
@@ -725,7 +732,7 @@ test('a shift with no production counts stores null quantities and OEE, and says
     section.id, definition.id, '2026-05-01T23:00:00Z', '2026-05-02T07:00:00Z', '2026-05-02'
   );
   const draft = await openDraft(uncounted.id);
-  await fillRunningLines(draft.id);
+  await fillDerivedLines(draft.id);
 
   const submitted = await json(await submit(teamLeader.token, draft.id));
   assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.body));
@@ -773,7 +780,7 @@ test('submit records late after 30 minutes without refusing, and refuses a secon
   );
 
   const lateDraft = await openDraft(lateShift.id);
-  await fillRunningLines(lateDraft.id);
+  await fillDerivedLines(lateDraft.id);
   const late = await json(await submit(teamLeader.token, lateDraft.id));
   assert.strictEqual(late.status, 200, JSON.stringify(late.body));
   assert.strictEqual(late.body.handover.status, 'submitted');
@@ -784,7 +791,7 @@ test('submit records late after 30 minutes without refusing, and refuses a secon
   assert.strictEqual(again.body.code, 'HANDOVER_NOT_DRAFT');
 
   const onTimeDraft = await openDraft(onTimeShift.id);
-  await fillRunningLines(onTimeDraft.id);
+  await fillDerivedLines(onTimeDraft.id);
 
   const outside = await json(await submit(outsider.token, onTimeDraft.id));
   assert.strictEqual(outside.status, 403);
@@ -820,7 +827,7 @@ test('a performance far above 1 is sealed as the view reports it, neither refuse
     count: { good: 100, reject: 0, rework: 0 }
   });
   const draft = await openDraft(suspect.id);
-  await fillRunningLines(draft.id);
+  await fillDerivedLines(draft.id);
 
   const submitted = await json(await submit(teamLeader.token, draft.id));
   assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.body));
@@ -852,7 +859,7 @@ test('a submit that fails leaves the draft exactly as it was', async () => {
     count: { good: 100, reject: 0, rework: 0 }
   });
   const draft = await openDraft(failing.id);
-  await fillRunningLines(draft.id);
+  await fillDerivedLines(draft.id);
 
   const response = await submit(teamLeader.token, draft.id);
   assert.notStrictEqual(response.status, 200);
@@ -974,10 +981,12 @@ test('a draft gains, replaces and loses a machine status line, and once submitte
   const unknownHandover = await putLine(teamLeader.token, '999999999999', assetA.id, { state: 'running' });
   assert.strictEqual(unknownHandover.status, 404);
 
-  await fillRunningLines(draft.id);
+  await fillDerivedLines(draft.id);
   const submitted = await json(await submit(teamLeader.token, draft.id));
   assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.body));
-  assert.strictEqual(submitted.body.handover.machineLines.length, 2);
+  // This shift had no downtime, so the derivation owes no line: the one the
+  // test deleted stays deleted, and the handover still submits.
+  assert.deepStrictEqual(submitted.body.handover.machineLines, []);
 
   const afterPut = await putLine(teamLeader.token, draft.id, assetA.id, { state: 'running' });
   assert.strictEqual(afterPut.status, 409);
@@ -992,7 +1001,7 @@ test('a draft gains, replaces and loses a machine status line, and once submitte
 test('a machine not running normally needs a note when written and a reference before submit', async () => {
   const shift = await aprilShift('Down shift');
   const draft = await openDraft(shift.id);
-  await fillRunningLines(draft.id);
+  await fillDerivedLines(draft.id);
 
   const noNote = await putLine(teamLeader.token, draft.id, assetA.id, { state: 'down' });
   assert.strictEqual(noNote.status, 400);
@@ -1026,7 +1035,6 @@ test('a machine not running normally needs a note when written and a reference b
   assert.strictEqual(refused.status, 409);
   assert.strictEqual(refused.body.code, 'INCOMPLETE_HANDOVER');
   assert.match(refused.body.message, new RegExp(assetA.code));
-  assert.deepStrictEqual(refused.body.missingAssets, []);
   assert.deepStrictEqual(refused.body.incompleteLines, [
     { id: assetA.id, code: assetA.code, name: assetA.name, missing: ['reference'] }
   ]);
@@ -1046,30 +1054,66 @@ test('a machine not running normally needs a note when written and a reference b
   assert.strictEqual(submitted.body.handover.status, 'submitted');
 });
 
-test('submit is refused while an active Asset has no line, naming it, and succeeds once it has one', async () => {
-  // A retired machine in the section owes no line.
-  await insertAsset(cuttingArea.id, { isActive: false });
-
-  const shift = await aprilShift('Missing shift');
+test('a shift where nothing stopped submits with no machine status line at all', async () => {
+  const shift = await aprilShift('Quiet shift');
   const draft = await openDraft(shift.id);
-  await fillRunningLines(draft.id);
-  const removed = await deleteLine(teamLeader.token, draft.id, assetB.id);
-  assert.strictEqual(removed.status, 200, JSON.stringify(removed.body));
 
-  const refused = await json(await submit(teamLeader.token, draft.id));
-  assert.strictEqual(refused.status, 409);
-  assert.strictEqual(refused.body.code, 'INCOMPLETE_HANDOVER');
-  assert.deepStrictEqual(refused.body.missingAssets, [
-    { id: assetB.id, code: assetB.code, name: assetB.name }
-  ]);
-  assert.deepStrictEqual(refused.body.incompleteLines, []);
-  assert.match(refused.body.message, new RegExp(assetB.code));
+  // The derivation reads this shift instance's own Downtime events, and there
+  // are none: the form owes no line, because the shift had nothing to hand
+  // over about a machine (ADR-0065).
+  const read = await get(teamLeader.token, `/handovers/${draft.id}`);
+  assert.strictEqual(read.status, 200, JSON.stringify(read.body));
+  assert.deepStrictEqual(read.body.handover.abnormalAssets, []);
 
-  const added = await putLine(teamLeader.token, draft.id, assetB.id, { state: 'running_manual', walked: true });
-  assert.strictEqual(added.status, 200, JSON.stringify(added.body));
-
+  assert.strictEqual((await patchHandover(teamLeader.token, draft.id, { changePointsNone: true })).status, 200);
   const submitted = await json(await submit(teamLeader.token, draft.id));
   assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.body));
+  assert.strictEqual(submitted.body.handover.status, 'submitted');
+  assert.deepStrictEqual(submitted.body.handover.machineLines, []);
+});
+
+test('a shift with one abnormal Asset refuses until its line carries a reason and a reference, and never names an Asset that had no downtime', async () => {
+  const shift = await aprilShift('One stop shift');
+  const stop = await insertStop(assetA.id, shift.id, april(aprilDay, '23:30'), april(aprilDay + 1, '00:00'));
+  const draft = await openDraft(shift.id);
+  assert.strictEqual((await patchHandover(teamLeader.token, draft.id, { changePointsNone: true })).status, 200);
+
+  // The derivation flags Asset A and only Asset A: Asset B had no downtime in
+  // this shift instance, so no line is owed for it.
+  const read = await get(teamLeader.token, `/handovers/${draft.id}`);
+  assert.deepStrictEqual(read.body.handover.abnormalAssets, [
+    { id: assetA.id, code: assetA.code, name: assetA.name, downtimeEventId: stop.id }
+  ]);
+
+  const refused = await json(await submit(teamLeader.token, draft.id));
+  assert.strictEqual(refused.status, 409, JSON.stringify(refused.body));
+  assert.strictEqual(refused.body.code, 'INCOMPLETE_HANDOVER');
+  assert.deepStrictEqual(refused.body.incompleteLines, [
+    { id: assetA.id, code: assetA.code, name: assetA.name, missing: ['machine status line'] }
+  ]);
+  assert.match(refused.body.message, new RegExp(assetA.code));
+  assert.doesNotMatch(refused.body.message, new RegExp(assetB.code));
+  assert.ok(!('missingAssets' in refused.body), JSON.stringify(refused.body));
+
+  // A line with a reason and no reference is still short of what the shift
+  // owes: ADR-0054's half that stays.
+  const reasonOnly = await putLine(teamLeader.token, draft.id, assetA.id, { state: 'down', note: 'Cutter jammed on the register' });
+  assert.strictEqual(reasonOnly.status, 200, JSON.stringify(reasonOnly.body));
+  const stillRefused = await json(await submit(teamLeader.token, draft.id));
+  assert.strictEqual(stillRefused.status, 409, JSON.stringify(stillRefused.body));
+  assert.deepStrictEqual(stillRefused.body.incompleteLines, [
+    { id: assetA.id, code: assetA.code, name: assetA.name, missing: ['reference'] }
+  ]);
+
+  const referenced = await putLine(teamLeader.token, draft.id, assetA.id, {
+    state: 'down', note: 'Cutter jammed on the register', downtimeEventId: stop.id
+  });
+  assert.strictEqual(referenced.status, 200, JSON.stringify(referenced.body));
+  const submitted = await json(await submit(teamLeader.token, draft.id));
+  assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.body));
+  assert.strictEqual(submitted.body.handover.status, 'submitted');
+  assert.strictEqual(submitted.body.handover.machineLines.length, 1);
+  assert.strictEqual(submitted.body.handover.machineLines[0].downtimeEventId, stop.id);
 });
 
 test('an Asset outside the Section, an unknown Asset and a reference from elsewhere are refused', async () => {
@@ -1301,14 +1345,13 @@ test('a change point is removed from its own draft, and another handover\'s is a
 
 test('submit is refused while the change point block is unanswered, naming it; declaring none or adding one lets it through', async () => {
   const draft = await openDraft((await aprilShift('Unanswered shift')).id);
-  await fillRunningLines(draft.id, { declareNoChangePoints: false });
+  await fillDerivedLines(draft.id, { declareNoChangePoints: false });
   assert.strictEqual(draft.changePointsNone, false);
 
   const refused = await json(await submit(teamLeader.token, draft.id));
   assert.strictEqual(refused.status, 409, JSON.stringify(refused.body));
   assert.strictEqual(refused.body.code, 'INCOMPLETE_HANDOVER');
   assert.deepStrictEqual(refused.body.unansweredBlocks, ['changePoints']);
-  assert.deepStrictEqual(refused.body.missingAssets, []);
   assert.deepStrictEqual(refused.body.incompleteLines, []);
   assert.match(refused.body.message, /changePoints is unanswered/);
   assert.match(refused.body.message, /add a change point, or declare none/);
@@ -1336,7 +1379,7 @@ test('submit is refused while the change point block is unanswered, naming it; d
 
   // One change point answers the block without declaring anything.
   const answered = await openDraft((await aprilShift('Answered shift')).id);
-  await fillRunningLines(answered.id, { declareNoChangePoints: false });
+  await fillDerivedLines(answered.id, { declareNoChangePoints: false });
   const added = await addChangePoint(teamLeader.token, answered.id, {
     dimension: 'man', description: 'New starter on packing', watchNote: 'Carton count every hour'
   });
@@ -1349,7 +1392,7 @@ test('submit is refused while the change point block is unanswered, naming it; d
 
 test('once submitted, adding a change point, removing one and patching the header are 409', async () => {
   const draft = await openDraft((await aprilShift('Sealed change point shift')).id);
-  await fillRunningLines(draft.id, { declareNoChangePoints: false });
+  await fillDerivedLines(draft.id, { declareNoChangePoints: false });
   const added = await addChangePoint(teamLeader.token, draft.id, {
     dimension: 'material', description: 'Thread cone from a new supplier', watchNote: 'Thread breaks'
   });
@@ -1630,7 +1673,6 @@ test('submit is refused while an open Action of the Section has no disposition, 
   assert.deepStrictEqual(refused.body.undispositionedActions, [
     { id: late.id, actionNo: late.action_no, title: 'Raised mid-shift' }
   ]);
-  assert.deepStrictEqual(refused.body.missingAssets, []);
   assert.deepStrictEqual(refused.body.unansweredBlocks, []);
   assert.match(refused.body.message, new RegExp(`no disposition for open action ${late.action_no}`));
 
@@ -1785,7 +1827,7 @@ async function sealedHandover(name, productionDate) {
   const at = (offset) => new Date(startsAt + offset * 60000).toISOString();
 
   const reason = await insertDowntimeReason('BRK', 'breakdown');
-  await insertDowntimeEvent(asset.id, reason.id, at(60), at(90));
+  const stop = await insertDowntimeEvent(asset.id, reason.id, at(60), at(90));
   const product = await insertProduct(30);
   await insertRunWithCount({
     shiftInstanceId: shift.id, assetId: asset.id, productId: product.id, plannedQuantity: 500,
@@ -1797,7 +1839,8 @@ async function sealedHandover(name, productionDate) {
   assert.strictEqual(opened.status, 201, JSON.stringify(opened.body));
   const draftId = opened.body.handover.id;
   assert.strictEqual((await putLine(teamLeader.token, draftId, asset.id, {
-    state: 'running', watchNote: 'Blade guard', walked: true
+    state: 'down', note: 'Blade guard came loose, machine stopped 30 minutes', watchNote: 'Blade guard',
+    walked: true, downtimeEventId: stop.id
   })).status, 200);
   assert.strictEqual((await addChangePoint(teamLeader.token, draftId, {
     dimension: 'man', description: 'Relief operator on the cutter', watchNote: 'First changeover'

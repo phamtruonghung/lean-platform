@@ -9,8 +9,10 @@
  * People's entry point before anything here is called.
  *
  * Submit (issue #334) seals a draft and writes its snapshot once; see
- * submitHandover below. Machine status lines (issue #335) are written to a
- * draft one Asset at a time and checked for completeness at submit. Change
+ * submitHandover below. Machine status lines (issue #335) are exception-driven
+ * as of ADR-0065: a line exists for an Asset only when the shift's own Downtime
+ * events flag it, and submit asks that each flagged Asset carry one with a
+ * reason and a reference. Change
  * points (issue #336) are added to and removed from a draft one at a time, and
  * submit asks that the 4M block be answered — at least one change point, or
  * "none this shift" declared. Carried actions (issue #337) link the Section's
@@ -429,46 +431,80 @@ const SECTION_ASSETS_SQL = `
    WHERE a.is_active AND au.path <@ section.path
 `;
 
-// Submit's completeness rules (issue #335, ADR-0054): every active Asset in
-// the Section has a Machine status line, and every line that is not normal
+// The Assets this shift instance had something to hand over about (ADR-0065):
+// every Asset in the Section's subtree with at least one Downtime event keyed
+// to the handover's own shift instance ($2), and nobody else. A shift where
+// every machine ran normally hands over with no machine status line at all —
+// the absence is the statement, not a gap to be filled.
+//
+// `downtime_event_id` is the newest of the Asset's stops in this instance: the
+// derived line's reference points at it, so the writer supplies the reason and
+// the Platform's own record supplies the reference.
+const ABNORMAL_ASSETS_SQL = `
+  SELECT s.id, s.code, s.name,
+         (SELECT de.id
+            FROM downtime_events de
+           WHERE de.asset_id = s.id AND de.shift_instance_id = $2
+           ORDER BY de.started_at DESC, de.id DESC
+           LIMIT 1) AS downtime_event_id
+    FROM (${SECTION_ASSETS_SQL}) s
+   WHERE EXISTS (
+           SELECT 1 FROM downtime_events de
+            WHERE de.asset_id = s.id AND de.shift_instance_id = $2)
+   ORDER BY s.code, s.id
+`;
+
+// Submit's completeness rules (ADR-0065, amending ADR-0054): every Asset the
+// shift's own Downtime events flag as abnormal has a Machine status line, and
+// every line — derived or not — that reports something other than normal
 // running carries a note and a reference to the record that explains it. A
-// draft is filled progressively, so the reference is asked for here and not
-// when the line is written. The refusal lists everything missing at once, so
-// one round trip tells the Team Leader the whole of what is left.
+// draft is filled progressively, so the reference and the note are asked for
+// here and not when the line is written. The refusal lists everything missing
+// at once, so one round trip tells the Team Leader the whole of what is left.
 async function requireComplete(client, handover) {
-  const { rows: missingAssets } = await client.query(
-    `SELECT s.id, s.code, s.name
-       FROM (${SECTION_ASSETS_SQL}) s
-      WHERE NOT EXISTS (
-              SELECT 1 FROM shift_handover_machine_lines ml
-               WHERE ml.handover_id = $2 AND ml.asset_id = s.id)
-      ORDER BY s.code, s.id`,
-    [handover.org_unit_id, handover.id]
+  const { rows: abnormalAssets } = await client.query(
+    ABNORMAL_ASSETS_SQL,
+    [handover.org_unit_id, handover.shift_instance_id]
   );
 
   const { rows: lineRows } = await client.query(
-    `SELECT a.id, a.code, a.name,
+    `SELECT ml.asset_id, a.code, a.name, ml.state,
             ml.note IS NULL OR btrim(ml.note) = '' AS missing_note,
             ml.downtime_event_id IS NULL AND ml.quality_issue_id IS NULL
               AND ml.work_order_id IS NULL AS missing_reference
        FROM shift_handover_machine_lines ml
        JOIN assets a ON a.id = ml.asset_id
       WHERE ml.handover_id = $1
-        AND ml.state <> ALL($2::text[])
       ORDER BY a.code, a.id`,
-    [handover.id, NORMAL_RUNNING_STATES]
+    [handover.id]
   );
+  const lineAssetIds = new Set(lineRows.map((row) => String(row.asset_id)));
+  const abnormalIds = new Set(abnormalAssets.map((asset) => String(asset.id)));
+
   const incompleteLines = lineRows
-    .filter((row) => row.missing_note || row.missing_reference)
+    .filter((row) => abnormalIds.has(String(row.asset_id)) || !NORMAL_RUNNING_STATES.includes(row.state))
     .map((row) => ({
-      id: row.id,
+      id: row.asset_id,
       code: row.code,
       name: row.name,
       missing: [
         ...(row.missing_note ? ['note'] : []),
         ...(row.missing_reference ? ['reference'] : [])
       ]
-    }));
+    }))
+    .filter((line) => line.missing.length > 0);
+  // An abnormal Asset with no line at all is the one gap left: the derivation
+  // says the shift had something to hand over about it, and nothing was
+  // handed over.
+  for (const asset of abnormalAssets) {
+    if (lineAssetIds.has(String(asset.id))) continue;
+    incompleteLines.push({
+      id: asset.id,
+      code: asset.code,
+      name: asset.name,
+      missing: ['machine status line']
+    });
+  }
 
   // The 4M block (issue #336) is answered by a change point or by "none this
   // shift"; with neither, it was skipped, not found empty.
@@ -494,14 +530,11 @@ async function requireComplete(client, handover) {
   );
 
   if (
-    missingAssets.length === 0 && incompleteLines.length === 0 &&
+    incompleteLines.length === 0 &&
     unansweredBlocks.length === 0 && undispositionedActions.length === 0
   ) return;
 
   const parts = [];
-  if (missingAssets.length > 0) {
-    parts.push(`no machine status line for ${missingAssets.map((asset) => asset.code).join(', ')}`);
-  }
   if (incompleteLines.length > 0) {
     parts.push(
       incompleteLines.map((line) => `${line.code} is missing its ${line.missing.join(' and ')}`).join('; ')
@@ -519,7 +552,7 @@ async function requireComplete(client, handover) {
     );
   }
   const error = httpError(409, `This handover cannot be submitted: ${parts.join('; ')}`, 'INCOMPLETE_HANDOVER');
-  error.details = { missingAssets, incompleteLines, unansweredBlocks, undispositionedActions };
+  error.details = { incompleteLines, unansweredBlocks, undispositionedActions };
   throw error;
 }
 
@@ -1294,7 +1327,11 @@ async function listVersions(handover) {
   }));
 }
 
-// A Section's active Assets, the machines a handover owes a line for.
+// A Section's active Assets, as the register lists them. The Machines block no
+// longer reads this: it renders the shift instance's own derivation
+// (`abnormalAssets`, ADR-0065). Kept because it is the Section's Asset list in
+// its own right, and it is what an affordance to write a line for a machine the
+// derivation did not flag would read.
 async function listSectionAssets(section) {
   requireSection(section);
   const { rows } = await getPool().query(`${SECTION_ASSETS_SQL} ORDER BY a.code, a.id`, [section.id]);
@@ -1315,14 +1352,17 @@ async function listSectionAssets(section) {
 // code, change points grouped by dimension in insertion order, actions in the
 // order they were linked — and, on a draft, `openActions`: the Section's open
 // Actions it has not yet linked, the candidates its form offers. A sealed
-// handover offers none; what it decided is its `actions`.
+// handover offers none; what it decided is its `actions`. Beside the lines,
+// `abnormalAssets` is the derivation (ADR-0065): the Assets this shift
+// instance's own Downtime events flag, which is the set the Machines block
+// seeds itself from rather than the Section's whole register.
 async function getHandoverDetail(id) {
   const handover = await findHandover(id);
   if (!handover) throw notFound('Shift handover');
 
   const [
     { rows: [section] }, shiftInstance, { rows: lineRows }, { rows: changePointRows },
-    { rows: actionRows }, { rows: openActionRows }
+    { rows: actionRows }, { rows: openActionRows }, { rows: abnormalAssetRows }
   ] = await Promise.all([
     getPool().query('SELECT id, code, name FROM org_units WHERE id = $1', [handover.orgUnitId]),
     findShiftInstance(handover.shiftInstanceId),
@@ -1366,7 +1406,12 @@ async function getHandoverDetail(id) {
           ORDER BY ai.due_date NULLS LAST, ai.action_no, ai.id`,
         [handover.orgUnitId, handover.id]
       )
-      : { rows: [] }
+      : { rows: [] },
+    // The Machines block's seed (ADR-0065): the Assets this shift instance's
+    // own Downtime events flag as abnormal, each with the stop a line may
+    // reference. Read live on a draft and on a sealed handover alike — the
+    // lines are what the record holds, this is what the shift did.
+    getPool().query(ABNORMAL_ASSETS_SQL, [handover.orgUnitId, handover.shiftInstanceId])
   ]);
 
   return {
@@ -1380,6 +1425,12 @@ async function getHandoverDetail(id) {
       status: shiftInstance.status
     },
     machineLines: lineRows.map(toMachineLine),
+    abnormalAssets: abnormalAssetRows.map((row) => ({
+      id: row.id,
+      code: row.code,
+      name: row.name,
+      downtimeEventId: row.downtime_event_id
+    })),
     changePoints: groupChangePoints(changePointRows),
     actions: actionRows.map(toHandoverAction),
     openActions: openActionRows.map(toAction)

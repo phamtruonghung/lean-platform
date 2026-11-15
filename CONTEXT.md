@@ -565,8 +565,9 @@ checklist
 **Machine status line**:
 One line of a Shift handover for one Asset in the Section: the state it was left
 in, the reason when that state is not normal running, and what the incoming shift
-must watch. Every active Asset in the Section has one, which is what makes "the
-machine nobody mentioned" impossible.
+must watch. There is one only for an Asset the shift instance's own Downtime
+events flag — a machine that ran normally all shift has no line — so a line's
+presence is the statement that something happened to that machine.
 _Avoid_: Machine check, equipment row, asset entry, checklist item
 
 **Change point**:
