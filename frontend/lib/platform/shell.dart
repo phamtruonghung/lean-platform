@@ -50,6 +50,7 @@ import '../widgets/disclosing_text.dart';
 import '../widgets/palette_toggle.dart';
 import 'change_password_dialog.dart';
 import 'destinations.dart';
+import 'modal_layer.dart';
 
 class PlatformShell extends StatefulWidget {
   const PlatformShell({
@@ -61,6 +62,7 @@ class PlatformShell extends StatefulWidget {
     required this.onSignOut,
     required this.darkPalette,
     required this.onToggleDarkPalette,
+    required this.modalLayer,
     required this.child,
   });
 
@@ -86,6 +88,12 @@ class PlatformShell extends StatefulWidget {
 
   /// The Screen the sidebar wraps.
   final Widget child;
+
+  /// The modals presented over the Screen beneath, so the chrome outside the
+  /// Screen's own box can carry their barrier across to the window's edge
+  /// (`modal_layer.dart`). A `NavigatorObserver` rather than a flag, because
+  /// the Shell cannot see a route the Screen's own navigator pushed.
+  final ModalLayer modalLayer;
 
   /// Below this width the labels cost more than they are worth, and the
   /// sidebar becomes an icon rail.
@@ -122,6 +130,11 @@ class PlatformShell extends StatefulWidget {
   /// moves the reader past the Destinations in a single press.
   static const ValueKey<String> skipToContentKey =
       ValueKey<String>('platform-shell-skip-to-content');
+
+  /// The shade the Shell draws across its own column while a modal is over the
+  /// Screen (`modal_layer.dart`) — absent, not merely transparent, when none is.
+  static const ValueKey<String> modalScrimKey =
+      ValueKey<String>('platform-shell-modal-scrim');
 
   @override
   State<PlatformShell> createState() => _PlatformShellState();
@@ -337,6 +350,24 @@ class _PlatformShellState extends State<PlatformShell> {
                 ),
                 Expanded(child: FocusScope(node: _content, child: widget.child)),
               ],
+            ),
+            // The chrome's share of an open modal's barrier (`modal_layer.dart`).
+            // The modal's own shade fills the Screen's box and stops at the
+            // sidebar's edge; this continues it across the Shell's own column,
+            // in the same colour and on the same animation, so the window dims
+            // edge to edge. Empty, and so invisible and untouchable, whenever no
+            // modal is over the Screen.
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: collapsed ? PlatformShell.collapsedWidth : PlatformShell.expandedWidth,
+              child: ValueListenableBuilder<ModalRoute<dynamic>?>(
+                valueListenable: widget.modalLayer.top,
+                builder: (context, route, _) => route == null
+                    ? const SizedBox.shrink()
+                    : ModalScrim(key: PlatformShell.modalScrimKey, route: route),
+              ),
             ),
           ],
         ),

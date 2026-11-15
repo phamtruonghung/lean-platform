@@ -7,6 +7,7 @@ import 'package:lean_platform/app_version.dart';
 import 'package:lean_platform/l10n/app_localizations.dart';
 import 'package:lean_platform/people_api.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/platform/modal_layer.dart';
 import 'package:lean_platform/platform/router.dart' show Routes;
 import 'package:lean_platform/platform/shell.dart';
 import 'package:lean_platform/theme.dart';
@@ -148,6 +149,7 @@ Widget _harness({
           onSignOut: onSignOut ?? () {},
           darkPalette: darkPalette,
           onToggleDarkPalette: onToggleDarkPalette ?? () {},
+          modalLayer: ModalLayer(),
           child: child,
         ),
         routes: [

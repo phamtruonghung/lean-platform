@@ -1197,6 +1197,24 @@ its enable conditions (`onPressed: null`); its own failure text, inline in `chil
 (§12); what each callback does, including popping or going (the primitive pops
 nothing for it); and `DialogPage`'s barrier flag.
 
+### The barrier covers the window, chrome included
+
+A popup is a route of the **Screen's own navigator**, which is what lets it read
+the blocs its Screen was built with, and a `ModalRoute`'s barrier fills that
+navigator's box — the content area. So the Shell continues the barrier across its
+own column: the top modal's own `barrierColor`, on the modal's own animation, for
+as long as a route that shades anything is on top (`platform/modal_layer.dart`,
+ADR-0066). Two consequences a Screen author should know:
+
+- **Nothing to do per dialog.** Both populations — a `DialogPage` address and a
+  bare `showDialog` — are shaded, because the observer hears whichever navigator
+  announced the push. A dialog that set its own `barrierColor` shades the window
+  in that colour; a `PopupRoute` with no barrier (a menu, a picker list) is not a
+  modal and leaves the chrome available.
+- **The card still measures the Screen's box**, not the window: ADR-0058's widths
+  and its sheet mode are unchanged, so a `form` sits in the middle of
+  `260..1280` on a 1280 window. The shade covers the window; the card does not.
+
 ### Which width, measured — the People Module's six (#394)
 
 A width is a question about how much the dialog has to hold, and S8 answered it
