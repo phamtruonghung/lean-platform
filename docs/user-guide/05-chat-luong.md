@@ -83,6 +83,12 @@ vai trò**, nhưng cần **thẩm quyền Chất lượng** ở Đơn vị tổ 
 | 3 | Bấm một dòng để mở **Chi tiết**. | | |
 | 4 | Xử lý số lượng: xem **Ghi nhận phương án xử lý** bên dưới. | Bản ghi **tự đóng** khi **toàn bộ** số lượng đã có phương án xử lý. | |
 
+**Quét tem thay vì chọn tay.** Ô **Quét tem** ở đầu phiếu nhận mã trên tem sản xuất:
+một lần quét điền **Sản phẩm** (khớp đúng **Mã** sản phẩm trong danh mục), **Số lượng** và
+**Tham chiếu lô** cùng lúc, và dòng dưới ô nói đã đọc được gì. Tem ghi một mã sản phẩm
+không có trong danh mục thì ô **Sản phẩm** để trống, phiếu nói rõ mã đã đọc, và bạn chọn
+Sản phẩm bằng tay — số lượng và số lô vẫn được điền.
+
 **Điểm then chốt quan trọng nhất.** **Số lượng bị ảnh hưởng không bao giờ giảm.**
 Phân loại có thể phát hiện nhiều hơn con số ban đầu, nên chỉ **tăng** được
 (**Tăng số lượng**), và mọi thay đổi đều được **giữ trong lịch sử số lượng**.

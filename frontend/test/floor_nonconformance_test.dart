@@ -236,6 +236,128 @@ void main() {
     expect(body['defectCodeId'], '50');
   });
 
+  testWidgets('a scan of the tem fills the Product, the lot and the quantity in one pass', (tester) async {
+    final wire = _wire();
+
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(),
+      client: wire.client,
+      initialLocation: '/floor',
+    );
+
+    await openFlow(tester);
+
+    // A reader types the tem the plant prints — one symbol carrying the
+    // Product's code, the lot and the quantity — into the field that has focus
+    // as the dialog opens, and ends with its own `Enter`.
+    await tester.enterText(
+      find.byKey(FloorNonconformanceDialog.labelScanKey),
+      '*PRD-1*LOT-9*12*EA*01*\r\n',
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    // One scan, three fields: the menu stands for the Product the code named,
+    // and the lot and the quantity are the tem's own text.
+    expect(find.text('PRD-1 · Gearbox'), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byKey(FloorNonconformanceDialog.quantityKey)).controller!.text,
+      '12',
+    );
+    expect(
+      tester.widget<TextField>(find.byKey(FloorNonconformanceDialog.lotRefKey)).controller!.text,
+      'LOT-9',
+    );
+    // The form says what it read, so the operator can see the scan was taken.
+    expect(find.text('Read: PRD-1 · lot LOT-9 · qty 12'), findsOneWidget);
+
+    // The rest of the form, and the record carries what the scan read.
+    await tester.enterText(
+        find.byKey(FloorNonconformanceDialog.defectCodeFieldKey()), 'DIM-OOT');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(FloorNonconformanceDialog.defectCodeSuggestionKey('50')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(FloorNonconformanceDialog.detectionPointKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('In process').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(FloorNonconformanceDialog.employeeNoKey), 'EMP-20');
+    await tester.enterText(find.byKey(FloorNonconformanceDialog.pinKey), '4321');
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(FloorNonconformanceDialog.submitKey));
+
+    final body = wire.floorNonconformancePosts.single['body'] as Map<String, dynamic>;
+    expect(body['productId'], '40');
+    expect(body['quantity'], 12);
+    expect(body['lotRef'], 'LOT-9');
+  });
+
+  testWidgets('a tem naming a Product this device cannot see fills the lot and the quantity, '
+      'and says which code it read', (tester) async {
+    final wire = _wire();
+
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(),
+      client: wire.client,
+      initialLocation: '/floor',
+    );
+
+    await openFlow(tester);
+    await tester.enterText(
+      find.byKey(FloorNonconformanceDialog.labelScanKey),
+      '*ZZZ-9*LOT-5*7*EA*01*',
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    // The menu is still unanswered — a scan never picks a Product the device
+    // cannot see (ADR-0023) — and the line under the tem field names the code
+    // it read, so the operator knows what to choose.
+    expect(find.text('Choose a Product'), findsOneWidget);
+    expect(
+      find.text('The tem names ZZZ-9, which is not a Product this form can see — choose it from the list.'),
+      findsOneWidget,
+    );
+    // The two fields that need no catalogue are filled either way.
+    expect(
+      tester.widget<TextField>(find.byKey(FloorNonconformanceDialog.lotRefKey)).controller!.text,
+      'LOT-5',
+    );
+    expect(
+      tester.widget<TextField>(find.byKey(FloorNonconformanceDialog.quantityKey)).controller!.text,
+      '7',
+    );
+  });
+
+  testWidgets('a scan that is not a tem fills nothing and says so', (tester) async {
+    final wire = _wire();
+
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(),
+      client: wire.client,
+      initialLocation: '/floor',
+    );
+
+    await openFlow(tester);
+    await tester.enterText(find.byKey(FloorNonconformanceDialog.labelScanKey), 'hello world');
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    expect(find.text('The tem carries no Product code, lot or quantity.'), findsOneWidget);
+    expect(find.text('Choose a Product'), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byKey(FloorNonconformanceDialog.quantityKey)).controller!.text,
+      '',
+    );
+    expect(
+      tester.widget<TextField>(find.byKey(FloorNonconformanceDialog.lotRefKey)).controller!.text,
+      '',
+    );
+  });
+
   testWidgets('a refused record is reported on the form and nothing is written twice', (tester) async {
     final wire = _wire()
       ..floorNonconformanceStatus = 403;

@@ -1906,6 +1906,37 @@ class AppLocalizationsEn extends AppLocalizations {
       'Type the code instead, or use the shop-floor reader.';
 
   @override
+  String get labelScanField => 'Scan the tem';
+
+  @override
+  String get labelScanFieldHelp =>
+      'One scan fills the Product, the lot and the quantity.';
+
+  @override
+  String labelScanRead(String what) {
+    return 'Read: $what';
+  }
+
+  @override
+  String labelScanLotPart(String value) {
+    return 'lot $value';
+  }
+
+  @override
+  String labelScanQuantityPart(String value) {
+    return 'qty $value';
+  }
+
+  @override
+  String labelScanUnknownProduct(String code) {
+    return 'The tem names $code, which is not a Product this form can see — choose it from the list.';
+  }
+
+  @override
+  String get labelScanNothingRead =>
+      'The tem carries no Product code, lot or quantity.';
+
+  @override
   String get accountCorrectionChangeRoleAndGrants => 'Change role and Grants';
 
   @override

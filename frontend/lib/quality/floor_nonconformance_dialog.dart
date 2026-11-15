@@ -39,11 +39,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
 
 import '../l10n/app_localizations.dart';
+import '../platform/label_scan.dart';
 import '../theme.dart';
+import '../widgets/app_scan_field.dart';
 import '../widgets/app_search_field.dart';
 import 'defect_code.dart';
 import 'floor_nonconformance_bloc.dart';
 import 'nonconformance.dart';
+import 'product.dart';
 import '../l10n/vocabulary.dart';
 import '../widgets/notice_text.dart';
 
@@ -51,6 +54,16 @@ class FloorNonconformanceDialog extends StatefulWidget {
   const FloorNonconformanceDialog({super.key});
 
   static const ValueKey<String> productKey = ValueKey<String>('floor-nc-product');
+
+  /// The tem's own field: a scan of the label a roll arrives with, which fills
+  /// the Product, the lot and the quantity in one pass (see
+  /// `platform/label_scan.dart`).
+  static const ValueKey<String> labelScanKey = ValueKey<String>('floor-nc-label-scan');
+
+  /// What the last scan read, or why it filled nothing — the line under
+  /// [labelScanKey].
+  static const ValueKey<String> labelScanNoticeKey = ValueKey<String>('floor-nc-label-notice');
+
   static const ValueKey<String> detectionPointKey = ValueKey<String>('floor-nc-detection-point');
   static const ValueKey<String> quantityKey = ValueKey<String>('floor-nc-quantity');
   static const ValueKey<String> lotRefKey = ValueKey<String>('floor-nc-lot');
@@ -77,6 +90,7 @@ class FloorNonconformanceDialog extends StatefulWidget {
 }
 
 class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
+  final TextEditingController _labelScan = TextEditingController();
   final TextEditingController _quantity = TextEditingController();
   final TextEditingController _lotRef = TextEditingController();
   final TextEditingController _description = TextEditingController();
@@ -84,6 +98,11 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
   final TextEditingController _pin = TextEditingController();
 
   String? _productId;
+
+  /// What the last scan of the tem read, in the operator's own words — or why it
+  /// filled nothing. Cleared only by the next scan, so a form filled by one
+  /// scan still says what that scan was.
+  String? _labelNotice;
 
   /// The chosen Defect code itself, not just its id: the picker reports the
   /// record it stands for, and the record is what the severity line reads.
@@ -93,6 +112,7 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
 
   @override
   void dispose() {
+    _labelScan.dispose();
     _quantity.dispose();
     _lotRef.dispose();
     _description.dispose();
@@ -105,6 +125,54 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
   /// where the record starts. The record the picker reported, not a second
   /// lookup in the list the Bloc already holds.
   String? _chosenDefaultSeverity() => _defectCode?.defaultSeverity;
+
+  /// One scan of the tem fills the three fields the tem carries.
+  ///
+  /// A shop-floor reader types the symbol into whichever field has focus, and a
+  /// production tem carries more than one value: the Product's own code, the lot
+  /// and the quantity (`platform/label_scan.dart`, the same reading `planning`
+  /// does of the same tem). So the field the reader lands in is the tem's own,
+  /// and this method puts what it read where it belongs.
+  ///
+  /// The Product is matched against the catalogue this device already read: a
+  /// scan picks a Product exactly as a tap does, and never invents one
+  /// (ADR-0023). A tem naming a Product this device cannot see leaves the menu
+  /// where it was and says which code it read, while the lot and the quantity —
+  /// which need no catalogue — still go in. Anything the tem does not carry is
+  /// left alone rather than guessed at.
+  void _readLabel(String code, FloorNonconformanceReady state) {
+    final l10n = AppLocalizations.of(context);
+    final label = LabelScan.parse(code);
+    if (label.isEmpty) {
+      setState(() => _labelNotice = l10n.labelScanNothingRead);
+      return;
+    }
+    Product? product;
+    if (label.hasProductCode) {
+      for (final candidate in state.products) {
+        if (sameCode(candidate.code, label.productCode!)) {
+          product = candidate;
+          break;
+        }
+      }
+    }
+    final read = <String>[
+      if (product != null)
+        product.code
+      else if (label.hasProductCode)
+        label.productCode!,
+      if (label.hasBatch) l10n.labelScanLotPart(label.batch!),
+      if (label.hasQuantity) l10n.labelScanQuantityPart(label.quantity!),
+    ];
+    setState(() {
+      if (product != null) _productId = product.id;
+      if (label.hasBatch) _lotRef.text = label.batch!;
+      if (label.hasQuantity) _quantity.text = label.quantity!;
+      _labelNotice = label.hasProductCode && product == null
+          ? l10n.labelScanUnknownProduct(label.productCode!)
+          : l10n.labelScanRead(read.join(' · '));
+    });
+  }
 
   bool _ready() {
     final quantity = num.tryParse(_quantity.text.trim());
@@ -207,6 +275,27 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
           l10n.nonconformanceFloorIntro,
           style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
         ),
+        const SizedBox(height: Spacing.md),
+        AppScanField(
+          key: FloorNonconformanceDialog.labelScanKey,
+          controller: _labelScan,
+          label: l10n.labelScanField,
+          helperText: l10n.labelScanFieldHelp,
+          enabled: !busy,
+          // The reader's burst lands here as the dialog opens: a person at the
+          // machine holds a tem, not a wish to tap into a field first.
+          autofocus: true,
+          onScanned: (code) => _readLabel(code, state),
+        ),
+        if (_labelNotice != null)
+          Padding(
+            key: FloorNonconformanceDialog.labelScanNoticeKey,
+            padding: const EdgeInsets.only(top: Spacing.sm),
+            child: Text(
+              _labelNotice!,
+              style: theme.textTheme.bodySmall?.copyWith(color: AppColors.of(context).textMuted),
+            ),
+          ),
         const SizedBox(height: Spacing.md),
         DropdownButtonFormField<String?>(
           key: FloorNonconformanceDialog.productKey,

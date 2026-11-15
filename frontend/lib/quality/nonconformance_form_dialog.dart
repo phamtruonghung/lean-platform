@@ -40,9 +40,11 @@ import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
+import '../platform/label_scan.dart';
 import '../theme.dart';
 import '../widgets/app_date_time_field.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/app_scan_field.dart';
 import '../widgets/app_search_field.dart';
 import 'defect_code.dart';
 import 'nonconformance.dart';
@@ -64,6 +66,16 @@ class NonconformanceFormDialog extends StatefulWidget {
   final String siteId;
 
   static const ValueKey<String> productKey = ValueKey<String>('nonconformance-form-product');
+
+  /// The tem's own field, as on the floor device: one scan of the label a roll
+  /// arrives with fills the Product, the lot and the quantity
+  /// (`platform/label_scan.dart`).
+  static const ValueKey<String> labelScanKey = ValueKey<String>('nonconformance-form-label-scan');
+
+  /// What the last scan read, or why it filled nothing.
+  static const ValueKey<String> labelScanNoticeKey =
+      ValueKey<String>('nonconformance-form-label-notice');
+
   static const ValueKey<String> detectionPointKey =
       ValueKey<String>('nonconformance-form-detection-point');
   static const ValueKey<String> quantityKey = ValueKey<String>('nonconformance-form-quantity');
@@ -114,12 +126,16 @@ class NonconformanceFormDialog extends StatefulWidget {
 }
 
 class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
+  final TextEditingController _labelScan = TextEditingController();
   final TextEditingController _quantity = TextEditingController();
   final TextEditingController _lotRef = TextEditingController();
   final TextEditingController _description = TextEditingController();
   final TextEditingController _containment = TextEditingController();
 
   Product? _product;
+
+  /// What the last scan of the tem read — or why it filled nothing.
+  String? _labelNotice;
 
   /// The chosen Defect code itself, not just its id: the picker reports the
   /// record it stands for, and the record is what the severity floor reads.
@@ -145,11 +161,56 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
 
   @override
   void dispose() {
+    _labelScan.dispose();
     _quantity.dispose();
     _lotRef.dispose();
     _description.dispose();
     _containment.dispose();
     super.dispose();
+  }
+
+  /// One scan of the tem fills the three fields it carries.
+  ///
+  /// A production tem is not one value: the same symbol carries the Product's
+  /// own code, the lot and the quantity, and `platform/label_scan.dart` reads
+  /// it the way `planning` reads the same tem. The Product is matched against
+  /// the catalogue this form already holds — a scan picks a Product exactly as
+  /// a tap on its suggestion does, never inventing one (ADR-0023). A tem naming
+  /// a Product the register does not carry leaves the picker where it was and
+  /// says which code it read; the lot and the quantity need no catalogue and go
+  /// in either way.
+  void _readLabel(String code, List<Product> products) {
+    final l10n = AppLocalizations.of(context);
+    final label = LabelScan.parse(code);
+    if (label.isEmpty) {
+      setState(() => _labelNotice = l10n.labelScanNothingRead);
+      return;
+    }
+    Product? product;
+    if (label.hasProductCode) {
+      for (final candidate in products) {
+        if (sameCode(candidate.code, label.productCode!)) {
+          product = candidate;
+          break;
+        }
+      }
+    }
+    final read = <String>[
+      if (product != null)
+        product.code
+      else if (label.hasProductCode)
+        label.productCode!,
+      if (label.hasBatch) l10n.labelScanLotPart(label.batch!),
+      if (label.hasQuantity) l10n.labelScanQuantityPart(label.quantity!),
+    ];
+    setState(() {
+      if (product != null) _product = product;
+      if (label.hasBatch) _lotRef.text = label.batch!;
+      if (label.hasQuantity) _quantity.text = label.quantity!;
+      _labelNotice = label.hasProductCode && product == null
+          ? l10n.labelScanUnknownProduct(label.productCode!)
+          : l10n.labelScanRead(read.join(' · '));
+    });
   }
 
   Future<void> _loadAssets() async {
@@ -309,6 +370,27 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  AppScanField(
+                    key: NonconformanceFormDialog.labelScanKey,
+                    controller: _labelScan,
+                    label: l10n.labelScanField,
+                    helperText: l10n.labelScanFieldHelp,
+                    enabled: !_awaiting,
+                    // First field of the form: a reader's burst lands there
+                    // without a person tapping into it first.
+                    autofocus: true,
+                    onScanned: (code) => _readLabel(code, products),
+                  ),
+                  if (_labelNotice != null)
+                    Padding(
+                      key: NonconformanceFormDialog.labelScanNoticeKey,
+                      padding: const EdgeInsets.only(top: Spacing.sm),
+                      child: Text(
+                        _labelNotice!,
+                        style: theme.textTheme.bodySmall?.copyWith(color: AppColors.of(context).textMuted),
+                      ),
+                    ),
+                  const SizedBox(height: Spacing.md),
                   AppSearchField<Product>(
                     key: NonconformanceFormDialog.productKey,
                     name: 'nonconformance-product',

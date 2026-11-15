@@ -2247,6 +2247,46 @@
   "@cameraScanUnsupportedBody": {
     "description": "What a person does instead when their browser cannot decode a code from the camera."
   },
+  "labelScanField": "Scan the tem",
+  "@labelScanField": {
+    "description": "Label over the field that reads a production tem's own code into the Product, the lot and the quantity at once."
+  },
+  "labelScanFieldHelp": "One scan fills the Product, the lot and the quantity.",
+  "@labelScanFieldHelp": {
+    "description": "Says what a scan of the tem does, under the tem field."
+  },
+  "labelScanRead": "Read: {what}",
+  "@labelScanRead": {
+    "description": "Reports what the last scan of a tem filled in.",
+    "placeholders": {
+      "what": {"type": "String"}
+    }
+  },
+  "labelScanLotPart": "lot {value}",
+  "@labelScanLotPart": {
+    "description": "One part of the line that reports what a scan read: the lot number it carried.",
+    "placeholders": {
+      "value": {"type": "String"}
+    }
+  },
+  "labelScanQuantityPart": "qty {value}",
+  "@labelScanQuantityPart": {
+    "description": "One part of the line that reports what a scan read: the quantity it carried.",
+    "placeholders": {
+      "value": {"type": "String"}
+    }
+  },
+  "labelScanUnknownProduct": "The tem names {code}, which is not a Product this form can see — choose it from the list.",
+  "@labelScanUnknownProduct": {
+    "description": "Says why a scanned tem did not pick a Product: its code is not in the catalogue the form holds.",
+    "placeholders": {
+      "code": {"type": "String"}
+    }
+  },
+  "labelScanNothingRead": "The tem carries no Product code, lot or quantity.",
+  "@labelScanNothingRead": {
+    "description": "Says that a scanned code could not be read as a tem at all."
+  },
   "accountCorrectionChangeRoleAndGrants": "Change role and Grants",
   "commonSave": "Save",
   "accountCorrectionHoldsTheRoleAndTheOrgUnit": "{email} holds the role and the Org Unit Grants chosen here. Whatever is set below replaces what it has now.",

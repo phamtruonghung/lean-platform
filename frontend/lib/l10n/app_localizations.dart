@@ -3382,6 +3382,48 @@ abstract class AppLocalizations {
   /// **'Type the code instead, or use the shop-floor reader.'**
   String get cameraScanUnsupportedBody;
 
+  /// Label over the field that reads a production tem's own code into the Product, the lot and the quantity at once.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan the tem'**
+  String get labelScanField;
+
+  /// Says what a scan of the tem does, under the tem field.
+  ///
+  /// In en, this message translates to:
+  /// **'One scan fills the Product, the lot and the quantity.'**
+  String get labelScanFieldHelp;
+
+  /// Reports what the last scan of a tem filled in.
+  ///
+  /// In en, this message translates to:
+  /// **'Read: {what}'**
+  String labelScanRead(String what);
+
+  /// One part of the line that reports what a scan read: the lot number it carried.
+  ///
+  /// In en, this message translates to:
+  /// **'lot {value}'**
+  String labelScanLotPart(String value);
+
+  /// One part of the line that reports what a scan read: the quantity it carried.
+  ///
+  /// In en, this message translates to:
+  /// **'qty {value}'**
+  String labelScanQuantityPart(String value);
+
+  /// Says why a scanned tem did not pick a Product: its code is not in the catalogue the form holds.
+  ///
+  /// In en, this message translates to:
+  /// **'The tem names {code}, which is not a Product this form can see — choose it from the list.'**
+  String labelScanUnknownProduct(String code);
+
+  /// Says that a scanned code could not be read as a tem at all.
+  ///
+  /// In en, this message translates to:
+  /// **'The tem carries no Product code, lot or quantity.'**
+  String get labelScanNothingRead;
+
   /// No description provided for @accountCorrectionChangeRoleAndGrants.
   ///
   /// In en, this message translates to:

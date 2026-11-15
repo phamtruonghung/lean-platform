@@ -2247,6 +2247,46 @@
   "@cameraScanUnsupportedBody": {
     "description": "What a person does instead when their browser cannot decode a code from the camera."
   },
+  "labelScanField": "Quét tem",
+  "@labelScanField": {
+    "description": "Label over the field that reads a production tem's own code into the Product, the lot and the quantity at once."
+  },
+  "labelScanFieldHelp": "Quét một lần là điền mã sản phẩm, số lô và số lượng.",
+  "@labelScanFieldHelp": {
+    "description": "Says what a scan of the tem does, under the tem field."
+  },
+  "labelScanRead": "Đọc được: {what}",
+  "@labelScanRead": {
+    "description": "Reports what the last scan of a tem filled in.",
+    "placeholders": {
+      "what": {"type": "String"}
+    }
+  },
+  "labelScanLotPart": "lô {value}",
+  "@labelScanLotPart": {
+    "description": "One part of the line that reports what a scan read: the lot number it carried.",
+    "placeholders": {
+      "value": {"type": "String"}
+    }
+  },
+  "labelScanQuantityPart": "SL {value}",
+  "@labelScanQuantityPart": {
+    "description": "One part of the line that reports what a scan read: the quantity it carried.",
+    "placeholders": {
+      "value": {"type": "String"}
+    }
+  },
+  "labelScanUnknownProduct": "Tem ghi {code} — không có trong danh sách sản phẩm của phiếu này, hãy chọn trong danh sách.",
+  "@labelScanUnknownProduct": {
+    "description": "Says why a scanned tem did not pick a Product: its code is not in the catalogue the form holds.",
+    "placeholders": {
+      "code": {"type": "String"}
+    }
+  },
+  "labelScanNothingRead": "Tem không có mã sản phẩm, số lô hay số lượng.",
+  "@labelScanNothingRead": {
+    "description": "Says that a scanned code could not be read as a tem at all."
+  },
   "accountCorrectionChangeRoleAndGrants": "Đổi vai trò và quyền",
   "commonSave": "Lưu",
   "accountCorrectionHoldsTheRoleAndTheOrgUnit": "{email} đang giữ vai trò và các quyền trên Đơn vị tổ chức được chọn ở đây. Những gì đặt bên dưới sẽ thay thế toàn bộ những gì tài khoản đang có.",
