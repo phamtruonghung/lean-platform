@@ -554,10 +554,11 @@ these), PDCA stage
 
 **Shift handover**:
 The record a Section's outgoing Team Leader completes at the end of a shift
-instance and the incoming Team Leader acknowledges: one line per machine, the
-numbers the shift closed on, the abnormalities and change points the next shift
-inherits, and the actions carried forward. One per Section per shift instance,
-and it is the transfer of responsibility rather than a report about the shift.
+instance and the incoming Team Leader acknowledges: a line for each machine the
+shift instance's own Downtime events flag, the numbers the shift closed on, the
+abnormalities and change points the next shift inherits, and the actions carried
+forward. One per Section per shift instance, and it is the transfer of
+responsibility rather than a report about the shift.
 _Avoid_: Shift report (a report is a read of the shift, not a transfer of
 responsibility), shift log, handover sheet, turnover, briefing, end-of-shift
 checklist
@@ -565,8 +566,9 @@ checklist
 **Machine status line**:
 One line of a Shift handover for one Asset in the Section: the state it was left
 in, the reason when that state is not normal running, and what the incoming shift
-must watch. Every active Asset in the Section has one, which is what makes "the
-machine nobody mentioned" impossible.
+must watch. There is one only for an Asset the shift instance's own Downtime
+events flag — a machine that ran normally all shift has no line — so a line's
+presence is the statement that something happened to that machine.
 _Avoid_: Machine check, equipment row, asset entry, checklist item
 
 **Change point**:

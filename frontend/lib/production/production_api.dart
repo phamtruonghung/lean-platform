@@ -57,17 +57,6 @@ class ProductionApi {
     return _read(response, (body) => SectionDay.fromJson(body));
   }
 
-  /// The Section's active Assets (`GET /sections/:orgUnitId/assets`) — the
-  /// machines a handover owes one Machine status line each.
-  Future<List<SectionAsset>> fetchSectionAssets(String accessToken, String orgUnitId) async {
-    final path = '$_base/sections/$orgUnitId/assets';
-    final response = await _send(() => _client.get(Uri.parse(path), headers: _headers(accessToken)), path);
-    return _read(response, (body) => [
-          for (final asset in body['assets'] as List<dynamic>)
-            SectionAsset.fromJson(asset as Map<String, dynamic>),
-        ]);
-  }
-
   /// Opens a draft for a Section and one of its shift instances
   /// (`POST /handovers`). Refused 409 `HANDOVER_EXISTS` when the pair already
   /// has a live handover.

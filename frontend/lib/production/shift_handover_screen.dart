@@ -2,17 +2,19 @@
 /// #332), at `/production/sections/:orgUnitId/handover/:shiftInstanceId`.
 ///
 /// The six blocks render in the order the paper form is walked: the numbers the
-/// shift closed on (frozen at submit, so a draft shows `—` for each), one
-/// Machine status line per Asset in the Section, the Change points grouped by
-/// the 4M, the Section's open Actions and what this handover does with each,
-/// and the handover evidence. Submit is last.
+/// shift closed on (frozen at submit, so a draft shows `—` for each), a Machine
+/// status line for each machine the shift had something to hand over about
+/// (ADR-0065 — the server derives that set from the shift instance's own
+/// Downtime events, so a shift where everything ran offers no rows), the Change
+/// points grouped by the 4M, the Section's open Actions and what this handover
+/// does with each, and the handover evidence. Submit is last.
 ///
 /// **Submit is never greyed out.** A handover that is not complete is refused
 /// by the server with everything it is missing at once (409,
 /// `INCOMPLETE_HANDOVER`), and that list renders at the top of the form — which
-/// Asset has no line, which line is short of what, which block is unanswered,
-/// which Action has no disposition. A disabled button would say "not yet"
-/// without saying why.
+/// derived Asset has no line, which line is short of what, which block is
+/// unanswered, which Action has no disposition. A disabled button would say
+/// "not yet" without saying why.
 ///
 /// A sealed handover renders the same blocks read-only: what was handed over is
 /// the record, and an amendment is its own act, not an edit of this one.
@@ -236,6 +238,9 @@ class _LoadedState extends State<_Loaded> {
     final palette = AppColors.of(context);
     final handover = widget.state.handover;
     final state = widget.state;
+    // The Machines block's own set (ADR-0065): what the shift's Downtime events
+    // flag, plus any line already written. Never the Section's whole register.
+    final machineRows = handover.machineRows;
     final editable = handover.isDraft && !state.isMutating;
 
     return Center(
@@ -358,19 +363,19 @@ class _LoadedState extends State<_Loaded> {
                             title: l10n.shiftHandoverMachines,
                             children: [
                               Text(
-                                l10n.shiftHandoverOneLinePerAssetInTheSection,
+                                l10n.shiftHandoverALineForEachMachineThatStopped,
                                 style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
                               ),
-                              if (state.assets.isEmpty)
-                                Text(l10n.shiftHandoverThisSectionHasNoActiveAssets, style: AppTypography.dense(context))
+                              if (machineRows.isEmpty)
+                                Text(l10n.shiftHandoverNoMachineStoppedThisShift, style: AppTypography.dense(context))
                               else
-                                for (var i = 0; i < state.assets.length; i++) ...[
+                                for (var i = 0; i < machineRows.length; i++) ...[
                                   if (i > 0)
                                     Divider(height: Spacing.lg, thickness: 1, color: palette.edge),
                                   _MachineRow(
-                                    key: ShiftHandoverScreen.machineRowKey(state.assets[i].id),
-                                    asset: state.assets[i],
-                                    line: handover.lineFor(state.assets[i].id),
+                                    key: ShiftHandoverScreen.machineRowKey(machineRows[i].id),
+                                    asset: machineRows[i],
+                                    line: handover.lineFor(machineRows[i].id),
                                     enabled: editable,
                                     showSave: handover.isDraft,
                                   ),
@@ -564,7 +569,6 @@ class _RefusalPanel extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final lines = [
-      for (final asset in refusal.missingAssets) 'No machine status line for ${asset.code} · ${asset.name}',
       for (final line in refusal.incompleteLines) '${line.code} · ${line.name} is missing its ${line.missing.join(' and ')}',
       for (final block in refusal.unansweredBlocks)
         if (block == 'changePoints')
@@ -748,6 +752,13 @@ class _MachineRowState extends State<_MachineRow> {
     final state = _state;
     if (state == null) return;
     final line = widget.line;
+    // A line's reference is the record that explains it. A line written from
+    // this row starts from the stop that flagged the Asset (ADR-0065): the
+    // writer supplies the reason, the Platform's own Downtime event supplies
+    // the reference. A line already explained by a Quality issue or a Work
+    // order keeps that reference rather than gaining a second one.
+    final reference = line?.downtimeEventId ??
+        (line?.qualityIssueId == null && line?.workOrderId == null ? widget.asset.downtimeEventId : null);
     context.read<ShiftHandoverBloc>().add(
           MachineLineSaved(
             assetId: widget.asset.id,
@@ -759,7 +770,7 @@ class _MachineRowState extends State<_MachineRow> {
               'walked': _walked,
               // The PUT replaces the whole line; the references that explain it
               // are kept rather than cleared by a rewrite of the words.
-              if (line?.downtimeEventId != null) 'downtimeEventId': line!.downtimeEventId,
+              'downtimeEventId': ?reference,
               if (line?.qualityIssueId != null) 'qualityIssueId': line!.qualityIssueId,
               if (line?.workOrderId != null) 'workOrderId': line!.workOrderId,
             },

@@ -189,9 +189,9 @@ function parseMachineLine(body) {
   };
 }
 
-// Submit's completeness refusal carries the assets it is missing beside the
-// message. Answered here rather than by handleError so this Module's errors.js
-// stays byte-similar to its siblings (ADR-0006's seam).
+// Submit's completeness refusal carries the lines it is missing something for
+// beside the message. Answered here rather than by handleError so this Module's
+// errors.js stays byte-similar to its siblings (ADR-0006's seam).
 function handleHandoverError(error, res, next) {
   if (error.code === 'INCOMPLETE_HANDOVER' && error.details) {
     return res.status(error.status).json({ message: error.message, code: error.code, ...error.details });
@@ -556,8 +556,9 @@ router.get(
   }
 );
 
-// The Section's active Assets — the machines a handover owes a line for. The
-// same Grant rule as the Section's day.
+// The Section's active Assets. Not the Machines block's source — that is the
+// handover's own `abnormalAssets` derivation (ADR-0065) — but the register
+// read in its own right, with the same Grant rule as the Section's day.
 router.get(
   '/sections/:orgUnitId/assets',
   people.authenticate,

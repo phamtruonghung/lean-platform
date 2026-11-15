@@ -6467,12 +6467,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shiftHandoverMachines => 'Machines';
 
   @override
-  String get shiftHandoverOneLinePerAssetInTheSection =>
-      'One line per Asset in the Section.';
+  String get shiftHandoverALineForEachMachineThatStopped =>
+      'A line for each machine that stopped this shift — a machine that ran normally needs none.';
 
   @override
-  String get shiftHandoverThisSectionHasNoActiveAssets =>
-      'This Section has no active Assets.';
+  String get shiftHandoverNoMachineStoppedThisShift =>
+      'No machine stopped this shift, so no line is owed.';
 
   @override
   String get shiftHandoverChangePoints => 'Change points';
