@@ -224,16 +224,14 @@
        in the same turn, so the app is revealed rather than the splash faded
        out over it. If the bundle never runs, the surface deliberately stays:
        a visible "loading" is honest, and a blank page is the defect this
-       removes. -->
-  <script>
-    (function () {
-      var splash = document.getElementById('boot-splash');
-      if (!splash) return;
-      window.addEventListener('flutter-first-frame', function () {
-        if (splash.parentNode) splash.parentNode.removeChild(splash);
-      }, { once: true });
-    }());
-  </script>
+       removes.
+
+       The listener lives in boot_splash.js rather than inline here so the
+       Content-Security-Policy in nginx.conf can keep `script-src 'self'` with
+       no 'unsafe-inline' — see that file's own script to understand why. This
+       tag is deliberately not `async` or `defer`: it must run before
+       flutter_bootstrap.js, which is the next script in the document. -->
+  <script src="boot_splash.js"></script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
