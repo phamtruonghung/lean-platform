@@ -36,8 +36,9 @@ const port = Number(process.env.BACKEND_PORT || process.env.PORT || 8000);
 // trusted by ADDRESS, not by count: `trust proxy 1` trusts whoever is on the
 // wire, so a caller that can reach the backend directly — the development stack
 // publishes it on 8002 — has its own X-Forwarded-For taken as the client
-// address. platform/client-address.js holds the list, the CF-Connecting-IP rule
-// the sign-in throttle keys on, and argues both.
+// address. platform/client-address.js holds the list and argues it; the sign-in
+// throttle reads that module rather than `req.ip`, because it keys on the
+// address the edge vouched for (X-Client-IP, set by dev/edge.nginx.conf).
 app.set('trust proxy', isTrustedProxy);
 
 app.use(express.json({ limit: '100kb' }));

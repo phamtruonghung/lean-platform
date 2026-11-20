@@ -2,14 +2,23 @@
  * Which client the sign-in throttle counts, over HTTP against a real database.
  *
  * Behind the deployed proxy chain the socket peer is the same for every caller,
- * so the throttle's address key has to come from the tunnel header — but only
- * from the proxy hop, or a caller names its own bucket. This file drives both
- * halves: a burst from one address locks that address and leaves another alone,
- * and a header sent by a peer that is not the proxy is ignored.
+ * so the throttle's address key has to be the address the edge vouched for —
+ * and the chain that matters is the one production has: `platform-edge` is
+ * published on the plant LAN, so a caller can reach it without Cloudflare and
+ * write every header it likes. The tests below drive that arrangement, not a
+ * convenient one:
  *
- * The test's own socket (127.0.0.1) stands in for the proxy hop, so
- * CLIENT_TRUSTED_PROXIES decides for each test whether the header is believed.
- * That is the same switch the deployment uses, not a test-only path.
+ *   1. one caller, a FRESH CF-Connecting-IP on every attempt, is still one
+ *      bucket — five failures and the sixth is refused (round 1's missing case);
+ *   2. two callers through the tunnel are two buckets, not one plant-wide one;
+ *   3. the edge as it runs today (no X-Client-IP, X-Forwarded-For appended)
+ *      counts coarsely but never as a bucket the caller chose;
+ *   4. a header from a peer that is not the proxy is ignored entirely.
+ *
+ * The test's own socket (127.0.0.1) stands in for the edge, so
+ * CLIENT_TRUSTED_PROXIES decides for each test whether the edge is believed.
+ * The headers sent are the ones dev/edge.nginx.conf produces — proven against a
+ * real nginx 1.27-alpine separately; here they are simply what arrives.
  *
  * Needs a database with every migration applied. Set DATABASE_URL first.
  */
@@ -57,13 +66,20 @@ async function makeAccount(name) {
   return emailOf(name);
 }
 
-// `claimed` is what the caller writes in CF-Connecting-IP; the tunnel is the
-// only sender whose write is believed, which is what these tests vary.
-const login = (email, password, claimed) => fetch(`${base}/api/auth/login`, {
+/*
+ * A sign-in as the edge forwards it. `client` is the address the edge
+ * classified — it writes it into X-Client-IP and replaces X-Forwarded-For with
+ * it. `cf` is what the caller wrote in CF-Connecting-IP, which the edge does not
+ * touch and the API must not believe on its own; `forwarded` is a raw
+ * X-Forwarded-For, for the edge as it runs today.
+ */
+const login = (email, password, { client, cf, forwarded } = {}) => fetch(`${base}/api/auth/login`, {
   method: 'POST',
   headers: {
     'content-type': 'application/json',
-    ...(claimed ? { 'cf-connecting-ip': claimed } : {})
+    ...(client ? { 'x-client-ip': client, 'x-forwarded-for': client } : {}),
+    ...(forwarded ? { 'x-forwarded-for': forwarded } : {}),
+    ...(cf ? { 'cf-connecting-ip': cf } : {})
   },
   body: JSON.stringify({ email, password })
 });
@@ -107,27 +123,37 @@ test.after(async () => {
   await closePool();
 });
 
-test('five failures from address A lock A only; address B still signs in', async () => {
-  const allowed = await makeAccount('allowed');
+test('a caller cannot choose its bucket by writing CF-Connecting-IP at the edge', async () => {
+  // The arrangement that exists in production: the socket peer is the edge, and
+  // the caller supplies CF-Connecting-IP itself. A fresh one on every attempt is
+  // what a password spray looks like, and on the round-1 fix it bought a fresh
+  // bucket each time (nine attempts, nine 401s, never a 429).
+  const allowed = await makeAccount('direct-caller');
+  const client = '203.0.113.10';
 
-  // Five failures, each for a different account, from one address the tunnel
-  // names. The per-email limit is out of the way on purpose: A is stopped by
-  // the address bucket alone.
   for (let i = 0; i < 5; i += 1) {
-    const attempt = await login(`${tag}-nobody${i}@example.com`, 'wrong password', '203.0.113.10');
-    assert.strictEqual(attempt.status, 401, `failure ${i + 1} from A is still an attempt`);
+    const attempt = await login(`${tag}-spray${i}@example.com`, 'wrong password', {
+      client,
+      cf: `198.51.100.${i + 1}`
+    });
+    assert.strictEqual(attempt.status, 401, `failure ${i + 1} is a counted attempt`);
   }
 
-  const refused = await login(`${tag}-nobody-next@example.com`, 'wrong password', '203.0.113.10');
-  assert.strictEqual(refused.status, 429);
+  // A fresh claim in the tunnel header. If it were the key this would be a new
+  // bucket and another 401; the caller is the same one the edge named.
+  const refused = await login(`${tag}-spray-next@example.com`, 'wrong password', {
+    client,
+    cf: '198.51.100.99'
+  });
+  assert.strictEqual(refused.status, 429, 'a fresh CF-Connecting-IP did not buy a bucket');
   assert.ok(Number(refused.headers.get('retry-after')) >= 1);
 
-  // B, a different client, is untouched: it signs in with the right password
-  // while A is paused.
-  const signedIn = await login(allowed, PASSWORD, '203.0.113.11');
-  assert.strictEqual(signedIn.status, 200, 'B still signs in while A is locked');
+  // A second caller is untouched: it signs in with the right password while the
+  // first is paused.
+  const signedIn = await login(allowed, PASSWORD, { client: '203.0.113.11', cf: '198.51.100.77' });
+  assert.strictEqual(signedIn.status, 200, 'the second caller still signs in');
   const session = await signedIn.json();
-  assert.ok(session.token, 'B got a session');
+  assert.ok(session.token, 'the second caller got a session');
 
   // And the pause is the sign-in bucket's own: a route that is not sign-in is
   // not slowed by it.
@@ -135,25 +161,64 @@ test('five failures from address A lock A only; address B still signs in', async
   assert.strictEqual(mode.status, 200);
 });
 
-test('a forged CF-Connecting-IP from a peer that is not the proxy chooses no bucket', async () => {
-  // The proxy hop moves off this test's socket, so nothing a caller writes is
-  // believed: the request is counted as the address it actually came from.
-  await withEnv({ CLIENT_TRUSTED_PROXIES: '198.51.100.0/24', LOGIN_THROTTLE_IP_MAX: '3' }, async () => {
-    for (let i = 0; i < 3; i += 1) {
-      const attempt = await login(`${tag}-forged${i}@example.com`, 'wrong password', `203.0.113.2${i + 1}`);
-      assert.strictEqual(attempt.status, 401, `forged attempt ${i + 1} is counted against the real peer`);
+test('two callers through the tunnel are two buckets, not one for the plant', async () => {
+  const allowed = await makeAccount('tunnel-second');
+  const first = '203.0.113.20';
+
+  for (let i = 0; i < 5; i += 1) {
+    const attempt = await login(`${tag}-tunnel${i}@example.com`, 'wrong password', { client: first, cf: first });
+    assert.strictEqual(attempt.status, 401, `tunnel failure ${i + 1}`);
+  }
+  const refused = await login(`${tag}-tunnel-next@example.com`, 'wrong password', { client: first, cf: first });
+  assert.strictEqual(refused.status, 429, 'the first tunnel client is paused');
+
+  // This is the half F3 was about: twenty-one requests from anywhere used to
+  // pause sign-in for the whole plant. A second tunnel client is a second
+  // bucket, so it signs in while the first is paused.
+  const signedIn = await login(allowed, PASSWORD, { client: '203.0.113.21', cf: '203.0.113.21' });
+  assert.strictEqual(signedIn.status, 200, 'a second tunnel client is not the first one');
+});
+
+test('the edge as it runs today counts coarsely, and never as a bucket the caller chose', async () => {
+  // Today's platform-edge sets no X-Client-IP and appends to X-Forwarded-For, so
+  // the last entry is what it appended: the connector (Docker's published port
+  // shows it as the gateway). Until the edge is reloaded the count is coarse —
+  // that is the plant-wide bucket, not per client — but a caller cannot escape
+  // it by writing CF-Connecting-IP or by prepending to the forwarded list.
+  await withEnv({ CLIENT_TRUSTED_PROXIES: '127.0.0.1/8,172.16.0.0/12' }, async () => {
+    for (let i = 0; i < 5; i += 1) {
+      const attempt = await login(`${tag}-legacy${i}@example.com`, 'wrong password', {
+        forwarded: `198.51.100.${i + 1}, 172.18.0.9`,
+        cf: `198.51.100.${i + 1}`
+      });
+      assert.strictEqual(attempt.status, 401, `legacy edge failure ${i + 1}`);
     }
 
-    // A fourth, fresh name in the header. If the header were believed this
-    // would be a new bucket and a 401; it is the same real address, already
-    // spent.
-    const refused = await login(`${tag}-forged-next@example.com`, 'wrong password', '203.0.113.24');
-    assert.strictEqual(refused.status, 429, 'the forged header did not buy a new bucket');
+    const refused = await login(`${tag}-legacy-next@example.com`, 'wrong password', {
+      forwarded: '198.51.100.100, 172.18.0.9',
+      cf: '198.51.100.100'
+    });
+    assert.strictEqual(refused.status, 429, 'the caller-written headers bought no bucket');
+  });
+});
+
+test('a header from a peer that is not the proxy is ignored', async () => {
+  // The edge moves off this test's socket, so nothing a caller writes is
+  // believed: the request is counted as the address it came from.
+  await withEnv({ CLIENT_TRUSTED_PROXIES: '198.51.100.0/24', LOGIN_THROTTLE_IP_MAX: '3' }, async () => {
+    for (let i = 0; i < 3; i += 1) {
+      const attempt = await login(`${tag}-forged${i}@example.com`, 'wrong password', {
+        client: `203.0.113.${i + 40}`,
+        cf: `203.0.113.${i + 40}`
+      });
+      assert.strictEqual(attempt.status, 401, `forged attempt ${i + 1} counts against the real peer`);
+    }
+
+    const refused = await login(`${tag}-forged-next@example.com`, 'wrong password', {
+      client: '203.0.113.50',
+      cf: '203.0.113.50'
+    });
+    assert.strictEqual(refused.status, 429, 'the forged headers did not buy a new bucket');
     assert.ok(Number(refused.headers.get('retry-after')) >= 1);
   });
-
-  // With the hop back in the list, a header IS believed again — the fallback is
-  // the peer only while the peer is not the proxy.
-  const believed = await login(`${tag}-named@example.com`, 'wrong password', '203.0.113.30');
-  assert.strictEqual(believed.status, 401);
 });

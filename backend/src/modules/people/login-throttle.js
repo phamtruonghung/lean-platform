@@ -29,11 +29,13 @@
  * second factor, and the pause is capped.
  *
  * The address is the CALLER's, not the socket's: platform/client-address.js
- * resolves it from `CF-Connecting-IP`, believing that header only when the
- * request arrived from a configured proxy hop. Behind the Cloudflare Tunnel the
- * socket peer is the proxy for every request, so a key taken from it counted the
- * whole plant as one client — twenty attempts pausing sign-in for everybody, and
- * a password spray never attributed to its source (audit finding F3).
+ * takes it from `X-Client-IP`, the header the edge overwrites after deciding
+ * which address it believes — Cloudflare's for tunnel traffic, the socket's own
+ * for a direct caller — and only from a request whose socket peer is a
+ * configured proxy. Behind the Cloudflare Tunnel the socket peer is the proxy
+ * for every request, so a key taken from it counted the whole plant as one
+ * client; and an edge that believed a caller's own header let a spray choose a
+ * fresh bucket per attempt (audit finding F3, both halves).
  *
  * ## Its own bucket
  *

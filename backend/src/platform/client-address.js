@@ -5,28 +5,53 @@
  * ## Why the socket address is not the caller
  *
  * Production serves the API behind a proxy chain — Cloudflare's edge, the
- * `cloudflared` tunnel on the host, the nginx container — so the socket peer is
- * the last proxy and identical for every caller. Counting sign-in failures per
- * socket therefore counts the whole plant as one client: about twenty
- * unauthenticated requests pause sign-in for everybody, and a password spray is
- * never attributed to the machine doing it (audit finding F3).
+ * `cloudflared` service on the host, the `platform-edge` nginx container, this
+ * API — so the socket peer is the last proxy and identical for every caller.
+ * Counting sign-in failures per socket therefore counted the whole plant as one
+ * client: about twenty unauthenticated requests paused sign-in for everybody,
+ * and a password spray was never attributed to the machine doing it (audit
+ * finding F3).
  *
- * ## Which address is believed, and when
+ * ## Which address is believed, and who decides
  *
- * `CF-Connecting-IP` is the header Cloudflare's edge sets to the caller's
- * address. The edge overwrites whatever the client sent, and both `cloudflared`
- * and nginx pass it through unchanged, so the value describes the first hop and
- * not the sender. It is believed ONLY when the socket peer is one of the
- * configured proxies AND the value parses as an IP address. A request from any
- * other peer is called by `req.ip`, which — with that peer outside the trusted
- * list — is the socket address itself, headers ignored.
+ * The hop the header comes from was the hole in the first attempt at this fix.
+ * `platform-edge` publishes `0.0.0.0:80` on the plant LAN and passed through
+ * whatever `CF-Connecting-IP` a caller sent, so a caller that reached the edge
+ * without Cloudflare wrote its own bucket — nine failures with nine fresh
+ * addresses and never a 429. A header is only worth what the hop that OVERWROTE
+ * it is worth, and no backend can tell an overwritten header from a caller's.
  *
- * That is the whole rule, and it is what the old `trust proxy 1` got wrong: a
- * hop COUNT trusts whoever is on the wire, so on a port a caller can reach
- * directly (the development stack publishes 8002) the caller's own
- * X-Forwarded-For becomes `req.ip` and every header is a fresh, chosen bucket.
- * Trusting by ADDRESS cannot be talked into that: a peer that is not in the
- * list controls nothing this file reads.
+ * So the edge decides, once per request, in dev/edge.nginx.conf — the copy of
+ * that file running on CT102 is the production edge. A socket peer that is the
+ * tunnel connector is tunnel traffic and its Cloudflare-supplied
+ * `CF-Connecting-IP` is the caller; any other peer is a direct caller, and its
+ * own `$remote_addr` is the caller. The edge writes that answer into ONE
+ * header, `X-Client-IP`, which it always overwrites, and it REPLACES
+ * `X-Forwarded-For` with the same value — a list a caller can prepend to never
+ * survives the edge.
+ *
+ * This module reads that header and no other, and only for a request whose
+ * socket peer is in CLIENT_TRUSTED_PROXIES — the proxy hops whose word may be
+ * believed; a peer outside that list controls nothing here, it is simply the
+ * caller. The header is believed only when it matches the address the hop
+ * nearest this API appended to `X-Forwarded-For`, i.e. the last entry of that
+ * list, which is the one address in it a caller cannot write. Agreement is what
+ * keeps the fix safe in the window before the edge is updated: the edge
+ * deployed today sets no `X-Client-IP` and forwards a caller's one untouched,
+ * and that caller's value cannot match what the edge itself appended.
+ *
+ * Until that edge is reloaded, the appended address is the connector's, so the
+ * throttle is coarse — one bucket for the tunnel — rather than caller-chosen.
+ * That is the origin/main behaviour, which could not be spoofed either; the
+ * per-client half of F3 needs the edge change as much as this file.
+ *
+ * That is also what the old `trust proxy 1` got wrong: a hop COUNT trusts
+ * whoever is on the wire, so on a port a caller can reach directly (the
+ * development stack publishes 8002) the caller's own X-Forwarded-For became
+ * `req.ip`, and on the deployed chain it took the connector. `trust proxy` is
+ * still set, from the same list, for anything that reads `req.ip`; the throttle
+ * does not, because a walk that trusts every hop continues past our own hops
+ * into a list the caller prepended to.
  *
  * The list is CLIENT_TRUSTED_PROXIES — comma-separated addresses or CIDRs, read
  * on every call so a deployment can narrow it without a rebuild. Its default is
@@ -44,7 +69,8 @@ const { log } = require('./log');
 
 const ENV = 'CLIENT_TRUSTED_PROXIES';
 const DEFAULT_TRUSTED_PROXIES = '127.0.0.0/8,::1/128,172.16.0.0/12';
-const HEADER = 'cf-connecting-ip';
+// Written by the edge, always overwritten by it: see the header comment.
+const HEADER = 'x-client-ip';
 
 let parsedFrom = null;
 let parsedList = null;
@@ -111,20 +137,47 @@ function normalise(address) {
   return mapped ? mapped[1] : address;
 }
 
+// A usable address from the edge's header, or null. One address, not a list:
+// the edge replaces X-Forwarded-For, and nothing else it sends is read here.
+function claimedAddress(req) {
+  const value = req.get?.(HEADER);
+  const text = typeof value === 'string' ? value.trim() : '';
+  return net.isIP(text) === 0 ? null : normalise(text);
+}
+
+// The last entry of X-Forwarded-For: the address the hop nearest this API
+// appended to the list, and the only entry it did not inherit from the caller.
+function appendedAddress(req) {
+  const value = req.get?.('x-forwarded-for');
+  if (typeof value !== 'string') return null;
+  const hops = value.split(',').map((part) => part.trim()).filter(Boolean);
+  const last = hops[hops.length - 1];
+  return last && net.isIP(last) !== 0 ? normalise(last) : null;
+}
+
 /*
- * The address to count: the tunnel header when the request arrived from a proxy
- * in the list, otherwise the address the connection itself came from.
+ * The address to count: the one the edge says it counted the request as. A
+ * request from any peer outside the trusted list is called by that peer,
+ * headers ignored.
  */
 function clientAddress(req) {
   const peer = req.socket?.remoteAddress ?? null;
+  if (!isTrustedProxy(peer)) return normalise(peer || 'unknown');
 
-  if (isTrustedProxy(peer)) {
-    const forwarded = req.get(HEADER);
-    const claimed = typeof forwarded === 'string' ? forwarded.trim() : '';
-    if (net.isIP(claimed) !== 0) return normalise(claimed);
-  }
+  // What our nearest hop saw, whatever the caller prepended to the list. On the
+  // edge as configured by dev/edge.nginx.conf this is the classified client;
+  // on the edge deployed today it is the connector, which is why F3's
+  // plant-wide bucket survives until that edge is reloaded — coarse, and not a
+  // bucket a caller chose.
+  const appended = appendedAddress(req) ?? normalise(peer || 'unknown');
+  const named = claimedAddress(req);
 
-  return normalise(req.ip || peer || 'unknown');
+  // The edge's word stands only when it is the same address the hop chain
+  // carries. The edge that writes X-Client-IP writes both; a caller writing the
+  // header alone cannot move what our own hop appended, so its claim disagrees
+  // and is dropped. That is what makes this safe in the window before the edge
+  // is updated, when today's edge forwards a caller-written header untouched.
+  return named && named === appended ? named : appended;
 }
 
 module.exports = { clientAddress, isTrustedProxy };
