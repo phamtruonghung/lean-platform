@@ -160,16 +160,14 @@ test('a temporary password opens only /me and the change, and everything else af
   assert.strictEqual((await reseeded.json()).account.mustChangePassword, false);
 });
 
-test('a seeded password minted for one person does not sign in as another', async () => {
+test("the refusal is per Account: one person's change leaves another person's temporary password alone", async () => {
   const first = await makeSeededAccount('first');
   const second = await makeSeededAccount('second');
 
-  // Both rows exist with an identical credential in this fixture, which is the
-  // defect's shape; what the loader now mints is one password per person
-  // (asserted in the seed generator test below). What matters here is that
-  // the refusal is per Account, not a session-wide lock: signing in as the
-  // second person is refused on its own flag, and the first person's change
-  // leaves the second's flag alone.
+  // The fixture gives both Accounts the same temporary password, which is the
+  // defect's shape. What is asserted here is that the gate reads that Account's
+  // own credential row: the first person's change neither clears nor locks the
+  // second person's flag.
   const firstToken = (await (await login({ email: first.email, password: TEMPORARY })).json()).token;
   assert.strictEqual((await put('/api/people/me/password', firstToken, { currentPassword: TEMPORARY, newPassword: CHOSEN })).status, 200);
 
