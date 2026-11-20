@@ -195,15 +195,20 @@ void main() {
     });
 
     test('is removed from the document when the engine paints its first frame', () {
-      expect(index, contains("addEventListener('flutter-first-frame'"),
+      // The listener is a file of its own, not an inline <script>: the edge
+      // sends `script-src 'self'` and would block an inline one (see
+      // security_headers_test.dart).
+      final splash = File('web/boot_splash.js');
+      expect(splash.existsSync(), isTrue, reason: 'index.html loads boot_splash.js');
+      expect(splash.readAsStringSync(), contains("addEventListener('flutter-first-frame'"),
           reason: 'nothing listens for the first frame, so the surface would sit over the app forever');
-      expect(index, contains('removeChild(splash)'),
+      expect(splash.readAsStringSync(), contains('removeChild(splash)'),
           reason: 'the surface must leave the document; a hidden-but-present node is the ghost');
-      // Measure the listener itself, not the first mention of the event name:
-      // the file's comments name `flutter-first-frame` above the script, so
-      // `indexOf('flutter-first-frame')` always resolves to a comment and the
-      // ordering assertion would hold however the script is arranged.
-      expect(index.indexOf("addEventListener('flutter-first-frame'"),
+      // Measure the tag, not the first mention of the event name: the file's
+      // own comments name `flutter-first-frame` above the script, so looking
+      // for the event name would pass however the scripts are arranged. Both
+      // tags are synchronous, so document order is execution order.
+      expect(index.indexOf('<script src="boot_splash.js'),
           lessThan(index.indexOf('<script src="flutter_bootstrap.js')),
           reason: 'the listener is registered after the bootstrap script, so the signal can arrive unheard');
     });

@@ -20,6 +20,7 @@ const { log } = require('./platform/log');
 const health = require('./platform/health');
 const lifecycle = require('./platform/lifecycle');
 const { isTrustedProxy } = require('./platform/client-address');
+const { securityHeaders } = require('./platform/security-headers');
 const people = require('./modules/people');
 const maintenance = require('./modules/maintenance');
 const actions = require('./modules/actions');
@@ -40,6 +41,13 @@ const port = Number(process.env.BACKEND_PORT || process.env.PORT || 8000);
 // throttle reads that module rather than `req.ip`, because it keys on the
 // address the edge vouched for (X-Client-IP, set by dev/edge.nginx.conf).
 app.set('trust proxy', isTrustedProxy);
+
+// Every response from this process carries the security headers — /api never
+// reaches the frontend's nginx, so this is where an API response gets them.
+// Mounted before express.json and before any Module's router, so the headers
+// are set before anything can end a response: a body parse failure, a route's
+// own 401, this file's 500 handler and Express's own 404 all carry them.
+app.use(securityHeaders);
 
 app.use(express.json({ limit: '100kb' }));
 
