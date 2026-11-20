@@ -17,6 +17,14 @@
 # The layout mirrors production: an edge router splits /api to the backend and
 # everything else to the frontend, exactly as the reverse proxy on the LXC does.
 #
+# Every published host port below is bound to 127.0.0.1 on purpose. This stack
+# is reached from the machine it runs on — a browser on this box, and a colleague
+# tunnelling in — so nothing legitimate needs these ports on the LAN, and a bare
+# "5434:5432" would put a password-only Postgres, an unauthenticated-era pgAdmin
+# and a dev backend on every interface. Do not "fix" them back to a bare port
+# mapping; if one port genuinely must be reachable from another machine, name
+# that machine's address explicitly and say why in the commit message.
+#
 # Postgres here is local and disposable. Production (VIProd) uses self-hosted
 # PostgreSQL on LXC CT100 (ADR-0051); nothing in this file is deployed.
 # ==============================================================================
@@ -33,7 +41,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5434:5432"
+      # Loopback only — see the header. Published on the LAN this is a
+      # password-only Postgres for every role (pg_hba: host all all all).
+      - "127.0.0.1:5434:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-platform} -d ${POSTGRES_DB:-platform}"]
       interval: 5s
@@ -52,7 +62,9 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "8002:8000"
+      # Loopback only — see the header. The browser reaches the API through
+      # `edge` at :3002 anyway.
+      - "127.0.0.1:8002:8000"
 
   frontend:
     build:
@@ -70,7 +82,8 @@ services:
     volumes:
       - ./dev/edge.nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
-      - "3002:80"
+      # Loopback only — see the header. This is the stack's front door.
+      - "127.0.0.1:3002:80"
     depends_on:
       - backend
       - frontend
@@ -95,13 +108,15 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@local.dev}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-localdev}
-      # Suppress the second, master-password prompt pgAdmin otherwise layers on
-      # top of its own login — a reviewer who already typed the credentials
-      # above should not be asked again. Confirmed against 9.17: with
-      # SERVER_MODE off, pgAdmin runs in its "desktop" auth mode and skips the
-      # login screen entirely, landing straight on /browser/.
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+      # Server mode, with a real login. Desktop mode (SERVER_MODE False) skips
+      # the login screen entirely: GET / answers 302 straight to /browser/ with
+      # a session cookie, so anyone who can reach the port is an administrator
+      # over this Postgres. Both credentials above come from the env file
+      # (PGADMIN_DEFAULT_EMAIL / PGADMIN_DEFAULT_PASSWORD) — never set them here.
+      # MASTER_PASSWORD_REQUIRED protects the passwords pgAdmin saves for
+      # registered servers; it is not a second login in server mode.
+      PGADMIN_CONFIG_SERVER_MODE: 'True'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'True'
     volumes:
       - pgadmin_data:/var/lib/pgadmin
       # Pre-registers the local Postgres connection (dev/pgadmin-servers.json)
@@ -117,7 +132,7 @@ services:
       # Continues the same +1-per-project ladder as the rest of this file's
       # ports, starting from pgAdmin's own conventional default of 5050:
       # employee-management 5050, maintenance-management 5051, this repo 5052.
-      - "5052:80"
+      - "127.0.0.1:5052:80"
     # Plain form, not backend's `condition: service_healthy`: pgAdmin serves
     # its own web UI regardless of whether Postgres is reachable yet (a
     # connection attempt against a registered server just fails until

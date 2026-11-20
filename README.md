@@ -52,7 +52,12 @@ Host ports sit one above `maintenance-management`'s, which sit one above
 
 pgAdmin, for browsing the local Postgres directly, is at
 <http://localhost:5052> — local-development-only, with the local Postgres
-connection already pre-registered.
+connection already pre-registered. It asks for the `PGADMIN_DEFAULT_EMAIL` /
+`PGADMIN_DEFAULT_PASSWORD` from `.env` before showing anything.
+
+Every published port here is bound to `127.0.0.1`, so this stack is reachable
+from the machine it runs on and nowhere else on the LAN. That is deliberate —
+see the header comment in `docker-compose.yml` before changing it.
 
 ### Reviewing the app locally
 
