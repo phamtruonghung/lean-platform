@@ -13,8 +13,14 @@ const assert = require('node:assert');
 const { clientAddress, isTrustedProxy } = require('../src/platform/client-address');
 
 const ENV = 'CLIENT_TRUSTED_PROXIES';
+// The measured chain. `EDGE` is the platform-edge container on Docker's bridge;
+// `GATEWAY` is the bridge gateway, which is the peer the edge sees for the
+// host-local connector path only — cloudflared runs on the host and reaches the
+// published port, and Docker's proxy presents that path from the bridge. A
+// caller on the plant LAN keeps its own source address through that same
+// published port, as measured, so it never appears here as the gateway.
 const EDGE = '172.18.0.3'; // the platform-edge container, as measured on production
-const GATEWAY = '172.18.0.1'; // what Docker's published port shows the edge
+const GATEWAY = '172.18.0.1'; // the connector's address as the edge sees it
 const CLIENT = '203.0.113.5'; // the address Cloudflare names
 
 function withProxies(value, run) {
@@ -70,10 +76,13 @@ test('tunnel traffic is counted per client, through the edge as now configured',
 });
 
 test('through the edge as it runs today the count is coarse, and never caller-chosen', () => {
-  // Today's edge appends to X-Forwarded-For and sets no X-Client-IP, so the last
-  // entry is what it appended: the connector, seen through Docker's published
-  // port as the gateway. That is F3's plant-wide bucket — the half of the fix
-  // that needs the edge reloaded — and it is still not a bucket anyone chose.
+  // The edge deployed today appends to X-Forwarded-For and sets no X-Client-IP.
+  // For tunnel traffic — the case modelled here — the entry it appends is the
+  // connector, seen through the published port as the gateway, so every tunnel
+  // caller shares one bucket: F3's plant-wide count, the half of the fix that
+  // needs the edge reloaded. A caller on the plant LAN is already counted as
+  // itself today, because it keeps its own source address through that same
+  // published port; and in neither case is the bucket one anyone chose.
   const tunnel = request(EDGE, { 'x-forwarded-for': `${CLIENT}, ${GATEWAY}`, 'cf-connecting-ip': CLIENT });
   assert.strictEqual(clientAddress(tunnel), GATEWAY);
 });
