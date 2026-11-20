@@ -14,6 +14,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const path = require('node:path');
+const { existsSync } = require('node:fs');
 const { Pool } = require('pg');
 const { runner } = require('node-pg-migrate');
 
@@ -22,6 +23,7 @@ let admin;
 let scratch;
 let seed;
 let scratchUrl;
+let masterMissing = null;
 
 test.before(async () => {
   const url = new URL(process.env.DATABASE_URL);
@@ -40,6 +42,14 @@ test.before(async () => {
 
   scratch = new Pool({ connectionString: scratchUrl, max: 1 });
   seed = await import('../../../dev/seed-relats-vietnam.mjs');
+
+  // The employee master is real personnel data and is intentionally untracked,
+  // so a clone has no CSV and this suite has nothing to read. Skip rather than
+  // fail: the alternative is a checkout of real names and staff numbers in a
+  // public repository. Set EMPLOYEE_MASTER_CSV to run it.
+  if (!existsSync(seed.CSV_PATH)) {
+    masterMissing = `no employee master at ${seed.CSV_PATH} (intentionally untracked; set EMPLOYEE_MASTER_CSV)`;
+  }
 });
 
 test.after(async () => {
@@ -69,7 +79,8 @@ async function count(sql) {
   return Number(row.n);
 }
 
-test('the load creates 17 machines and three shifts, and a second run changes nothing', async () => {
+test('the load creates 17 machines and three shifts, and a second run changes nothing', async (t) => {
+  if (masterMissing) return t.skip(masterMissing);
   const first = await runLoad();
   assert.strictEqual(first.assets.created, 17);
   assert.strictEqual(first.shift_definitions.created, 3);
@@ -98,7 +109,8 @@ test('the load creates 17 machines and three shifts, and a second run changes no
   );
 });
 
-test('a re-run repairs a drifted machine name and leaves an existing shift pattern alone', async () => {
+test('a re-run repairs a drifted machine name and leaves an existing shift pattern alone', async (t) => {
+  if (masterMissing) return t.skip(masterMissing);
   await scratch.query(`UPDATE assets SET name = 'drifted' WHERE code = 'MTU40'`);
   await scratch.query(`UPDATE shift_definitions SET start_time = '07:00' WHERE code = 'A'`);
 
