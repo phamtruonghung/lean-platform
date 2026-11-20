@@ -302,7 +302,9 @@ unset PW
 ```
 
 The password is read from stdin only and stored as temporary
-(`must_change_password`); #270's change flow replaces it afterwards. The script
+(`must_change_password`); #270's change flow replaces it afterwards, and until
+it has, the API refuses every route except `GET /api/people/me` and the change
+itself (`403 { code: "MUST_CHANGE_PASSWORD" }`, middleware.js). The script
 refuses to overwrite an existing password unless run with `--force`, and
 prints only the email and the time.
 

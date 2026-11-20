@@ -13,11 +13,15 @@
  *
  * A reset stores `must_change_password = TRUE`: the administrator knows the
  * password they just set, so it is temporary. A person's own change stores
- * FALSE. The flag is reported, not enforced by the API: /login and /api/people/me
- * return it as `account.mustChangePassword`, and the client sends the person
- * to change their password before anything else (frontend/lib/platform/
- * router.dart). Enforcing it server-side (refusing other routes until the
- * change) is a named follow-up. A reset leaves `is_enabled` alone, and ends
+ * FALSE. The flag is enforced, not merely reported: `requireActive`
+ * (middleware.js) refuses every authenticated route with
+ * `403 { code: 'MUST_CHANGE_PASSWORD' }` while it is TRUE, except `/me` and
+ * the change itself, and `/login` and `/api/people/me` report it as
+ * `account.mustChangePassword` so the client sends the person to the change
+ * Screen (frontend/lib/platform/router.dart) before it tries anything else.
+ * It is also what the plant loader writes for every seeded Account, whose
+ * password is now minted per person (dev/seed-relats-vietnam.mjs). A reset
+ * leaves `is_enabled` alone, and ends
  * ALL of the target's sessions in the same transaction as the new password:
  * the old password may be known to someone else, and a session minted with it
  * must not outlive the reset.
