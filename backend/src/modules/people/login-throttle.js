@@ -26,8 +26,24 @@
  * deployed as, wrong the day a second one runs (each would count alone). A
  * lockout per email lets someone who knows an address keep that person out for
  * the length of the pause; that is the price of an email limit without a
- * second factor, and the pause is capped. The client address is `req.ip`,
- * which `trust proxy` (src/index.js) resolves to the address Caddy saw.
+ * second factor, and the pause is capped.
+ *
+ * The address is the CALLER's, not the socket's: platform/client-address.js
+ * takes it from `X-Client-IP`, the header the edge overwrites after deciding
+ * which address it believes — Cloudflare's for tunnel traffic, the socket's own
+ * for a direct caller — and only from a request whose socket peer is a
+ * configured proxy. Behind the Cloudflare Tunnel the socket peer is the proxy
+ * for every request, so a key taken from it counted the whole plant as one
+ * client; and an edge that believed a caller's own header let a spray choose a
+ * fresh bucket per attempt (audit finding F3, both halves).
+ *
+ * ## Its own bucket
+ *
+ * This Map is the sign-in bucket and nothing else is in it: no other route in
+ * the API is limited by request rate (the floor PIN's lockout is per Employee in
+ * Postgres, and the edge sets no `limit_req`), so a storm of failed sign-ins
+ * cannot slow a route that is not sign-in. The keys are prefixed `signin:` so a
+ * limiter added later cannot land on a counter this Module owns.
  *
  * Tunable by environment, read on every call:
  * LOGIN_THROTTLE_WINDOW_MS, LOGIN_THROTTLE_EMAIL_MAX, LOGIN_THROTTLE_IP_MAX,
@@ -87,8 +103,8 @@ function count(key, max, now, { windowMs, baseMs }) {
 function keysFor(ip, email) {
   const normalised = typeof email === 'string' && email.trim() !== '' ? email.trim().toLowerCase() : null;
   return {
-    ipKey: `ip:${ip ?? 'unknown'}`,
-    emailKey: normalised ? `email:${normalised}` : null
+    ipKey: `signin:ip:${ip ?? 'unknown'}`,
+    emailKey: normalised ? `signin:email:${normalised}` : null
   };
 }
 

@@ -19,6 +19,7 @@ const { closeMtuPool } = require('./platform/mtu-db');
 const { log } = require('./platform/log');
 const health = require('./platform/health');
 const lifecycle = require('./platform/lifecycle');
+const { isTrustedProxy } = require('./platform/client-address');
 const people = require('./modules/people');
 const maintenance = require('./modules/maintenance');
 const actions = require('./modules/actions');
@@ -30,9 +31,15 @@ const kpi = require('./modules/kpi');
 const app = express();
 const port = Number(process.env.BACKEND_PORT || process.env.PORT || 8000);
 
-// Requests arrive through a reverse proxy, which sets X-Forwarded-For. Without
-// this, Express reports the proxy's address as the client's.
-app.set('trust proxy', 1);
+// Requests arrive through a reverse proxy, which appends X-Forwarded-For.
+// Without this, Express reports the proxy's address as the client's. The hop is
+// trusted by ADDRESS, not by count: `trust proxy 1` trusts whoever is on the
+// wire, so a caller that can reach the backend directly — the development stack
+// publishes it on 8002 — has its own X-Forwarded-For taken as the client
+// address. platform/client-address.js holds the list and argues it; the sign-in
+// throttle reads that module rather than `req.ip`, because it keys on the
+// address the edge vouched for (X-Client-IP, set by dev/edge.nginx.conf).
+app.set('trust proxy', isTrustedProxy);
 
 app.use(express.json({ limit: '100kb' }));
 
