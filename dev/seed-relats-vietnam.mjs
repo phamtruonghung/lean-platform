@@ -9,6 +9,13 @@
  *
  *   DATABASE_URL=postgresql://... node dev/seed-relats-vietnam.mjs [--dry-run]
  *
+ * The CSV holds real personnel data, so it is NOT tracked (see .gitignore): a
+ * clone of this repo does not contain it. Put it at its old path or point
+ * EMPLOYEE_MASTER_CSV at it:
+ *
+ *   EMPLOYEE_MASTER_CSV=/path/to/Employee_Master_Consolidated.csv \
+ *     DATABASE_URL=postgresql://... node dev/seed-relats-vietnam.mjs
+ *
  * Reads the CSV beside this repo, talks to Postgres directly, needs no
  * network and no running API. It is NOT wired into dev/seed-demo.sql, docker
  * compose or any deploy path: it runs when somebody runs it. It adds no
@@ -91,7 +98,11 @@ const backendRequire = createRequire(path.join(here, '..', 'backend', 'package.j
 const { hashSecret } = backendRequire('./src/platform/secrets');
 const pg = backendRequire('pg');
 
-const CSV_PATH = path.join(here, '..', 'docs', 'Employee_Master_Consolidated.csv');
+// The master holds real personnel data and is intentionally untracked, so a
+// clone does not contain it: EMPLOYEE_MASTER_CSV overrides the in-repo path.
+const CSV_PATH = process.env.EMPLOYEE_MASTER_CSV
+  ? path.resolve(process.env.EMPLOYEE_MASTER_CSV)
+  : path.join(here, '..', 'docs', 'Employee_Master_Consolidated.csv');
 const DRY_RUN = process.argv.includes('--dry-run');
 const SKIP_PEOPLE = process.argv.includes('--skip-people');
 const DEFAULT_PASSWORD = '12345678';
@@ -157,7 +168,15 @@ function unitCode(section, area) {
 // The file has no quoted fields, so a split on commas is enough; a row with the
 // wrong number of fields means that stopped being true and the run stops.
 function readRows() {
-  const text = readFileSync(CSV_PATH, 'utf8').replace(/^﻿/, '');
+  let text;
+  try {
+    text = readFileSync(CSV_PATH, 'utf8').replace(/^﻿/, '');
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    fail(
+      `No employee master CSV at ${CSV_PATH}. That file holds real personnel data and is intentionally untracked, so a clone of this repo does not contain it. Point EMPLOYEE_MASTER_CSV at the file, e.g. EMPLOYEE_MASTER_CSV=./Employee_Master_Consolidated.csv node dev/seed-relats-vietnam.mjs`
+    );
+  }
   const [header, ...lines] = text.split(/\r?\n/).filter((line) => line.trim() !== '');
   const columns = header.split(',');
   const expected = ['No', 'ID', 'Name', 'Position', 'Section', 'Area / Process', 'Joining Date', 'Present in'];
@@ -543,7 +562,7 @@ async function main() {
   }
 }
 
-export { loadTree, loadShiftPattern, loadMachines, loadCalendar, readRows, counts, MTU_MACHINES };
+export { loadTree, loadShiftPattern, loadMachines, loadCalendar, readRows, counts, MTU_MACHINES, CSV_PATH };
 
 // Importing this file (the integration test does) must not run the load.
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

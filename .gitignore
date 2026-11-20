@@ -18,3 +18,9 @@ frontend/test/failures/
 # Local agent harness config — pins an MCP server and a live project ref.
 # Kept out of the repo so cloning does not silently change any agent's toolset.
 .mcp.json
+
+# Real employee data — never tracked. The plant's employee master holds real
+# names, staff IDs, positions and sections, so it lives on the machine, not in
+# this repository (dev/seed-relats-vietnam.mjs reads it, EMPLOYEE_MASTER_CSV
+# points at it).
+/docs/Employee_Master_Consolidated.csv
