@@ -16,6 +16,7 @@ const express = require('express');
 const { handleError } = require('./errors');
 const { signIn, revokeSessionByToken } = require('./sign-in');
 const loginThrottle = require('./login-throttle');
+const { clientAddress } = require('../../platform/client-address');
 
 const router = express.Router();
 
@@ -26,7 +27,11 @@ router.get('/mode', (_req, res) => {
 router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body ?? {};
-    const caller = { ip: req.ip, email };
+    // The address, not the socket: behind the tunnel every request arrives from
+    // the proxy, so `req.ip` alone would be one bucket for the whole plant.
+    // platform/client-address.js is where that header is trusted, and only
+    // from a peer in the configured proxy list.
+    const caller = { ip: clientAddress(req), email };
     loginThrottle.begin(caller);
     const session = await signIn({ email, password });
     loginThrottle.succeeded(caller);
