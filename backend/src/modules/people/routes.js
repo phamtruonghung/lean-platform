@@ -11,7 +11,7 @@
  */
 
 const express = require('express');
-const { authenticate, requireActive, statusFor } = require('./middleware');
+const { authenticate, requireActive, allowWhilePasswordChangeRequired, statusFor } = require('./middleware');
 const { requirePermission, orgUnitScopeFor, permissionsForAccount } = require('./authorization');
 const { parseId, httpError, handleError } = require('./errors');
 const {
@@ -43,7 +43,9 @@ function requireAccountId(req) {
 // requireActive here on purpose — that is exactly the gate this route exists
 // to be exempt from. `statusFor` (middleware.js) is what tells a pending
 // Account apart from a rejected or deactivated one — see that file's own
-// header.
+// header. That exemption also makes this one of the two doors a temporary
+// password leaves open (audit F1), which is why `account.mustChangePassword`
+// travels in this body at all: the shell routes to the change Screen on it.
 //
 // `orgUnitScope` (issue #43) sits beside `account`, not inside it, for the
 // same reason `status` already does: it is a computed fact about the caller,
@@ -243,7 +245,13 @@ router.post('/accounts/:id/password', authenticate, requireActive, mayChangeAcco
 
 // A person changes their own password (issue #270). A wrong current password
 // is a 400, never a 401: a 401 makes the client sign the person out.
-router.put('/me/password', authenticate, requireActive, async (req, res, next) => {
+//
+// `allowWhilePasswordChangeRequired` is what makes this the one write a
+// temporary password may perform — without it requireActive would refuse the
+// change itself and the Account could never leave the state (audit F1). The
+// Account's own status is still checked: a pending, rejected or deactivated
+// caller is still turned away by requireActive's first branch.
+router.put('/me/password', authenticate, allowWhilePasswordChangeRequired, requireActive, async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body ?? {};
     const account = await changeOwnPassword(req.account.id, { currentPassword, newPassword }, req.sessionId ?? null);

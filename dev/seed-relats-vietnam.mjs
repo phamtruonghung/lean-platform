@@ -4,8 +4,9 @@
  * (issue #272, part of #267): the Site, the Production department with its SC
  * and TX sections and the areas under them, the Job roles the file's Position
  * column names, one Employee per row, one Assignment each, and one approved
- * Account each with the default password, so a named operator can sign in the
- * same minute the script finishes.
+ * Account each holding a temporary password minted for that person, so a named
+ * operator can sign in the same minute the script finishes — and must choose a
+ * new password before using anything else (audit F1).
  *
  *   DATABASE_URL=postgresql://... node dev/seed-relats-vietnam.mjs [--dry-run]
  *
@@ -83,12 +84,25 @@
  * password somebody has since changed or move its `updated_at`. No hash is
  * ever printed.
  *
+ * ## The seeded password is per person, temporary, and printed once
+ *
+ * There is no shared literal: each new credential gets 16 characters from the
+ * OS's CSPRNG (`temporaryPassword`), written with `must_change_password = TRUE`.
+ * The run prints the email/password pairs once in its own report, and nothing
+ * writes them to a file or to the repository. The API refuses every route
+ * except `/api/people/me` and the change itself while that flag is TRUE
+ * (backend/src/modules/people/middleware.js), so a seeded password cannot be
+ * used for anything but choosing a real one — which is why the old "anyone who
+ * knows an employee number can sign in as that person" risk is gone. Because a
+ * credential is insert-only, a second run mints and prints nothing.
+ *
  * `--dry-run` reads the database to diff (or plans against an empty one when
  * DATABASE_URL is absent) and writes nothing: every INSERT and UPDATE is
  * intercepted before it reaches Postgres.
  */
 
 import { readFileSync } from 'node:fs';
+import { randomInt } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -105,7 +119,23 @@ const CSV_PATH = process.env.EMPLOYEE_MASTER_CSV
   : path.join(here, '..', 'docs', 'Employee_Master_Consolidated.csv');
 const DRY_RUN = process.argv.includes('--dry-run');
 const SKIP_PEOPLE = process.argv.includes('--skip-people');
-const DEFAULT_PASSWORD = '12345678';
+
+// A temporary credential is minted per person, never one literal shared by
+// everyone (audit F1: one eight-digit password for every employee, written in
+// this repository). The alphabet drops characters a person could misread when
+// copying the printed password (0/O, 1/l/I); 16 characters of it is ~93 bits,
+// and the API refuses everything but the change itself while
+// must_change_password is TRUE.
+const TEMPORARY_PASSWORD_LENGTH = 16;
+const PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+
+function temporaryPassword() {
+  let password = '';
+  for (let i = 0; i < TEMPORARY_PASSWORD_LENGTH; i += 1) {
+    password += PASSWORD_ALPHABET[randomInt(PASSWORD_ALPHABET.length)];
+  }
+  return password;
+}
 
 const SITE = { code: 'RLVN', name: 'Relats Vietnam', timezone: 'Asia/Ho_Chi_Minh', country_code: 'VN' };
 const DEPARTMENT = { code: 'PROD', name: 'Production' };
@@ -237,6 +267,9 @@ function readRows() {
 
 const counts = {};
 const planned = [];
+// Minted this run, printed once at the end. Never written to a file: the pair
+// exists in the run's own output and in the (hashed) database row, nowhere else.
+const temporaryPasswords = [];
 
 function tally(table, outcome) {
   counts[table] ??= { created: 0, updated: 0, unchanged: 0 };
@@ -478,12 +511,20 @@ async function loadAccounts(client, rows, { departmentId, unitIds, employeeIds }
       label: `${row.employeeNo}@relats.vn as ${row.spec.role}`
     });
 
-    // Insert only: an existing credential is never touched.
+    // Insert only: an existing credential is never touched, so a re-run neither
+    // resets a password somebody has since chosen nor prints one again.
     await sync(client, 'account_credentials', {
       key: { app_user_id: accountId },
       values: {},
       idColumn: 'app_user_id',
-      insertOnly: async () => ({ password_hash: await hashSecret(DEFAULT_PASSWORD), is_enabled: true, must_change_password: true }),
+      insertOnly: async () => {
+        const password = temporaryPassword();
+        // A dry run mints one (the insert is intercepted anyway) but prints
+        // none: its report says what a real run would do, and a password that
+        // was never stored must not be handed out.
+        if (!DRY_RUN) temporaryPasswords.push({ email: `${row.employeeNo}@relats.vn`, password });
+        return { password_hash: await hashSecret(password), is_enabled: true, must_change_password: true };
+      },
       label: `${row.employeeNo}@relats.vn`
     });
 
@@ -529,9 +570,20 @@ function printReport(rows, { people }) {
   console.log('  These are distinct people with distinct employee numbers and are created as such.');
   console.log('  900555 and 900578 share a name and an area and joined five months apart; a human should confirm they are two people.');
 
-  console.log('\n== Risk: one default password');
-  console.log(`  ${rows.length} people share one default password. The forced-change flow is a named follow-up;`);
-  console.log('  until it ships, anyone who knows an employee number can sign in as that person.');
+  console.log('\n== Temporary passwords');
+  if (DRY_RUN) {
+    console.log('  A real run mints one random password per new Account and prints the email/password');
+    console.log('  pairs here, once. Nothing is written to a file or to the repository.');
+  } else if (temporaryPasswords.length === 0) {
+    console.log('  None minted: every Account already held a credential, and an existing one is never touched.');
+  } else {
+    console.log(`  ${temporaryPasswords.length} new Account(s) hold a temporary password, shown here once and`);
+    console.log('  nowhere else. Each must be changed at first sign-in: until it is, the API allows');
+    console.log('  only GET /api/people/me and the password change itself.');
+    for (const { email, password } of [...temporaryPasswords].sort((a, b) => a.email.localeCompare(b.email))) {
+      console.log(`  ${email.padEnd(34)} ${password}`);
+    }
+  }
 }
 
 async function main() {
@@ -562,7 +614,7 @@ async function main() {
   }
 }
 
-export { loadTree, loadShiftPattern, loadMachines, loadCalendar, readRows, counts, MTU_MACHINES, CSV_PATH };
+export { loadTree, loadShiftPattern, loadMachines, loadCalendar, readRows, counts, MTU_MACHINES, CSV_PATH, temporaryPassword, TEMPORARY_PASSWORD_LENGTH, PASSWORD_ALPHABET };
 
 // Importing this file (the integration test does) must not run the load.
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
