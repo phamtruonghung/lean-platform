@@ -27,9 +27,13 @@ const { resolveAccountForIdentity } = require('./service');
 const { findSessionIdentity } = require('./sign-in');
 const { mustChangePassword } = require('./passwords');
 
-// Verifies the bearer token and resolves it to an Account, creating one on a
-// subject's first sign-in (see service.js). Attaches the result as
-// `req.account`. Does NOT check `isActive` — see requireActive below.
+// Verifies the bearer token and resolves it to the Account its session names,
+// through `resolveAccountForIdentity`. That function's create branch exists
+// for a subject no row carries, not for a first sign-in: sign-in.js only
+// mints a session for an Account that already exists, so nothing here creates
+// one for a person arriving for the first time (service.js carries the
+// detail). Attaches the result as `req.account`. Does NOT check `isActive` —
+// see requireActive below.
 async function authenticate(req, res, next) {
   const header = req.headers.authorization ?? '';
   const [scheme, token] = header.split(' ');

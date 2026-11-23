@@ -560,7 +560,7 @@ SQL
   ) \
     || die "granting ${email} on ${code} failed — run './scripts/review.sh logs postgres' to see why"
 
-  [[ -n "$result" ]] || die "no Account for ${email} or no Demo Org Unit '${code}' — sign in through the app once, check the code, then run this again"
+  [[ -n "$result" ]] || die "no Account for ${email}, or no Demo Org Unit '${code}'. An Account must exist before a Grant can hang off it: 'up' provisions only the demo administrator, and a deployment's roster load creates people's rows. Check the code, then run this again"
   ok "${email} now holds a $([[ "$can_write" == "TRUE" ]] && echo "write" || echo "read") Grant on ${code}"
 }
 
