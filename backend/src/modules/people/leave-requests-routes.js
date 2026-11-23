@@ -245,10 +245,13 @@ function decisionRoute(decision) {
 router.post('/leave-requests/:id/approve', authenticate, requireActive, mayDecideLeaveRequests, decisionRoute('approved'));
 router.post('/leave-requests/:id/reject', authenticate, requireActive, mayDecideLeaveRequests, decisionRoute('rejected'));
 
-// The cancel route has two doors, and the row is what tells them apart: a
-// requester withdrawing what they raised knocks on `PPL_LEAVE_REQUESTS_RAISE`,
-// anyone else asking to cancel knocks on `PPL_LEAVE_REQUESTS_DECIDE` (they still
-// meet the identity refusal below — the code is the door, not the authority).
+// The cancel route has two doors, and the row is what tells them apart: the
+// Account that raised the request and the Employee it is FOR both withdraw on
+// `PPL_LEAVE_REQUESTS_RAISE` — `isRequesterOrSubject` is the test, not "the
+// requester", so an operator's own leave is theirs to cancel with no `DECIDE`
+// code — and anyone else asking to cancel knocks on `PPL_LEAVE_REQUESTS_DECIDE`
+// (they still meet the identity refusal below — the code is the door, not the
+// authority).
 // Visibility comes first because `loadVisible` 404s a request this caller may
 // not see at all, and the code is asked only once the row is known.
 async function requireVisibleLeaveRequest(req, res, next) {

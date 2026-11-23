@@ -59,7 +59,12 @@
  * discard, add and remove a Trainee, evaluate one, send) ask
  * `PPL_TRAINING_CHANGE`, seeded on supervisor-and-above, and keep the edit-Grant
  * check behind it: the code answers which door, the Grant still answers which
- * Org Units. That narrows the writes on purpose — an operator holding an edit
+ * Org Units. The code is a door in the router chain, asked BEFORE the handler
+ * loads the record, so a caller who does not hold it meets `PERMISSION_REQUIRED`
+ * on an unknown or deleted id rather than the 404 it would get holding the code
+ * — the trade `leave-requests-routes.js` states for its decision routes. No
+ * existence leak: the 403 is identical whether or not the id exists. That
+ * narrows the writes on purpose — an operator holding an edit
  * Grant loses them until an administrator adds the code to its role, which the
  * seed migration and the PR body state. The Trainee's own answer is the one
  * self-service act here: it asks `PPL_TRAINING_ANSWER_OWN`, seeded on every
