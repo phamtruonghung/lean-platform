@@ -25,6 +25,30 @@ import 'harness.dart';
 
 const String _outside = "Outside the caller's granted Org Units";
 
+/// The `entered_at` the fixture helpers default to (`kpiReviewStateJson`,
+/// `kpiHistoryEntryJson`, harness.dart), and the stamp the Screens word it as.
+///
+/// It is a **UTC instant**, and `formatEnteredAt` (`kpi/kpi_catalogue.dart`)
+/// renders it `.toLocal()` — so a literal stamp here reads green on a UTC
+/// runner and red on every `+07` one. Derive it from the same instant instead,
+/// and it holds in whatever zone the suite runs in.
+///
+/// It re-words the timestamp by hand rather than calling `formatEnteredAt`, so
+/// this still fails if that wording changes; only the zone is taken from the
+/// engine.
+const String _defaultEnteredAt = '2026-10-30T08:12:00.000Z';
+
+String _enteredAtStamp([String enteredAt = _defaultEnteredAt]) {
+  final local = DateTime.parse(enteredAt).toLocal();
+  String pad(int n) => n.toString().padLeft(2, '0');
+  return '${local.year}-${pad(local.month)}-${pad(local.day)} '
+      '${pad(local.hour)}:${pad(local.minute)}';
+}
+
+/// The same instant without a `Z` — a wall-clock stamp, which the Screens show
+/// as it came. One fixture below sends this shape.
+const String _localEnteredAt = '2026-10-30T08:12:00';
+
 final Map<String, dynamic> _oee = kpiCatalogueRowJson(
   1,
   'OEE',
@@ -193,7 +217,7 @@ void main() {
     expect(find.text('Weekly: < 45 min (from 2026-02-01)'), findsOneWidget);
     expect(find.text('after the retrofit'), findsOneWidget);
     expect(find.text('C D'), findsOneWidget);
-    expect(find.text('2026-10-30 08:12'), findsNWidgets(2));
+    expect(find.text(_enteredAtStamp()), findsNWidgets(2));
     final targetReads = wire.kpiReads.where((uri) => uri.path == '/api/kpi/targets').toList();
     expect(targetReads, hasLength(1));
     expect(targetReads.single.queryParameters, {'site_id': '1', 'kpi_id': '3'});
@@ -447,7 +471,7 @@ void main() {
     ]);
     // Read again: the saved state shown is the server's, and Save is spent.
     expect(find.byKey(KpiReviewScreen.savedKey), findsOneWidget);
-    expect(find.text('Missed · A B · 2026-10-30 08:12'), findsOneWidget);
+    expect(find.text('Missed · A B · ${_enteredAtStamp()}'), findsOneWidget);
     expect(_enabled(tester, KpiReviewScreen.saveKey), isFalse);
   });
 
@@ -537,7 +561,8 @@ void main() {
     status: 'missed',
     note: 'seal failure on line 2',
     appUser: 'C D',
-    enteredAt: '2026-10-30T08:12:00',
+    // No `Z`: this one is a wall-clock stamp, shown as it came.
+    enteredAt: _localEnteredAt,
   );
 
   testWidgets('a saved note opens in the read-only popup with its Target and author', (tester) async {
@@ -550,7 +575,10 @@ void main() {
     expect(popup, findsOneWidget);
     expect(find.descendant(of: popup, matching: find.text('seal failure on line 2')), findsOneWidget);
     expect(find.descendant(of: popup, matching: find.text('Daily target: >= 85 %')), findsOneWidget);
-    expect(find.descendant(of: popup, matching: find.text('C D · 2026-10-30 08:12')), findsOneWidget);
+    expect(
+      find.descendant(of: popup, matching: find.text('C D · ${_enteredAtStamp(_localEnteredAt)}')),
+      findsOneWidget,
+    );
     expect(find.descendant(of: popup, matching: find.byType(TextField)), findsNothing);
 
     await tapIn(tester, find.byKey(KpiReviewScreen.noteCloseKey(1)));
@@ -687,7 +715,7 @@ void main() {
     expect(wire.reviewPosts.single['entries'], [
       {'kpi_id': 3, 'status': 'not_measured', 'observed': null, 'note': null},
     ]);
-    expect(find.text('Not measured · A B · 2026-10-30 08:12'), findsOneWidget);
+    expect(find.text('Not measured · A B · ${_enteredAtStamp()}'), findsOneWidget);
   });
 
   testWidgets('the Review date picker opens a past day, never later than the Site\'s today',
