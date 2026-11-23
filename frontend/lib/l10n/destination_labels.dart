@@ -33,6 +33,7 @@ String destinationLabel(AppLocalizations l10n, Destination destination) =>
       Routes.training => l10n.navTraining,
       Routes.mySignature => l10n.navMySignature,
       Routes.leaveRequests => l10n.navLeaveRequests,
+      Routes.assessments => l10n.navAssessments,
       Routes.costRates => l10n.navCostRates,
       Routes.productCosts => l10n.navProductStandardCosts,
       Routes.assets => l10n.navAssets,

@@ -340,6 +340,11 @@ final List<_Screen> _screens = [
   const _Screen('JobRolesScreen', 'lib/people/job_roles_screen.dart', route: '/job-roles'),
   const _Screen('SkillsScreen', 'lib/people/skills_screen.dart', route: '/skills'),
   const _Screen('CostRatesScreen', 'lib/people/cost_rates_screen.dart', route: '/cost-rates'),
+  // The assessment Question bank (issue #588): it opens on a Site dropdown and
+  // a process search over an empty state, the controls a 200% text scale and a
+  // 700px window crowd first.
+  const _Screen('AssessmentQuestionsScreen', 'lib/people/assessment_questions_screen.dart',
+      route: '/assessments/questions'),
   const _Screen('ProductCostsScreen', 'lib/people/product_costs_screen.dart',
       route: '/product-costs'),
   const _Screen('OrgUnitsScreen', 'lib/people/org_units_screen.dart', route: '/org-units'),

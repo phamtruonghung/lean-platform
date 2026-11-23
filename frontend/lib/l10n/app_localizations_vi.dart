@@ -8256,4 +8256,189 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get boardPeriodMonth => 'Tháng';
+
+  @override
+  String get navAssessments => 'Kiểm tra';
+
+  @override
+  String get assessmentQuestionsTitle => 'Ngân hàng câu hỏi';
+
+  @override
+  String get assessmentQuestionsDescription =>
+      'Các câu hỏi dùng để rút đề kiểm tra của một công đoạn. Mỗi câu hỏi thuộc về một Đơn vị tổ chức, chính là công đoạn đó, và đề chỉ được rút từ các câu hỏi lưu đúng ở Đơn vị tổ chức ấy.';
+
+  @override
+  String get assessmentProcessSearchLabel => 'Tìm công đoạn theo tên';
+
+  @override
+  String get assessmentProcessSearchHelper =>
+      'Chọn Đơn vị tổ chức nơi câu hỏi được lưu. Chỉ hiện câu hỏi của chính đơn vị đó, không hiện câu hỏi của các đơn vị bên dưới.';
+
+  @override
+  String assessmentProcessActiveCount(int count) {
+    return 'Câu hỏi đang dùng: $count';
+  }
+
+  @override
+  String get assessmentChooseProcessTitle => 'Chọn một công đoạn';
+
+  @override
+  String get assessmentChooseProcessMessage =>
+      'Chọn nhà máy, rồi tìm công đoạn theo tên. Ngân hàng câu hỏi của công đoạn đó sẽ hiện ở đây.';
+
+  @override
+  String get assessmentSearchQuestions => 'Tìm trong câu hỏi';
+
+  @override
+  String get assessmentIncludeRetired => 'Gồm cả câu hỏi đã ngừng dùng';
+
+  @override
+  String get assessmentAddQuestion => 'Thêm câu hỏi';
+
+  @override
+  String get assessmentPasteQuestions => 'Dán câu hỏi';
+
+  @override
+  String get assessmentNoQuestionsTitle => 'Ngân hàng này chưa có câu hỏi';
+
+  @override
+  String get assessmentNoQuestionsMessage =>
+      'Hãy thêm một câu hỏi, hoặc dán một loạt câu hỏi từ tài liệu.';
+
+  @override
+  String get assessmentNoMatchTitle => 'Không có câu hỏi nào khớp';
+
+  @override
+  String get assessmentNoMatchMessage =>
+      'Hãy thử cách tìm khác, hoặc gồm cả câu hỏi đã ngừng dùng.';
+
+  @override
+  String get assessmentQuestionsFailedTitle =>
+      'Không đọc được ngân hàng câu hỏi';
+
+  @override
+  String assessmentKeyIs(String letter) {
+    return 'Đáp án: $letter';
+  }
+
+  @override
+  String assessmentExplanationIs(String text) {
+    return 'Giải thích: $text';
+  }
+
+  @override
+  String get assessmentRetireTitle => 'Ngừng dùng câu hỏi này?';
+
+  @override
+  String get assessmentRetireMessage =>
+      'Câu hỏi sẽ không còn được rút vào đề. Không có gì bị xoá, và các đề đã rút vẫn giữ nguyên.';
+
+  @override
+  String assessmentPageRange(int from, int to, int total) {
+    return '$from–$to trên $total';
+  }
+
+  @override
+  String get assessmentPreviousPage => 'Trước';
+
+  @override
+  String get assessmentNextPage => 'Sau';
+
+  @override
+  String get assessmentFormAddTitle => 'Thêm một câu hỏi';
+
+  @override
+  String get assessmentFormCorrectTitle => 'Điều chỉnh câu hỏi';
+
+  @override
+  String get assessmentFormQuestionText => 'Nội dung câu hỏi';
+
+  @override
+  String assessmentFormOption(String letter) {
+    return 'Phương án $letter';
+  }
+
+  @override
+  String get assessmentFormCorrectOption => 'Phương án đúng';
+
+  @override
+  String get assessmentFormExplanation => 'Giải thích (không bắt buộc)';
+
+  @override
+  String get assessmentFormExplanationHelper =>
+      'Vì sao đáp án đúng. Hiện ở kết quả sau khi chấm.';
+
+  @override
+  String assessmentFormTextTooShort(int min) {
+    return 'Câu hỏi cần ít nhất $min ký tự.';
+  }
+
+  @override
+  String get assessmentFormOptionsMustDiffer => 'Ba phương án phải khác nhau.';
+
+  @override
+  String get assessmentPasteTitle => 'Dán câu hỏi';
+
+  @override
+  String get assessmentPasteGuide =>
+      'Mỗi câu hỏi một khối, cách nhau một dòng trống. Khối bắt đầu bằng \'Câu hỏi:\' hoặc \'Question:\', rồi ba dòng A., B., C. với dấu * đứng trước phương án đúng, rồi có thể thêm \'Giải thích:\' hoặc \'Explanation:\'. Nếu một khối sai, hoặc đã có trong ngân hàng, sẽ không ghi gì cả.';
+
+  @override
+  String get assessmentPasteHint =>
+      'Câu hỏi: …\nA. …\nB. …\n*C. …\nGiải thích: …';
+
+  @override
+  String get assessmentPastePreview => 'Xem trước';
+
+  @override
+  String get assessmentPasteSubmit => 'Dán';
+
+  @override
+  String assessmentPastePreviewSummary(int count, String keys) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count câu hỏi',
+      one: '1 câu hỏi',
+    );
+    return '$_temp0, đáp án $keys';
+  }
+
+  @override
+  String assessmentPasteLine(int line) {
+    return 'Dòng $line';
+  }
+
+  @override
+  String get assessmentPasteNothingWritten =>
+      'Chưa ghi gì cả. Hãy sửa khối đó rồi dán lại.';
+
+  @override
+  String get assessmentPasteIssueEmpty =>
+      'Chưa có gì để nhập. Hãy dán ít nhất một câu hỏi.';
+
+  @override
+  String assessmentPasteIssueStem(int line) {
+    return 'Dòng $line: mỗi khối phải bắt đầu bằng \'Câu hỏi:\' hoặc \'Question:\'.';
+  }
+
+  @override
+  String assessmentPasteIssueOptions(int line, int question) {
+    return 'Dòng $line, câu $question: cần đủ ba phương án A, B, C theo thứ tự, mỗi phương án có nội dung.';
+  }
+
+  @override
+  String assessmentPasteIssueNoKey(int line, int question) {
+    return 'Dòng $line, câu $question: chưa đánh dấu * cho phương án nào.';
+  }
+
+  @override
+  String assessmentPasteIssueTwoKeys(int line, int question) {
+    return 'Dòng $line, câu $question: có hai phương án đánh dấu *; chỉ được một.';
+  }
+
+  @override
+  String assessmentPasteIssueStray(int line, int question) {
+    return 'Dòng $line, câu $question: dòng này không đúng chỗ. Sau các phương án chỉ được có phần giải thích, và hai câu hỏi phải cách nhau một dòng trống.';
+  }
 }

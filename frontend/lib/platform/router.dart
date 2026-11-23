@@ -72,6 +72,8 @@ import '../people/accounts_screen.dart';
 import '../people/roles_bloc.dart';
 import '../people/roles_screen.dart';
 import '../people/approval_queue_bloc.dart';
+import '../people/assessment_questions_bloc.dart';
+import '../people/assessment_questions_screen.dart';
 import '../people/approval_queue_screen.dart';
 import '../people/attendance_picker_screen.dart';
 import '../people/attendance_sheet_bloc.dart';
@@ -253,6 +255,12 @@ abstract final class Routes {
   /// asked for. Its dialogs are addresses beneath it (`/new`,
   /// `/:id/approve|reject|cancel`, ADR-0021).
   static const String leaveRequests = '/leave-requests';
+
+  /// Assessments (issue #588, ADR-0068). `/assessments` is the Destination and
+  /// will be the register; until that slice it sends a person to the Question
+  /// bank beneath it.
+  static const String assessments = '/assessments';
+  static const String assessmentQuestions = '/assessments/questions';
 
   /// The two cost catalogues (issue #252): the rates the plant costs an hour
   /// at, and what one unit of a Product is costed at. Addressed at the
@@ -1375,6 +1383,42 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                     },
                   ),
                 ],
+              ),
+            ],
+          ),
+          // Assessments (issue #588). The Destination's own address has no
+          // Screen yet - the register is a later slice - so it sends a person
+          // to the Question bank, the one Screen there is. Matched exactly, so
+          // `/assessments/questions` below is not swallowed.
+          GoRoute(
+            path: Routes.assessments,
+            redirect: (context, state) =>
+                state.uri.path == Routes.assessments ? Routes.assessmentQuestions : null,
+            routes: [
+              GoRoute(
+                path: 'questions',
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const AccessDeniedScreen();
+                  final held = account.account.permissions;
+                  // The same fallback `Routes.roles` makes: a response that
+                  // carried no codes is a client older than this Screen, and
+                  // the roles the seed gives the codes to are the door then.
+                  final mayOpen = held.isEmpty ||
+                      held.contains(destinationPermissions[Routes.assessments]);
+                  if (!mayOpen) return const AccessDeniedScreen();
+                  final mayChange = held.isEmpty
+                      ? ModuleRoles.maintenance.contains(account.account.role)
+                      : held.contains(assessmentChangePermission);
+                  return BlocProvider<AssessmentQuestionsBloc>(
+                    create: (context) => AssessmentQuestionsBloc(
+                      peopleApi: context.read<PeopleApi>(),
+                      authGateway: context.read<AuthGateway>(),
+                      mayChange: mayChange,
+                    )..add(const AssessmentQuestionsStarted()),
+                    child: const AssessmentQuestionsScreen(),
+                  );
+                },
               ),
             ],
           ),

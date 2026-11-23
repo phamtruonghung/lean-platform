@@ -176,6 +176,26 @@ window draws the Shell as the icon rail — the new row plus every Destination
 under it shifted down by one row's height. No box reaches outside the sidebar,
 so no Screen's own content moved.
 
+**Ten sweep PNGs, seven Work orders PNGs and two Settings PNGs re-recorded for
+the Assessments row (t_81820a62).** The Question bank adds one Destination
+(*Assessments*) to the People group, so every golden that draws the Shell
+differs in the sidebar beneath it: the ten shell-carrying sweep PNGs
+(`sweep_board_*`, `sweep_detail_*`, `sweep_home_*`, `sweep_matrix_*`,
+`sweep_register_*`, both palettes) and the seven Work orders renders that ride
+`pumpApp`, `work_orders_collision_700` included, which at 700px draws the
+expanded sidebar here and not the rail. `settings_wide_en` and
+`settings_wide_vi` are new relative to the paragraph above, which found them
+unchanged: that was true while Settings was the last row of the sidebar's
+column in their 1200x800 window, and the Assessments row now lands above the
+rows that sit lower in it (the box below begins at y=598), so both draw
+differently. The two narrow Settings PNGs are still unchanged. Nineteen PNGs in
+all. The change is measured with the same `convert` command, before
+re-recording: **188x196 at +37+876** for all ten sweep PNGs, **205x107 at
++13+598** for the seven Work orders renders and for both Settings renders
+(209x112 at +13+596 for `settings_wide_vi`, whose longer labels wrap one row
+differently). Every box lies inside the 260px sidebar, so no Screen's own
+content moved.
+
 ## Fonts: what these goldens can and cannot see
 
 By default, `flutter_test` substitutes a solid placeholder box for every

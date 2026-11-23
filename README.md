@@ -352,6 +352,13 @@ append to it; with the variable unset, `/api/kpi/*` answers 503 and the rest of
 the API is unaffected
 ([ADR-0055](./docs/adr/0055-a-second-database-for-the-mtu-kpi-catalogue.md)).
 
+The assessment Question bank belongs to People (`src/modules/people`,
+`assessment-questions.js` and `assessment-question-routes.js`), which already
+owns the Org Unit tree a Question is filed on. Five routes under
+`/api/people/assessment-questions` list a process's bank, raise a Question,
+paste a block of them at once (all-or-nothing), correct one and retire one
+([ADR-0068](./docs/adr/0068-a-timed-assessment-is-drawn-at-attempt-start.md)).
+
 ## Authentication
 
 One door: the Platform's own passwords. `POST /api/auth/login` takes an email

@@ -13882,6 +13882,288 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Month'**
   String get boardPeriodMonth;
+
+  /// The sidebar Destination for the Assessments Screens: the Question bank, and later the register.
+  ///
+  /// In en, this message translates to:
+  /// **'Assessments'**
+  String get navAssessments;
+
+  /// Title of the Screen that holds one process's Questions.
+  ///
+  /// In en, this message translates to:
+  /// **'Question bank'**
+  String get assessmentQuestionsTitle;
+
+  /// The Question bank Screen's one-sentence description under its title.
+  ///
+  /// In en, this message translates to:
+  /// **'The Questions an Assessment of one process is drawn from. A Question belongs to one Org Unit, the process, and a paper draws only from the Questions filed on exactly that Org Unit.'**
+  String get assessmentQuestionsDescription;
+
+  /// Label of the search field that picks the process whose bank is shown.
+  ///
+  /// In en, this message translates to:
+  /// **'Find a process by name'**
+  String get assessmentProcessSearchLabel;
+
+  /// Helper under the process search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the Org Unit the Questions are filed on. Its own Questions are shown, never those of the Org Units beneath it.'**
+  String get assessmentProcessSearchHelper;
+
+  /// The number of active Questions in the chosen process, shown beside the process picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Questions: {count}'**
+  String assessmentProcessActiveCount(int count);
+
+  /// Empty state shown before a process has been picked.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a process'**
+  String get assessmentChooseProcessTitle;
+
+  /// Message of the empty state shown before a process has been picked.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a Site, then find the process by name. Its Question bank is shown here.'**
+  String get assessmentChooseProcessMessage;
+
+  /// Label of the field that filters the bank by the Question's text.
+  ///
+  /// In en, this message translates to:
+  /// **'Search the Questions'**
+  String get assessmentSearchQuestions;
+
+  /// Toggle that adds retired Questions to the list.
+  ///
+  /// In en, this message translates to:
+  /// **'Include retired'**
+  String get assessmentIncludeRetired;
+
+  /// Button that opens the form for one new Question.
+  ///
+  /// In en, this message translates to:
+  /// **'Add question'**
+  String get assessmentAddQuestion;
+
+  /// Button that opens the dialog for filing many Questions from one pasted block of text.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste questions'**
+  String get assessmentPasteQuestions;
+
+  /// Empty state when the chosen process has no Questions.
+  ///
+  /// In en, this message translates to:
+  /// **'No Questions in this bank yet'**
+  String get assessmentNoQuestionsTitle;
+
+  /// Message of the empty state when the chosen process has no Questions.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a Question, or paste a block of them from a document.'**
+  String get assessmentNoQuestionsMessage;
+
+  /// Empty state when the search or filter matches no Question.
+  ///
+  /// In en, this message translates to:
+  /// **'No Questions match'**
+  String get assessmentNoMatchTitle;
+
+  /// Message of the empty state when the search or filter matches no Question.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a different search, or include the retired Questions.'**
+  String get assessmentNoMatchMessage;
+
+  /// Title of the failure state when the bank cannot be loaded.
+  ///
+  /// In en, this message translates to:
+  /// **'The Question bank could not be read'**
+  String get assessmentQuestionsFailedTitle;
+
+  /// A Question's correct Option, as a letter. A dash stands in when the server did not reveal it.
+  ///
+  /// In en, this message translates to:
+  /// **'Key: {letter}'**
+  String assessmentKeyIs(String letter);
+
+  /// A Question's explanation. A dash stands in when there is none or the server did not reveal it.
+  ///
+  /// In en, this message translates to:
+  /// **'Explanation: {text}'**
+  String assessmentExplanationIs(String text);
+
+  /// Title of the confirmation before a Question is retired.
+  ///
+  /// In en, this message translates to:
+  /// **'Retire this Question?'**
+  String get assessmentRetireTitle;
+
+  /// Body of the confirmation before a Question is retired.
+  ///
+  /// In en, this message translates to:
+  /// **'It will no longer be drawn onto a paper. Nothing is deleted, and papers already drawn keep it.'**
+  String get assessmentRetireMessage;
+
+  /// The window of Questions the page shows, above the pager.
+  ///
+  /// In en, this message translates to:
+  /// **'{from}–{to} of {total}'**
+  String assessmentPageRange(int from, int to, int total);
+
+  /// Pager button: the page before this one.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get assessmentPreviousPage;
+
+  /// Pager button: the page after this one.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get assessmentNextPage;
+
+  /// Title of the form for one new Question.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a Question'**
+  String get assessmentFormAddTitle;
+
+  /// Title of the form that restates a Question's own fields.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct a Question'**
+  String get assessmentFormCorrectTitle;
+
+  /// Label of the field holding a Question's sentence.
+  ///
+  /// In en, this message translates to:
+  /// **'Question text'**
+  String get assessmentFormQuestionText;
+
+  /// Label of the field holding one of the three Options.
+  ///
+  /// In en, this message translates to:
+  /// **'Option {letter}'**
+  String assessmentFormOption(String letter);
+
+  /// Label over the A, B, C choice of which Option is the key.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct option'**
+  String get assessmentFormCorrectOption;
+
+  /// Label of the optional field saying why the key is right.
+  ///
+  /// In en, this message translates to:
+  /// **'Explanation (optional)'**
+  String get assessmentFormExplanation;
+
+  /// Helper under the explanation field.
+  ///
+  /// In en, this message translates to:
+  /// **'Why the key is right. Shown on the result after marking.'**
+  String get assessmentFormExplanationHelper;
+
+  /// Inline refusal when the Question's text is too short to send.
+  ///
+  /// In en, this message translates to:
+  /// **'The Question needs at least {min} characters.'**
+  String assessmentFormTextTooShort(int min);
+
+  /// Inline refusal when two Options read the same.
+  ///
+  /// In en, this message translates to:
+  /// **'The three Options must be different from one another.'**
+  String get assessmentFormOptionsMustDiffer;
+
+  /// Title of the dialog for filing many Questions at once.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste questions'**
+  String get assessmentPasteTitle;
+
+  /// Instructions at the top of the paste dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'One block per Question, a blank line between blocks. Start a block with \'Câu hỏi:\' or \'Question:\', then three lines A., B. and C. with a * in front of the correct one, then an optional \'Giải thích:\' or \'Explanation:\'. If any block is wrong, or is already in the bank, nothing is written.'**
+  String get assessmentPasteGuide;
+
+  /// Placeholder inside the empty paste box, showing one block.
+  ///
+  /// In en, this message translates to:
+  /// **'Câu hỏi: …\nA. …\nB. …\n*C. …\nGiải thích: …'**
+  String get assessmentPasteHint;
+
+  /// Button that reads the pasted text and says what it holds before anything is sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get assessmentPastePreview;
+
+  /// Button that sends the pasted text to the bank.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get assessmentPasteSubmit;
+
+  /// What a good paste holds: how many Questions, and each block's key letter in order.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 question} other{{count} questions}}, keys {keys}'**
+  String assessmentPastePreviewSummary(int count, String keys);
+
+  /// Names the pasted line a refusal is about.
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line}'**
+  String assessmentPasteLine(int line);
+
+  /// Reassurance under a refused paste: the bank is unchanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing was written. Fix that block and paste again.'**
+  String get assessmentPasteNothingWritten;
+
+  /// Preview refusal: the box is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to import. Paste at least one Question.'**
+  String get assessmentPasteIssueEmpty;
+
+  /// Preview refusal: a block has no stem label.
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line}: a block must start with \'Câu hỏi:\' or \'Question:\'.'**
+  String assessmentPasteIssueStem(int line);
+
+  /// Preview refusal: options missing or out of order.
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line}, question {question}: expected the three options A, B and C in that order, each with some text.'**
+  String assessmentPasteIssueOptions(int line, int question);
+
+  /// Preview refusal: no option is marked correct.
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line}, question {question}: no option is marked with *.'**
+  String assessmentPasteIssueNoKey(int line, int question);
+
+  /// Preview refusal: more than one option is marked correct.
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line}, question {question}: two options are marked with *; exactly one must be.'**
+  String assessmentPasteIssueTwoKeys(int line, int question);
+
+  /// Preview refusal: a stray line inside a block.
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line}, question {question}: this line does not belong here. After the options only an explanation may follow, and a blank line must separate one Question from the next.'**
+  String assessmentPasteIssueStray(int line, int question);
 }
 
 class _AppLocalizationsDelegate

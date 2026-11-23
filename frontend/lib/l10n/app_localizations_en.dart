@@ -8280,4 +8280,190 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get boardPeriodMonth => 'Month';
+
+  @override
+  String get navAssessments => 'Assessments';
+
+  @override
+  String get assessmentQuestionsTitle => 'Question bank';
+
+  @override
+  String get assessmentQuestionsDescription =>
+      'The Questions an Assessment of one process is drawn from. A Question belongs to one Org Unit, the process, and a paper draws only from the Questions filed on exactly that Org Unit.';
+
+  @override
+  String get assessmentProcessSearchLabel => 'Find a process by name';
+
+  @override
+  String get assessmentProcessSearchHelper =>
+      'Pick the Org Unit the Questions are filed on. Its own Questions are shown, never those of the Org Units beneath it.';
+
+  @override
+  String assessmentProcessActiveCount(int count) {
+    return 'Active Questions: $count';
+  }
+
+  @override
+  String get assessmentChooseProcessTitle => 'Choose a process';
+
+  @override
+  String get assessmentChooseProcessMessage =>
+      'Pick a Site, then find the process by name. Its Question bank is shown here.';
+
+  @override
+  String get assessmentSearchQuestions => 'Search the Questions';
+
+  @override
+  String get assessmentIncludeRetired => 'Include retired';
+
+  @override
+  String get assessmentAddQuestion => 'Add question';
+
+  @override
+  String get assessmentPasteQuestions => 'Paste questions';
+
+  @override
+  String get assessmentNoQuestionsTitle => 'No Questions in this bank yet';
+
+  @override
+  String get assessmentNoQuestionsMessage =>
+      'Add a Question, or paste a block of them from a document.';
+
+  @override
+  String get assessmentNoMatchTitle => 'No Questions match';
+
+  @override
+  String get assessmentNoMatchMessage =>
+      'Try a different search, or include the retired Questions.';
+
+  @override
+  String get assessmentQuestionsFailedTitle =>
+      'The Question bank could not be read';
+
+  @override
+  String assessmentKeyIs(String letter) {
+    return 'Key: $letter';
+  }
+
+  @override
+  String assessmentExplanationIs(String text) {
+    return 'Explanation: $text';
+  }
+
+  @override
+  String get assessmentRetireTitle => 'Retire this Question?';
+
+  @override
+  String get assessmentRetireMessage =>
+      'It will no longer be drawn onto a paper. Nothing is deleted, and papers already drawn keep it.';
+
+  @override
+  String assessmentPageRange(int from, int to, int total) {
+    return '$from–$to of $total';
+  }
+
+  @override
+  String get assessmentPreviousPage => 'Previous';
+
+  @override
+  String get assessmentNextPage => 'Next';
+
+  @override
+  String get assessmentFormAddTitle => 'Add a Question';
+
+  @override
+  String get assessmentFormCorrectTitle => 'Correct a Question';
+
+  @override
+  String get assessmentFormQuestionText => 'Question text';
+
+  @override
+  String assessmentFormOption(String letter) {
+    return 'Option $letter';
+  }
+
+  @override
+  String get assessmentFormCorrectOption => 'Correct option';
+
+  @override
+  String get assessmentFormExplanation => 'Explanation (optional)';
+
+  @override
+  String get assessmentFormExplanationHelper =>
+      'Why the key is right. Shown on the result after marking.';
+
+  @override
+  String assessmentFormTextTooShort(int min) {
+    return 'The Question needs at least $min characters.';
+  }
+
+  @override
+  String get assessmentFormOptionsMustDiffer =>
+      'The three Options must be different from one another.';
+
+  @override
+  String get assessmentPasteTitle => 'Paste questions';
+
+  @override
+  String get assessmentPasteGuide =>
+      'One block per Question, a blank line between blocks. Start a block with \'Câu hỏi:\' or \'Question:\', then three lines A., B. and C. with a * in front of the correct one, then an optional \'Giải thích:\' or \'Explanation:\'. If any block is wrong, or is already in the bank, nothing is written.';
+
+  @override
+  String get assessmentPasteHint =>
+      'Câu hỏi: …\nA. …\nB. …\n*C. …\nGiải thích: …';
+
+  @override
+  String get assessmentPastePreview => 'Preview';
+
+  @override
+  String get assessmentPasteSubmit => 'Paste';
+
+  @override
+  String assessmentPastePreviewSummary(int count, String keys) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count questions',
+      one: '1 question',
+    );
+    return '$_temp0, keys $keys';
+  }
+
+  @override
+  String assessmentPasteLine(int line) {
+    return 'Line $line';
+  }
+
+  @override
+  String get assessmentPasteNothingWritten =>
+      'Nothing was written. Fix that block and paste again.';
+
+  @override
+  String get assessmentPasteIssueEmpty =>
+      'Nothing to import. Paste at least one Question.';
+
+  @override
+  String assessmentPasteIssueStem(int line) {
+    return 'Line $line: a block must start with \'Câu hỏi:\' or \'Question:\'.';
+  }
+
+  @override
+  String assessmentPasteIssueOptions(int line, int question) {
+    return 'Line $line, question $question: expected the three options A, B and C in that order, each with some text.';
+  }
+
+  @override
+  String assessmentPasteIssueNoKey(int line, int question) {
+    return 'Line $line, question $question: no option is marked with *.';
+  }
+
+  @override
+  String assessmentPasteIssueTwoKeys(int line, int question) {
+    return 'Line $line, question $question: two options are marked with *; exactly one must be.';
+  }
+
+  @override
+  String assessmentPasteIssueStray(int line, int question) {
+    return 'Line $line, question $question: this line does not belong here. After the options only an explanation may follow, and a blank line must separate one Question from the next.';
+  }
 }

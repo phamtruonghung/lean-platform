@@ -280,6 +280,10 @@ const _excluded = <String, String>{
       'reached by shift instance id; its rows are plain list items, not the audited card-row shape',
   'lib/people/attendance_picker_screen.dart':
       'a chooser (an Org Unit tree and a date field), not a browsable register of card rows',
+  'lib/people/assessment_questions_screen.dart':
+      'it opens on a process picker and an empty state, and has no row to measure an inset '
+          'against until a person has chosen a process; its header is still one `AppPageHeader` in '
+          'one `AppPageFrame`, so the title and description start at the frame edge like every other page',
   'lib/quality/slide_show_screen.dart':
       'a wall: its body is a full-bleed picture with the facts over it, not a page of card '
           'rows to measure an inset against. Its header is still one `AppPageFrame`, so the '
