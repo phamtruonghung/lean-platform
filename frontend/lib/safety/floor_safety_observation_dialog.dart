@@ -25,6 +25,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/app_localizations.dart';
 import '../theme.dart';
+import '../widgets/app_scan_field.dart';
 import 'floor_safety_observation_bloc.dart';
 import 'safety_observation.dart';
 import '../l10n/vocabulary.dart';
@@ -249,15 +250,14 @@ class _FloorSafetyObservationDialogState extends State<FloorSafetyObservationDia
           style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
         ),
         const SizedBox(height: Spacing.md),
-        TextField(
+        AppScanField(
           key: FloorSafetyObservationDialog.employeeNoKey,
           controller: _employeeNo,
+          label: l10n.nonconformanceFloorEmployeeNumber,
+          helperText: l10n.floorTrainingScanTheBadgeOrTypeTheNumber,
           enabled: !busy,
+          advanceFocusOnScan: true,
           onChanged: (_) => setState(() {}),
-          decoration: InputDecoration(
-            labelText: l10n.nonconformanceFloorEmployeeNumber,
-            border: const OutlineInputBorder(),
-          ),
         ),
         const SizedBox(height: Spacing.md),
         TextField(

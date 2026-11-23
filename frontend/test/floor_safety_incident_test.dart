@@ -10,6 +10,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/maintenance/floor_screen.dart';
 import 'package:lean_platform/maintenance/floor_technician_dialog.dart';
@@ -53,6 +54,24 @@ Future<void> fillForm(
 /// dialog opens.
 Future<void> openFlow(WidgetTester tester) async {
   await tapIn(tester, find.byKey(FloorScreen.reportSafetyIncidentKey));
+}
+
+/// The text field focus currently sits in, read the way the next keystroke
+/// would find it — `FocusManager.instance.primaryFocus`, not a `FocusNode`
+/// this file owns.
+TextEditingController? _focusedFieldController() {
+  final context = FocusManager.instance.primaryFocus?.context;
+  if (context == null) return null;
+  EditableText? field;
+  context.visitAncestorElements((element) {
+    final widget = element.widget;
+    if (widget is EditableText) {
+      field = widget;
+      return false;
+    }
+    return true;
+  });
+  return field?.controller;
 }
 
 void main() {
@@ -286,4 +305,90 @@ void main() {
     await tapIn(tester, find.byKey(FloorScreen.startKey('101')));
     expect(find.byKey(FloorTechnicianDialog.employeeNoKey), findsOneWidget);
   });
+
+  testWidgets(
+    "a reader's badge burst fills the Employee number cleaned, and its Enter moves focus to the PIN",
+    (tester) async {
+      final wire = _wire();
+
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(),
+        client: wire.client,
+        initialLocation: '/floor',
+      );
+
+      await openFlow(tester);
+
+      // Everything except identification, chosen the way an operator chooses
+      // it, so the only thing left when the reader fires is the badge.
+      await tester.tap(find.byKey(FloorSafetyIncidentDialog.incidentTypeKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Near miss').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(FloorSafetyIncidentDialog.severityKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('No injury').last);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(FloorSafetyIncidentDialog.descriptionKey),
+        'A pallet nearly tipped while being moved.',
+      );
+      await tester.pumpAndSettle();
+
+      // The dialog is taller than the test viewport, so bring the badge field
+      // into view before a person's tap on it.
+      await tester.ensureVisible(find.byKey(FloorSafetyIncidentDialog.employeeNoKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(FloorSafetyIncidentDialog.employeeNoKey));
+      await tester.pumpAndSettle();
+
+      // A keyboard-wedge reader's two events: the whole badge in one text-input
+      // event — its `CR LF` terminator included — then `Enter` as a hardware
+      // key. The employee number field is where the reader's burst lands once
+      // the operator is in it, and `Enter` is the code's terminator rather
+      // than the form's submit (a bare `TextField` has no `AppScanField.Focus`
+      // ancestor to claim it, so there the `Enter` submits the form).
+      await tester.enterText(find.byKey(FloorSafetyIncidentDialog.employeeNoKey), 'E-0042\r\n');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      // The scan is a code, not the terminator it arrived with.
+      expect(
+        tester
+            .widget<TextField>(find.byKey(FloorSafetyIncidentDialog.employeeNoKey))
+            .controller!
+            .text,
+        'E-0042',
+      );
+
+      // Badge then PIN: the reader's next burst lands in the PIN with no tap,
+      // because the badge field advanced focus on the scan.
+      expect(
+        _focusedFieldController(),
+        same(tester.widget<TextField>(find.byKey(FloorSafetyIncidentDialog.pinKey)).controller),
+      );
+
+      // Typed at the field focus already sits in.
+      await tester.enterText(find.byKey(FloorSafetyIncidentDialog.pinKey), '4321');
+      await tester.pumpAndSettle();
+      await tapIn(tester, find.byKey(FloorSafetyIncidentDialog.submitKey));
+
+      // The posted identification carries the scanned code itself — cleaned,
+      // not `E-0042\r\n` — and the PIN typed after the advance.
+      expect(wire.floorIdentifications, hasLength(1));
+      expect(wire.floorIdentifications.single['employeeNo'], 'E-0042');
+      expect(wire.floorIdentifications.single['pin'], '4321');
+
+      // And the report is written through the device's door with that
+      // identification, so the number the reader read is the one on record.
+      expect(wire.floorSafetyIncidentPosts, hasLength(1));
+      final post = wire.floorSafetyIncidentPosts.single;
+      expect(post['device'], 'device-credential');
+      expect(post['identification'], 'identification-1');
+      final body = post['body'] as Map<String, dynamic>;
+      expect(body['incidentType'], 'near_miss');
+      expect(find.textContaining('SI-HCM-2026-'), findsOneWidget);
+    },
+  );
 }
