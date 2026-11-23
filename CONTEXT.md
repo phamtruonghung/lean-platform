@@ -303,8 +303,8 @@ _Avoid_: review (the KPI Review owns it), verification, grading, scoring, sign-o
 
 **Marker**:
 The person who marks an Attempt — a Team Leader or above holding the marking
-permission at the process. Their Account is on the Attempt, which is what answers
-"who reviewed it".
+permission at the process. Their Account is recorded on the Attempt, so who
+marked it is a stored fact, not a memory.
 _Avoid_: reviewer, assessor, examiner, judge
 
 ### The work
