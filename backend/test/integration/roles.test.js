@@ -465,3 +465,48 @@ test('a role that does not exist is a 404 on both role paths', async () => {
   const missingAccount = await call(ADMIN, '/accounts/99999999/roles');
   assert.strictEqual(missingAccount.status, 404);
 });
+
+test('a roleIds element that is not a positive integer is a 400, not a database error', async () => {
+  const { rows: [operator] } = await pool.query(
+    'SELECT id FROM app_users WHERE external_subject = $1',
+    [OPERATOR]
+  );
+  const { rows: [{ count: before }] } = await pool.query(
+    'SELECT count(*)::int AS count FROM app_user_roles WHERE app_user_id = $1',
+    [operator.id]
+  );
+
+  // The measured defect: an element reached `$1::bigint[]` unchecked, so
+  // Postgres' own 22P02 cast failure — not a domain error — answered 500.
+  // Each of these is an id the rest of this Module would refuse at parseId.
+  for (const malformed of [['abc'], [''], ['  '], [0], [-1], [1.5], [null], [true], [{}], ['1x'], ['1.0']]) {
+    const refused = await call(ADMIN, `/accounts/${operator.id}/roles`, {
+      method: 'PUT',
+      body: { roleIds: malformed }
+    });
+    assert.strictEqual(refused.status, 400, `roleIds ${JSON.stringify(malformed)} is a 400`);
+    assert.strictEqual(refused.body.message, 'roleIds must be an array of role ids');
+  }
+
+  // One bad element refuses the whole set, rather than writing the good ones.
+  const partly = await call(ADMIN, `/accounts/${operator.id}/roles`, {
+    method: 'PUT',
+    body: { roleIds: ['1', 'abc'] }
+  });
+  assert.strictEqual(partly.status, 400);
+
+  // A well-formed id that names no role keeps its existing 404.
+  const missing = await call(ADMIN, `/accounts/${operator.id}/roles`, {
+    method: 'PUT',
+    body: { roleIds: ['99999999'] }
+  });
+  assert.strictEqual(missing.status, 404);
+  assert.match(missing.body.message, /Role not found/);
+
+  // A refused Assign writes nothing.
+  const { rows: [{ count: after }] } = await pool.query(
+    'SELECT count(*)::int AS count FROM app_user_roles WHERE app_user_id = $1',
+    [operator.id]
+  );
+  assert.strictEqual(after, before);
+});
