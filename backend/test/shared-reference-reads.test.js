@@ -16,7 +16,8 @@
  * — rather than grepping the source. A route registered through any spelling
  * (`router.get`, `router.route(...).get`) is a layer, so nothing can be added in
  * a shape this file cannot see, and a middleware counts as a gate exactly when
- * it is `requirePermission`'s own returned function or a `may…` alias of it.
+ * it is `requirePermission`'s own returned function. A middleware that merely
+ * has a suggestive name is not one — see `hasPermissionCode` below.
  *
  * Why it is here and not under test/integration. It touches no database and no
  * HTTP surface, and `npm test` is the gate every change runs; the integration
@@ -112,15 +113,19 @@ function joinPath(prefix, path) {
   return joined.length > 1 ? joined.replace(/\/+$/, '') : joined;
 }
 
-// A route's middleware is a gate when it is `requirePermission`'s own function
-// (Express keeps the function's name) or a `may…` alias wrapping it. Everything
-// else — authenticate, requireActive, requireAdmin, requireFloorDevice,
+// A route's middleware is a gate only when it is `requirePermission`'s own
+// returned function — Express keeps that function's name, and it is the one
+// place a permission code is asked. A name is not evidence: the hand-written
+// `mayChangeWorkOrdersOnTheAccountDoor` in work-order-routes.js starts `may`
+// and asks no code on the device path, so matching `may…` here would count an
+// ungated GET as gated and hide it from the census. Everything else —
+// authenticate, requireActive, requireAdmin, requireFloorDevice,
 // requireKnownSite and the per-route visibility checks — answers a different
-// question and is not a permission code.
+// question and is not a permission code either.
 function hasPermissionCode(layers) {
   return layers.some((layer) => {
     const name = (layer.handle && layer.handle.name) || '';
-    return name === 'requirePermissionMiddleware' || /^may[A-Z]/.test(name);
+    return name === 'requirePermissionMiddleware';
   });
 }
 
@@ -179,4 +184,19 @@ test('a GET added with no code joins the census, so it cannot pass unrecorded', 
   assert.deepStrictEqual(before, ['GET /api/fake/open']);
   assert.deepStrictEqual(after, ['GET /api/fake/added-later', 'GET /api/fake/open']);
   assert.notDeepStrictEqual(after, UNCODED_GETS.filter((route) => route.startsWith('GET /api/fake')));
+});
+
+test('a hand-written `may…` middleware is not a permission gate, so its GET is reported', () => {
+  // `mayChangeWorkOrdersOnTheAccountDoor` in work-order-routes.js is a floor-door
+  // split, not a `requirePermission` alias: the name starts `may` and asks no
+  // code on the device path. A GET behind such a hand-written middleware is
+  // ungated, so it must join the census rather than be counted as given a code.
+  function mayRead(_req, _res, next) {
+    return next();
+  }
+
+  const fake = express.Router();
+  fake.get('/floor-read', people.authenticate, mayRead, (_req, res) => res.end());
+
+  assert.deepStrictEqual(censusGets(fake, '/api/fake'), ['GET /api/fake/floor-read']);
 });
