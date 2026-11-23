@@ -140,18 +140,20 @@ function displayNameFor({ name, email, subject }) {
   return subject;
 }
 
-// Creates the Account for a subject seen for the first time. Runs with no
-// acting Account (withActor(null, ...)) — per db.js's own comment, the
+// Creates an Account for a subject `app_users` does not carry yet. Runs with
+// no acting Account (withActor(null, ...)) — per db.js's own comment, the
 // request that creates its own Account has no one else to record as its
 // author.
 //
-// The very first Account created on an empty database is the one exception
-// to "starts inactive": it is activated immediately, as an administrator,
-// and granted every Site that exists at that moment — see the file header
-// on app_user_org_units in the baseline for why granting a Site's root Org
-// Unit(s) covers everything beneath it. This is what breaks Approval's own
-// circle: an administrator has to already exist to approve the first person,
-// so the first person is exempted from needing one.
+// With `app_users` empty, the row it creates is activated immediately as an
+// administrator and granted every Site that exists at that moment, instead of
+// starting inactive — see the file header on app_user_org_units in the
+// baseline for why granting a Site's root Org Unit(s) covers everything
+// beneath it. That bootstrap exists for the case where no administrator is yet
+// there to approve anyone. Since #480 no HTTP path reaches it: sign-in creates
+// nothing, and the middleware resolves only a subject an existing row's
+// `external_subject` already names — so today its caller is the integration
+// suite's fixture creator.
 async function createAccountForSubject({ subject, email, name }) {
   if (!email) {
     const error = new Error('token carries no email; cannot create an Account without one');
@@ -213,11 +215,13 @@ async function createAccountForSubject({ subject, email, name }) {
   });
 }
 
-// The one place "is this subject's Account there yet, and if not, create it"
-// happens — called from the authenticate middleware on every request, which
-// is what makes first sign-in the moment an Account is created rather than a
-// separate sign-up endpoint (the API mints no session on that path; the login
-// request already issued one).
+// Resolves a presented session's subject to the Account it names. It creates
+// only for a subject no row carries, and no HTTP path produces one: sign-in
+// (sign-in.js) finds the `app_users` row by email and stamps
+// `external_subject` on it, so every session it mints names an Account that
+// already exists. The create branch survives for its one remaining caller —
+// the integration suite's fixture creator (accounts.test.js) — not for a
+// first sign-in.
 async function resolveAccountForIdentity({ subject, email, name }) {
   const existing = await findAccountBySubject(subject);
   if (existing) return existing;

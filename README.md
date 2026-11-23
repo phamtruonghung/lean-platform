@@ -366,16 +366,21 @@ between doors — issue #480 deleted that branch, so production
 runs the same one everywhere.
 
 `backend/src/modules/people/middleware.js` resolves the token to an Account
-(`app_users.external_subject`), creating one, inactive, on a first sign-in.
+(`app_users.external_subject`). The Account always already exists: `POST
+/api/auth/login` looks the email up in `app_users` and needs a row that holds a
+credential, and answers `401` with `Email or password is not recognised.` for
+anything else, inserting nothing — there is no sign-up route and no first
+sign-in is exempted (issue #480). An Account must exist, with a password,
+before anyone can sign in to it; the deployment's first administrator is an
+`app_users` row a person inserts and then sets a password on by hand, exactly
+as **The first administrator's password** above describes.
 Every endpoint except an
 Account's own status (`GET /api/people/me`) refuses an inactive Account with a
 403 and a `status` the Flutter app can distinguish from a real failure —
 `"pending_approval"` for an Account nobody has decided about yet,
 `"rejected"` for one an administrator turned away, and `"deactivated"` for one
 that was approved and later deactivated (`backend/src/modules/people/
-middleware.js`'s `statusFor`). The very first Account created on an empty
-database is the one exception: it is activated immediately, as an
-administrator, granted every Site that exists at that moment. Approval itself
+middleware.js`'s `statusFor`). Approval itself
 — an administrator admitting an Account, setting its role and granting its
 Org Units, or rejecting or deactivating one — and role/Org Unit scope
 enforcement on every other route are issue #8. See issues #6 and #8 and
