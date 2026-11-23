@@ -14,6 +14,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/app_scan_field.dart';
 import 'directory_bloc.dart';
 import 'employment_type.dart';
 import '../l10n/vocabulary.dart';
@@ -139,13 +140,13 @@ class _EmployeeFormDialogState extends State<EmployeeFormDialog> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                AppScanField(
                   key: EmployeeFormDialog.employeeNoKey,
                   controller: _employeeNo,
+                  label: l10n.commonEmployeeNumber,
                   enabled: !_awaiting,
+                  autofocus: true,
                   onChanged: (_) => setState(() {}),
-                  decoration:
-                      InputDecoration(labelText: l10n.commonEmployeeNumber, border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: Spacing.md),
                 Row(

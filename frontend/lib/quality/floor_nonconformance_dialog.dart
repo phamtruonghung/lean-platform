@@ -423,15 +423,14 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
           style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
         ),
         const SizedBox(height: Spacing.md),
-        TextField(
+        AppScanField(
           key: FloorNonconformanceDialog.employeeNoKey,
           controller: _employeeNo,
+          label: l10n.nonconformanceFloorEmployeeNumber,
+          helperText: l10n.floorTrainingScanTheBadgeOrTypeTheNumber,
           enabled: !busy,
+          advanceFocusOnScan: true,
           onChanged: (_) => setState(() {}),
-          decoration: InputDecoration(
-            labelText: l10n.nonconformanceFloorEmployeeNumber,
-            border: const OutlineInputBorder(),
-          ),
         ),
         const SizedBox(height: Spacing.md),
         TextField(
