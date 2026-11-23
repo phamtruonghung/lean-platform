@@ -250,12 +250,14 @@ class _Loaded extends StatelessWidget {
               ),
             if (orgUnit != null) ...[
               const SizedBox(height: Spacing.sm),
-              Text(
-                l10n.assessmentProcessActiveCount(state.activeCount),
-                key: AssessmentQuestionsScreen.activeCountKey,
-                style: theme.textTheme.labelLarge?.copyWith(color: palette.textMuted),
-              ),
-              const SizedBox(height: Spacing.md),
+              if (state.activeCount != null) ...[
+                Text(
+                  l10n.assessmentProcessActiveCount(state.activeCount!),
+                  key: AssessmentQuestionsScreen.activeCountKey,
+                  style: theme.textTheme.labelLarge?.copyWith(color: palette.textMuted),
+                ),
+                const SizedBox(height: Spacing.md),
+              ],
               AppFilterField(
                 name: AssessmentQuestionsScreen._filterFieldName,
                 label: l10n.assessmentSearchQuestions,

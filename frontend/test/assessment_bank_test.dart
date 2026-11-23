@@ -13,6 +13,7 @@ import 'dart:ui' show Size;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/people/assessment_bank_paste_dialog.dart';
+import 'package:lean_platform/people/assessment_paste.dart';
 import 'package:lean_platform/people/assessment_question_form_dialog.dart';
 import 'package:lean_platform/people/assessment_questions_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
@@ -294,6 +295,48 @@ void main() {
     // Re-read: the retired Question is out of the default list.
     expect(find.byKey(AssessmentQuestionsScreen.rowKey(2)), findsNothing);
     expect(find.text('Active Questions: 1'), findsOneWidget);
+  });
+
+  testWidgets('a page emptied by a retire falls back to the last page that has rows, pager intact',
+      (tester) async {
+    final wire = _wire(questions: [
+      for (var i = 1; i <= 51; i++) assessmentQuestionJson(i, _braiding, 'Câu hỏi số $i về an toàn?'),
+    ]);
+    await _open(tester, wire);
+    await _chooseBraiding(tester);
+    await tapIn(tester, find.byKey(AssessmentQuestionsScreen.nextKey));
+    expect(find.text('51–51 of 51'), findsOneWidget);
+
+    await tapIn(tester, find.byKey(AssessmentQuestionsScreen.retireKey(51)));
+    await tapIn(tester, find.byKey(AppConfirmDialog.confirmKey));
+
+    expect(find.byKey(AssessmentQuestionsScreen.emptyKey), findsNothing);
+    expect(find.byKey(AssessmentQuestionsScreen.rowKey(50)), findsOneWidget);
+    expect(find.text('1–50 of 50'), findsOneWidget);
+    expect(find.byKey(AssessmentQuestionsScreen.previousKey), findsOneWidget);
+    expect(find.byKey(AssessmentQuestionsScreen.nextKey), findsOneWidget);
+  });
+
+  testWidgets('a process whose first read fails shows no active count', (tester) async {
+    final wire = _wire();
+    wire.assessmentQuestionsStatus = 500;
+    await _open(tester, wire);
+    await _chooseBraiding(tester);
+
+    expect(find.byKey(AssessmentQuestionsScreen.pageFailureKey), findsOneWidget);
+    expect(find.byKey(AssessmentQuestionsScreen.activeCountKey), findsNothing);
+    expect(find.textContaining('Active Questions'), findsNothing);
+  });
+
+  test('the paste Preview accepts a decomposed stem label', () {
+    // A macOS document decomposes Vietnamese; the server normalises to NFC first.
+    final result = parseAssessmentPaste(
+      'Ca\u0302u ho\u0309i: Khi máy dừng thì làm gì?\nA. Một\nB. Hai\n*C. Ba',
+    );
+
+    expect(result.issue, isNull);
+    expect(result.blocks, hasLength(1));
+    expect(result.blocks.single.key, 'C');
   });
 
   testWidgets('Preview reports how many Questions a paste holds and each key', (tester) async {

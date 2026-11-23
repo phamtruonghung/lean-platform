@@ -68,8 +68,13 @@ class AssessmentPasteResult {
 final RegExp _label = RegExp(r'^\s*([^:]{1,40}?)\s*:\s*(.*)$');
 final RegExp _option = RegExp(r'^\s*(\*)?\s*([A-Za-z])\s*\.\s*(.*)$');
 
-const List<String> _stemLabels = ['câu hỏi', 'question'];
-const List<String> _explanationLabels = ['giải thích', 'explanation'];
+// The server compares labels after NFC normalisation (assessment-questions.js's
+// `matchLabel`), but macOS documents decompose Vietnamese (base letter plus
+// combining marks), so a label copied from one arrives as NFD. The second entry
+// of each Vietnamese pair is that decomposed spelling, so Preview agrees with
+// the server instead of refusing a paste the server would file.
+const List<String> _stemLabels = ['câu hỏi', 'ca\u0302u ho\u0309i', 'question'];
+const List<String> _explanationLabels = ['giải thích', 'gia\u0309i thi\u0301ch', 'explanation'];
 
 String? _labelled(String line, List<String> labels) {
   final match = _label.firstMatch(line);

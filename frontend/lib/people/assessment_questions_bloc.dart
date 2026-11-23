@@ -137,6 +137,10 @@ class AssessmentQuestionsUnavailable extends AssessmentQuestionsState {
   final String message;
 }
 
+/// [AssessmentQuestionsLoaded.copyWith]'s "keep the current value" marker, so
+/// null can be passed to mean "not read yet".
+const Object _unchanged = Object();
+
 class AssessmentQuestionsLoaded extends AssessmentQuestionsState {
   const AssessmentQuestionsLoaded({
     required this.mayChange,
@@ -145,7 +149,7 @@ class AssessmentQuestionsLoaded extends AssessmentQuestionsState {
     this.orgUnit,
     this.questions = const [],
     this.total = 0,
-    this.activeCount = 0,
+    this.activeCount,
     this.offset = 0,
     this.limit = AssessmentQuestionsBloc.pageSize,
     this.q = '',
@@ -168,8 +172,10 @@ class AssessmentQuestionsLoaded extends AssessmentQuestionsState {
   /// Rows the filter matches — what paging walks.
   final int total;
 
-  /// Active Questions in the process, whatever the filter.
-  final int activeCount;
+  /// Active Questions in the process, whatever the filter; null until the first
+  /// read of the process lands, so a failed first read shows no count at all
+  /// rather than a false 0.
+  final int? activeCount;
   final int offset;
   final int limit;
   final String q;
@@ -198,7 +204,7 @@ class AssessmentQuestionsLoaded extends AssessmentQuestionsState {
     bool clearOrgUnit = false,
     List<AssessmentQuestion>? questions,
     int? total,
-    int? activeCount,
+    Object? activeCount = _unchanged,
     int? offset,
     String? q,
     bool? includeInactive,
@@ -215,7 +221,7 @@ class AssessmentQuestionsLoaded extends AssessmentQuestionsState {
         orgUnit: clearOrgUnit ? null : (orgUnit ?? this.orgUnit),
         questions: questions ?? this.questions,
         total: total ?? this.total,
-        activeCount: activeCount ?? this.activeCount,
+        activeCount: identical(activeCount, _unchanged) ? this.activeCount : activeCount as int?,
         offset: offset ?? this.offset,
         limit: limit,
         q: q ?? this.q,
@@ -385,10 +391,29 @@ class AssessmentQuestionsBloc extends Bloc<AssessmentQuestionsEvent, AssessmentQ
         offset: wanted.offset,
       );
       if (generation != _generation) return;
+      var shown = page;
+      var shownOffset = wanted.offset;
+      if (page.questions.isEmpty && wanted.offset > 0 && page.total > 0) {
+        // The page asked for ran off the end (its last row was just retired):
+        // read once more at the last page that still has rows, so the pager
+        // stays reachable rather than stranding on an empty page.
+        final lastOffset = ((page.total - 1) ~/ wanted.limit) * wanted.limit;
+        shown = await _api.fetchAssessmentQuestions(
+          token,
+          orgUnitId: orgUnit.id,
+          q: wanted.q,
+          includeInactive: wanted.includeInactive,
+          limit: wanted.limit,
+          offset: lastOffset,
+        );
+        if (generation != _generation) return;
+        shownOffset = lastOffset;
+      }
       emit(wanted.copyWith(
-        questions: page.questions,
-        total: page.total,
-        activeCount: page.activeCount,
+        questions: shown.questions,
+        total: shown.total,
+        activeCount: shown.activeCount,
+        offset: shownOffset,
         isLoadingPage: false,
         saving: false,
       ));
