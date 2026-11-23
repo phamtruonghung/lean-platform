@@ -255,6 +255,58 @@ their line is theirs alone — the one they keep, or one drawn as they answer.
 _Avoid_: Attendee, participant, student, learner (what the record states is
 that they were trained, not that they learned anything)
 
+### Assessment
+
+**Assessment**:
+One occasion of checking whether an Employee knows a process — a paper of 10 or
+15 Questions drawn at random from that process's Question bank, assigned to a
+group of Employees, sat under a time limit, submitted and marked. It keeps the
+score, who sat it and who marked it; nothing about it is taught.
+_Avoid_: check (the Action log's PDCA phase), quiz, exam, test, evaluation,
+verification, certification, training
+
+**Question**:
+One item in a process's Question bank — one sentence about how the work is done,
+three Options, exactly one correct, and an optional explanation shown after
+marking. It belongs to one Org Unit: any Assessment of that process may draw it.
+_Avoid_: item, MCQ, card, prompt
+
+**Option**:
+One of the three answers a Question offers, lettered A, B, C, and frozen onto the
+paper it is drawn onto. There are always three.
+_Avoid_: answer (what a candidate records), choice, distractor
+
+**Other answer**:
+What a candidate writes when none of the three Options fits ("Khác: ghi câu trả
+lời của bạn"). It is not a fourth Option but a typed sentence, never
+auto-scored, read by a Marker, and kept even when no point is awarded, because
+"no answer fitted" is the point of it.
+_Avoid_: free text, comment, note, essay, override
+
+**Attempt**:
+One Employee's sitting of one Assessment — the paper drawn for them, when it
+started, the deadline the server set, every Answer and the score. An Assessment
+allows one Attempt per Employee by default and at most three; each is numbered,
+and the latest marked one counts.
+_Avoid_: try, run, session, submission, sitting (what happens during an Attempt)
+
+**Answer**:
+One line of an Attempt — the Option chosen, the Other answer typed, or nothing if
+left blank. Saved as given, so a lost connection costs nothing.
+_Avoid_: response, reply, entry
+
+**Marking**:
+The Marker's pass over a submitted Attempt — confirming the machine's score,
+awarding or refusing the point on each Other answer, recording a note. It makes a
+score final and visible, and is the only place a human decides a number.
+_Avoid_: review (the KPI Review owns it), verification, grading, scoring, sign-off
+
+**Marker**:
+The person who marks an Attempt — a Team Leader or above holding the marking
+permission at the process. Their Account is recorded on the Attempt, so who
+marked it is a stored fact, not a memory.
+_Avoid_: reviewer, assessor, examiner, judge
+
 ### The work
 
 **Asset**:
@@ -624,8 +676,9 @@ _Avoid_: scorecard, goal, quota, threshold, budget
 The daily human judgement of one KPI of the MTU catalogue: met, missed or not
 measured, with the number the reviewer read off the chart and a note, which is
 required when it was missed. Append-only, so a correction is a second Review for
-the same day and the latest decides.
-_Avoid_: check-in, hit/miss, score, rating, assessment
+the same day and the latest decides. It judges a number, not a person: what
+checks whether an Employee knows a process is an Assessment.
+_Avoid_: check-in, hit/miss, score, rating
 
 ### The interface
 
