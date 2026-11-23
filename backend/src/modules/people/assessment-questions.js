@@ -42,7 +42,7 @@ const MAX_LIMIT = 200;
 const FINGERPRINT_KEY = 'assessment_questions_org_unit_fingerprint_key';
 
 // The same expression the column is generated from (migration
-// 1804500000000), applied to a bind parameter.
+// 1804600000000), applied to a bind parameter.
 const FINGERPRINT_SQL = (param) => `md5(lower(regexp_replace(btrim(${param}), '\\s+', ' ', 'g')))`;
 
 const QUESTION_COLUMNS = `id, org_unit_id, question_text, option_a, option_b, option_c,
