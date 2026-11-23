@@ -39,7 +39,7 @@
  */
 
 const { getPool, withActor } = require('../../platform/db');
-const { httpError, notFound } = require('./errors');
+const { httpError, notFound, parseId } = require('./errors');
 const { knownPermissionCodes } = require('./permissions');
 
 function requireNonEmptyString(field, value) {
@@ -315,7 +315,18 @@ async function assignAccountRoles(accountId, roleIds, actorId) {
     throw httpError(400, 'roleIds must be an array of role ids');
   }
 
-  const wanted = [...new Set(roleIds.map((id) => String(id)))];
+  // Every element is an id, so it goes through the Module's own `parseId`
+  // rule (a positive integer, kept as a string because the column is BIGINT)
+  // exactly like a path param does. Without this the submitted strings go
+  // straight into `$1::bigint[]`, and Postgres' own 22P02 cast failure — not
+  // a domain error — answers 500 to what is a malformed request.
+  const wanted = [...new Set(roleIds.map((id) => {
+    const parsed = parseId(id);
+    if (parsed === null) {
+      throw httpError(400, 'roleIds must be an array of role ids');
+    }
+    return parsed;
+  }))];
 
   if (wanted.length > 0) {
     const { rows: found } = await getPool().query(
