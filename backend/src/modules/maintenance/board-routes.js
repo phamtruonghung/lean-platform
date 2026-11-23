@@ -35,15 +35,27 @@
  *
  * **The ADR-0061 retrofit (issue #513).** The read now asks
  * `INS_TIER_BOARD_DISPLAY`, the code `destinations.dart` names the tier board
- * Destination with. That code is in the default group — `ROLE_STANDARD`, which
- * every Account holds (roles.js's effectivePermissions unions `is_default` with
- * the Account's legacy role and whatever an administrator assigned) — so no
- * Account is refused by it today; and the Destination beside it carries no
- * `roles` set either, so the sidebar and the route finally name the same door.
- * What the code buys is that the door is now revocable: an administrator who
- * takes it out of the default group closes the board for everybody without a
- * release. The Grant question is unchanged — this route asks none, on purpose,
- * which is why `?orgUnitId=` narrows the rollup rather than filtering it.
+ * Destination with. That code is seeded on every role — `ROLE_STANDARD` and the
+ * five legacy roles `ROLE_OPERATOR`, `ROLE_SUPERVISOR`, `ROLE_ENGINEER`,
+ * `ROLE_MANAGER` and `ROLE_ADMIN` alike (migration
+ * 1803400000000_permissions-and-roles.js) — and roles.js's
+ * effectivePermissions unions the `is_default` group with the Account's own
+ * legacy role, so no Account is refused by it today however it reached the
+ * Platform; and the Destination beside it carries no `roles` set either, so the
+ * sidebar and the route finally name the same door.
+ *
+ * What the code buys is revocation **per role**, not one door shut for
+ * everybody. Taking it off the default group (`ROLE_STANDARD`) alone changes
+ * nothing for any Account, because each also carries the code through its own
+ * legacy role; an administrator closes the board for a class of Account by
+ * taking the code off every role that class holds — the Roles Screen's
+ * per-role permission set — and the read starts answering `PERMISSION_REQUIRED`
+ * once the last of them is gone. An administrator is never among them:
+ * effectivePermissions hands an administrator the whole catalogue before it
+ * reads a single role, so no role edit can close this door on an
+ * administrator. The Grant question is unchanged — this route asks none, on
+ * purpose, which is why `?orgUnitId=` narrows the rollup rather than filtering
+ * it.
  */
 
 const express = require('express');
