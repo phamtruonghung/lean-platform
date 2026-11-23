@@ -161,6 +161,35 @@ test('the seeded catalogue is exactly permissions.js, in its order', async () =>
   );
 });
 
+// Slice 1 of issue #588, migration 1804400000000: everybody may read and sit an
+// Assessment; only Team Leader and above (supervisor and up) maintain or mark.
+test('the Assessment codes are held by exactly the roles the seed names', async () => {
+  const { status, body } = await call(ADMIN, '/roles');
+  assert.strictEqual(status, 200);
+  const byCode = new Map(body.roles.map((role) => [role.code, role]));
+
+  const everyone = ['ROLE_STANDARD', 'ROLE_OPERATOR', 'ROLE_SUPERVISOR', 'ROLE_ENGINEER', 'ROLE_MANAGER', 'ROLE_ADMIN'];
+  const teamLeaderAndAbove = ['ROLE_SUPERVISOR', 'ROLE_ENGINEER', 'ROLE_MANAGER', 'ROLE_ADMIN'];
+  const expected = {
+    PPL_ASSESSMENT_DISPLAY: everyone,
+    PPL_ASSESSMENT_SIT: everyone,
+    PPL_ASSESSMENT_CHANGE: teamLeaderAndAbove,
+    PPL_ASSESSMENT_MARK: teamLeaderAndAbove
+  };
+
+  for (const roleCode of everyone) {
+    const role = byCode.get(roleCode);
+    assert.ok(role, `${roleCode} must be listed`);
+    for (const [code, holders] of Object.entries(expected)) {
+      assert.strictEqual(
+        role.permissionCodes.includes(code),
+        holders.includes(roleCode),
+        `${roleCode} ${holders.includes(roleCode) ? 'should hold' : 'must not hold'} ${code}`
+      );
+    }
+  }
+});
+
 test('there is exactly one default role, and it is not assignable', async () => {
   const { rows } = await pool.query('SELECT code FROM app_roles WHERE is_default');
   assert.strictEqual(rows.length, 1);

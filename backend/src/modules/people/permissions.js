@@ -176,6 +176,10 @@ const LATE_ADDITIONS = [
   ['PPL_TRAINING_ANSWER_OWN', 'People', 'Answer my Training', 'Answer the caller\'s own training question as its Trainee.'],
   ['PPL_LEAVE_REQUESTS_RAISE', 'People', 'Raise my Leave', 'Raise the caller\'s own leave request, and cancel it before a decision.'],
   ['ACT_CHANGE', 'Actions', 'Change an Action', 'Link or unlink a Non-conformance, hand an Action up, or call one off.'],
+  ['PPL_ASSESSMENT_DISPLAY', 'People', 'Assessments', 'Read an Assessment, its Attempts, and the Question bank behind it.'],
+  ['PPL_ASSESSMENT_CHANGE', 'People', 'Maintain Assessments', 'Correct a Question bank, create an Assessment, assign it, allow a retake, or close one.'],
+  ['PPL_ASSESSMENT_SIT', 'People', 'Sit my Assessment', "Start, answer and submit the caller's own Attempt."],
+  ['PPL_ASSESSMENT_MARK', 'People', 'Mark an Assessment', 'Mark a submitted Attempt: award or refuse a point, fix the final score, write the note.'],
 ];
 
 // Flattened, with the position an administrator sees. Frozen by the migrations
