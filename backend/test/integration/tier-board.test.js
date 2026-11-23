@@ -462,10 +462,14 @@ test('the board is readable by an approved Account holding no Grant anywhere', a
 });
 
 // ADR-0061 (issue #513): the read now asks `INS_TIER_BOARD_DISPLAY` too, and
-// that code sits in the default group every Account holds — so an
-// operator-role Account reads the board exactly as before. What the gate buys
-// is a door an administrator can close by editing the default group; it is not
-// a narrowing, and this assertion is the measurement of that claim.
+// that code is carried by every seeded role — the default group `ROLE_STANDARD`
+// and `ROLE_OPERATOR`, which an operator-role Account holds through both — so
+// an operator-role Account reads the board exactly as before. What the gate
+// buys is revocation per role, not a narrowing: an administrator closes the
+// board for operators by taking the code off both roles (removing it from the
+// default group alone closes nothing), and an administrator Account still reads
+// it, because effectivePermissions answers an administrator with the whole
+// catalogue before any role is read.
 test('an operator-role Account reads the board: the default group carries the code', async () => {
   const site = await insertSite();
   await insertOrgUnit(site.id, { name: 'Operator Area' });
