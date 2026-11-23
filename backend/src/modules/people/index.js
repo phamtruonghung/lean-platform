@@ -16,8 +16,9 @@
  * time off and a supervisor's decision on it, issue #265), training-routes.js
  * (the Training record — raised as a draft, corrected while a draft, and read as
  * a register, issue #287), signature-routes.js (an Employee's own Signature,
- * issue #317), and — issue #252 — cost-rate-routes.js and
- * product-cost-routes.js, the two catalogues that maintain the prices the
+ * issue #317), assessment-question-routes.js (the assessment Question bank,
+ * issue #588 - five routes, the paste all-or-nothing), and — issue #252 —
+ * cost-rate-routes.js and product-cost-routes.js, the two catalogues that maintain the prices the
  * baseline's cost views already resolve through `resolve_cost_rate` and
  * `product_standard_cost`. Those two live in this Module rather than one of
  * their own because People already owns the Org Unit and cost-centre
@@ -251,6 +252,7 @@ const skillRoutes = require('./skill-routes');
 const attendanceRoutes = require('./attendance-routes');
 const trainingRoutes = require('./training-routes');
 const signatureRoutes = require('./signature-routes');
+const assessmentQuestionRoutes = require('./assessment-question-routes');
 const leaveRequestRoutes = require('./leave-requests-routes');
 const costRateRoutes = require('./cost-rate-routes');
 const productCostRoutes = require('./product-cost-routes');
@@ -285,6 +287,7 @@ router.use(jobRoleRoutes);
 router.use(skillRoutes);
 router.use(attendanceRoutes);
 router.use(trainingRoutes);
+router.use(assessmentQuestionRoutes);
 router.use(signatureRoutes);
 router.use(leaveRequestRoutes);
 router.use(costRateRoutes);

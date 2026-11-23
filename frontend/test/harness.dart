@@ -2151,6 +2151,33 @@ Map<String, dynamic> siteJson(
       'countryCode': countryCode,
     };
 
+/// One row of `GET /api/people/assessment-questions` (issue #588) exactly as
+/// `toQuestion` (assessment-questions.js) sends it. [correctOption] and
+/// [explanation] are nullable on purpose: null is how the server says "not
+/// yours to read".
+Map<String, dynamic> assessmentQuestionJson(
+  int id,
+  String orgUnitId,
+  String questionText, {
+  String optionA = 'Mở cửa bảo vệ',
+  String optionB = 'Gọi Team Leader',
+  String optionC = 'Nhấn nút dừng khẩn cấp',
+  String? correctOption = 'C',
+  String? explanation = 'Dừng khẩn cấp trước.',
+  bool isActive = true,
+}) =>
+    {
+      'id': '$id',
+      'orgUnitId': orgUnitId,
+      'questionText': questionText,
+      'optionA': optionA,
+      'optionB': optionB,
+      'optionC': optionC,
+      'correctOption': correctOption,
+      'explanation': explanation,
+      'isActive': isActive,
+    };
+
 /// An Org Unit row exactly as `plant.js` sends one — `parentId` included,
 /// because a root-level response can legitimately carry a non-null one.
 Map<String, dynamic> orgUnitJson(
@@ -2282,6 +2309,15 @@ Map<String, dynamic> boardPillarJson(
       'hasData': hasData ?? kpis.any((kpi) => kpi['value'] != null),
       'kpis': kpis,
     };
+
+/// A JSON answer declared UTF-8. `http.Response` decodes a bare string body as
+/// Latin-1, which cannot hold the Vietnamese a Question is written in, so the
+/// bank's routes answer through this.
+http.Response _utf8Json(Object body, int status) => http.Response(
+      jsonEncode(body),
+      status,
+      headers: const {'content-type': 'application/json; charset=utf-8'},
+    );
 
 /// The wire, faked: `/me` answers the role under test, and the queue endpoints
 /// answer whatever the test scripted. Every request is recorded so a test can
@@ -2423,6 +2459,17 @@ class FakeWire {
     this.employeeDetailMessage = 'That Employee record could not be read.',
     List<Map<String, dynamic>>? jobRoles,
     this.jobRolesStatus = 200,
+    // The assessment Question bank (issue #588).
+    List<Map<String, dynamic>>? assessmentQuestions,
+    this.assessmentQuestionsStatus = 200,
+    this.assessmentRevealKey = true,
+    this.createAssessmentQuestionStatus = 201,
+    this.createAssessmentQuestionMessage = 'That Question could not be added.',
+    this.correctAssessmentQuestionStatus = 200,
+    this.correctAssessmentQuestionMessage = 'That Question could not be corrected.',
+    this.assessmentBulkStatus = 201,
+    this.assessmentBulkMessage = 'That paste could not be filed.',
+    this.assessmentBulkLine,
     // The two cost catalogues (issue #252).
     List<Map<String, dynamic>>? costRates,
     this.costRatesStatus = 200,
@@ -2738,6 +2785,7 @@ class FakeWire {
         roles = roles ?? [],
         permissions = permissions ?? [],
         accountRoles = accountRoles ?? {},
+        assessmentQuestions = assessmentQuestions ?? [],
         costRates = costRates ?? [],
         costRateScopes = costRateScopes ?? [],
         productCosts = productCosts ?? [],
@@ -4517,6 +4565,44 @@ class FakeWire {
 
   /// Every assignment that reached the wire, as `(accountId, roleIds)`.
   final List<(String, List<String>)> accountRolePuts = [];
+
+  // ---------------------------------------------------------------------
+  // The assessment Question bank (issue #588). One flat list of Questions, each
+  // carrying its own `orgUnitId`; the list route filters by the `orgUnitId`,
+  // `q`, `includeInactive`, `limit` and `offset` it was asked for, as the
+  // server does, and withholds `correctOption` and `explanation` (null, never
+  // absent) when [assessmentRevealKey] is false.
+  // ---------------------------------------------------------------------
+
+  /// `GET /api/people/assessment-questions`.
+  List<Map<String, dynamic>> assessmentQuestions;
+  int assessmentQuestionsStatus;
+  bool assessmentRevealKey;
+
+  /// Every list read that reached the wire, as the request's path and query
+  /// string, so a test can assert what was asked.
+  final List<String> assessmentQuestionReads = [];
+
+  /// `POST /api/people/assessment-questions`.
+  int createAssessmentQuestionStatus;
+  String createAssessmentQuestionMessage;
+  final List<Map<String, dynamic>> assessmentQuestionPosts = [];
+
+  /// `PATCH /api/people/assessment-questions/:id`, as `(id, body)`.
+  int correctAssessmentQuestionStatus;
+  String correctAssessmentQuestionMessage;
+  final List<(String, Map<String, dynamic>)> assessmentQuestionPatches = [];
+
+  /// `DELETE /api/people/assessment-questions/:id`, the ids retired.
+  final List<String> assessmentQuestionRetires = [];
+
+  /// `POST /api/people/assessment-questions/bulk`. A non-201 status answers
+  /// [assessmentBulkMessage] with [assessmentBulkLine] and files nothing.
+  int assessmentBulkStatus;
+  String assessmentBulkMessage;
+  int? assessmentBulkLine;
+  final List<Map<String, dynamic>> assessmentBulkPosts = [];
+  int _nextAssessmentQuestionId = 1000;
 
   // ---------------------------------------------------------------------
   // The two cost catalogues (issue #252). Both are versioned, so beside the
@@ -8812,6 +8898,97 @@ class FakeWire {
             );
           }
           return http.Response(jsonEncode({'employee': detail}), 200);
+        }
+        // --- The assessment Question bank (issue #588) --------------------
+        if (path == '/api/people/assessment-questions/bulk' && request.method == 'POST') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          assessmentBulkPosts.add(sent);
+          if (assessmentBulkStatus != 201) {
+            return _utf8Json({
+              'message': assessmentBulkMessage,
+              if (assessmentBulkLine != null) 'line': assessmentBulkLine,
+            }, assessmentBulkStatus);
+          }
+          // One Question per 'Câu hỏi:' / 'Question:' line, as a stand-in for
+          // the server's own parse: the test asserts what was sent.
+          final created = RegExp(r'^\s*(câu hỏi|question)\s*:', caseSensitive: false, multiLine: true)
+              .allMatches(sent['text'] as String)
+              .length;
+          return _utf8Json({'created': created, 'questions': const []}, 201);
+        }
+        if (path == '/api/people/assessment-questions' && request.method == 'POST') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          assessmentQuestionPosts.add(sent);
+          if (createAssessmentQuestionStatus != 201) {
+            return _utf8Json({'message': createAssessmentQuestionMessage}, createAssessmentQuestionStatus);
+          }
+          final created = assessmentQuestionJson(
+            _nextAssessmentQuestionId++,
+            sent['orgUnitId'] as String,
+            sent['questionText'] as String,
+            optionA: sent['optionA'] as String,
+            optionB: sent['optionB'] as String,
+            optionC: sent['optionC'] as String,
+            correctOption: sent['correctOption'] as String?,
+            explanation: sent['explanation'] as String?,
+          );
+          assessmentQuestions = [...assessmentQuestions, created];
+          return _utf8Json({'question': created}, 201);
+        }
+        if (path == '/api/people/assessment-questions' && request.method == 'GET') {
+          assessmentQuestionReads.add(request.url.toString().replaceFirst(RegExp(r'^[a-z]+://[^/]*'), ''));
+          if (assessmentQuestionsStatus != 200) {
+            return _utf8Json({'message': 'The Question bank is unavailable.'}, assessmentQuestionsStatus);
+          }
+          final query = request.url.queryParameters;
+          final inProcess = [
+            for (final row in assessmentQuestions)
+              if (row['orgUnitId'] == query['orgUnitId']) row,
+          ];
+          final term = (query['q'] ?? '').toLowerCase();
+          final shown = [
+            for (final row in inProcess)
+              if ((query['includeInactive'] == 'true' || row['isActive'] != false) &&
+                  (term.isEmpty || (row['questionText'] as String).toLowerCase().contains(term)))
+                row,
+          ];
+          final limit = int.tryParse(query['limit'] ?? '') ?? 50;
+          final offset = int.tryParse(query['offset'] ?? '') ?? 0;
+          final page = [
+            for (final row in shown.skip(offset).take(limit))
+              assessmentRevealKey ? row : {...row, 'correctOption': null, 'explanation': null},
+          ];
+          return _utf8Json({
+            'questions': page,
+            'total': shown.length,
+            'activeCount': inProcess.where((row) => row['isActive'] != false).length,
+          }, 200);
+        }
+        if (path.startsWith('/api/people/assessment-questions/') && request.method == 'PATCH') {
+          final id = path.substring('/api/people/assessment-questions/'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          assessmentQuestionPatches.add((id, body));
+          if (correctAssessmentQuestionStatus != 200) {
+            return _utf8Json({'message': correctAssessmentQuestionMessage}, correctAssessmentQuestionStatus);
+          }
+          Map<String, dynamic>? updated;
+          assessmentQuestions = [
+            for (final row in assessmentQuestions)
+              if (row['id'] == id) (updated = {...row, ...body}) else row,
+          ];
+          if (updated == null) {
+            return _utf8Json({'message': 'Question not found'}, 404);
+          }
+          return _utf8Json({'question': updated}, 200);
+        }
+        if (path.startsWith('/api/people/assessment-questions/') && request.method == 'DELETE') {
+          final id = path.substring('/api/people/assessment-questions/'.length);
+          assessmentQuestionRetires.add(id);
+          assessmentQuestions = [
+            for (final row in assessmentQuestions)
+              if (row['id'] == id) {...row, 'isActive': false} else row,
+          ];
+          return http.Response('', 204);
         }
         // --- The cost rate catalogue (issue #252) -------------------------
         if (request.method == 'POST' && path == '/api/people/cost-rates') {

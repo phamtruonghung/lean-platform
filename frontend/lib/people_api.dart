@@ -14,6 +14,7 @@ import 'package:http/http.dart' as http;
 import 'people/assignee_candidate.dart';
 import 'people/app_role.dart';
 import 'people/attendance.dart';
+import 'people/assessment_question.dart';
 import 'people/leave_request.dart';
 import 'people/worked_hours.dart';
 import 'people/cost_rate.dart';
@@ -106,7 +107,7 @@ class AccountActive extends AccountStatus {
 /// [AccountPendingApproval]: per issue #6, "awaiting Approval" is not a
 /// failure, and the app must be able to tell the two apart.
 class PeopleApiException implements Exception {
-  PeopleApiException(this.message, {this.statusCode, this.code});
+  PeopleApiException(this.message, {this.statusCode, this.code, this.line});
 
   final String message;
 
@@ -120,6 +121,11 @@ class PeopleApiException implements Exception {
   /// share a status code should match on this, not on [message]'s own
   /// wording, which is free to reword without anything failing loudly.
   final String? code;
+
+  /// The 1-based line of a pasted block the refusal names (issue #588), when
+  /// the body carried one: a malformed block, a repeat inside the paste, or a
+  /// Question already in the bank. Null for every other refusal.
+  final int? line;
 
   @override
   String toString() => message;
@@ -2623,6 +2629,119 @@ class PeopleApi {
     );
   }
 
+  /// One process's Question bank (`GET /api/people/assessment-questions`,
+  /// issue #588): a page, the number of rows the filter matches and the number
+  /// of active Questions in the process. The key and explanation come back
+  /// null unless the caller may change this bank.
+  Future<AssessmentQuestionPage> fetchAssessmentQuestions(
+    String accessToken, {
+    required String orgUnitId,
+    String? q,
+    bool includeInactive = false,
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    const path = '/api/people/assessment-questions';
+    final uri = Uri.parse(path).replace(queryParameters: {
+      'orgUnitId': orgUnitId,
+      if (q != null && q.isNotEmpty) 'q': q,
+      if (includeInactive) 'includeInactive': 'true',
+      'limit': '$limit',
+      'offset': '$offset',
+    });
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      return AssessmentQuestionPage.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Raises one Question (`POST /api/people/assessment-questions`). [body] is
+  /// `orgUnitId`, `questionText`, `optionA/B/C`, `correctOption` and an
+  /// optional `explanation`.
+  Future<AssessmentQuestion> createAssessmentQuestion(
+    String accessToken,
+    Map<String, Object?> body,
+  ) async {
+    const path = '/api/people/assessment-questions';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    return _assessmentQuestionFrom(response);
+  }
+
+  /// Corrects one Question (`PATCH /api/people/assessment-questions/:id`): a
+  /// full restatement of its own fields, never a partial change.
+  Future<AssessmentQuestion> correctAssessmentQuestion(
+    String accessToken,
+    String id,
+    Map<String, Object?> body,
+  ) async {
+    final path = '/api/people/assessment-questions/$id';
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    return _assessmentQuestionFrom(response);
+  }
+
+  /// Retires one Question (`DELETE /api/people/assessment-questions/:id`, 204).
+  /// A Question is never removed from the bank, only taken out of future draws.
+  Future<void> retireAssessmentQuestion(String accessToken, String id) async {
+    final path = '/api/people/assessment-questions/$id';
+    await _send(
+      () => _client.delete(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+  }
+
+  /// Files a whole paste (`POST /api/people/assessment-questions/bulk`),
+  /// all-or-nothing: the number of Questions created. A refusal is a
+  /// [PeopleApiException] whose [PeopleApiException.line] names the pasted
+  /// line, and nothing was written.
+  Future<int> bulkAssessmentQuestions(
+    String accessToken, {
+    required String orgUnitId,
+    required String text,
+  }) async {
+    const path = '/api/people/assessment-questions/bulk';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'orgUnitId': orgUnitId, 'text': text}),
+      ),
+      path,
+    );
+    try {
+      return ((jsonDecode(response.body) as Map<String, dynamic>)['created'] as num).toInt();
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  static AssessmentQuestion _assessmentQuestionFrom(http.Response response) {
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return AssessmentQuestion.fromJson(body['question'] as Map<String, dynamic>);
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   /// The one place a request's transport failure and its non-2xx status turn
   /// into a [PeopleApiException] — `fetchMe` predates this and keeps its own
   /// copy so its messages stay byte-identical. Accepts any 2xx, not only 200
@@ -2644,6 +2763,7 @@ class PeopleApi {
         _messageFrom(response) ?? 'The API answered ${response.statusCode} for $path.',
         statusCode: response.statusCode,
         code: _codeFrom(response),
+        line: _lineFrom(response),
       );
     }
     return response;
@@ -2659,6 +2779,20 @@ class PeopleApi {
       }
     } catch (_) {
       // Not JSON, or not that shape: the caller's generic message stands.
+    }
+    return null;
+  }
+
+  /// The API's own `{ "line": n }` (issue #588): the pasted line a bulk refusal
+  /// names. Null for any body that carries none.
+  static int? _lineFrom(http.Response response) {
+    try {
+      final body = jsonDecode(response.body);
+      if (body is Map<String, dynamic> && body['line'] is num) {
+        return (body['line'] as num).toInt();
+      }
+    } catch (_) {
+      // Not JSON, or not that shape: no line to report.
     }
     return null;
   }

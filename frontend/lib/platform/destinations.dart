@@ -300,6 +300,16 @@ const List<Destination> platformDestinations = [
     path: Routes.leaveRequests,
     group: DestinationGroupNames.people,
   ),
+  // Assessments (issue #588, ADR-0068): the Question bank now, the register of
+  // Assessments from a later slice. Offered to every approved Account, as
+  // `PPL_ASSESSMENT_DISPLAY` is seeded on every role; the write affordances
+  // inside the Screen follow `PPL_ASSESSMENT_CHANGE`.
+  Destination(
+    label: 'Assessments',
+    icon: Icons.quiz_outlined,
+    path: Routes.assessments,
+    group: DestinationGroupNames.people,
+  ),
   // The two cost catalogues (issue #252) — the rates an hour is costed at, and
   // what one unit of a Product is costed at. Filed under **People**, the group
   // that names the Module behind them (ADR-0020): both live in the People
@@ -742,6 +752,7 @@ const Map<String, String> destinationPermissions = {
   Routes.training: 'PPL_TRAINING_DISPLAY',
   Routes.mySignature: 'PPL_SIGNATURE_OWN',
   Routes.leaveRequests: 'PPL_LEAVE_REQUESTS_DISPLAY',
+  Routes.assessments: 'PPL_ASSESSMENT_DISPLAY',
   Routes.costRates: 'PPL_COST_RATES_MAINTAIN',
   Routes.productCosts: 'PPL_PRODUCT_COSTS_MAINTAIN',
   Routes.assets: 'MTN_ASSETS_DISPLAY',
@@ -786,6 +797,12 @@ const Map<String, String> destinationPermissions = {
 /// each is one typo away from a door that is shut in the sidebar and open by
 /// URL.
 const String rolesPermission = 'ADM_ROLES_DISPLAY';
+
+/// The code that lets a person change the assessment Question bank (issue
+/// #588): the Add and Paste buttons exist only for a holder. Named for the same
+/// reason as [rolesPermission] - the router asks it where it builds the Screen,
+/// and the backend's `PPL_ASSESSMENT_CHANGE` is the string it must match.
+const String assessmentChangePermission = 'PPL_ASSESSMENT_CHANGE';
 
 /// The destinations an Account holding [role] may use — and, since issue #492,
 /// an Account holding [permissions].
