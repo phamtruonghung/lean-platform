@@ -26,7 +26,12 @@
  *     by any read Grant with no error anywhere to notice. Since ADR-0061's
  *     slice 5b each of the four also asks `PPL_ATTENDANCE_CHANGE` first,
  *     seeded on supervisor-and-above: the code answers which door, and the
- *     Grant below it still answers which Org Units. An operator holding an
+ *     Grant below it still answers which Org Units. The code is a door in the
+ *     router chain, asked BEFORE the shift instance is loaded, so a caller who
+ *     does not hold it meets `PERMISSION_REQUIRED` on an unknown or deleted
+ *     shift instance id — or on an unknown `recordId` below a known one —
+ *     rather than the 404 it would get holding the code. No existence leak:
+ *     the 403 is identical whether or not the id exists. An operator holding an
  *     edit Grant loses these writes until an administrator adds the code to its
  *     role — the deliberate narrowing the seed migration states.
  *
@@ -36,7 +41,9 @@
  * and only then is its Site's visibility or its Org Unit's write scope
  * asked about — `canAct`/`canSeeSite` both return `true` unconditionally for
  * role `admin` before looking at the id at all, so asking scope first would
- * turn a bad shift instance id into a raw 500 rather than a clean 404.
+ * turn a bad shift instance id into a raw 500 rather than a clean 404. That
+ * order holds once the code has admitted the caller: `PPL_ATTENDANCE_CHANGE` is
+ * asked ahead of it (above), so a non-holder meets the code's 403 on any id.
  * `requireShiftInstanceWriteScope` chains through
  * `requireShiftInstanceVisible` for the same reason
  * `requireSafetyIncidentWriteScope` chains through
