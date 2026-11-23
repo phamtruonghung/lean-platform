@@ -28,6 +28,9 @@ let server;
 let base;
 let pool;
 let closePool;
+// The acting administrator's own id, so a test can say that a write is
+// attributed to the person who made it rather than merely to *somebody*.
+let adminId;
 
 const ADMIN = 'roles-admin';
 const SUPERVISOR = 'roles-supervisor';
@@ -81,7 +84,7 @@ test.before(async () => {
   }
   base = `http://127.0.0.1:${server.address().port}`;
 
-  await insertAccount(ADMIN, 'admin');
+  adminId = await insertAccount(ADMIN, 'admin');
   await insertAccount(SUPERVISOR, 'supervisor');
   await insertAccount(OPERATOR, 'operator');
 });
@@ -295,6 +298,36 @@ test('a role\'s permission set is replaced whole, by its id', async () => {
 
   // Replaced, not merged: the first round's MTN_PARTS_DISPLAY is gone.
   assert.ok(!body.role.permissionCodes.includes('MTN_PARTS_DISPLAY'));
+
+  // And `created_by` cannot carry the half that matters — the codes that came
+  // off have no row left to hold an author. The audit trail is where the
+  // removal lives, and it names both the role it came off and the person who
+  // took it off.
+  const { rows: auditRows } = await pool.query(
+    `SELECT operation, record_id, changed_by, old_values, new_values
+       FROM audit_log
+      WHERE table_name = 'app_role_permissions' AND record_id = $1
+      ORDER BY id`,
+    [storeRoom.id]
+  );
+
+  const removal = auditRows.find(
+    (row) => row.operation === 'DELETE' && row.old_values.permission_code === 'MTN_PARTS_DISPLAY'
+  );
+  assert.ok(removal, 'the code the replace removed is in audit_log, with the role it came off');
+  assert.strictEqual(String(removal.record_id), String(storeRoom.id));
+
+  const addition = auditRows.find(
+    (row) => row.operation === 'INSERT' && row.new_values.permission_code === 'MTN_METERS_CHANGE'
+  );
+  assert.ok(addition, 'the code the replace added is in audit_log');
+  assert.strictEqual(String(addition.record_id), String(storeRoom.id));
+
+  // Every row is attributed to the administrator who made the change, not
+  // merely to somebody.
+  for (const row of auditRows) {
+    assert.strictEqual(String(row.changed_by), String(adminId));
+  }
 });
 
 test('a role can be retired and read back with includeInactive', async () => {
@@ -345,6 +378,15 @@ test('assigning a role gives that Account the permissions it carries, and unassi
   assert.strictEqual(assigned.body.roles.find((role) => role.code === 'ROLE_STANDARD').isAutomatic, true);
   assert.strictEqual(assigned.body.roles.find((role) => role.code === 'ROLE_OPERATOR').isAutomatic, true);
 
+  // The Assign button is a row in `app_user_roles`, and that row records who
+  // pressed it — the write the card filed this defect for.
+  const { rows: [assignment] } = await pool.query(
+    'SELECT created_by FROM app_user_roles WHERE app_user_id = $1 AND app_role_id = $2',
+    [operator.id, storeRoom.id]
+  );
+  assert.ok(assignment, 'the assignment is a row in app_user_roles');
+  assert.strictEqual(String(assignment.created_by), String(adminId));
+
   const after = await call(OPERATOR, '/me');
   assert.ok(after.body.permissions.includes('MTN_METERS_CHANGE'));
   assert.ok(after.body.roles.includes('ROLE_STORE_ROOM'));
@@ -354,6 +396,26 @@ test('assigning a role gives that Account the permissions it carries, and unassi
     body: { roleIds: [] }
   });
   assert.strictEqual(cleared.status, 200);
+
+  // Taking the assignment away leaves no row behind to carry an author, so it
+  // is the audit trail or nothing.
+  const { rows: unassignment } = await pool.query(
+    `SELECT changed_by, old_values
+       FROM audit_log
+      WHERE table_name = 'app_user_roles' AND record_id = $1 AND operation = 'DELETE'
+      ORDER BY id DESC
+      LIMIT 1`,
+    [operator.id]
+  );
+  assert.strictEqual(unassignment.length, 1, 'removing an assignment is in audit_log');
+  assert.strictEqual(String(unassignment[0].changed_by), String(adminId));
+  assert.strictEqual(String(unassignment[0].old_values.app_role_id), String(storeRoom.id));
+
+  const { rows: [{ count }] } = await pool.query(
+    'SELECT count(*)::int AS count FROM app_user_roles WHERE app_user_id = $1',
+    [operator.id]
+  );
+  assert.strictEqual(count, 0);
 
   const gone = await call(OPERATOR, '/me');
   assert.ok(!gone.body.permissions.includes('MTN_METERS_CHANGE'));
