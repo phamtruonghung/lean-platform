@@ -115,7 +115,7 @@ anon` / `SET ROLE authenticated` calls `t.skip(...)` with an explicit reason
 when the role does not exist, because `SET ROLE` to a role that is not there
 is an error, not something the test can meaningfully assert on. Both
 CI (`postgres:17-alpine`) and local `docker compose` (`postgres:16-alpine`)
-lack these roles, so you will see these two skips reported, by name, on every
+lack these roles, so you will see these four skips reported, by name, on every
 local and CI run — that is expected, not a broken test. This is the only
 skip pattern found in the integration suite; do not assume other tests skip
 without checking their own `t.skip` calls.
@@ -409,7 +409,7 @@ workflow it was written for.
 - `cd backend && npm run lint` passes.
 - `cd backend && npm test` passes (unit tests, no database).
 - `cd backend && npm run test:integration` passes against a migrated local
-  Postgres (the two `rls.test.js` role skips noted in section 3 are expected,
+  Postgres (the four `rls.test.js` role skips noted in section 3 are expected,
   not a failure).
 - `dart run tool/check_module_seams.dart` (from `frontend/`; also run by
   `scripts/flutter-ci.sh`) passes: no Module imports another's internals.
