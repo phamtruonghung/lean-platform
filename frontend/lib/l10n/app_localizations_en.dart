@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -8466,4 +8467,225 @@ class AppLocalizationsEn extends AppLocalizations {
   String assessmentPasteIssueStray(int line, int question) {
     return 'Line $line, question $question: this line does not belong here. After the options only an explanation may follow, and a blank line must separate one Question from the next.';
   }
+
+  @override
+  String get assessmentsTitle => 'Assessments';
+
+  @override
+  String get assessmentsDescription =>
+      'The assessments an Employee sits, and the ones you set. A paper is drawn from one process\'s Question bank when the person starts, and a score is shown only after it has been marked.';
+
+  @override
+  String get assessmentsFailedTitle => 'The assessments could not be read';
+
+  @override
+  String get commonRefresh => 'Refresh';
+
+  @override
+  String get assessmentNew => 'New assessment';
+
+  @override
+  String get assessmentTabAssignedToMe => 'Assigned to me';
+
+  @override
+  String get assessmentTabICreated => 'I created';
+
+  @override
+  String get assessmentTabAll => 'All';
+
+  @override
+  String get assessmentRegisterEmptyTitle => 'Nothing here';
+
+  @override
+  String get assessmentRegisterEmptyMine => 'No assessment is assigned to you.';
+
+  @override
+  String get assessmentRegisterEmptyCreated =>
+      'You have not created an assessment yet.';
+
+  @override
+  String get assessmentRegisterEmptyAll =>
+      'No assessment has been created at this plant yet.';
+
+  @override
+  String get assessmentScoreHiddenNote =>
+      'A score is shown only after the Attempt has been marked.';
+
+  @override
+  String assessmentPaperSizeShort(int count) {
+    return '$count Questions';
+  }
+
+  @override
+  String assessmentMinutesShort(int count) {
+    return '$count minutes';
+  }
+
+  @override
+  String assessmentDueOn(String date) {
+    return 'due $date';
+  }
+
+  @override
+  String assessmentSittingCounts(
+    int assigned,
+    int running,
+    int awaiting,
+    int marked,
+  ) {
+    return '$assigned not started · $running running · $awaiting awaiting marking · $marked marked';
+  }
+
+  @override
+  String get assessmentStart => 'Start';
+
+  @override
+  String get assessmentContinue => 'Continue';
+
+  @override
+  String get assessmentStatusAssigned => 'Not started';
+
+  @override
+  String get assessmentStatusInProgress => 'Running';
+
+  @override
+  String get assessmentStatusSubmitted => 'Awaiting marking';
+
+  @override
+  String get assessmentStatusMarked => 'Marked';
+
+  @override
+  String get assessmentStatusExpired => 'Expired';
+
+  @override
+  String get assessmentStatusCancelled => 'Cancelled';
+
+  @override
+  String get assessmentNewTitle => 'New assessment';
+
+  @override
+  String get assessmentNewDescription =>
+      'Pick the process whose Question bank the paper is drawn from, then who sits it.';
+
+  @override
+  String get assessmentNewProcessHelper =>
+      'The paper draws only from the Questions filed on exactly this Org Unit, never from the Org Units beneath it.';
+
+  @override
+  String get assessmentTitleLabel => 'Title';
+
+  @override
+  String get assessmentPaperSizeLabel => 'Paper size';
+
+  @override
+  String assessmentQuestionCountShort(int count) {
+    return '$count Questions';
+  }
+
+  @override
+  String get assessmentMinutesLabel => 'Minutes';
+
+  @override
+  String get assessmentMinutesHelper =>
+      'Two minutes per Question by default. Between 5 and 120.';
+
+  @override
+  String get assessmentPassMarkLabel => 'Pass mark';
+
+  @override
+  String get assessmentPassMarkHelper => '80 % of the paper by default.';
+
+  @override
+  String get assessmentDueDateLabel => 'Due date';
+
+  @override
+  String get assessmentDueDateHelper =>
+      'The last day an Attempt may be started. Blank means no deadline.';
+
+  @override
+  String get assessmentAssignGroupLabel => 'Who sits it';
+
+  @override
+  String get assessmentAssignGroupHelper =>
+      'Add Org Units and Employees. An Org Unit reaches the Employees who work at it or beneath it.';
+
+  @override
+  String get assessmentAssignOrgUnitLabel => 'Add an Org Unit';
+
+  @override
+  String get assessmentAssignEmployeeLabel => 'Add an Employee';
+
+  @override
+  String assessmentReachCount(int count) {
+    return 'This will reach $count Employees.';
+  }
+
+  @override
+  String assessmentReachUnresolved(int count, String names) {
+    return '$count of them have no Org Unit to answer to ($names) and would be refused until one is set.';
+  }
+
+  @override
+  String get assessmentCreateSubmit => 'Create and assign';
+
+  @override
+  String get assessmentSubmitTitle => 'Submit this paper?';
+
+  @override
+  String get assessmentSubmitMessageAllAnswered =>
+      'Every Question is answered. Once submitted the paper cannot be reopened.';
+
+  @override
+  String assessmentSubmitMessageUnanswered(int count) {
+    return '$count Questions are still unanswered and will score 0. Once submitted the paper cannot be reopened.';
+  }
+
+  @override
+  String get assessmentSubmitConfirm => 'Submit';
+
+  @override
+  String get assessmentSubmittedTitle => 'Submitted';
+
+  @override
+  String get assessmentSubmittedMessage =>
+      'Your paper was submitted. Its score is shown once it has been marked.';
+
+  @override
+  String get assessmentSubmittedLateMessage =>
+      'The time ran out and your paper was submitted automatically. Its score is shown once it has been marked.';
+
+  @override
+  String get assessmentBackToRegister => 'Back to assessments';
+
+  @override
+  String get assessmentAnswerSaved => 'Saved';
+
+  @override
+  String assessmentPositionOf(int position, int total) {
+    return 'Question $position of $total';
+  }
+
+  @override
+  String get assessmentOtherAnswerLabel => 'Khác: ghi câu trả lời của bạn';
+
+  @override
+  String get assessmentOtherAnswerHint => 'Your answer';
+
+  @override
+  String get assessmentOtherAnswerHelper =>
+      'An Other answer is read by a Marker and scores 0 until they decide.';
+
+  @override
+  String get assessmentPrevious => 'Previous';
+
+  @override
+  String get assessmentNext => 'Next';
+
+  @override
+  String assessmentAnsweredCount(int answered, int total) {
+    return '$answered of $total answered';
+  }
+
+  @override
+  String get assessmentSubmit => 'Submit';
 }

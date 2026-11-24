@@ -804,6 +804,11 @@ const String rolesPermission = 'ADM_ROLES_DISPLAY';
 /// and the backend's `PPL_ASSESSMENT_CHANGE` is the string it must match.
 const String assessmentChangePermission = 'PPL_ASSESSMENT_CHANGE';
 
+/// The code that lets a person sit an Assessment of their own (issue #588,
+/// ADR-0068), seeded on every role like the read code. It opens the candidate's
+/// own door only: whose Attempt it is, is the server's answer, not a client's.
+const String assessmentSitPermission = 'PPL_ASSESSMENT_SIT';
+
 /// The destinations an Account holding [role] may use — and, since issue #492,
 /// an Account holding [permissions].
 ///

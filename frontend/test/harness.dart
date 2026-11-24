@@ -2178,6 +2178,147 @@ Map<String, dynamic> assessmentQuestionJson(
       'isActive': isActive,
     };
 
+/// One Assessment row as `GET /api/people/assessments` sends it (issue #588,
+/// slice 3): the six facts, the process name, and the four sitting counts.
+Map<String, dynamic> assessmentJson(
+  int id, {
+  String orgUnitId = '11',
+  String orgUnitName = 'Braiding',
+  String? number,
+  String title = 'Kiểm tra quy trình Braiding',
+  int questionCount = 10,
+  int minutes = 20,
+  int passMark = 8,
+  int attemptsAllowed = 1,
+  String? dueOn,
+  String status = 'assigned',
+  int assignedCount = 0,
+  int runningCount = 0,
+  int awaitingMarkingCount = 0,
+  int markedCount = 0,
+  List<Map<String, dynamic>> attempts = const [],
+}) =>
+    {
+      'id': '$id',
+      'siteId': '1',
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'number': number ?? 'AS-HCM-2026-0000$id',
+      'title': title,
+      'questionCount': questionCount,
+      'minutes': minutes,
+      'passMark': passMark,
+      'attemptsAllowed': attemptsAllowed,
+      'dueOn': dueOn,
+      'status': status,
+      'assignedCount': assignedCount,
+      'runningCount': runningCount,
+      'awaitingMarkingCount': awaitingMarkingCount,
+      'markedCount': markedCount,
+      if (attempts.isNotEmpty) 'attempts': attempts,
+    };
+
+/// One Attempt row, as the Assessment detail read and `/assessment-attempts/mine`
+/// send it. `mine` adds the flattened Assessment fields.
+Map<String, dynamic> assessmentAttemptJson(
+  int id, {
+  String assessmentId = '1',
+  String employeeId = '7',
+  String? employeeName = 'Sitter Person',
+  int attemptNo = 1,
+  String status = 'assigned',
+  bool submittedLate = false,
+  int otherAnswerCount = 0,
+  int blankCount = 0,
+  String? startedAt,
+  String? deadlineAt,
+  String? submittedAt,
+  String? assessmentNumber,
+  String? assessmentTitle,
+  String? processName,
+  int? questionCount,
+  int? passMark,
+  String? dueOn,
+}) =>
+    {
+      'id': '$id',
+      'assessmentId': assessmentId,
+      'employeeId': employeeId,
+      'attemptNo': attemptNo,
+      'orgUnitId': '11',
+      'orgUnitResolvedOn': '2026-11-24',
+      'status': status,
+      'startedAt': startedAt,
+      'deadlineAt': deadlineAt,
+      'submittedAt': submittedAt,
+      'submittedLate': submittedLate,
+      'otherAnswerCount': otherAnswerCount,
+      'blankCount': blankCount,
+      'employeeName': ?employeeName,
+      'assessmentNumber': ?assessmentNumber,
+      'assessmentTitle': ?assessmentTitle,
+      'processName': ?processName,
+      'questionCount': ?questionCount,
+      'passMark': ?passMark,
+      'dueOn': ?dueOn,
+    };
+
+/// One drawn Question of a paper. There is deliberately no `correctOption` and
+/// no `explanation`: the server does not send them before marking, and a fake
+/// that did would let a Screen read what production never gives it.
+Map<String, dynamic> assessmentPaperQuestionJson(
+  int position, {
+  String? questionText,
+  String? chosenOption,
+  String? otherText,
+}) =>
+    {
+      'position': position,
+      'questionText': questionText ?? 'Câu số $position của quy trình này là gì?',
+      'optionA': 'Phương án A $position',
+      'optionB': 'Phương án B $position',
+      'optionC': 'Phương án C $position',
+      'chosenOption': chosenOption,
+      'otherText': otherText,
+    };
+
+/// One Attempt's paper, as `POST .../start` and `GET /assessment-attempts/:id`
+/// answer: the Attempt, the drawn paper and the server's own `now`.
+Map<String, dynamic> assessmentPaperJson({
+  int attemptId = 1,
+  int assessmentId = 1,
+  int questions = 10,
+  String status = 'in_progress',
+  String? deadlineAt = '2026-11-24T10:20:00.000Z',
+  String serverNow = '2026-11-24T10:00:00.000Z',
+  Map<int, (String?, String?)> answers = const {},
+}) {
+  final attempt = assessmentAttemptJson(
+    attemptId,
+    assessmentId: '$assessmentId',
+    status: status,
+    startedAt: status == 'in_progress' ? '2026-11-24T10:00:00.000Z' : null,
+    deadlineAt: deadlineAt,
+    assessmentNumber: 'AS-HCM-2026-00001',
+    assessmentTitle: 'Kiểm tra quy trình Braiding',
+    processName: 'Braiding',
+    questionCount: questions,
+    passMark: 8,
+  );
+  return {
+    'attempt': attempt,
+    'paper': [
+      for (var position = 1; position <= questions; position += 1)
+        assessmentPaperQuestionJson(
+          position,
+          chosenOption: answers[position]?.$1,
+          otherText: answers[position]?.$2,
+        ),
+    ],
+    'serverNow': serverNow,
+  };
+}
+
 /// An Org Unit row exactly as `plant.js` sends one — `parentId` included,
 /// because a root-level response can legitimately carry a non-null one.
 Map<String, dynamic> orgUnitJson(
@@ -4578,6 +4719,53 @@ class FakeWire {
   List<Map<String, dynamic>> assessmentQuestions;
   int assessmentQuestionsStatus;
   bool assessmentRevealKey;
+
+  // ---------------------------------------------------------------------
+  // Assessments and their Attempts (issue #588, slice 3). The register's rows,
+  // the caller's own Attempts, the paper the sitting Screen draws, and the four
+  // writes. Scripted rather than derived: a test states what the server would
+  // answer and asserts what the Screen did with it.
+  // ---------------------------------------------------------------------
+
+  /// `GET /api/people/assessments` — both the plain register and `mine=true`.
+  List<Map<String, dynamic>> assessmentRegister = [];
+  int assessmentRegisterStatus = 200;
+
+  /// `POST /api/people/assessments`, and the refusal a test wants.
+  int createAssessmentStatus = 201;
+  String createAssessmentMessage = 'That assessment could not be created.';
+  final List<Map<String, dynamic>> assessmentPosts = [];
+
+  /// `POST /api/people/assessments/:id/assign`, and its refusal (a thin bank is
+  /// a 409 carrying `available` and `required`).
+  int assignAssessmentStatus = 201;
+  String assignAssessmentMessage = 'That assessment could not be assigned.';
+  int? assignAssessmentAvailable;
+  int? assignAssessmentRequired;
+  final List<(String, Map<String, dynamic>)> assessmentAssigns = [];
+
+  /// `GET /api/people/assessments/assign-preview`.
+  int assignPreviewCount = 0;
+  List<String> assignPreviewUnresolvedNames = [];
+  final List<String> assignPreviewReads = [];
+
+  /// `GET /api/people/assessment-attempts/mine`. A 403 is the Account with no
+  /// Employee, which the register treats as an empty list.
+  List<Map<String, dynamic>> myAssessmentAttempts = [];
+  int myAssessmentAttemptsStatus = 200;
+
+  /// `POST .../start` and `GET /assessment-attempts/:id`: the paper.
+  Map<String, dynamic>? assessmentPaper;
+  int assessmentPaperStatus = 200;
+  String assessmentPaperMessage = 'That assessment is not available.';
+
+  /// `PATCH .../answers/:position`, as `(attemptId, position, body)`.
+  int saveAssessmentAnswerStatus = 200;
+  final List<(String, int, Map<String, dynamic>)> assessmentAnswers = [];
+
+  /// `POST .../submit`, as the attempt ids submitted.
+  int submitAssessmentStatus = 200;
+  final List<String> assessmentSubmits = [];
 
   /// Every list read that reached the wire, as the request's path and query
   /// string, so a test can assert what was asked.
@@ -8898,6 +9086,151 @@ class FakeWire {
             );
           }
           return http.Response(jsonEncode({'employee': detail}), 200);
+        }
+        // --- Assessments and their Attempts (issue #588, slice 3) ----------
+        // `/assessments/assign-preview` is matched before `/assessments/:id`,
+        // exactly as the server declares it: `assign-preview` is not an id.
+        if (path == '/api/people/assessments/assign-preview' && request.method == 'GET') {
+          assignPreviewReads.add(request.url.toString().replaceFirst(RegExp(r'^[a-z]+://[^/]*'), ''));
+          return _utf8Json({
+            'count': assignPreviewCount,
+            'employees': const [],
+            'unresolvedCount': assignPreviewUnresolvedNames.length,
+            'unresolved': [
+              for (final name in assignPreviewUnresolvedNames)
+                {'employeeId': '0', 'displayName': name},
+            ],
+          }, 200);
+        }
+        if (path == '/api/people/assessments' && request.method == 'GET') {
+          final mine = request.url.queryParameters['mine'] == 'true';
+          final rows = mine ? assessmentRegister.take(1).toList() : assessmentRegister;
+          return _utf8Json({
+            'assessments': rows,
+            'total': rows.length,
+            'truncated': false,
+          }, assessmentRegisterStatus);
+        }
+        if (path == '/api/people/assessments' && request.method == 'POST') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          assessmentPosts.add(sent);
+          if (createAssessmentStatus != 201) {
+            return _utf8Json({'message': createAssessmentMessage}, createAssessmentStatus);
+          }
+          final created = assessmentJson(
+            900 + assessmentPosts.length,
+            orgUnitId: sent['orgUnitId'] as String,
+            title: sent['title'] as String,
+            questionCount: (sent['questionCount'] as num).toInt(),
+            minutes: (sent['minutes'] as num?)?.toInt() ?? 20,
+            passMark: (sent['passMark'] as num?)?.toInt() ?? 8,
+            dueOn: sent['dueOn'] as String?,
+            status: 'draft',
+          );
+          assessmentRegister = [created, ...assessmentRegister];
+          return _utf8Json({'assessment': created}, 201);
+        }
+        final assessmentAction = RegExp(r'^/api/people/assessments/([0-9]+)(/assign|/close)?$')
+            .firstMatch(path);
+        if (assessmentAction != null) {
+          final id = assessmentAction.group(1)!;
+          final action = assessmentAction.group(2);
+          if (action == '/assign' && request.method == 'POST') {
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            assessmentAssigns.add((id, sent));
+            if (assignAssessmentStatus != 201) {
+              return _utf8Json({
+                'message': assignAssessmentMessage,
+                if (assignAssessmentAvailable != null) 'available': assignAssessmentAvailable,
+                if (assignAssessmentRequired != null) 'required': assignAssessmentRequired,
+              }, assignAssessmentStatus);
+            }
+            final row = assessmentRegister.firstWhere((entry) => entry['id'] == id);
+            return _utf8Json({'assigned': 1, 'assessment': row}, 201);
+          }
+          if (action == '/close' && request.method == 'POST') {
+            final row = assessmentRegister.firstWhere((entry) => entry['id'] == id);
+            return _utf8Json({'assessment': {...row, 'status': 'closed'}}, 200);
+          }
+          if (action == null && request.method == 'GET') {
+            final row = assessmentRegister.firstWhere(
+              (entry) => entry['id'] == id,
+              orElse: () => const {},
+            );
+            if (row.isEmpty) return _utf8Json({'message': 'Assessment not found'}, 404);
+            return _utf8Json({'assessment': row}, 200);
+          }
+          if (action == null && request.method == 'DELETE') {
+            assessmentRegister = [
+              for (final entry in assessmentRegister)
+                if (entry['id'] != id) entry,
+            ];
+            return http.Response('', 204);
+          }
+          if (action == null && request.method == 'PATCH') {
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            final row = assessmentRegister.firstWhere((entry) => entry['id'] == id);
+            return _utf8Json({'assessment': {...row, ...sent}}, 200);
+          }
+        }
+        if (path == '/api/people/assessment-attempts/mine' && request.method == 'GET') {
+          if (myAssessmentAttemptsStatus != 200) {
+            return _utf8Json({
+              'message': 'this Account is not linked to an Employee, so it has no Assessment of its own',
+            }, myAssessmentAttemptsStatus);
+          }
+          return _utf8Json({'attempts': myAssessmentAttempts}, 200);
+        }
+        final attemptAction = RegExp(r'^/api/people/assessment-attempts/([0-9]+)(/start|/submit|/answers/([0-9]+))?$')
+            .firstMatch(path);
+        if (attemptAction != null) {
+          final attemptId = attemptAction.group(1)!;
+          final action = attemptAction.group(2);
+          if (action == '/start' && request.method == 'POST') {
+            if (assessmentPaperStatus != 200) {
+              return _utf8Json({'message': assessmentPaperMessage}, assessmentPaperStatus);
+            }
+            return _utf8Json(assessmentPaper ?? assessmentPaperJson(), 200);
+          }
+          if (action == '/submit' && request.method == 'POST') {
+            assessmentSubmits.add(attemptId);
+            if (submitAssessmentStatus != 200) {
+              return _utf8Json(
+                {'message': 'the deadline passed and this Assessment was submitted automatically'},
+                submitAssessmentStatus,
+              );
+            }
+            return _utf8Json(
+              assessmentPaperJson(attemptId: int.parse(attemptId), status: 'submitted'),
+              200,
+            );
+          }
+          if (action != null && action.startsWith('/answers/') && request.method == 'PATCH') {
+            final position = int.parse(attemptAction.group(3)!);
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            assessmentAnswers.add((attemptId, position, sent));
+            if (saveAssessmentAnswerStatus != 200) {
+              return _utf8Json({
+                'message': 'the deadline passed and this Assessment was submitted automatically',
+              }, saveAssessmentAnswerStatus);
+            }
+            return _utf8Json(
+              assessmentPaper ??
+                  assessmentPaperJson(
+                    attemptId: int.parse(attemptId),
+                    answers: {
+                      position: (sent['chosenOption'] as String?, sent['otherText'] as String?),
+                    },
+                  ),
+              200,
+            );
+          }
+          if (action == null && request.method == 'GET') {
+            if (assessmentPaperStatus != 200) {
+              return _utf8Json({'message': assessmentPaperMessage}, assessmentPaperStatus);
+            }
+            return _utf8Json(assessmentPaper ?? assessmentPaperJson(), 200);
+          }
         }
         // --- The assessment Question bank (issue #588) --------------------
         if (path == '/api/people/assessment-questions/bulk' && request.method == 'POST') {

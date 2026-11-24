@@ -14164,6 +14164,377 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Line {line}, question {question}: this line does not belong here. After the options only an explanation may follow, and a blank line must separate one Question from the next.'**
   String assessmentPasteIssueStray(int line, int question);
+
+  /// Title of the Assessments register.
+  ///
+  /// In en, this message translates to:
+  /// **'Assessments'**
+  String get assessmentsTitle;
+
+  /// The register's one-sentence description.
+  ///
+  /// In en, this message translates to:
+  /// **'The assessments an Employee sits, and the ones you set. A paper is drawn from one process\'s Question bank when the person starts, and a score is shown only after it has been marked.'**
+  String get assessmentsDescription;
+
+  /// Failure title of the Assessments register.
+  ///
+  /// In en, this message translates to:
+  /// **'The assessments could not be read'**
+  String get assessmentsFailedTitle;
+
+  /// The refresh action on a register's header.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get commonRefresh;
+
+  /// Button that opens the create form.
+  ///
+  /// In en, this message translates to:
+  /// **'New assessment'**
+  String get assessmentNew;
+
+  /// Register tab: the caller's own Attempts.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned to me'**
+  String get assessmentTabAssignedToMe;
+
+  /// Register tab: the Assessments the caller created.
+  ///
+  /// In en, this message translates to:
+  /// **'I created'**
+  String get assessmentTabICreated;
+
+  /// Register tab: every Assessment at the plant.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get assessmentTabAll;
+
+  /// Empty state title of the register.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here'**
+  String get assessmentRegisterEmptyTitle;
+
+  /// Empty state on the Assigned to me tab.
+  ///
+  /// In en, this message translates to:
+  /// **'No assessment is assigned to you.'**
+  String get assessmentRegisterEmptyMine;
+
+  /// Empty state on the I created tab.
+  ///
+  /// In en, this message translates to:
+  /// **'You have not created an assessment yet.'**
+  String get assessmentRegisterEmptyCreated;
+
+  /// Empty state on the All tab.
+  ///
+  /// In en, this message translates to:
+  /// **'No assessment has been created at this plant yet.'**
+  String get assessmentRegisterEmptyAll;
+
+  /// Footnote under the register about scores.
+  ///
+  /// In en, this message translates to:
+  /// **'A score is shown only after the Attempt has been marked.'**
+  String get assessmentScoreHiddenNote;
+
+  /// A paper's size, in a list row.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} Questions'**
+  String assessmentPaperSizeShort(int count);
+
+  /// How long a sitting runs, in a list row.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} minutes'**
+  String assessmentMinutesShort(int count);
+
+  /// A due date, in a list row.
+  ///
+  /// In en, this message translates to:
+  /// **'due {date}'**
+  String assessmentDueOn(String date);
+
+  /// The four sitting counts of one Assessment.
+  ///
+  /// In en, this message translates to:
+  /// **'{assigned} not started · {running} running · {awaiting} awaiting marking · {marked} marked'**
+  String assessmentSittingCounts(
+    int assigned,
+    int running,
+    int awaiting,
+    int marked,
+  );
+
+  /// Action that opens a not-yet-started Attempt.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get assessmentStart;
+
+  /// Action that reopens a running Attempt.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get assessmentContinue;
+
+  /// An Attempt's status before it is started.
+  ///
+  /// In en, this message translates to:
+  /// **'Not started'**
+  String get assessmentStatusAssigned;
+
+  /// An Attempt's status while its paper is open.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get assessmentStatusInProgress;
+
+  /// An Attempt's status once submitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting marking'**
+  String get assessmentStatusSubmitted;
+
+  /// An Attempt's status once a Marker has decided.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked'**
+  String get assessmentStatusMarked;
+
+  /// An Attempt that passed its due date unstarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get assessmentStatusExpired;
+
+  /// An Attempt a Team Leader cancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get assessmentStatusCancelled;
+
+  /// Title of the create form.
+  ///
+  /// In en, this message translates to:
+  /// **'New assessment'**
+  String get assessmentNewTitle;
+
+  /// One-sentence description of the create form.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the process whose Question bank the paper is drawn from, then who sits it.'**
+  String get assessmentNewDescription;
+
+  /// Helper under the process picker on the create form.
+  ///
+  /// In en, this message translates to:
+  /// **'The paper draws only from the Questions filed on exactly this Org Unit, never from the Org Units beneath it.'**
+  String get assessmentNewProcessHelper;
+
+  /// Label of the title field.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get assessmentTitleLabel;
+
+  /// Label of the 10/15 control.
+  ///
+  /// In en, this message translates to:
+  /// **'Paper size'**
+  String get assessmentPaperSizeLabel;
+
+  /// One choice of the paper-size control.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} Questions'**
+  String assessmentQuestionCountShort(int count);
+
+  /// Label of the minutes field.
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes'**
+  String get assessmentMinutesLabel;
+
+  /// Helper under the minutes field.
+  ///
+  /// In en, this message translates to:
+  /// **'Two minutes per Question by default. Between 5 and 120.'**
+  String get assessmentMinutesHelper;
+
+  /// Label of the pass-mark field.
+  ///
+  /// In en, this message translates to:
+  /// **'Pass mark'**
+  String get assessmentPassMarkLabel;
+
+  /// Helper under the pass-mark field.
+  ///
+  /// In en, this message translates to:
+  /// **'80 % of the paper by default.'**
+  String get assessmentPassMarkHelper;
+
+  /// Label of the due-date field.
+  ///
+  /// In en, this message translates to:
+  /// **'Due date'**
+  String get assessmentDueDateLabel;
+
+  /// Helper under the due-date field.
+  ///
+  /// In en, this message translates to:
+  /// **'The last day an Attempt may be started. Blank means no deadline.'**
+  String get assessmentDueDateHelper;
+
+  /// Heading over the assign group.
+  ///
+  /// In en, this message translates to:
+  /// **'Who sits it'**
+  String get assessmentAssignGroupLabel;
+
+  /// Helper under the assign group heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Org Units and Employees. An Org Unit reaches the Employees who work at it or beneath it.'**
+  String get assessmentAssignGroupHelper;
+
+  /// Label of the Org Unit search in the assign group.
+  ///
+  /// In en, this message translates to:
+  /// **'Add an Org Unit'**
+  String get assessmentAssignOrgUnitLabel;
+
+  /// Label of the Employee search in the assign group.
+  ///
+  /// In en, this message translates to:
+  /// **'Add an Employee'**
+  String get assessmentAssignEmployeeLabel;
+
+  /// How many Employees the chosen group reaches.
+  ///
+  /// In en, this message translates to:
+  /// **'This will reach {count} Employees.'**
+  String assessmentReachCount(int count);
+
+  /// Warning that some reached Employees have no Org Unit.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of them have no Org Unit to answer to ({names}) and would be refused until one is set.'**
+  String assessmentReachUnresolved(int count, String names);
+
+  /// Submit button of the create form.
+  ///
+  /// In en, this message translates to:
+  /// **'Create and assign'**
+  String get assessmentCreateSubmit;
+
+  /// Title of the submit confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit this paper?'**
+  String get assessmentSubmitTitle;
+
+  /// Submit confirmation when nothing is unanswered.
+  ///
+  /// In en, this message translates to:
+  /// **'Every Question is answered. Once submitted the paper cannot be reopened.'**
+  String get assessmentSubmitMessageAllAnswered;
+
+  /// Submit confirmation naming the unanswered count.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} Questions are still unanswered and will score 0. Once submitted the paper cannot be reopened.'**
+  String assessmentSubmitMessageUnanswered(int count);
+
+  /// Confirm button of the submit confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit'**
+  String get assessmentSubmitConfirm;
+
+  /// Title shown once the paper is submitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted'**
+  String get assessmentSubmittedTitle;
+
+  /// Message shown once the paper is submitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Your paper was submitted. Its score is shown once it has been marked.'**
+  String get assessmentSubmittedMessage;
+
+  /// Message shown when the server submitted the paper at the deadline.
+  ///
+  /// In en, this message translates to:
+  /// **'The time ran out and your paper was submitted automatically. Its score is shown once it has been marked.'**
+  String get assessmentSubmittedLateMessage;
+
+  /// Button back to the register from the sitting.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to assessments'**
+  String get assessmentBackToRegister;
+
+  /// The quiet tick shown after an Answer is saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get assessmentAnswerSaved;
+
+  /// Where the navigator is on the paper.
+  ///
+  /// In en, this message translates to:
+  /// **'Question {position} of {total}'**
+  String assessmentPositionOf(int position, int total);
+
+  /// The fourth, separate Answer row. Deliberately Vietnamese in every language: it is the owner's own words.
+  ///
+  /// In en, this message translates to:
+  /// **'Khác: ghi câu trả lời của bạn'**
+  String get assessmentOtherAnswerLabel;
+
+  /// Hint of the Other answer's text field.
+  ///
+  /// In en, this message translates to:
+  /// **'Your answer'**
+  String get assessmentOtherAnswerHint;
+
+  /// Helper under the Other answer's text field.
+  ///
+  /// In en, this message translates to:
+  /// **'An Other answer is read by a Marker and scores 0 until they decide.'**
+  String get assessmentOtherAnswerHelper;
+
+  /// Previous Question.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get assessmentPrevious;
+
+  /// Next Question.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get assessmentNext;
+
+  /// How many Questions of the paper are answered.
+  ///
+  /// In en, this message translates to:
+  /// **'{answered} of {total} answered'**
+  String assessmentAnsweredCount(int answered, int total);
+
+  /// Submit the paper.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit'**
+  String get assessmentSubmit;
 }
 
 class _AppLocalizationsDelegate
