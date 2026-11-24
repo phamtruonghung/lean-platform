@@ -303,6 +303,19 @@ const _excluded = <String, String>{
   'lib/people/assessment_sitting_screen.dart':
       'a sitting: a full-height paper with its own sticky header and navigator, not a page '
           'frame of card rows',
+  // Slice 4: the marking queue's first card exists only once the server has
+  // answered with rows, and the marking paper and the result are stacks of
+  // Question cards under a score band rather than a register; the cross-palette
+  // sweep covers all three. Each header is one `AppPageHeader` in one `AppPageFrame`.
+  'lib/people/assessment_marking_queue_screen.dart':
+      'the queue has no card until the server has answered, and the audit\'s shared wire '
+          'carries no submitted Attempts; its rows are covered by the palette and text-scale sweep',
+  'lib/people/assessment_marking_screen.dart':
+      'a paper of Question cards under a score band, not a register of rows to measure an '
+          'inset against',
+  'lib/people/assessment_result_screen.dart':
+      'a result: a score band over Question cards, not a register of rows to measure an '
+          'inset against',
 };
 
 /// One wire for every page in the table: each Screen finds the collection it

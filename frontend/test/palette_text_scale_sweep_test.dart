@@ -354,6 +354,13 @@ final List<_Screen> _screens = [
       route: '/assessments/new'),
   const _Screen('AssessmentSittingScreen', 'lib/people/assessment_sitting_screen.dart',
       route: '/assessments/5/attempts/41/sit'),
+  // Slice 4: the marking queue, one paper's marking and one Attempt's result.
+  const _Screen('AssessmentMarkingQueueScreen', 'lib/people/assessment_marking_queue_screen.dart',
+      route: '/assessments/marking'),
+  const _Screen('AssessmentMarkingScreen', 'lib/people/assessment_marking_screen.dart',
+      route: '/assessments/5/attempts/41/marking'),
+  const _Screen('AssessmentResultScreen', 'lib/people/assessment_result_screen.dart',
+      route: '/assessments/5/attempts/41/result'),
   const _Screen('ProductCostsScreen', 'lib/people/product_costs_screen.dart',
       route: '/product-costs'),
   const _Screen('OrgUnitsScreen', 'lib/people/org_units_screen.dart', route: '/org-units'),

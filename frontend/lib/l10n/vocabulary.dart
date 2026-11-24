@@ -1155,3 +1155,26 @@ extension AssessmentWords on Assessment {
   String statusLabel(AppLocalizations l10n) => assessmentStateLabel(l10n, status);
 }
 
+/// What a marked Attempt's verdict reads as (issue #588, slice 4).
+///
+/// The **answer** comes from the server — `passed` is derived at read from
+/// `final_score >= pass_mark` and never stored (spec section 3.13) — and the
+/// **word** belongs here, once, so the result Screen and the register's own row
+/// print the same two words instead of each spelling its own (ADR-0062).
+String assessmentVerdictLabel(AppLocalizations l10n, {required bool passed}) =>
+    passed ? l10n.assessmentVerdictPassed : l10n.assessmentVerdictFailed;
+
+extension MarkedAttemptWords on AssessmentAttempt {
+  /// The score line a marked Attempt carries — `7/10 — chưa đạt` — or null when
+  /// the caller may not read a score, which the register renders as `—`.
+  String? scoreLabel(AppLocalizations l10n) {
+    final finalScore = this.finalScore;
+    final total = questionCount;
+    if (finalScore == null || total == null || total == 0) return null;
+    return l10n.assessmentAttemptScore(
+      finalScore,
+      total,
+      assessmentVerdictLabel(l10n, passed: passed ?? false),
+    );
+  }
+}

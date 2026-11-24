@@ -14553,6 +14553,252 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Submit'**
   String get assessmentSubmit;
+
+  /// Title of the marking queue Screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Marking'**
+  String get assessmentMarkingTitle;
+
+  /// Description under the marking queue title.
+  ///
+  /// In en, this message translates to:
+  /// **'The submitted papers waiting for a point, oldest first. A paper is here when its process is inside your write reach.'**
+  String get assessmentMarkingDescription;
+
+  /// Empty marking queue title.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to mark'**
+  String get assessmentMarkingEmptyTitle;
+
+  /// Empty marking queue message.
+  ///
+  /// In en, this message translates to:
+  /// **'Every submitted paper in your reach has been marked.'**
+  String get assessmentMarkingEmpty;
+
+  /// Failure title of the marking queue.
+  ///
+  /// In en, this message translates to:
+  /// **'The marking queue could not be read'**
+  String get assessmentMarkingFailedTitle;
+
+  /// How many Other answers a queued paper holds.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No Khác answer} =1{1 Khác answer} other{{count} Khác answers}}'**
+  String assessmentMarkingOtherCount(int count);
+
+  /// When the paper was submitted.
+  ///
+  /// In en, this message translates to:
+  /// **'submitted {date}'**
+  String assessmentMarkingSubmittedAt(String date);
+
+  /// Chip on a paper the server finalised at the deadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Finalised by the server after the deadline'**
+  String get assessmentMarkingLate;
+
+  /// Button opening one paper from the queue.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark'**
+  String get assessmentMarkingOpen;
+
+  /// Title of the marking Screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark {name}\'s paper'**
+  String assessmentMarkingPaperTitle(String name);
+
+  /// Failure title of the marking Screen.
+  ///
+  /// In en, this message translates to:
+  /// **'The paper could not be read'**
+  String get assessmentMarkingPaperFailedTitle;
+
+  /// Label of the number the machine made at submit.
+  ///
+  /// In en, this message translates to:
+  /// **'Machine score'**
+  String get assessmentMarkingMachineScore;
+
+  /// Label of the Marker's number once written.
+  ///
+  /// In en, this message translates to:
+  /// **'Final score'**
+  String get assessmentMarkingFinalScore;
+
+  /// Label of the running total before the award is written.
+  ///
+  /// In en, this message translates to:
+  /// **'With your points'**
+  String get assessmentMarkingDraftScore;
+
+  /// The pass mark of the paper being marked.
+  ///
+  /// In en, this message translates to:
+  /// **'Pass mark: {mark} of {total}'**
+  String assessmentMarkingPassMark(int mark, int total);
+
+  /// Label before the two point controls.
+  ///
+  /// In en, this message translates to:
+  /// **'Point on this answer'**
+  String get assessmentMarkingAwardLabel;
+
+  /// Control: refuse the point on an answer.
+  ///
+  /// In en, this message translates to:
+  /// **'No point'**
+  String get assessmentMarkingNoPoint;
+
+  /// Control: award the point on an answer.
+  ///
+  /// In en, this message translates to:
+  /// **'Award point'**
+  String get assessmentMarkingAwardPoint;
+
+  /// Label of the per-answer note field.
+  ///
+  /// In en, this message translates to:
+  /// **'Note on this answer (optional)'**
+  String get assessmentMarkingAnswerNote;
+
+  /// Label of the Attempt's marking note.
+  ///
+  /// In en, this message translates to:
+  /// **'Marking note'**
+  String get assessmentMarkingNote;
+
+  /// Helper under the marking note.
+  ///
+  /// In en, this message translates to:
+  /// **'What you changed, and why. Kept with the record and shown on the result.'**
+  String get assessmentMarkingNoteHelper;
+
+  /// Button writing the award.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark this paper'**
+  String get assessmentMarkingSubmit;
+
+  /// Shown on a paper that is already marked.
+  ///
+  /// In en, this message translates to:
+  /// **'This paper was already marked. An award is a record and cannot be given twice.'**
+  String get assessmentMarkingAlreadyMarked;
+
+  /// Title of the result Screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Result'**
+  String get assessmentResultTitle;
+
+  /// Failure title of the result Screen.
+  ///
+  /// In en, this message translates to:
+  /// **'The result could not be read'**
+  String get assessmentResultFailedTitle;
+
+  /// Title of the result Screen before marking.
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting marking'**
+  String get assessmentResultAwaitingTitle;
+
+  /// Shown instead of a result before marking.
+  ///
+  /// In en, this message translates to:
+  /// **'This paper has not been marked yet. Nothing about the score is shown until a Marker has marked it. The answers below are yours.'**
+  String get assessmentResultAwaiting;
+
+  /// The pass mark the verdict was derived against.
+  ///
+  /// In en, this message translates to:
+  /// **'Pass mark: {mark} of {total}'**
+  String assessmentResultPassMark(int mark, int total);
+
+  /// Both numbers, in a sentence.
+  ///
+  /// In en, this message translates to:
+  /// **'Machine score {score}, final score {finalScore}'**
+  String assessmentResultMachineScore(int score, int finalScore);
+
+  /// Who marked the Attempt.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked by {name}'**
+  String assessmentResultMarkedBy(String name);
+
+  /// The Marker's note.
+  ///
+  /// In en, this message translates to:
+  /// **'Marking note: {note}'**
+  String assessmentResultMarkingNote(String note);
+
+  /// The key of one Question.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct answer: {letter}. {text}'**
+  String assessmentResultCorrectAnswer(String letter, String text);
+
+  /// The point on one Answer.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 point} other{{count} points}}'**
+  String assessmentResultPoints(int count);
+
+  /// A blank Answer.
+  ///
+  /// In en, this message translates to:
+  /// **'Not answered'**
+  String get assessmentResultNoAnswer;
+
+  /// The candidate's Other answer.
+  ///
+  /// In en, this message translates to:
+  /// **'Khác: {text}'**
+  String assessmentResultOther(String text);
+
+  /// Button to the marking queue.
+  ///
+  /// In en, this message translates to:
+  /// **'Marking queue'**
+  String get assessmentQueueAction;
+
+  /// Button to one Attempt's result.
+  ///
+  /// In en, this message translates to:
+  /// **'View result'**
+  String get assessmentResultAction;
+
+  /// A marked Attempt's score with its verdict word.
+  ///
+  /// In en, this message translates to:
+  /// **'{score}/{total} — {verdict}'**
+  String assessmentAttemptScore(int score, int total, String verdict);
+
+  /// Which Attempt of the Assessment this is.
+  ///
+  /// In en, this message translates to:
+  /// **'Attempt {number}'**
+  String assessmentAttemptNumber(int number);
+
+  /// Verdict of a marked Attempt at or above the pass mark.
+  ///
+  /// In en, this message translates to:
+  /// **'passed'**
+  String get assessmentVerdictPassed;
+
+  /// Verdict of a marked Attempt below the pass mark.
+  ///
+  /// In en, this message translates to:
+  /// **'not passed'**
+  String get assessmentVerdictFailed;
 }
 
 class _AppLocalizationsDelegate

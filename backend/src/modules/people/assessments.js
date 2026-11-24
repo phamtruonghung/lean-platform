@@ -49,6 +49,11 @@
 
 const { getPool, withActor } = require('../../platform/db');
 const { httpError, notFound } = require('./errors');
+// One-way on purpose: the score-field rule (spec section 3.14) lives in
+// `assessment-marking.js`, which requires nothing from this file, so the
+// register and the detail read ask the same question the Marker's doors do
+// rather than spelling the predicate a second time.
+const marking = require('./assessment-marking');
 
 const QUESTION_COUNTS = [10, 15];
 const MIN_MINUTES = 5;
@@ -227,38 +232,60 @@ async function findAssessment(id) {
   };
 }
 
-async function getAssessment(id) {
+async function getAssessment(id, viewer = null) {
   const assessment = await findAssessment(id);
   if (!assessment) throw notFound('Assessment');
-  const attempts = await listAttempts(id);
+  const attempts = await listAttempts(id, viewer);
   return { ...assessment, attempts };
 }
 
 // The Attempts of one Assessment, with the person and the node each answers
-// to. `otherAnswerCount` is a count, never a score, so it is not hidden; the
-// score fields are not selected at all in this slice (spec section 3.12 — a
-// score is not shown before marking, and marking is slice 4).
-async function listAttempts(assessmentId) {
+// to. `otherAnswerCount` and `blankCount` are counts, never scores, so they are
+// never hidden. The score fields follow spec section 3.14 and, even for a
+// caller they allow, exist only once the Attempt is `marked`: a provisional
+// score the Marker can move would read as a promise (spec section 3.12), so
+// outside both rules the fields are `null` with `scoreHidden: true`.
+async function listAttempts(assessmentId, viewer = null) {
+  // Section 3.14, in SQL: the score columns are `CASE`d to NULL by the
+  // database for a caller the predicate refuses, so a hidden score is never
+  // fetched. A score exists only once the Attempt is marked (section 3.12).
+  const params = [assessmentId];
+  const visible = `(at.status = 'marked' AND ${marking.scoreVisibleSql(viewer, params)})`;
   const { rows } = await getPool().query(
-    `SELECT ${ATTEMPT_COLUMNS}, e.display_name AS employee_name,
+    `SELECT ${ATTEMPT_COLUMNS},
+            CASE WHEN ${visible} THEN at.score END AS score,
+            CASE WHEN ${visible} THEN at.final_score END AS final_score,
+            CASE WHEN ${visible} THEN at.final_score >= a.pass_mark END AS passed,
+            NOT ${visible} AS score_hidden,
+            e.display_name AS employee_name,
             ou.name AS org_unit_name,
+            marker.display_name AS marked_by_name,
             (SELECT count(*)::int FROM assessment_attempt_questions q
               WHERE q.attempt_id = at.id AND q.other_text IS NOT NULL) AS other_answer_count,
             (SELECT count(*)::int FROM assessment_attempt_questions q
               WHERE q.attempt_id = at.id AND q.chosen_option IS NULL AND q.other_text IS NULL) AS blank_count
        FROM assessment_attempts at
+       JOIN assessments a ON a.id = at.assessment_id
        JOIN employees e ON e.id = at.employee_id
        JOIN org_units ou ON ou.id = at.org_unit_id
+       LEFT JOIN app_users marker ON marker.id = at.marked_by_account_id
       WHERE at.assessment_id = $1
       ORDER BY e.display_name, at.attempt_no`,
-    [assessmentId]
+    params
   );
   return rows.map((row) => ({
     ...toAttempt(row),
     employeeName: row.employee_name,
     orgUnitName: row.org_unit_name,
+    markedByName: row.marked_by_name ?? null,
+    // The note is the Marker's judgement of this person, so it follows the score.
+    markingNote: row.score_hidden === true ? null : (row.marking_note ?? null),
     otherAnswerCount: row.other_answer_count,
-    blankCount: row.blank_count
+    blankCount: row.blank_count,
+    score: row.score ?? null,
+    finalScore: row.final_score ?? null,
+    passed: row.passed ?? null,
+    scoreHidden: row.score_hidden === true
   }));
 }
 
@@ -332,15 +359,16 @@ async function sweep(attemptId) {
 }
 
 // The caller's own Attempts, every `attempt_no`, open and done. The score is
-// not among the fields until marking exists (slice 4): the candidate sees
-// status and the deadline, and what a score says about them is the Marker's to
-// release.
+// the caller's own, so it is never hidden from them — but it exists only once
+// the Attempt is `marked`: the machine's number at submit is provisional and
+// spec section 3.12 refuses to show it (the Marker may still move it).
 async function listMyAttempts(employeeId) {
   await withActor(null, async (client) => {
     await scoreAndFinaliseMine(client, employeeId);
   });
   const { rows } = await getPool().query(
-    `SELECT ${ATTEMPT_COLUMNS}, a.number, a.title, a.question_count, a.pass_mark,
+    `SELECT ${ATTEMPT_COLUMNS}, at.score, at.final_score,
+            a.number, a.title, a.question_count, a.pass_mark,
             a.due_on, a.org_unit_id AS process_org_unit_id, ou.name AS process_name
        FROM assessment_attempts at
        JOIN assessments a ON a.id = at.assessment_id
@@ -349,15 +377,22 @@ async function listMyAttempts(employeeId) {
       ORDER BY a.due_on NULLS LAST, at.assessment_id DESC, at.attempt_no`,
     [employeeId]
   );
-  return rows.map((row) => ({
-    ...toAttempt(row),
-    assessmentNumber: row.number,
-    assessmentTitle: row.title,
-    questionCount: row.question_count,
-    passMark: row.pass_mark,
-    dueOn: row.due_on === null ? null : toIsoDate(row.due_on),
-    processName: row.process_name
-  }));
+  return rows.map((row) => {
+    const marked = row.status === 'marked';
+    return {
+      ...toAttempt(row),
+      assessmentNumber: row.number,
+      assessmentTitle: row.title,
+      questionCount: row.question_count,
+      passMark: row.pass_mark,
+      dueOn: row.due_on === null ? null : toIsoDate(row.due_on),
+      processName: row.process_name,
+      score: marked ? (row.score ?? null) : null,
+      finalScore: marked ? (row.final_score ?? null) : null,
+      passed: marked && row.final_score !== null ? row.final_score >= row.pass_mark : null,
+      scoreHidden: !marked
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------

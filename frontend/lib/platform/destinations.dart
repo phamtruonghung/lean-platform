@@ -809,6 +809,11 @@ const String assessmentChangePermission = 'PPL_ASSESSMENT_CHANGE';
 /// own door only: whose Attempt it is, is the server's answer, not a client's.
 const String assessmentSitPermission = 'PPL_ASSESSMENT_SIT';
 
+/// The code that opens the marking queue and a paper's marking Screen (issue
+/// #588, slice 4). Whose papers it reaches is the server's answer, by the
+/// caller's write Grants.
+const String assessmentMarkPermission = 'PPL_ASSESSMENT_MARK';
+
 /// The destinations an Account holding [role] may use — and, since issue #492,
 /// an Account holding [permissions].
 ///

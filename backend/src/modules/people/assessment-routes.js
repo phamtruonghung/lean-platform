@@ -53,6 +53,7 @@ const { authenticate, requireActive } = require('./middleware');
 const authorization = require('./authorization');
 const plant = require('./plant');
 const assessments = require('./assessments');
+const marking = require('./assessment-marking');
 const { notFound, parseId, handleError, httpError, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 
 const router = express.Router();
@@ -60,6 +61,7 @@ const router = express.Router();
 const mayReadAssessments = authorization.requirePermission('PPL_ASSESSMENT_DISPLAY');
 const mayChangeAssessments = authorization.requirePermission('PPL_ASSESSMENT_CHANGE');
 const maySitAssessments = authorization.requirePermission('PPL_ASSESSMENT_SIT');
+const mayMarkAssessments = authorization.requirePermission('PPL_ASSESSMENT_MARK');
 
 // handleError answers a message and a code; a thin-bank refusal also carries
 // the counts, and a paste-style refusal the line — so the client can say where
@@ -192,7 +194,10 @@ router.get('/assessments/:id', authenticate, requireActive, mayReadAssessments, 
     const id = parseId(req.params.id);
     const assessment = id === null ? null : await assessments.findAssessment(id);
     if (!assessment) throw notFound('Assessment');
-    return res.json({ assessment: await assessments.getAssessment(id) });
+    // The score fields on the Attempts follow spec section 3.14; the viewer is
+    // what carries that answer into the read.
+    const viewer = await marking.scoreViewer(req.account);
+    return res.json({ assessment: await assessments.getAssessment(id, viewer) });
   } catch (error) {
     return refuse(error, res, next);
   }
@@ -231,7 +236,10 @@ router.post('/assessments/:id/assign', authenticate, requireActive, mayChangeAss
     const result = await assessments.assignAssessment(req.account.id, assessment, group);
     return res.status(201).json({
       assigned: result.assigned,
-      assessment: await assessments.getAssessment(assessment.id)
+      assessment: await assessments.getAssessment(
+        assessment.id,
+        await marking.scoreViewer(req.account)
+      )
     });
   } catch (error) {
     return refuse(error, res, next);
@@ -244,7 +252,12 @@ router.post('/assessments/:id/close', authenticate, requireActive, mayChangeAsse
     if (!assessment) return undefined;
 
     await assessments.closeAssessment(req.account.id, assessment.id);
-    return res.json({ assessment: await assessments.getAssessment(assessment.id) });
+    return res.json({
+      assessment: await assessments.getAssessment(
+        assessment.id,
+        await marking.scoreViewer(req.account)
+      )
+    });
   } catch (error) {
     return refuse(error, res, next);
   }
@@ -320,6 +333,74 @@ router.post('/assessment-attempts/:id/submit', authenticate, requireActive, mayS
     const id = parseId(req.params.id);
     if (id === null) throw notFound('Assessment attempt');
     return res.json(await assessments.submitAttempt(req.account.id, id, mine));
+  } catch (error) {
+    return refuse(error, res, next);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Marking, and the result (issue #588, slice 4)
+// ---------------------------------------------------------------------------
+
+// The queue of `submitted` Attempts in the caller's write reach, oldest first.
+// A read of the caller's own work, so the reach is asked in SQL from the
+// caller's own Grants; `orgUnitId` narrows to one process, and a process the
+// caller's write Grants do not reach is a 403 (existence first, then scope).
+router.get('/assessment-marking', authenticate, requireActive, mayMarkAssessments, async (req, res, next) => {
+  try {
+    const orgUnitId = req.query.orgUnitId === undefined ? null : parseId(req.query.orgUnitId);
+    if (req.query.orgUnitId !== undefined && orgUnitId === null) {
+      throw httpError(400, 'orgUnitId must be a valid Org Unit id');
+    }
+    if (orgUnitId !== null) {
+      await plant.getOrgUnit(orgUnitId); // 404s.
+      if (!await mayWriteAt(req.account, orgUnitId)) throw httpError(403, OUTSIDE_GRANTED_ORG_UNITS);
+    }
+
+    return res.json(await marking.markingQueue(req.account, { orgUnitId }));
+  } catch (error) {
+    return refuse(error, res, next);
+  }
+});
+
+// The paper with its key, its points and the candidate's Answers. Existence
+// first (404), then the reach (403) — inside the service file, because the
+// reach is a question about the Attempt's two Org Units rather than about an id
+// in the path.
+router.get('/assessment-attempts/:id/marking', authenticate, requireActive, mayMarkAssessments, async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (id === null) throw notFound('Assessment attempt');
+    return res.json(await marking.readMarkingPaper(req.account, id));
+  } catch (error) {
+    return refuse(error, res, next);
+  }
+});
+
+// The award. `{ answers: [{ position, points, note? }], note }`; a second call
+// on a marked Attempt is a 409, because an award is a record and not a form
+// somebody may edit twice.
+router.post('/assessment-attempts/:id/mark', authenticate, requireActive, mayMarkAssessments, async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (id === null) throw notFound('Assessment attempt');
+    return res.json(await marking.markAttempt(req.account, id, req.body));
+  } catch (error) {
+    return refuse(error, res, next);
+  }
+});
+
+// The result: 409 until the Attempt is marked, then the score, the derived
+// verdict and every Question with the key and the explanation. Gated on
+// `DISPLAY` — the code that opens the register a result is reached from — and
+// narrowed inside the service to the two callers who may read it: the person
+// whose Attempt it is (holding `SIT` or `DISPLAY`), and the readers of spec
+// section 3.14 (admin, or `MARK`/`CHANGE` with write reach).
+router.get('/assessment-attempts/:id/result', authenticate, requireActive, mayReadAssessments, async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (id === null) throw notFound('Assessment attempt');
+    return res.json(await marking.readResult(req.account, id));
   } catch (error) {
     return refuse(error, res, next);
   }

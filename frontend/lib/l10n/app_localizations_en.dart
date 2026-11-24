@@ -8696,4 +8696,173 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get assessmentSubmit => 'Submit';
+
+  @override
+  String get assessmentMarkingTitle => 'Marking';
+
+  @override
+  String get assessmentMarkingDescription =>
+      'The submitted papers waiting for a point, oldest first. A paper is here when its process is inside your write reach.';
+
+  @override
+  String get assessmentMarkingEmptyTitle => 'Nothing to mark';
+
+  @override
+  String get assessmentMarkingEmpty =>
+      'Every submitted paper in your reach has been marked.';
+
+  @override
+  String get assessmentMarkingFailedTitle =>
+      'The marking queue could not be read';
+
+  @override
+  String assessmentMarkingOtherCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Khác answers',
+      one: '1 Khác answer',
+      zero: 'No Khác answer',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String assessmentMarkingSubmittedAt(String date) {
+    return 'submitted $date';
+  }
+
+  @override
+  String get assessmentMarkingLate =>
+      'Finalised by the server after the deadline';
+
+  @override
+  String get assessmentMarkingOpen => 'Mark';
+
+  @override
+  String assessmentMarkingPaperTitle(String name) {
+    return 'Mark $name\'s paper';
+  }
+
+  @override
+  String get assessmentMarkingPaperFailedTitle => 'The paper could not be read';
+
+  @override
+  String get assessmentMarkingMachineScore => 'Machine score';
+
+  @override
+  String get assessmentMarkingFinalScore => 'Final score';
+
+  @override
+  String get assessmentMarkingDraftScore => 'With your points';
+
+  @override
+  String assessmentMarkingPassMark(int mark, int total) {
+    return 'Pass mark: $mark of $total';
+  }
+
+  @override
+  String get assessmentMarkingAwardLabel => 'Point on this answer';
+
+  @override
+  String get assessmentMarkingNoPoint => 'No point';
+
+  @override
+  String get assessmentMarkingAwardPoint => 'Award point';
+
+  @override
+  String get assessmentMarkingAnswerNote => 'Note on this answer (optional)';
+
+  @override
+  String get assessmentMarkingNote => 'Marking note';
+
+  @override
+  String get assessmentMarkingNoteHelper =>
+      'What you changed, and why. Kept with the record and shown on the result.';
+
+  @override
+  String get assessmentMarkingSubmit => 'Mark this paper';
+
+  @override
+  String get assessmentMarkingAlreadyMarked =>
+      'This paper was already marked. An award is a record and cannot be given twice.';
+
+  @override
+  String get assessmentResultTitle => 'Result';
+
+  @override
+  String get assessmentResultFailedTitle => 'The result could not be read';
+
+  @override
+  String get assessmentResultAwaitingTitle => 'Awaiting marking';
+
+  @override
+  String get assessmentResultAwaiting =>
+      'This paper has not been marked yet. Nothing about the score is shown until a Marker has marked it. The answers below are yours.';
+
+  @override
+  String assessmentResultPassMark(int mark, int total) {
+    return 'Pass mark: $mark of $total';
+  }
+
+  @override
+  String assessmentResultMachineScore(int score, int finalScore) {
+    return 'Machine score $score, final score $finalScore';
+  }
+
+  @override
+  String assessmentResultMarkedBy(String name) {
+    return 'Marked by $name';
+  }
+
+  @override
+  String assessmentResultMarkingNote(String note) {
+    return 'Marking note: $note';
+  }
+
+  @override
+  String assessmentResultCorrectAnswer(String letter, String text) {
+    return 'Correct answer: $letter. $text';
+  }
+
+  @override
+  String assessmentResultPoints(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count points',
+      one: '1 point',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get assessmentResultNoAnswer => 'Not answered';
+
+  @override
+  String assessmentResultOther(String text) {
+    return 'Khác: $text';
+  }
+
+  @override
+  String get assessmentQueueAction => 'Marking queue';
+
+  @override
+  String get assessmentResultAction => 'View result';
+
+  @override
+  String assessmentAttemptScore(int score, int total, String verdict) {
+    return '$score/$total — $verdict';
+  }
+
+  @override
+  String assessmentAttemptNumber(int number) {
+    return 'Attempt $number';
+  }
+
+  @override
+  String get assessmentVerdictPassed => 'passed';
+
+  @override
+  String get assessmentVerdictFailed => 'not passed';
 }
