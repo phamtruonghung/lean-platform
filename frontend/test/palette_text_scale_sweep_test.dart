@@ -345,6 +345,15 @@ final List<_Screen> _screens = [
   // 700px window crowd first.
   const _Screen('AssessmentQuestionsScreen', 'lib/people/assessment_questions_screen.dart',
       route: '/assessments/questions'),
+  // The Assessments register, the create form and one Attempt's sitting (issue
+  // #588, slice 3). The register and the sitting are the two shapes the sweep
+  // exists for: a chip strip and a count in a header, then a list; and a
+  // full-height paper whose countdown, navigator and Submit share one row.
+  const _Screen('AssessmentsScreen', 'lib/people/assessments_screen.dart', route: '/assessments'),
+  const _Screen('AssessmentCreateScreen', 'lib/people/assessment_create_screen.dart',
+      route: '/assessments/new'),
+  const _Screen('AssessmentSittingScreen', 'lib/people/assessment_sitting_screen.dart',
+      route: '/assessments/5/attempts/41/sit'),
   const _Screen('ProductCostsScreen', 'lib/people/product_costs_screen.dart',
       route: '/product-costs'),
   const _Screen('OrgUnitsScreen', 'lib/people/org_units_screen.dart', route: '/org-units'),

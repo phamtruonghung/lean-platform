@@ -16,6 +16,7 @@ import 'package:lean_platform/people/assessment_bank_paste_dialog.dart';
 import 'package:lean_platform/people/assessment_paste.dart';
 import 'package:lean_platform/people/assessment_question_form_dialog.dart';
 import 'package:lean_platform/people/assessment_questions_screen.dart';
+import 'package:lean_platform/people/assessments_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/router.dart';
 import 'package:lean_platform/widgets/app_confirm_dialog.dart';
@@ -452,9 +453,17 @@ void main() {
     expect(find.text('Assessments'), findsNothing);
   });
 
-  testWidgets('the Assessments address lands on the Question bank', (tester) async {
+  testWidgets('the Assessments address is the register, not the bank', (tester) async {
     await _open(tester, _wire(), location: Routes.assessments);
 
+    // Slice 3 made `/assessments` the register: the Destination's own address
+    // no longer redirects to the bank, which keeps its own address.
+    expect(find.byType(AssessmentsScreen), findsOneWidget);
+    expect(find.text('Question bank'), findsNothing);
+  });
+
+  testWidgets('the Question bank keeps its own address', (tester) async {
+    await _open(tester, _wire());
     expect(find.byType(AssessmentQuestionsScreen), findsOneWidget);
     expect(find.text('Question bank'), findsWidgets);
   });

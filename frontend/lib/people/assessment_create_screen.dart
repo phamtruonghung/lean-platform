@@ -305,39 +305,58 @@ class _AssessmentCreateScreenState extends State<AssessmentCreateScreen> {
               ],
             ),
             const SizedBox(height: Spacing.lg),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: TextField(
-                    key: AssessmentCreateScreen.minutesKey,
-                    controller: _minutes,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    onChanged: (_) => _minutesTouched = true,
-                    decoration: InputDecoration(
-                      labelText: l10n.assessmentMinutesLabel,
-                      helperText: l10n.assessmentMinutesHelper,
-                      border: const OutlineInputBorder(),
-                    ),
+            // Two numbers side by side when the form is wide enough to give
+            // each one a readable helper at double text size; stacked
+            // otherwise. The pair shares one helper style, so the same
+            // threshold serves both (a half-width field at 700 px cannot hold
+            // "Two minutes per Question by default…" at 2x without clipping).
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final minutes = TextField(
+                  key: AssessmentCreateScreen.minutesKey,
+                  controller: _minutes,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  onChanged: (_) => _minutesTouched = true,
+                  decoration: InputDecoration(
+                    labelText: l10n.assessmentMinutesLabel,
+                    helperText: l10n.assessmentMinutesHelper,
+                    helperMaxLines: 4,
+                    border: const OutlineInputBorder(),
                   ),
-                ),
-                const SizedBox(width: Spacing.md),
-                Expanded(
-                  child: TextField(
-                    key: AssessmentCreateScreen.passMarkKey,
-                    controller: _passMark,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    onChanged: (_) => _passMarkTouched = true,
-                    decoration: InputDecoration(
-                      labelText: l10n.assessmentPassMarkLabel,
-                      helperText: l10n.assessmentPassMarkHelper,
-                      border: const OutlineInputBorder(),
-                    ),
+                );
+                final passMark = TextField(
+                  key: AssessmentCreateScreen.passMarkKey,
+                  controller: _passMark,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  onChanged: (_) => _passMarkTouched = true,
+                  decoration: InputDecoration(
+                    labelText: l10n.assessmentPassMarkLabel,
+                    helperText: l10n.assessmentPassMarkHelper,
+                    helperMaxLines: 4,
+                    border: const OutlineInputBorder(),
                   ),
-                ),
-              ],
+                );
+                if (constraints.maxWidth < 560) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      minutes,
+                      const SizedBox(height: Spacing.md),
+                      passMark,
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: minutes),
+                    const SizedBox(width: Spacing.md),
+                    Expanded(child: passMark),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: Spacing.md),
             Align(

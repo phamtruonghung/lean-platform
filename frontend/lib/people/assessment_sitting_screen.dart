@@ -361,6 +361,7 @@ class _AssessmentSittingScreenState extends State<AssessmentSittingScreen> {
                             hintText: l10n.assessmentOtherAnswerHint,
                             border: const OutlineInputBorder(),
                             helperText: l10n.assessmentOtherAnswerHelper,
+                            helperMaxLines: 3,
                           ),
                           onChanged: (text) => _onOtherChanged(text, question.position),
                         ),
@@ -402,7 +403,10 @@ class _AssessmentSittingScreenState extends State<AssessmentSittingScreen> {
             const Divider(height: 1),
             Padding(
               padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.sm, Spacing.lg, Spacing.sm),
-              child: Row(
+              child: Wrap(
+                spacing: Spacing.sm,
+                runSpacing: Spacing.xs,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   OutlinedButton(
                     key: AssessmentSittingScreen.previousKey,
@@ -423,12 +427,10 @@ class _AssessmentSittingScreenState extends State<AssessmentSittingScreen> {
                             .add(AssessmentSittingMoved(state.index + 1)),
                     child: Text(l10n.assessmentNext),
                   ),
-                  const Spacer(),
                   Text(
                     l10n.assessmentAnsweredCount(state.answeredCount, state.paper.questions.length),
                     style: theme.textTheme.labelMedium?.copyWith(color: palette.textMuted),
                   ),
-                  const SizedBox(width: Spacing.md),
                   FilledButton(
                     key: AssessmentSittingScreen.submitKey,
                     onPressed: state.submitting ? null : () => _submit(l10n, state),

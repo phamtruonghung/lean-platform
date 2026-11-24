@@ -6,7 +6,6 @@
 /// read the reach the server answered, then create and assign in one submit.
 library;
 
-import 'dart:ui' show Size;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
