@@ -15,9 +15,9 @@
 /// its own three filters: the app has no tab-bar idiom and this Screen does not
 /// introduce one.
 ///
-/// Nothing here shows a score. A score is not shown before the Attempt is marked
-/// (spec section 3.12), marking is slice 4, and a register that guessed would be
-/// the defect the slice-4 card has to unpick.
+/// A score appears on a row only once the Attempt is marked (spec section 3.12),
+/// and only where the server sent one: a score the caller may not read arrives
+/// as null and renders `—` (spec section 3.14). The Screen never works one out.
 library;
 
 import 'package:flutter/material.dart';
@@ -47,6 +47,7 @@ class AssessmentsScreen extends StatelessWidget {
   static const double maxWidth = 1080;
 
   static const ValueKey<String> newAssessmentKey = ValueKey<String>('assessments-new');
+  static const ValueKey<String> markingQueueKey = ValueKey<String>('assessments-marking-queue');
   static const ValueKey<String> refreshKey = ValueKey<String>('assessments-refresh');
   static const ValueKey<String> emptyKey = ValueKey<String>('assessments-empty');
   static const ValueKey<String> failedKey = ValueKey<String>('assessments-failed');
@@ -56,6 +57,8 @@ class AssessmentsScreen extends StatelessWidget {
   static ValueKey<String> tabKey(int tab) => ValueKey<String>('assessments-tab-$tab');
   static ValueKey<String> attemptRowKey(String id) => ValueKey<String>('assessment-attempt-row-$id');
   static ValueKey<String> attemptActionKey(String id) => ValueKey<String>('assessment-attempt-action-$id');
+  static ValueKey<String> attemptScoreKey(String id) => ValueKey<String>('assessment-attempt-score-$id');
+  static ValueKey<String> attemptResultKey(String id) => ValueKey<String>('assessment-attempt-result-$id');
   static ValueKey<String> assessmentRowKey(String id) => ValueKey<String>('assessment-row-$id');
 
   @override
@@ -115,6 +118,13 @@ class _Loaded extends StatelessWidget {
                   icon: const Icon(Icons.refresh),
                   label: Text(l10n.commonRefresh),
                 ),
+                if (state.mayMark)
+                  OutlinedButton.icon(
+                    key: AssessmentsScreen.markingQueueKey,
+                    onPressed: () => context.go(Routes.assessmentMarkingQueue),
+                    icon: const Icon(Icons.fact_check_outlined),
+                    label: Text(l10n.assessmentQueueAction),
+                  ),
                 if (state.mayChange)
                   FilledButton.icon(
                     key: AssessmentsScreen.newAssessmentKey,
@@ -246,6 +256,14 @@ class _AttemptRow extends StatelessWidget {
                   ].join(' · '),
                   style: theme.textTheme.bodySmall?.copyWith(color: palette.textMuted),
                 ),
+                if (attempt.status == attemptMarked) ...[
+                  const SizedBox(height: Spacing.xs),
+                  Text(
+                    key: AssessmentsScreen.attemptScoreKey(attempt.id),
+                    attempt.scoreLabel(l10n) ?? '—',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
               ],
             ),
           ),
@@ -259,6 +277,14 @@ class _AttemptRow extends StatelessWidget {
               child: Text(
                 attempt.isRunning ? l10n.assessmentContinue : l10n.assessmentStart,
               ),
+            )
+          else if (attempt.status == attemptMarked || attempt.status == attemptSubmitted)
+            OutlinedButton(
+              key: AssessmentsScreen.attemptResultKey(attempt.id),
+              onPressed: () => context.go(
+                Routes.assessmentResult(attempt.assessmentId, attempt.id),
+              ),
+              child: Text(l10n.assessmentResultAction),
             ),
         ],
       ),

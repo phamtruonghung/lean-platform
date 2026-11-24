@@ -2319,6 +2319,68 @@ Map<String, dynamic> assessmentPaperJson({
   };
 }
 
+/// One Question as the Marker's paper and the result send it: the paper's own
+/// fields plus the key, the explanation and the point (slice 4).
+Map<String, dynamic> assessmentMarkedQuestionJson(
+  int position, {
+  String? chosenOption,
+  String? otherText,
+  int points = 0,
+  String correctOption = 'C',
+}) =>
+    {
+      ...assessmentPaperQuestionJson(position, chosenOption: chosenOption, otherText: otherText),
+      'correctOption': correctOption,
+      'explanation': 'Lý do $position.',
+      'points': points,
+    };
+
+/// `GET /assessment-attempts/:id/marking`: ten Questions, six keyed, the seventh
+/// an Other answer scored 0 by the machine — the paper of the card's own case.
+Map<String, dynamic> assessmentMarkingPaperJson({
+  int attemptId = 1,
+  String status = 'submitted',
+  int? finalScore,
+}) =>
+    {
+      'attempt': {
+        ...assessmentAttemptJson(
+          attemptId,
+          status: status,
+          submittedAt: '2026-11-24T10:15:00.000Z',
+          assessmentNumber: 'AS-HCM-2026-00001',
+          assessmentTitle: 'Kiểm tra quy trình Braiding',
+          processName: 'Braiding',
+          questionCount: 10,
+          passMark: 8,
+        ),
+        'employeeName': 'Sitter Person',
+        'score': 6,
+        'finalScore': finalScore,
+        'passed': finalScore == null ? null : finalScore >= 8,
+      },
+      'questions': [
+        for (var position = 1; position <= 10; position += 1)
+          assessmentMarkedQuestionJson(
+            position,
+            chosenOption: position <= 6 ? 'C' : null,
+            otherText: position == 7 ? 'E. Dừng máy rồi báo Team Leader' : null,
+            points: position <= 6 ? 1 : (position == 7 && finalScore == 7 ? 1 : 0),
+          ),
+      ],
+    };
+
+/// `GET /assessment-attempts/:id/result` of a marked Attempt: 7/10 against a
+/// pass mark of 8, so not passed.
+Map<String, dynamic> assessmentResultJson({int attemptId = 1}) {
+  final paper = assessmentMarkingPaperJson(attemptId: attemptId, status: 'marked', finalScore: 7);
+  return {
+    'attempt': paper['attempt'],
+    'verdict': {'score': 6, 'finalScore': 7, 'passMark': 8, 'questionCount': 10, 'passed': false},
+    'questions': paper['questions'],
+  };
+}
+
 /// An Org Unit row exactly as `plant.js` sends one — `parentId` included,
 /// because a root-level response can legitimately carry a non-null one.
 Map<String, dynamic> orgUnitJson(
@@ -4753,6 +4815,22 @@ class FakeWire {
   /// Employee, which the register treats as an empty list.
   List<Map<String, dynamic>> myAssessmentAttempts = [];
   int myAssessmentAttemptsStatus = 200;
+
+  /// Marking and the result (issue #588, slice 4). `GET /assessment-marking`.
+  List<Map<String, dynamic>> assessmentMarkingQueue = [];
+  int assessmentMarkingQueueStatus = 200;
+
+  /// `GET .../:id/marking`, and what `POST .../:id/mark` answers with.
+  Map<String, dynamic>? assessmentMarkingPaper;
+  int assessmentMarkingPaperStatus = 200;
+
+  /// `POST .../:id/mark`, as `(attemptId, body)`, and its refusal.
+  int markAssessmentStatus = 200;
+  final List<(String, Map<String, dynamic>)> assessmentMarks = [];
+
+  /// `GET .../:id/result`. A 409 is "not marked yet".
+  Map<String, dynamic>? assessmentResult;
+  int assessmentResultStatus = 200;
 
   /// `POST .../start` and `GET /assessment-attempts/:id`: the paper.
   Map<String, dynamic>? assessmentPaper;
@@ -9171,6 +9249,46 @@ class FakeWire {
             final sent = jsonDecode(request.body) as Map<String, dynamic>;
             final row = assessmentRegister.firstWhere((entry) => entry['id'] == id);
             return _utf8Json({'assessment': {...row, ...sent}}, 200);
+          }
+        }
+        if (path == '/api/people/assessment-marking' && request.method == 'GET') {
+          if (assessmentMarkingQueueStatus != 200) {
+            return _utf8Json({'message': 'This Account lacks a permission.'}, assessmentMarkingQueueStatus);
+          }
+          return _utf8Json({
+            'attempts': assessmentMarkingQueue,
+            'total': assessmentMarkingQueue.length,
+            'truncated': false,
+          }, 200);
+        }
+        final markingRoute =
+            RegExp(r'^/api/people/assessment-attempts/([0-9]+)/(marking|mark|result)$').firstMatch(path);
+        if (markingRoute != null) {
+          final attemptId = markingRoute.group(1)!;
+          final which = markingRoute.group(2);
+          if (which == 'marking' && request.method == 'GET') {
+            if (assessmentMarkingPaperStatus != 200) {
+              return _utf8Json({'message': 'Outside the caller\'s granted Org Units'}, assessmentMarkingPaperStatus);
+            }
+            return _utf8Json(assessmentMarkingPaper ?? assessmentMarkingPaperJson(attemptId: int.parse(attemptId)), 200);
+          }
+          if (which == 'mark' && request.method == 'POST') {
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            assessmentMarks.add((attemptId, sent));
+            if (markAssessmentStatus != 200) {
+              return _utf8Json({'message': 'this Assessment has already been marked'}, markAssessmentStatus);
+            }
+            return _utf8Json(
+              assessmentMarkingPaper ??
+                  assessmentMarkingPaperJson(attemptId: int.parse(attemptId), status: 'marked', finalScore: 7),
+              200,
+            );
+          }
+          if (which == 'result' && request.method == 'GET') {
+            if (assessmentResultStatus != 200) {
+              return _utf8Json({'message': 'this Assessment has not been marked yet'}, assessmentResultStatus);
+            }
+            return _utf8Json(assessmentResult ?? assessmentResultJson(attemptId: int.parse(attemptId)), 200);
           }
         }
         if (path == '/api/people/assessment-attempts/mine' && request.method == 'GET') {

@@ -74,6 +74,12 @@ import '../people/roles_screen.dart';
 import '../people/approval_queue_bloc.dart';
 import '../people/assessment_create_bloc.dart';
 import '../people/assessment_create_screen.dart';
+import '../people/assessment_marking_bloc.dart';
+import '../people/assessment_marking_queue_bloc.dart';
+import '../people/assessment_marking_queue_screen.dart';
+import '../people/assessment_marking_screen.dart';
+import '../people/assessment_result_bloc.dart';
+import '../people/assessment_result_screen.dart';
 import '../people/assessment_sitting_bloc.dart';
 import '../people/assessment_sitting_screen.dart';
 import '../people/assessments_bloc.dart';
@@ -274,6 +280,15 @@ abstract final class Routes {
   /// and should see which check they were sitting.
   static String assessmentSitting(String assessmentId, String attemptId) =>
       '$assessments/$assessmentId/attempts/$attemptId/sit';
+
+  /// The marking queue, one paper's marking and one Attempt's result (slice 4).
+  /// The queue is a literal beneath `/assessments`, declared before the
+  /// `:id`-shaped addresses.
+  static const String assessmentMarkingQueue = '/assessments/marking';
+  static String assessmentMarking(String assessmentId, String attemptId) =>
+      '$assessments/$assessmentId/attempts/$attemptId/marking';
+  static String assessmentResult(String assessmentId, String attemptId) =>
+      '$assessments/$assessmentId/attempts/$attemptId/result';
 
   /// The two cost catalogues (issue #252): the rates the plant costs an hour
   /// at, and what one unit of a Product is costed at. Addressed at the
@@ -1425,6 +1440,9 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   peopleApi: context.read<PeopleApi>(),
                   authGateway: context.read<AuthGateway>(),
                   mayChange: mayChange,
+                  mayMark: held.isEmpty
+                      ? ModuleRoles.maintenance.contains(account.account.role)
+                      : held.contains(assessmentMarkPermission),
                 )..add(const AssessmentsStarted()),
                 child: const AssessmentsScreen(),
               );
@@ -1471,6 +1489,70 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                       authGateway: context.read<AuthGateway>(),
                     )..add(const AssessmentCreateStarted()),
                     child: const AssessmentCreateScreen(),
+                  );
+                },
+              ),
+              GoRoute(
+                path: 'marking',
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const AccessDeniedScreen();
+                  final held = account.account.permissions;
+                  final mayMark = held.isEmpty
+                      ? ModuleRoles.maintenance.contains(account.account.role)
+                      : held.contains(assessmentMarkPermission);
+                  if (!mayMark) return const AccessDeniedScreen();
+                  return BlocProvider<AssessmentMarkingQueueBloc>(
+                    create: (context) => AssessmentMarkingQueueBloc(
+                      peopleApi: context.read<PeopleApi>(),
+                      authGateway: context.read<AuthGateway>(),
+                    )..add(const AssessmentMarkingQueueStarted()),
+                    child: const AssessmentMarkingQueueScreen(),
+                  );
+                },
+              ),
+              GoRoute(
+                path: ':id/attempts/:attemptId/marking',
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const AccessDeniedScreen();
+                  final held = account.account.permissions;
+                  final mayMark = held.isEmpty
+                      ? ModuleRoles.maintenance.contains(account.account.role)
+                      : held.contains(assessmentMarkPermission);
+                  if (!mayMark) return const AccessDeniedScreen();
+                  return BlocProvider<AssessmentMarkingBloc>(
+                    create: (context) => AssessmentMarkingBloc(
+                      peopleApi: context.read<PeopleApi>(),
+                      authGateway: context.read<AuthGateway>(),
+                      attemptId: state.pathParameters['attemptId']!,
+                    )..add(AssessmentMarkingStarted(state.pathParameters['attemptId']!)),
+                    child: AssessmentMarkingScreen(
+                      assessmentId: state.pathParameters['id']!,
+                      attemptId: state.pathParameters['attemptId']!,
+                    ),
+                  );
+                },
+              ),
+              GoRoute(
+                path: ':id/attempts/:attemptId/result',
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const AccessDeniedScreen();
+                  final held = account.account.permissions;
+                  final mayOpen = held.isEmpty ||
+                      held.contains(destinationPermissions[Routes.assessments]);
+                  if (!mayOpen) return const AccessDeniedScreen();
+                  return BlocProvider<AssessmentResultBloc>(
+                    create: (context) => AssessmentResultBloc(
+                      peopleApi: context.read<PeopleApi>(),
+                      authGateway: context.read<AuthGateway>(),
+                      attemptId: state.pathParameters['attemptId']!,
+                    )..add(AssessmentResultStarted(state.pathParameters['attemptId']!)),
+                    child: AssessmentResultScreen(
+                      assessmentId: state.pathParameters['id']!,
+                      attemptId: state.pathParameters['attemptId']!,
+                    ),
                   );
                 },
               ),

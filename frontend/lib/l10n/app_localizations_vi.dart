@@ -8670,4 +8670,171 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get assessmentSubmit => 'Nộp bài';
+
+  @override
+  String get assessmentMarkingTitle => 'Chấm bài';
+
+  @override
+  String get assessmentMarkingDescription =>
+      'Các bài đã nộp đang chờ chấm, bài nộp trước đứng trước. Một bài nằm ở đây khi quy trình của bài nằm trong phạm vi bạn được ghi.';
+
+  @override
+  String get assessmentMarkingEmptyTitle => 'Không có bài cần chấm';
+
+  @override
+  String get assessmentMarkingEmpty =>
+      'Mọi bài đã nộp trong phạm vi của bạn đều đã được chấm.';
+
+  @override
+  String get assessmentMarkingFailedTitle =>
+      'Không đọc được danh sách chấm bài';
+
+  @override
+  String assessmentMarkingOtherCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count câu Khác',
+      zero: 'Không có câu Khác',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String assessmentMarkingSubmittedAt(String date) {
+    return 'nộp $date';
+  }
+
+  @override
+  String get assessmentMarkingLate => 'Máy chủ đã chốt bài sau hạn';
+
+  @override
+  String get assessmentMarkingOpen => 'Chấm';
+
+  @override
+  String assessmentMarkingPaperTitle(String name) {
+    return 'Chấm bài của $name';
+  }
+
+  @override
+  String get assessmentMarkingPaperFailedTitle => 'Không đọc được bài';
+
+  @override
+  String get assessmentMarkingMachineScore => 'Điểm máy chấm';
+
+  @override
+  String get assessmentMarkingFinalScore => 'Điểm cuối';
+
+  @override
+  String get assessmentMarkingDraftScore => 'Theo điểm bạn đặt';
+
+  @override
+  String assessmentMarkingPassMark(int mark, int total) {
+    return 'Điểm đạt: $mark/$total';
+  }
+
+  @override
+  String get assessmentMarkingAwardLabel => 'Điểm cho câu này';
+
+  @override
+  String get assessmentMarkingNoPoint => 'Không cho điểm';
+
+  @override
+  String get assessmentMarkingAwardPoint => 'Cho điểm';
+
+  @override
+  String get assessmentMarkingAnswerNote =>
+      'Ghi chú cho câu này (không bắt buộc)';
+
+  @override
+  String get assessmentMarkingNote => 'Ghi chú chấm bài';
+
+  @override
+  String get assessmentMarkingNoteHelper =>
+      'Bạn đã đổi gì và vì sao. Ghi cùng hồ sơ và hiện trên kết quả.';
+
+  @override
+  String get assessmentMarkingSubmit => 'Chấm xong';
+
+  @override
+  String get assessmentMarkingAlreadyMarked =>
+      'Bài này đã được chấm. Điểm đã ghi là hồ sơ, không chấm lại được.';
+
+  @override
+  String get assessmentResultTitle => 'Kết quả';
+
+  @override
+  String get assessmentResultFailedTitle => 'Không đọc được kết quả';
+
+  @override
+  String get assessmentResultAwaitingTitle => 'Chờ chấm';
+
+  @override
+  String get assessmentResultAwaiting =>
+      'Bài này chưa được chấm. Chưa hiện điểm nào cho tới khi người chấm chấm xong. Các câu trả lời bên dưới là của bạn.';
+
+  @override
+  String assessmentResultPassMark(int mark, int total) {
+    return 'Điểm đạt: $mark/$total';
+  }
+
+  @override
+  String assessmentResultMachineScore(int score, int finalScore) {
+    return 'Điểm máy chấm $score, điểm cuối $finalScore';
+  }
+
+  @override
+  String assessmentResultMarkedBy(String name) {
+    return 'Người chấm: $name';
+  }
+
+  @override
+  String assessmentResultMarkingNote(String note) {
+    return 'Ghi chú chấm bài: $note';
+  }
+
+  @override
+  String assessmentResultCorrectAnswer(String letter, String text) {
+    return 'Đáp án: $letter. $text';
+  }
+
+  @override
+  String assessmentResultPoints(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count điểm',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get assessmentResultNoAnswer => 'Không trả lời';
+
+  @override
+  String assessmentResultOther(String text) {
+    return 'Khác: $text';
+  }
+
+  @override
+  String get assessmentQueueAction => 'Danh sách chấm bài';
+
+  @override
+  String get assessmentResultAction => 'Xem kết quả';
+
+  @override
+  String assessmentAttemptScore(int score, int total, String verdict) {
+    return '$score/$total — $verdict';
+  }
+
+  @override
+  String assessmentAttemptNumber(int number) {
+    return 'Lần $number';
+  }
+
+  @override
+  String get assessmentVerdictPassed => 'đạt';
+
+  @override
+  String get assessmentVerdictFailed => 'chưa đạt';
 }

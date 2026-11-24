@@ -11,10 +11,13 @@
 /// client renders them and never re-derives one from the device clock, the same
 /// discipline `WorkOrder` keeps for its own server-decided fields.
 ///
-/// **A paper never carries the key.** The wire shape of one drawn Question is
-/// a stem, three Options and the candidate's own Answer — the correct Option
-/// and the explanation are not in the payload until the Attempt is marked
-/// (slice 4), and there is nowhere in this file to hold them by accident.
+/// **A candidate's paper never carries the key.** The wire shape of one drawn
+/// Question on `/assessment-attempts/:id` is a stem, three Options and the
+/// candidate's own Answer — the correct Option and the explanation are not in
+/// that payload at all, and there is nowhere in [AssessmentPaperQuestion] to
+/// hold them by accident. The key travels on two doors only, each modelled
+/// separately: the Marking paper ([AssessmentMarkingPaper]) and the result of a
+/// marked Attempt ([AssessmentResult]).
 library;
 
 import 'package:flutter/foundation.dart';
@@ -133,6 +136,12 @@ class AssessmentAttempt {
     this.startedAt,
     this.deadlineAt,
     this.submittedAt,
+    this.markedByName,
+    this.markingNote,
+    this.score,
+    this.finalScore,
+    this.passed,
+    this.scoreHidden = true,
     this.assessmentNumber,
     this.assessmentTitle,
     this.processName,
@@ -163,6 +172,20 @@ class AssessmentAttempt {
   final DateTime? startedAt;
   final DateTime? deadlineAt;
   final DateTime? submittedAt;
+
+  /// Who marked the Attempt, on a marked one (slice 4).
+  final String? markedByName;
+
+  /// The Marker's note, kept with the record (slice 4).
+  final String? markingNote;
+
+  /// The machine's number and the Marker's, and the verdict derived from
+  /// `finalScore >= passMark` — all `null` when the caller may not read a score
+  /// or the Attempt is not marked yet, with [scoreHidden] saying which.
+  final int? score;
+  final int? finalScore;
+  final bool? passed;
+  final bool scoreHidden;
 
   /// Present on the candidate's own list (`/assessment-attempts/mine`): the
   /// Assessment the Attempt belongs to, flattened so one list row needs no
@@ -198,6 +221,12 @@ class AssessmentAttempt {
       startedAt: _time(json['startedAt']),
       deadlineAt: _time(json['deadlineAt']),
       submittedAt: _time(json['submittedAt']),
+      markedByName: json['markedByName'] as String?,
+      markingNote: json['markingNote'] as String?,
+      score: json['score'] == null ? null : _int(json['score']),
+      finalScore: json['finalScore'] == null ? null : _int(json['finalScore']),
+      passed: json['passed'] is bool ? json['passed'] as bool : null,
+      scoreHidden: json['scoreHidden'] != false,
       assessmentNumber: json['assessmentNumber'] as String?,
       assessmentTitle: json['assessmentTitle'] as String?,
       processName: json['processName'] as String?,
@@ -347,6 +376,259 @@ class AssignPreview {
       unresolvedNames: [
         for (final row in (json['unresolved'] as List<dynamic>? ?? const []))
           (row as Map<String, dynamic>)['displayName'] as String? ?? '',
+      ],
+    );
+  }
+}
+
+/// One row of the marking queue (`GET /assessment-marking`, slice 4): a
+/// `submitted` Attempt in the Marker's write reach, with the flags that decide
+/// what to look at first — how many "Khác" answers it holds, and whether the
+/// server finalised it late.
+@immutable
+class AssessmentMarkingEntry {
+  const AssessmentMarkingEntry({
+    required this.id,
+    required this.assessmentId,
+    required this.employeeId,
+    required this.attemptNo,
+    required this.orgUnitId,
+    required this.submittedLate,
+    required this.otherAnswerCount,
+    this.assessmentNumber,
+    this.assessmentTitle,
+    this.employeeName,
+    this.orgUnitName,
+    this.processName,
+    this.questionCount,
+    this.passMark,
+    this.submittedAt,
+  });
+
+  final String id;
+  final String assessmentId;
+  final String employeeId;
+  final int attemptNo;
+  final String orgUnitId;
+  final bool submittedLate;
+
+  /// How many drawn Questions carry an Other answer — the count the queue is
+  /// read for. A count, never a score, so it is never hidden.
+  final int otherAnswerCount;
+
+  final String? assessmentNumber;
+  final String? assessmentTitle;
+  final String? employeeName;
+  final String? orgUnitName;
+  final String? processName;
+  final int? questionCount;
+  final int? passMark;
+  final DateTime? submittedAt;
+
+  factory AssessmentMarkingEntry.fromJson(Map<String, dynamic> json) {
+    return AssessmentMarkingEntry(
+      id: json['id'].toString(),
+      assessmentId: json['assessmentId'].toString(),
+      employeeId: json['employeeId'].toString(),
+      attemptNo: _int(json['attemptNo']),
+      orgUnitId: json['orgUnitId'].toString(),
+      submittedLate: json['submittedLate'] == true,
+      otherAnswerCount: _int(json['otherAnswerCount']),
+      assessmentNumber: json['assessmentNumber'] as String?,
+      assessmentTitle: json['assessmentTitle'] as String?,
+      employeeName: json['employeeName'] as String?,
+      orgUnitName: json['orgUnitName'] as String?,
+      processName: json['processName'] as String?,
+      questionCount: json['questionCount'] == null ? null : _int(json['questionCount']),
+      passMark: json['passMark'] == null ? null : _int(json['passMark']),
+      submittedAt: _time(json['submittedAt']),
+    );
+  }
+}
+
+/// The queue, and the server's own bound on it (ADR-0026).
+@immutable
+class AssessmentMarkingQueue {
+  const AssessmentMarkingQueue({
+    required this.entries,
+    required this.total,
+    required this.truncated,
+  });
+
+  final List<AssessmentMarkingEntry> entries;
+  final int total;
+  final bool truncated;
+
+  factory AssessmentMarkingQueue.fromJson(Map<String, dynamic> json) {
+    return AssessmentMarkingQueue(
+      entries: [
+        for (final entry in (json['attempts'] as List<dynamic>? ?? const []))
+          AssessmentMarkingEntry.fromJson(entry as Map<String, dynamic>),
+      ],
+      total: _int(json['total']),
+      truncated: json['truncated'] == true,
+    );
+  }
+}
+
+/// One Question as the Marker and the result read it: the same stem and three
+/// Options the candidate saw, plus the key, the explanation and the point. The
+/// candidate's paper ([AssessmentPaperQuestion]) deliberately has no field for
+/// the key; this one exists only for the two doors that may carry it.
+@immutable
+class AssessmentMarkedQuestion {
+  const AssessmentMarkedQuestion({
+    required this.position,
+    required this.questionText,
+    required this.optionA,
+    required this.optionB,
+    required this.optionC,
+    required this.correctOption,
+    required this.points,
+    this.explanation,
+    this.chosenOption,
+    this.otherText,
+  });
+
+  final int position;
+  final String questionText;
+  final String optionA;
+  final String optionB;
+  final String optionC;
+
+  /// The key: one of `A`, `B`, `C`.
+  final String correctOption;
+  final String? explanation;
+  final String? chosenOption;
+  final String? otherText;
+
+  /// The point on this Answer — the machine's, or the Marker's after the award.
+  final int points;
+
+  bool get isOther => otherText != null;
+  bool get isBlank => chosenOption == null && otherText == null;
+
+  String? optionText(String? letter) => switch (letter) {
+        'A' => optionA,
+        'B' => optionB,
+        'C' => optionC,
+        _ => null,
+      };
+
+  AssessmentMarkedQuestion withPoints(int next) => AssessmentMarkedQuestion(
+        position: position,
+        questionText: questionText,
+        optionA: optionA,
+        optionB: optionB,
+        optionC: optionC,
+        correctOption: correctOption,
+        points: next,
+        explanation: explanation,
+        chosenOption: chosenOption,
+        otherText: otherText,
+      );
+
+  factory AssessmentMarkedQuestion.fromJson(Map<String, dynamic> json) {
+    return AssessmentMarkedQuestion(
+      position: _int(json['position']),
+      questionText: json['questionText'] as String? ?? '',
+      optionA: json['optionA'] as String? ?? '',
+      optionB: json['optionB'] as String? ?? '',
+      optionC: json['optionC'] as String? ?? '',
+      correctOption: json['correctOption'] as String? ?? '',
+      points: _int(json['points']),
+      explanation: json['explanation'] as String?,
+      chosenOption: json['chosenOption'] as String?,
+      otherText: json['otherText'] as String?,
+    );
+  }
+}
+
+/// One Attempt's marking paper (`GET /assessment-attempts/:id/marking`): the
+/// Attempt, and every Question with its key, its Answer and its point.
+@immutable
+class AssessmentMarkingPaper {
+  const AssessmentMarkingPaper({required this.attempt, required this.questions});
+
+  final AssessmentAttempt attempt;
+  final List<AssessmentMarkedQuestion> questions;
+
+  int get totalPoints => questions.fold(0, (sum, question) => sum + question.points);
+  int get otherCount => questions.where((question) => question.isOther).length;
+
+  AssessmentMarkingPaper withPoints(Map<int, int> points) => AssessmentMarkingPaper(
+        attempt: attempt,
+        questions: [
+          for (final question in questions)
+            points.containsKey(question.position)
+                ? question.withPoints(points[question.position]!)
+                : question,
+        ],
+      );
+
+  factory AssessmentMarkingPaper.fromJson(Map<String, dynamic> json) {
+    return AssessmentMarkingPaper(
+      attempt: AssessmentAttempt.fromJson(json['attempt'] as Map<String, dynamic>),
+      questions: [
+        for (final question in (json['questions'] as List<dynamic>? ?? const []))
+          AssessmentMarkedQuestion.fromJson(question as Map<String, dynamic>),
+      ],
+    );
+  }
+}
+
+/// The verdict a marked Attempt carries: both numbers and the pass mark, with
+/// pass/fail **derived by the server** at read and never stored (spec section
+/// 3.13) — this class only carries the three numbers and the answer.
+@immutable
+class AssessmentVerdict {
+  const AssessmentVerdict({
+    required this.passMark,
+    required this.questionCount,
+    required this.passed,
+    this.score,
+    this.finalScore,
+  });
+
+  final int? score;
+  final int? finalScore;
+  final int passMark;
+  final int questionCount;
+  final bool passed;
+
+  factory AssessmentVerdict.fromJson(Map<String, dynamic> json) {
+    return AssessmentVerdict(
+      score: json['score'] == null ? null : _int(json['score']),
+      finalScore: json['finalScore'] == null ? null : _int(json['finalScore']),
+      passMark: _int(json['passMark']),
+      questionCount: _int(json['questionCount']),
+      passed: json['passed'] == true,
+    );
+  }
+}
+
+/// One marked Attempt's result (`GET /assessment-attempts/:id/result`): the
+/// Attempt, the verdict, and every Question with the candidate's Answer, the
+/// key, the point and the explanation.
+@immutable
+class AssessmentResult {
+  const AssessmentResult({
+    required this.attempt,
+    required this.verdict,
+    required this.questions,
+  });
+
+  final AssessmentAttempt attempt;
+  final AssessmentVerdict verdict;
+  final List<AssessmentMarkedQuestion> questions;
+
+  factory AssessmentResult.fromJson(Map<String, dynamic> json) {
+    return AssessmentResult(
+      attempt: AssessmentAttempt.fromJson(json['attempt'] as Map<String, dynamic>),
+      verdict: AssessmentVerdict.fromJson(json['verdict'] as Map<String, dynamic>),
+      questions: [
+        for (final question in (json['questions'] as List<dynamic>? ?? const []))
+          AssessmentMarkedQuestion.fromJson(question as Map<String, dynamic>),
       ],
     );
   }

@@ -70,6 +70,7 @@ class AssessmentsUnavailable extends AssessmentsState {
 class AssessmentsLoaded extends AssessmentsState {
   const AssessmentsLoaded({
     required this.mayChange,
+    this.mayMark = false,
     required this.mine,
     required this.created,
     required this.all,
@@ -79,6 +80,9 @@ class AssessmentsLoaded extends AssessmentsState {
   });
 
   final bool mayChange;
+
+  /// Whether the caller holds `PPL_ASSESSMENT_MARK`: the marking queue's door.
+  final bool mayMark;
   final List<AssessmentAttempt> mine;
   final List<Assessment> created;
   final List<Assessment> all;
@@ -100,6 +104,7 @@ class AssessmentsLoaded extends AssessmentsState {
   }) {
     return AssessmentsLoaded(
       mayChange: mayChange,
+      mayMark: mayMark,
       mine: mine ?? this.mine,
       created: created ?? this.created,
       all: all ?? this.all,
@@ -115,6 +120,7 @@ class AssessmentsBloc extends Bloc<AssessmentsEvent, AssessmentsState> {
     required PeopleApi peopleApi,
     required AuthGateway authGateway,
     required this.mayChange,
+    this.mayMark = false,
   })  : _api = peopleApi,
         _auth = authGateway,
         super(const AssessmentsLoading()) {
@@ -129,6 +135,10 @@ class AssessmentsBloc extends Bloc<AssessmentsEvent, AssessmentsState> {
   /// Whether the caller holds `PPL_ASSESSMENT_CHANGE`; decided by the router and
   /// handed in, and it decides whether "New assessment" exists.
   final bool mayChange;
+
+  /// Whether the caller holds `PPL_ASSESSMENT_MARK`; decided by the router, and
+  /// it decides whether the marking queue is offered.
+  final bool mayMark;
 
   static const String signedOutMessage = BlocNotice.sessionEnded;
 
@@ -176,6 +186,7 @@ class AssessmentsBloc extends Bloc<AssessmentsEvent, AssessmentsState> {
       final all = await _api.fetchAssessments(token);
       emit(AssessmentsLoaded(
         mayChange: mayChange,
+        mayMark: mayMark,
         mine: mine,
         created: created.assessments,
         all: all.assessments,

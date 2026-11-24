@@ -2950,6 +2950,94 @@ class PeopleApi {
     return _assessmentPaperFrom(response);
   }
 
+  /// The marking queue (`GET /api/people/assessment-marking`): the `submitted`
+  /// Attempts in the caller's write reach, oldest first. [orgUnitId] narrows to
+  /// one node; the server bounds the list and says whether it did.
+  Future<AssessmentMarkingQueue> fetchAssessmentMarkingQueue(
+    String accessToken, {
+    String? orgUnitId,
+  }) async {
+    var path = '/api/people/assessment-marking';
+    if (orgUnitId != null) path = '$path?orgUnitId=$orgUnitId';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      return AssessmentMarkingQueue.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// One Attempt's marking paper (`GET .../:id/marking`): every Question with
+  /// its key and its point, and the two scores at the top.
+  Future<AssessmentMarkingPaper> fetchAssessmentMarkingPaper(
+    String accessToken,
+    String attemptId,
+  ) async {
+    final path = '/api/people/assessment-attempts/$attemptId/marking';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    return _assessmentMarkingPaperFrom(response);
+  }
+
+  /// The award (`POST .../:id/mark`): the points the Marker set, the note, and
+  /// the Attempt marked. The server answers the paper as it now stands, so the
+  /// Screen shows the two scores it wrote rather than a guess.
+  Future<AssessmentMarkingPaper> markAssessmentAttempt(
+    String accessToken,
+    String attemptId, {
+    required Map<int, int> points,
+    String? note,
+    Map<int, String> notes = const {},
+  }) async {
+    final path = '/api/people/assessment-attempts/$attemptId/mark';
+    final answers = [
+      for (final entry in points.entries)
+        {
+          'position': entry.key,
+          'points': entry.value,
+          'note': ?notes[entry.key],
+        },
+    ];
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'answers': answers, 'note': ?note}),
+      ),
+      path,
+    );
+    return _assessmentMarkingPaperFrom(response);
+  }
+
+  /// One marked Attempt's result (`GET .../:id/result`). A 409 is the Attempt
+  /// not being marked yet — a state, not a failure — and the caller reads
+  /// `statusCode` to tell the two apart.
+  Future<AssessmentResult> fetchAssessmentResult(String accessToken, String attemptId) async {
+    final path = '/api/people/assessment-attempts/$attemptId/result';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      return AssessmentResult.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  static AssessmentMarkingPaper _assessmentMarkingPaperFrom(http.Response response) {
+    try {
+      return AssessmentMarkingPaper.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   static AssessmentPage _assessmentPageFrom(http.Response response) {
     try {
       return AssessmentPage.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
