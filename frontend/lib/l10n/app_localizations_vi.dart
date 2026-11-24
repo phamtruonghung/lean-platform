@@ -8441,4 +8441,233 @@ class AppLocalizationsVi extends AppLocalizations {
   String assessmentPasteIssueStray(int line, int question) {
     return 'Dòng $line, câu $question: dòng này không đúng chỗ. Sau các phương án chỉ được có phần giải thích, và hai câu hỏi phải cách nhau một dòng trống.';
   }
+
+  @override
+  String get assessmentsTitle => 'Bài kiểm tra';
+
+  @override
+  String get assessmentsDescription =>
+      'Các bài kiểm tra nhân viên phải làm, và những bài bạn giao. Đề được rút từ ngân hàng câu hỏi của một quy trình khi người làm bắt đầu, và điểm chỉ hiện sau khi bài được chấm.';
+
+  @override
+  String get assessmentsFailedTitle => 'Không đọc được danh sách bài kiểm tra';
+
+  @override
+  String get commonRefresh => 'Làm mới';
+
+  @override
+  String get assessmentNew => 'Bài kiểm tra mới';
+
+  @override
+  String get assessmentTabAssignedToMe => 'Giao cho tôi';
+
+  @override
+  String get assessmentTabICreated => 'Tôi tạo';
+
+  @override
+  String get assessmentTabAll => 'Tất cả';
+
+  @override
+  String get assessmentRegisterEmptyTitle => 'Chưa có gì';
+
+  @override
+  String get assessmentRegisterEmptyMine =>
+      'Bạn không được giao bài kiểm tra nào.';
+
+  @override
+  String get assessmentRegisterEmptyCreated => 'Bạn chưa tạo bài kiểm tra nào.';
+
+  @override
+  String get assessmentRegisterEmptyAll => 'Nhà máy chưa tạo bài kiểm tra nào.';
+
+  @override
+  String get assessmentScoreHiddenNote =>
+      'Điểm chỉ hiện sau khi bài đã được chấm.';
+
+  @override
+  String assessmentPaperSizeShort(int count) {
+    return '$count câu';
+  }
+
+  @override
+  String assessmentMinutesShort(int count) {
+    return '$count phút';
+  }
+
+  @override
+  String assessmentDueOn(String date) {
+    return 'hạn $date';
+  }
+
+  @override
+  String assessmentSittingCounts(
+    int assigned,
+    int running,
+    int awaiting,
+    int marked,
+  ) {
+    return '$assigned chưa làm · $running đang làm · $awaiting chờ chấm · $marked đã chấm';
+  }
+
+  @override
+  String get assessmentStart => 'Bắt đầu';
+
+  @override
+  String get assessmentContinue => 'Làm tiếp';
+
+  @override
+  String get assessmentStatusAssigned => 'Chưa làm';
+
+  @override
+  String get assessmentStatusInProgress => 'Đang làm';
+
+  @override
+  String get assessmentStatusSubmitted => 'Chờ chấm';
+
+  @override
+  String get assessmentStatusMarked => 'Đã chấm';
+
+  @override
+  String get assessmentStatusExpired => 'Quá hạn';
+
+  @override
+  String get assessmentStatusCancelled => 'Đã huỷ';
+
+  @override
+  String get assessmentStateDraft => 'Bản nháp';
+
+  @override
+  String get assessmentStateAssigned => 'Đã giao';
+
+  @override
+  String get assessmentStateClosed => 'Đã đóng';
+
+  @override
+  String get assessmentNewTitle => 'Bài kiểm tra mới';
+
+  @override
+  String get assessmentNewDescription =>
+      'Chọn quy trình có ngân hàng câu hỏi để rút đề, rồi chọn người làm.';
+
+  @override
+  String get assessmentNewProcessHelper =>
+      'Đề chỉ rút từ các câu hỏi được ghi trên đúng đơn vị này, không lấy của các đơn vị bên dưới.';
+
+  @override
+  String get assessmentTitleLabel => 'Tiêu đề';
+
+  @override
+  String get assessmentPaperSizeLabel => 'Số câu';
+
+  @override
+  String assessmentQuestionCountShort(int count) {
+    return '$count câu';
+  }
+
+  @override
+  String get assessmentMinutesLabel => 'Số phút';
+
+  @override
+  String get assessmentMinutesHelper =>
+      'Mặc định 2 phút mỗi câu. Từ 5 đến 120.';
+
+  @override
+  String get assessmentPassMarkLabel => 'Điểm đạt';
+
+  @override
+  String get assessmentPassMarkHelper => 'Mặc định 80 % số câu.';
+
+  @override
+  String get assessmentDueDateLabel => 'Hạn làm';
+
+  @override
+  String get assessmentDueDateHelper =>
+      'Ngày cuối cùng có thể bắt đầu. Để trống là không có hạn.';
+
+  @override
+  String get assessmentAssignGroupLabel => 'Ai làm bài';
+
+  @override
+  String get assessmentAssignGroupHelper =>
+      'Thêm đơn vị và nhân viên. Một đơn vị bao gồm những người làm ở đó và ở các đơn vị bên dưới.';
+
+  @override
+  String get assessmentAssignOrgUnitLabel => 'Thêm một đơn vị';
+
+  @override
+  String get assessmentAssignEmployeeLabel => 'Thêm một nhân viên';
+
+  @override
+  String assessmentReachCount(int count) {
+    return 'Sẽ giao tới $count nhân viên.';
+  }
+
+  @override
+  String assessmentReachUnresolved(int count, String names) {
+    return '$count người trong số đó chưa có đơn vị để trả lời ($names) và sẽ bị từ chối cho tới khi được gán đơn vị.';
+  }
+
+  @override
+  String get assessmentCreateSubmit => 'Tạo và giao bài';
+
+  @override
+  String get assessmentSubmitTitle => 'Nộp bài này?';
+
+  @override
+  String get assessmentSubmitMessageAllAnswered =>
+      'Mọi câu đều đã trả lời. Nộp xong không mở lại được.';
+
+  @override
+  String assessmentSubmitMessageUnanswered(int count) {
+    return 'Còn $count câu chưa trả lời và sẽ được 0 điểm. Nộp xong không mở lại được.';
+  }
+
+  @override
+  String get assessmentSubmitConfirm => 'Nộp bài';
+
+  @override
+  String get assessmentSubmittedTitle => 'Đã nộp';
+
+  @override
+  String get assessmentSubmittedMessage =>
+      'Bài đã được nộp. Điểm hiện ra khi bài được chấm.';
+
+  @override
+  String get assessmentSubmittedLateMessage =>
+      'Hết giờ nên bài được nộp tự động. Điểm hiện ra khi bài được chấm.';
+
+  @override
+  String get assessmentBackToRegister => 'Về danh sách bài kiểm tra';
+
+  @override
+  String get assessmentAnswerSaved => 'Đã lưu';
+
+  @override
+  String assessmentPositionOf(int position, int total) {
+    return 'Câu $position / $total';
+  }
+
+  @override
+  String get assessmentOtherAnswerLabel => 'Khác: ghi câu trả lời của bạn';
+
+  @override
+  String get assessmentOtherAnswerHint => 'Câu trả lời của bạn';
+
+  @override
+  String get assessmentOtherAnswerHelper =>
+      'Câu trả lời Khác do người chấm đọc và được 0 điểm cho tới khi họ quyết định.';
+
+  @override
+  String get assessmentPrevious => 'Câu trước';
+
+  @override
+  String get assessmentNext => 'Câu sau';
+
+  @override
+  String assessmentAnsweredCount(int answered, int total) {
+    return 'Đã trả lời $answered/$total';
+  }
+
+  @override
+  String get assessmentSubmit => 'Nộp bài';
 }

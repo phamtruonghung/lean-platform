@@ -288,6 +288,21 @@ const _excluded = <String, String>{
       'a wall: its body is a full-bleed picture with the facts over it, not a page of card '
           'rows to measure an inset against. Its header is still one `AppPageFrame`, so the '
           'title and description start at the frame edge like every other page',
+  // The Assessments register (issue #588, slice 3): its first card exists only
+  // once the server has answered with rows, and the audit's one firehose wire
+  // carries none for this address; the cross-palette sweep covers it instead.
+  // Its header is still one `AppPageHeader` in one `AppPageFrame`.
+  'lib/people/assessments_screen.dart':
+      'the register has no card until the server has answered, and the audit\'s shared wire '
+          'carries no Assessments; its rows are covered by the palette and text-scale sweep',
+  // The create form and the sitting are not registers at all: one is fields and
+  // pickers, the other a full-height paper with its own sticky header.
+  'lib/people/assessment_create_screen.dart':
+      'a form — text fields, choices and pickers — with no register of card rows to measure '
+          'an inset against',
+  'lib/people/assessment_sitting_screen.dart':
+      'a sitting: a full-height paper with its own sticky header and navigator, not a page '
+          'frame of card rows',
 };
 
 /// One wire for every page in the table: each Screen finds the collection it

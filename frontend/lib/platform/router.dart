@@ -72,6 +72,12 @@ import '../people/accounts_screen.dart';
 import '../people/roles_bloc.dart';
 import '../people/roles_screen.dart';
 import '../people/approval_queue_bloc.dart';
+import '../people/assessment_create_bloc.dart';
+import '../people/assessment_create_screen.dart';
+import '../people/assessment_sitting_bloc.dart';
+import '../people/assessment_sitting_screen.dart';
+import '../people/assessments_bloc.dart';
+import '../people/assessments_screen.dart';
 import '../people/assessment_questions_bloc.dart';
 import '../people/assessment_questions_screen.dart';
 import '../people/approval_queue_screen.dart';
@@ -257,10 +263,17 @@ abstract final class Routes {
   static const String leaveRequests = '/leave-requests';
 
   /// Assessments (issue #588, ADR-0068). `/assessments` is the Destination and
-  /// will be the register; until that slice it sends a person to the Question
-  /// bank beneath it.
+  /// the register; the Question bank, a new Assessment's form and one Attempt's
+  /// sitting are addressed beneath it.
   static const String assessments = '/assessments';
   static const String assessmentQuestions = '/assessments/questions';
+  static const String assessmentNew = '/assessments/new';
+
+  /// One Attempt's sitting (spec section 8). The Assessment is in the address
+  /// even though the Attempt id alone would find it: a person reads the URL back
+  /// and should see which check they were sitting.
+  static String assessmentSitting(String assessmentId, String attemptId) =>
+      '$assessments/$assessmentId/attempts/$attemptId/sit';
 
   /// The two cost catalogues (issue #252): the rates the plant costs an hour
   /// at, and what one unit of a Product is costed at. Addressed at the
@@ -1386,14 +1399,36 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
               ),
             ],
           ),
-          // Assessments (issue #588). The Destination's own address has no
-          // Screen yet - the register is a later slice - so it sends a person
-          // to the Question bank, the one Screen there is. Matched exactly, so
-          // `/assessments/questions` below is not swallowed.
+          // Assessments (issue #588). `/assessments` is the register, and the
+          // Question bank, a new Assessment's form and one Attempt's sitting sit
+          // beneath it. `/assessments/questions` and `/assessments/new` are
+          // literal children declared before `:id`-shaped ones, so Express-style
+          // ambiguity cannot arise — go_router matches the literal first when
+          // both are declared, and `new` has no id-shaped sibling anyway.
           GoRoute(
             path: Routes.assessments,
-            redirect: (context, state) =>
-                state.uri.path == Routes.assessments ? Routes.assessmentQuestions : null,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const AccessDeniedScreen();
+              final held = account.account.permissions;
+              // The same fallback `Routes.roles` makes: a response that carried
+              // no codes is a client older than this Screen, and the roles the
+              // seed gives the codes to are the door then.
+              final mayOpen = held.isEmpty ||
+                  held.contains(destinationPermissions[Routes.assessments]);
+              if (!mayOpen) return const AccessDeniedScreen();
+              final mayChange = held.isEmpty
+                  ? ModuleRoles.maintenance.contains(account.account.role)
+                  : held.contains(assessmentChangePermission);
+              return BlocProvider<AssessmentsBloc>(
+                create: (context) => AssessmentsBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                  mayChange: mayChange,
+                )..add(const AssessmentsStarted()),
+                child: const AssessmentsScreen(),
+              );
+            },
             routes: [
               GoRoute(
                 path: 'questions',
@@ -1417,6 +1452,46 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                       mayChange: mayChange,
                     )..add(const AssessmentQuestionsStarted()),
                     child: const AssessmentQuestionsScreen(),
+                  );
+                },
+              ),
+              GoRoute(
+                path: 'new',
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const AccessDeniedScreen();
+                  final held = account.account.permissions;
+                  final mayCreate = held.isEmpty
+                      ? ModuleRoles.maintenance.contains(account.account.role)
+                      : held.contains(assessmentChangePermission);
+                  if (!mayCreate) return const AccessDeniedScreen();
+                  return BlocProvider<AssessmentCreateBloc>(
+                    create: (context) => AssessmentCreateBloc(
+                      peopleApi: context.read<PeopleApi>(),
+                      authGateway: context.read<AuthGateway>(),
+                    )..add(const AssessmentCreateStarted()),
+                    child: const AssessmentCreateScreen(),
+                  );
+                },
+              ),
+              GoRoute(
+                path: ':id/attempts/:attemptId/sit',
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const AccessDeniedScreen();
+                  final held = account.account.permissions;
+                  final maySit = held.isEmpty ||
+                      held.contains(assessmentSitPermission);
+                  if (!maySit) return const AccessDeniedScreen();
+                  return BlocProvider<AssessmentSittingBloc>(
+                    create: (context) => AssessmentSittingBloc(
+                      peopleApi: context.read<PeopleApi>(),
+                      authGateway: context.read<AuthGateway>(),
+                    )..add(AssessmentSittingStarted(state.pathParameters['attemptId']!)),
+                    child: AssessmentSittingScreen(
+                      assessmentId: state.pathParameters['id']!,
+                      attemptId: state.pathParameters['attemptId']!,
+                    ),
                   );
                 },
               ),

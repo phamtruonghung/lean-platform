@@ -14,6 +14,7 @@ import 'package:http/http.dart' as http;
 import 'people/assignee_candidate.dart';
 import 'people/app_role.dart';
 import 'people/attendance.dart';
+import 'people/assessment.dart';
 import 'people/assessment_question.dart';
 import 'people/leave_request.dart';
 import 'people/worked_hours.dart';
@@ -2728,6 +2729,247 @@ class PeopleApi {
     );
     try {
       return ((jsonDecode(response.body) as Map<String, dynamic>)['created'] as num).toInt();
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// The register (`GET /api/people/assessments`): number, title, process, paper
+  /// size, due date, status and the four sitting counts, newest first. `mine`
+  /// narrows to the Assessments the caller created.
+  Future<AssessmentPage> fetchAssessments(
+    String accessToken, {
+    String? orgUnitId,
+    String? status,
+    bool mine = false,
+  }) async {
+    const path = '/api/people/assessments';
+    final uri = Uri.parse(path).replace(queryParameters: {
+      'orgUnitId': ?orgUnitId,
+      'status': ?status,
+      if (mine) 'mine': 'true',
+    });
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    return _assessmentPageFrom(response);
+  }
+
+  /// One Assessment and every Attempt on it (`GET /api/people/assessments/:id`).
+  Future<Assessment> fetchAssessment(String accessToken, String id) async {
+    final path = '/api/people/assessments/$id';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    return _assessmentFrom(response);
+  }
+
+  /// Creates a draft (`POST /api/people/assessments`). [body] is `orgUnitId`,
+  /// `title`, `questionCount` and optionally `minutes`, `passMark`,
+  /// `attemptsAllowed`, `dueOn`.
+  Future<Assessment> createAssessment(String accessToken, Map<String, Object?> body) async {
+    const path = '/api/people/assessments';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    return _assessmentFrom(response);
+  }
+
+  /// Corrects a draft (`PATCH /api/people/assessments/:id`) — a full restatement
+  /// of the six facts, refused once assigned.
+  Future<Assessment> correctAssessment(
+    String accessToken,
+    String id,
+    Map<String, Object?> body,
+  ) async {
+    final path = '/api/people/assessments/$id';
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    return _assessmentFrom(response);
+  }
+
+  /// Discards a draft (`DELETE /api/people/assessments/:id`, 204).
+  Future<void> discardAssessment(String accessToken, String id) async {
+    final path = '/api/people/assessments/$id';
+    await _send(
+      () => _client.delete(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+  }
+
+  /// Assigns an Assessment (`POST /api/people/assessments/:id/assign`): one
+  /// Attempt per Employee the group reaches, all-or-nothing. Answers the
+  /// Assessment as it now stands, Attempts included.
+  Future<Assessment> assignAssessment(
+    String accessToken,
+    String id, {
+    List<String> orgUnitIds = const [],
+    List<String> crewIds = const [],
+    List<String> employeeIds = const [],
+  }) async {
+    final path = '/api/people/assessments/$id/assign';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'orgUnitIds': orgUnitIds,
+          'crewIds': crewIds,
+          'employeeIds': employeeIds,
+        }),
+      ),
+      path,
+    );
+    return _assessmentFrom(response);
+  }
+
+  /// Closes an Assessment (`POST /api/people/assessments/:id/close`): no new
+  /// starts, no more people, no retakes.
+  Future<Assessment> closeAssessment(String accessToken, String id) async {
+    final path = '/api/people/assessments/$id/close';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken'},
+      ),
+      path,
+    );
+    return _assessmentFrom(response);
+  }
+
+  /// How many Employees a group would reach, and how many of them have no Org
+  /// Unit to answer to (`GET /api/people/assessments/assign-preview`).
+  Future<AssignPreview> previewAssessmentAssignment(
+    String accessToken, {
+    List<String> orgUnitIds = const [],
+    List<String> crewIds = const [],
+    List<String> employeeIds = const [],
+  }) async {
+    const path = '/api/people/assessments/assign-preview';
+    final uri = Uri.parse(path).replace(queryParameters: {
+      'orgUnitIds': ?(orgUnitIds.isEmpty ? null : orgUnitIds.join(',')),
+      'crewIds': ?(crewIds.isEmpty ? null : crewIds.join(',')),
+      'employeeIds': ?(employeeIds.isEmpty ? null : employeeIds.join(',')),
+    });
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      return AssignPreview.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// The caller's own Attempts (`GET /api/people/assessment-attempts/mine`),
+  /// every attempt number, open and done.
+  Future<List<AssessmentAttempt>> fetchMyAssessmentAttempts(String accessToken) async {
+    const path = '/api/people/assessment-attempts/mine';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final attempt in (body['attempts'] as List<dynamic>? ?? const []))
+          AssessmentAttempt.fromJson(attempt as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Get-or-create the paper (`POST /api/people/assessment-attempts/:id/start`).
+  /// Idempotent: a repeat returns the same paper and the same deadline.
+  Future<AssessmentPaper> startAssessmentAttempt(String accessToken, String id) async {
+    final path = '/api/people/assessment-attempts/$id/start';
+    final response = await _send(
+      () => _client.post(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    return _assessmentPaperFrom(response);
+  }
+
+  /// The same paper on a refresh (`GET /api/people/assessment-attempts/:id`).
+  Future<AssessmentPaper> fetchAssessmentPaper(String accessToken, String id) async {
+    final path = '/api/people/assessment-attempts/$id';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    return _assessmentPaperFrom(response);
+  }
+
+  /// Saves one Answer (`PATCH .../answers/:position`): an Option, an Other
+  /// answer, or neither for a blank. Idempotent; refused past the deadline.
+  Future<AssessmentPaper> saveAssessmentAnswer(
+    String accessToken,
+    String attemptId,
+    int position, {
+    String? chosenOption,
+    String? otherText,
+  }) async {
+    final path = '/api/people/assessment-attempts/$attemptId/answers/$position';
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'chosenOption': ?chosenOption,
+          'otherText': ?otherText,
+        }),
+      ),
+      path,
+    );
+    return _assessmentPaperFrom(response);
+  }
+
+  /// Submits the Attempt (`POST .../submit`): the server scores what is saved
+  /// and finalises it. Idempotent while the candidate's own submit stands.
+  Future<AssessmentPaper> submitAssessmentAttempt(String accessToken, String id) async {
+    final path = '/api/people/assessment-attempts/$id/submit';
+    final response = await _send(
+      () => _client.post(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    return _assessmentPaperFrom(response);
+  }
+
+  static AssessmentPage _assessmentPageFrom(http.Response response) {
+    try {
+      return AssessmentPage.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  static Assessment _assessmentFrom(http.Response response) {
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return Assessment.fromJson(body['assessment'] as Map<String, dynamic>);
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  static AssessmentPaper _assessmentPaperFrom(http.Response response) {
+    try {
+      return AssessmentPaper.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
     } catch (error) {
       throw PeopleApiException('The API answered with something this app could not read: $error');
     }
