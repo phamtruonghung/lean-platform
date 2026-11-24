@@ -799,6 +799,15 @@ const NOT_YOURS = 'Only the Employee can sit their own Assessment';
 async function startAttempt(accountId, attemptId, mine) {
   await sweep(attemptId);
   return withActor(accountId, async (client) => {
+    // Section 11's promise is one paper per Attempt, and this lock is what
+    // keeps it: two starts racing would otherwise both read `assigned` and
+    // both draw. The second one blocks here, then reads `in_progress` and gets
+    // the first one's paper.
+    const { rowCount: claimed } = await client.query(
+      'SELECT 1 FROM assessment_attempts WHERE id = $1 FOR UPDATE',
+      [attemptId]
+    );
+    if (claimed === 0) throw notFound('Assessment attempt');
     const row = await attemptContext(client, attemptId);
     if (!row) throw notFound('Assessment attempt');
     if (String(row.employee_id) !== String(mine)) throw httpError(403, NOT_YOURS);
@@ -913,7 +922,11 @@ function validateAnswer(body) {
   if (hasOther) {
     if (typeof source.otherText !== 'string') throw httpError(400, 'otherText must be text');
     const trimmed = source.otherText.trim();
-    if (trimmed === '') throw httpError(400, 'otherText must not be blank; send an empty body for a blank Answer');
+    // An empty string is an explicit clear, not a mistake: a candidate who
+    // deletes the Other answer means to remove it. Refusing it left the old
+    // sentence on the row, which the Marker then reads as a live answer — so
+    // `''` and `{}` mean the same blank Answer.
+    if (trimmed === '') return { chosenOption: null, otherText: null };
     if (lengthOf(trimmed) > OTHER_MAX) {
       throw httpError(400, `otherText must be at most ${OTHER_MAX} characters`);
     }

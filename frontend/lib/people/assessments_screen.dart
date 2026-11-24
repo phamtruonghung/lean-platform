@@ -25,6 +25,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/vocabulary.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -312,7 +313,7 @@ class _AssessmentRow extends StatelessWidget {
                   children: [
                     Text(assessment.title, style: theme.textTheme.titleSmall),
                     StatusChip(
-                      label: assessment.status,
+                      label: assessment.statusLabel(l10n),
                       tone: assessment.isDraft
                           ? StatusTone.neutral
                           : assessment.isClosed

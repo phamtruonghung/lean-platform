@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -8533,6 +8532,15 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get assessmentStatusCancelled => 'Đã huỷ';
+
+  @override
+  String get assessmentStateDraft => 'Bản nháp';
+
+  @override
+  String get assessmentStateAssigned => 'Đã giao';
+
+  @override
+  String get assessmentStateClosed => 'Đã đóng';
 
   @override
   String get assessmentNewTitle => 'Bài kiểm tra mới';

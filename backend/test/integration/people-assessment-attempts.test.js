@@ -361,6 +361,96 @@ test('create, assign to an Org Unit and two named Employees, start, answer 7 wit
 });
 
 // ---------------------------------------------------------------------------
+// 2b. Clearing an Other answer, and one paper under a race
+// ---------------------------------------------------------------------------
+
+test("deleting the Other answer clears it — '' is an explicit clear, not a 400", async () => {
+  const stage3 = await stage({ bank: 10 });
+  const assessment = await createAssessment(stage3.processUnitId);
+  const assigned = await call(supervisor, `/api/people/assessments/${assessment.id}/assign`, {
+    method: 'POST',
+    body: { employeeIds: [stage3.candidateAEmployeeId] }
+  });
+  assert.strictEqual(assigned.status, 201, JSON.stringify(assigned.payload));
+
+  const mine = await call(candidateA, '/api/people/assessment-attempts/mine');
+  const own = mine.payload.attempts.filter((row) => row.assessmentId === String(assessment.id));
+  const attemptId = own[0].id;
+  const started = await call(candidateA, `/api/people/assessment-attempts/${attemptId}/start`, { method: 'POST' });
+  assert.strictEqual(started.status, 200, JSON.stringify(started.payload));
+
+  const wrote = await call(candidateA, `/api/people/assessment-attempts/${attemptId}/answers/1`, {
+    method: 'PATCH',
+    body: { otherText: 'E. Dừng máy rồi báo Team Leader bằng bộ đàm' }
+  });
+  assert.strictEqual(wrote.status, 200, JSON.stringify(wrote.payload));
+  assert.strictEqual(wrote.payload.paper[0].otherText, 'E. Dừng máy rồi báo Team Leader bằng bộ đàm');
+
+  // An emptied field sends `''` (an older client does) — it is a clear. Refusing
+  // it left the deleted sentence on the row, which the Marker then read.
+  const cleared = await call(candidateA, `/api/people/assessment-attempts/${attemptId}/answers/1`, {
+    method: 'PATCH',
+    body: { otherText: '' }
+  });
+  assert.strictEqual(cleared.status, 200, JSON.stringify(cleared.payload));
+  assert.strictEqual(cleared.payload.paper[0].otherText, null, 'the clear is what the paper now says');
+  const { rows: [stored] } = await pool.query(
+    `SELECT other_text, chosen_option, answered_at
+       FROM assessment_attempt_questions WHERE attempt_id = $1 AND position = 1`,
+    [attemptId]
+  );
+  assert.strictEqual(stored.other_text, null);
+  assert.strictEqual(stored.chosen_option, null);
+
+  // And the same for the body the client sends: no field at all.
+  const blank = await call(candidateA, `/api/people/assessment-attempts/${attemptId}/answers/1`, {
+    method: 'PATCH',
+    body: {}
+  });
+  assert.strictEqual(blank.status, 200, JSON.stringify(blank.payload));
+  assert.strictEqual(blank.payload.paper[0].otherText, null);
+});
+
+test('two starts that race draw one paper and agree on the one deadline', async () => {
+  const stage3 = await stage({ bank: 10 });
+  const assessment = await createAssessment(stage3.processUnitId);
+  const assigned = await call(supervisor, `/api/people/assessments/${assessment.id}/assign`, {
+    method: 'POST',
+    body: { employeeIds: [stage3.candidateAEmployeeId] }
+  });
+  assert.strictEqual(assigned.status, 201, JSON.stringify(assigned.payload));
+
+  const mine = await call(candidateA, '/api/people/assessment-attempts/mine');
+  const own = mine.payload.attempts.filter((row) => row.assessmentId === String(assessment.id));
+  assert.strictEqual(own.length, 1);
+  const attemptId = own[0].id;
+
+  const [first, second] = await Promise.all([
+    call(candidateA, `/api/people/assessment-attempts/${attemptId}/start`, { method: 'POST' }),
+    call(candidateA, `/api/people/assessment-attempts/${attemptId}/start`, { method: 'POST' })
+  ]);
+  assert.strictEqual(first.status, 200, JSON.stringify(first.payload));
+  assert.strictEqual(second.status, 200, JSON.stringify(second.payload));
+  assert.strictEqual(first.payload.attempt.status, 'in_progress');
+  assert.strictEqual(second.payload.attempt.status, 'in_progress');
+  assert.strictEqual(
+    second.payload.attempt.deadlineAt,
+    first.payload.attempt.deadlineAt,
+    'the clock is written once'
+  );
+  assert.deepStrictEqual(
+    second.payload.paper.map((question) => question.questionText),
+    first.payload.paper.map((question) => question.questionText),
+    'the second start reads the first paper rather than drawing another'
+  );
+  const { rows: [drawn] } = await pool.query(
+    'SELECT count(*)::int AS count FROM assessment_attempt_questions WHERE attempt_id = $1',
+    [attemptId]
+  );
+  assert.strictEqual(drawn.count, 10, 'one paper of ten, never twenty');
+});
+
+// ---------------------------------------------------------------------------
 // 3. The deadline: the server refuses past it, and finalises the Attempt itself
 // ---------------------------------------------------------------------------
 

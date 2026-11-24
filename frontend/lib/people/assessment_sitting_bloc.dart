@@ -11,8 +11,9 @@
 /// zero the Screen asks for the paper again, and the server — which has already
 /// finalised the Attempt by its own clock — answers `submitted`.
 ///
-/// **Every change is saved as it is made.** An Option tap is one `PATCH`; the
-/// Other answer is one `PATCH` after the typist stops. A save that lands bumps
+/// **Autosave on every change, with a quiet tick.** An Option tap is one `PATCH`;
+/// the Other answer is one `PATCH` after the typist stops, and an emptied field
+/// sends a blank Answer rather than a blank string. A save that lands bumps
 /// [AssessmentSittingLoaded.savedTick], which is what the Screen's quiet tick
 /// watches; a save the server refuses is the server's sentence, and the Attempt
 /// is re-read because a 409 past the deadline means the paper has closed.
@@ -185,6 +186,21 @@ class AssessmentSittingBloc extends Bloc<AssessmentSittingEvent, AssessmentSitti
       final paper = await _api.startAssessmentAttempt(token, event.attemptId);
       emit(AssessmentSittingLoaded(paper: paper, submitted: !paper.attempt.isRunning));
     } on PeopleApiException catch (error) {
+      // A 409 is the server closing the door by its own clock: submitted,
+      // submitted late, marked, expired, cancelled, or past the due date. That
+      // is a state the candidate must be able to read, not a failure state, so
+      // the paper is read and shown closed. Only a read that fails too is
+      // Unavailable.
+      if (error.statusCode == 409) {
+        try {
+          final paper = await _api.fetchAssessmentPaper(token, event.attemptId);
+          emit(AssessmentSittingLoaded(paper: paper, submitted: !paper.attempt.isRunning));
+          return;
+        } on PeopleApiException catch (readError) {
+          emit(AssessmentSittingUnavailable(message: readError.message));
+          return;
+        }
+      }
       emit(AssessmentSittingUnavailable(message: error.message));
     }
   }
@@ -230,7 +246,10 @@ class AssessmentSittingBloc extends Bloc<AssessmentSittingEvent, AssessmentSitti
           token,
           current.paper.attempt.id,
           event.position,
-          otherText: text.isEmpty ? '' : text,
+          // An emptied field is a blank Answer, and the API's blank body omits
+          // `otherText` altogether: sending `''` used to be refused, leaving
+          // the deleted sentence on the row for the Marker to read.
+          otherText: text.isEmpty ? null : text,
         ));
   }
 

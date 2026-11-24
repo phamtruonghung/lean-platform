@@ -9190,6 +9190,15 @@ class FakeWire {
             if (assessmentPaperStatus != 200) {
               return _utf8Json({'message': assessmentPaperMessage}, assessmentPaperStatus);
             }
+            // The real route refuses a closed Attempt with a 409 rather than
+            // handing its paper back (`assessments.js` `startAttempt`), so a
+            // fake that answered 200 here would let a Screen pass a case
+            // production fails. Only an Attempt that can still be sat starts.
+            final storedStatus =
+                (assessmentPaper?['attempt'] as Map<String, dynamic>?)?['status'] as String?;
+            if (storedStatus != null && !const {'assigned', 'in_progress'}.contains(storedStatus)) {
+              return _utf8Json({'message': assessmentPaperMessage}, 409);
+            }
             return _utf8Json(assessmentPaper ?? assessmentPaperJson(), 200);
           }
           if (action == '/submit' && request.method == 'POST') {

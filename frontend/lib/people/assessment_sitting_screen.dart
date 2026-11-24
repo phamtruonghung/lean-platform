@@ -12,7 +12,10 @@
 /// the difference between the server's `deadlineAt` and `serverNow` using a
 /// [Stopwatch] — the device's wall clock is never read — and when it reaches
 /// zero it asks the Bloc for the paper again rather than deciding anything
-/// itself: the server owns the finalise.
+/// itself: the server owns the finalise. Every autosave answers with a fresh
+/// payload whose `serverNow` has moved on, so the stopwatch is re-anchored to
+/// each one; only the gap between two payloads is ever counted, never the
+/// sitting's own age twice.
 ///
 /// **Autosave on every change, with a quiet tick.** An Option tap saves at once;
 /// the Other answer saves after the typist stops. "Saved" appears beside the
@@ -91,8 +94,19 @@ class _AssessmentSittingScreenState extends State<AssessmentSittingScreen> {
   /// loads that Question's own text instead of the previous one's.
   int? _otherPosition;
 
-  /// The paper the stopwatch was started against, so a new paper restarts it.
+  /// The payload the stopwatch was anchored against: the Attempt it belongs to
+  /// **and** the server instant that payload was produced at. Every autosave
+  /// replaces the paper with a fresh one whose `serverNow` has moved on, and
+  /// whose `remainingAtFetch` is therefore measured from a later instant — so
+  /// the stopwatch is re-anchored whenever either changes. Anchoring on the
+  /// Attempt alone subtracts the sitting's age twice and drives the clock to
+  /// `00:00` with half the paper left.
   String? _timedAttemptId;
+  DateTime? _timedServerNow;
+
+  /// The newest payload, so the ticking closure reads the current paper rather
+  /// than the one that happened to be on screen when it was created.
+  AssessmentSittingLoaded? _latest;
   bool _expirySent = false;
 
   @override
@@ -104,22 +118,35 @@ class _AssessmentSittingScreenState extends State<AssessmentSittingScreen> {
   }
 
   void _watch(AssessmentSittingLoaded state) {
-    if (_timedAttemptId != state.paper.attempt.id) {
-      _timedAttemptId = state.paper.attempt.id;
-      _expirySent = false;
+    _latest = state;
+    final attemptId = state.paper.attempt.id;
+    final serverNow = state.paper.serverNow;
+    if (_timedAttemptId != attemptId || _timedServerNow != serverNow) {
+      final newAttempt = _timedAttemptId != attemptId;
+      _timedAttemptId = attemptId;
+      _timedServerNow = serverNow;
+      // A re-anchored clock can expire, so the ask is re-armed — but only while
+      // the server still reports the paper as running with time left on it. A
+      // paper past its deadline that the server has not finalised yet must not
+      // re-ask on every tick.
+      if (newAttempt ||
+          (state.paper.isRunning && state.paper.remainingAtFetch > Duration.zero)) {
+        _expirySent = false;
+      }
       _elapsed
         ..reset()
         ..start();
-      _ticker?.cancel();
-      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (!mounted) return;
-        setState(() {});
-        if (!_expirySent && _remainingFor(state) <= Duration.zero) {
-          _expirySent = true;
-          context.read<AssessmentSittingBloc>().add(const AssessmentSittingExpired());
-        }
-      });
     }
+    _ticker ??= Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      final latest = _latest;
+      if (latest == null) return;
+      setState(() {});
+      if (!_expirySent && latest.paper.isRunning && _remainingFor(latest) <= Duration.zero) {
+        _expirySent = true;
+        context.read<AssessmentSittingBloc>().add(const AssessmentSittingExpired());
+      }
+    });
     final question = state.current;
     if (question != null && question.position != _otherPosition) {
       _otherPosition = question.position;

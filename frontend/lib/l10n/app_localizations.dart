@@ -14320,6 +14320,24 @@ abstract class AppLocalizations {
   /// **'Cancelled'**
   String get assessmentStatusCancelled;
 
+  /// An Assessment's own status before anyone is assigned to it. The Attempt's statuses are the assessmentStatus* keys; these three name the Assessment itself.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft'**
+  String get assessmentStateDraft;
+
+  /// An Assessment that carries Attempts and takes more.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned'**
+  String get assessmentStateAssigned;
+
+  /// An Assessment that takes no more Attempts.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get assessmentStateClosed;
+
   /// Title of the create form.
   ///
   /// In en, this message translates to:

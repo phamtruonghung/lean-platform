@@ -55,6 +55,10 @@ Future<void> _open(WidgetTester tester, FakeWire wire) {
   );
 }
 
+/// The clock the sticky header is showing, exactly as the candidate reads it.
+String _clockOf(WidgetTester tester) =>
+    tester.widget<Text>(find.byKey(AssessmentSittingScreen.countdownKey)).data!;
+
 void main() {
   testWidgets('one Question at a time, with the countdown the server instants produce', (tester) async {
     await _open(tester, _wire());
@@ -87,6 +91,58 @@ void main() {
     expect(position, 1);
     expect(body['chosenOption'], 'C');
     expect(find.byKey(AssessmentSittingScreen.savedTickKey), findsOneWidget);
+  });
+
+  testWidgets('an autosave re-anchors the countdown to the instant its payload came from', (tester) async {
+    final wire = _wire();
+    await _open(tester, wire);
+    await tester.pumpAndSettle();
+    expect(_clockOf(tester), matches(RegExp(r'^(19:5\d|20:00)$')));
+
+    // The sitting has been open a while. These are real seconds on purpose: the
+    // Screen counts with the monotonic [Stopwatch], which a fake clock does not
+    // move, and the defect being pinned here is precisely an age that gets
+    // subtracted twice.
+    await tester.runAsync(() => Future<void>.delayed(const Duration(seconds: 4)));
+
+    // The autosave's payload is produced five minutes later against the same
+    // deadline, so fifteen minutes are left. Re-anchored, the clock reads 15:00;
+    // anchored on the Attempt alone it subtracts those four seconds again.
+    wire.assessmentPaper = assessmentPaperJson(
+      attemptId: 41,
+      assessmentId: 5,
+      answers: {1: ('A', null)},
+      serverNow: '2026-11-24T10:05:00.000Z',
+    );
+    await tester.tap(find.byKey(AssessmentSittingScreen.optionKey('A')));
+    await tester.pumpAndSettle();
+
+    expect(_clockOf(tester), matches(RegExp(r'^(15:00|14:59)$')));
+  });
+
+  testWidgets('clearing the Other field saves a blank Answer, not an empty string', (tester) async {
+    final wire = _wire();
+    await _open(tester, wire);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(AssessmentSittingScreen.otherFieldKey), 'Dừng máy rồi báo Team Leader');
+    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pumpAndSettle();
+    expect(wire.assessmentAnswers, hasLength(1));
+    expect(wire.assessmentAnswers.single.$3['otherText'], 'Dừng máy rồi báo Team Leader');
+
+    // Deleting the sentence is a clear, and the API's blank-Answer body omits
+    // `otherText` altogether: `otherText: ''` is refused, which used to leave
+    // the deleted sentence on the row for the Marker to read.
+    await tester.enterText(find.byKey(AssessmentSittingScreen.otherFieldKey), '');
+    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pumpAndSettle();
+
+    expect(wire.assessmentAnswers, hasLength(2));
+    final (_, position, body) = wire.assessmentAnswers.last;
+    expect(position, 1);
+    expect(body.containsKey('otherText'), isFalse);
+    expect(body.containsKey('chosenOption'), isFalse);
   });
 
   testWidgets('Next and Previous move through the paper, and a jump chip goes straight there', (tester) async {
@@ -154,6 +210,9 @@ void main() {
   testWidgets('a paper the server has already finalised reads as submitted, with no editable Answer',
       (tester) async {
     final wire = _wire();
+    // The start is refused with a 409 (the route's own answer once the Attempt
+    // is closed), so this page is reached through the read that follows it — a
+    // denial of the door, never a failure state.
     wire.assessmentPaper = assessmentPaperJson(
       attemptId: 41,
       assessmentId: 5,
@@ -163,6 +222,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(AssessmentSittingScreen.submittedKey), findsOneWidget);
+    expect(find.byKey(AssessmentSittingScreen.failedKey), findsNothing);
     expect(find.byKey(AssessmentSittingScreen.questionKey), findsNothing);
   });
 }

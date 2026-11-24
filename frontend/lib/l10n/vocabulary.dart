@@ -40,6 +40,7 @@ import '../actions/capa.dart';
 import '../maintenance/pm_schedule.dart';
 import '../maintenance/request.dart';
 import '../maintenance/work_order.dart';
+import '../people/assessment.dart';
 import '../people/cost_rate.dart';
 import '../people/leave_request.dart';
 import '../people/training_record.dart';
@@ -1135,3 +1136,22 @@ String skillCoverageLegendLabel(AppLocalizations l10n, StatusTone tone) => switc
       StatusTone.warning => l10n.skillCoveragePartlyQualified,
       _ => l10n.skillCoverageLegendShort,
     };
+
+/// An **Assessment's** own status, as the register's chip reads it (issue #588).
+///
+/// The three keys are `assessmentState*` rather than `assessmentStatus*` on
+/// purpose: `assessmentStatus*` already names one Employee's **Attempt**
+/// (`assigned` there means "not started"), and a register chip that printed the
+/// wire code was the defect this replaces.
+String assessmentStateLabel(AppLocalizations l10n, String status) => switch (status) {
+      assessmentDraft => l10n.assessmentStateDraft,
+      assessmentAssigned => l10n.assessmentStateAssigned,
+      assessmentClosed => l10n.assessmentStateClosed,
+      _ => status,
+    };
+
+extension AssessmentWords on Assessment {
+  /// What this Assessment's stored status reads as, in [l10n]'s language.
+  String statusLabel(AppLocalizations l10n) => assessmentStateLabel(l10n, status);
+}
+
