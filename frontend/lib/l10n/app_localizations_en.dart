@@ -971,6 +971,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get titleSupplierNcr => 'Supplier NCR';
 
   @override
+  String get titleCapa => 'CAPA';
+
+  @override
   String get titleNonConformance => 'Non-conformance';
 
   @override

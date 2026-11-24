@@ -1748,6 +1748,12 @@ abstract class AppLocalizations {
   /// **'Supplier NCR'**
   String get titleSupplierNcr;
 
+  /// One CAPA, as the browser tab names it.
+  ///
+  /// In en, this message translates to:
+  /// **'CAPA'**
+  String get titleCapa;
+
   /// The browser tab's name for one non-conformance.
   ///
   /// In en, this message translates to:
