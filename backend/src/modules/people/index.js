@@ -261,6 +261,7 @@ const costRateRoutes = require('./cost-rate-routes');
 const productCostRoutes = require('./product-cost-routes');
 const floorRoutes = require('./floor-routes');
 const floorTrainingRoutes = require('./floor-training-routes');
+const floorAssessmentRoutes = require('./floor-assessment-routes');
 const authRoutes = require('./auth-routes');
 const roleRoutes = require('./role-routes');
 const { authenticate, requireActive } = require('./middleware');
@@ -303,6 +304,7 @@ router.use(productCostRoutes);
 const floorRouter = express.Router();
 floorRouter.use(floorRoutes);
 floorRouter.use(floorTrainingRoutes);
+floorRouter.use(floorAssessmentRoutes);
 
 module.exports = {
   router,

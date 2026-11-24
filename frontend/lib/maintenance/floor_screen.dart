@@ -81,6 +81,7 @@ class FloorScreen extends StatelessWidget {
   /// and for the same reason: reachable whether or not the line has anything
   /// open.
   static const ValueKey<String> trainingKey = ValueKey<String>('floor-training');
+  static const ValueKey<String> assessmentKey = ValueKey<String>('floor-assessment');
 
   /// The floor list's own loading placeholders, so a test can tell a slow read
   /// from an empty or failed one.
@@ -218,6 +219,23 @@ class FloorScreen extends StatelessWidget {
         ),
       );
 
+  /// An Employee with no Account sits their Assessment at this device (issue
+  /// #588, slice 5), built and handed over fresh per opening exactly as
+  /// [_answerTraining] does. Not dismissible by a tap beside it: a paper runs for
+  /// minutes and a stray tap must not close it.
+  Future<void> _sitAssessment(BuildContext context) => showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => BlocProvider<FloorAssessmentBloc>(
+          create: (context) => FloorAssessmentBloc(
+            peopleApi: context.read<PeopleApi>(),
+            maintenanceApi: context.read<MaintenanceApi>(),
+            floorDeviceGateway: context.read<FloorDeviceGateway>(),
+          ),
+          child: const FloorAssessmentDialog(),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -264,6 +282,7 @@ class FloorScreen extends StatelessWidget {
                     ? null
                     : () => _recordSafetyObservation(context, info.orgUnitId),
                 onAnswerTraining: isActing ? null : () => _answerTraining(context),
+                onSitAssessment: isActing ? null : () => _sitAssessment(context),
                 notice: notice,
                 child: workOrders.isEmpty
                     ? PlatformEmptyState.noneExist(
@@ -300,6 +319,7 @@ class _FloorFrame extends StatelessWidget {
     this.onReportSafetyIncident,
     this.onRecordSafetyObservation,
     this.onAnswerTraining,
+    this.onSitAssessment,
     this.notice,
   });
 
@@ -310,6 +330,7 @@ class _FloorFrame extends StatelessWidget {
   final VoidCallback? onReportSafetyIncident;
   final VoidCallback? onRecordSafetyObservation;
   final VoidCallback? onAnswerTraining;
+  final VoidCallback? onSitAssessment;
   final String? notice;
 
   @override
@@ -368,7 +389,8 @@ class _FloorFrame extends StatelessWidget {
               if (onRecordNonconformance != null ||
                   onReportSafetyIncident != null ||
                   onRecordSafetyObservation != null ||
-                  onAnswerTraining != null) ...[
+                  onAnswerTraining != null ||
+                  onSitAssessment != null) ...[
                 const SizedBox(height: Spacing.sm),
                 // The action strip under the title: a `Wrap`, not a fixed
                 // Row, so a fourth action or a longer label wraps onto a
@@ -444,6 +466,20 @@ class _FloorFrame extends StatelessWidget {
                         ),
                         icon: const Icon(Icons.school_outlined),
                         label: Text(l10n.floorMyTraining),
+                      ),
+                    // An Employee sitting their Assessment (issue #588) is the
+                    // fifth, for the same reason.
+                    if (onSitAssessment != null)
+                      FilledButton.icon(
+                        key: FloorScreen.assessmentKey,
+                        onPressed: onSitAssessment,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.onPrimary,
+                          foregroundColor: Theme.of(context).colorScheme.primary,
+                          minimumSize: const Size(0, 48),
+                        ),
+                        icon: const Icon(Icons.quiz_outlined),
+                        label: Text(l10n.floorMyAssessment),
                       ),
                   ],
                 ),

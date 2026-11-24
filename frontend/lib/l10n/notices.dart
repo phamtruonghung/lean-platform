@@ -41,6 +41,10 @@ abstract final class BlocNotice {
   /// A floor identification has lapsed.
   static const String identificationExpired = 'notice:identification-expired';
 
+  /// A floor Assessment sitting was refused as ended: its token expired, was
+  /// replaced by a new identification, or a Team Leader ended it.
+  static const String assessmentSittingEnded = 'notice:assessment-sitting-ended';
+
   /// Another administrator changed the Account first.
   static const String accountAlreadyMoved = 'notice:account-already-moved';
 
@@ -133,6 +137,7 @@ String noticeText(AppLocalizations l10n, String message) {
     BlocNotice.actionInFlight => l10n.noticeActionInFlight,
     BlocNotice.deviceNotRegistered => l10n.noticeDeviceNotRegistered,
     BlocNotice.identificationExpired => l10n.noticeIdentificationExpired,
+    BlocNotice.assessmentSittingEnded => l10n.noticeAssessmentSittingEnded,
     BlocNotice.accountAlreadyMoved => l10n.noticeAccountAlreadyMoved,
     BlocNotice.accountAlreadyDecided => l10n.noticeAccountAlreadyDecided,
     BlocNotice.noSitesActionLog => l10n.noticeNoSitesActionLog,

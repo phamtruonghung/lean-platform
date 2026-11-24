@@ -234,7 +234,7 @@ does not list them.
 | --- | --- |
 | `GET /api/people/me` | The caller's own identity and effective codes; `authenticate` alone is the whole question. |
 | `GET /api/auth/mode` | Which sign-in doors this deployment offers, asked before a session exists. |
-| `GET /api/maintenance/floor/training/to-confirm`, `/floor/signature`, `/floor/work-orders`, `GET /api/quality/floor/products`, `/floor/defect-codes` | The shared floor device's door is `requireFloorDevice` plus a technician identification (ADR-0016): a device holds no Account, so no code can name it. |
+| `GET /api/maintenance/floor/training/to-confirm`, `/floor/signature`, `/floor/assessments/mine`, `/floor/assessments/:attemptId`, `/floor/assessments/:attemptId/result`, `/floor/work-orders`, `GET /api/quality/floor/products`, `/floor/defect-codes` | The shared floor device's door is `requireFloorDevice` plus a technician identification (ADR-0016): a device holds no Account, so no code can name it. |
 
 ## Consequences
 

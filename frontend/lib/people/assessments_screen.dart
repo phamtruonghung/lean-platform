@@ -291,16 +291,7 @@ class _AttemptRow extends StatelessWidget {
     );
   }
 
-  String _statusLabel(AppLocalizations l10n) {
-    return switch (attempt.status) {
-      attemptAssigned => l10n.assessmentStatusAssigned,
-      attemptInProgress => l10n.assessmentStatusInProgress,
-      attemptSubmitted => l10n.assessmentStatusSubmitted,
-      attemptMarked => l10n.assessmentStatusMarked,
-      attemptExpired => l10n.assessmentStatusExpired,
-      _ => l10n.assessmentStatusCancelled,
-    };
-  }
+  String _statusLabel(AppLocalizations l10n) => attempt.statusLabel(l10n);
 
   StatusTone _attemptTone(AssessmentAttempt attempt) {
     return switch (attempt.status) {

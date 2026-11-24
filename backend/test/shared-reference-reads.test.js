@@ -88,6 +88,11 @@ const UNCODED_GETS = [
   'GET /api/auth/mode',
   'GET /api/maintenance/floor/training/to-confirm',
   'GET /api/maintenance/floor/signature',
+  // The floor Assessment door (issue #588, slice 5): an identification or a
+  // sitting token, never an Account.
+  'GET /api/maintenance/floor/assessments/mine',
+  'GET /api/maintenance/floor/assessments/:attemptId',
+  'GET /api/maintenance/floor/assessments/:attemptId/result',
   'GET /api/maintenance/floor/work-orders',
   'GET /api/quality/floor/products',
   'GET /api/quality/floor/defect-codes'

@@ -54,6 +54,7 @@ const authorization = require('./authorization');
 const plant = require('./plant');
 const assessments = require('./assessments');
 const marking = require('./assessment-marking');
+const sittings = require('./assessment-sittings');
 const { notFound, parseId, handleError, httpError, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 
 const router = express.Router();
@@ -258,6 +259,26 @@ router.post('/assessments/:id/close', authenticate, requireActive, mayChangeAsse
         await marking.scoreViewer(req.account)
       )
     });
+  } catch (error) {
+    return refuse(error, res, next);
+  }
+});
+
+// A Team Leader's "End sitting" (slice 5, spec 7.1): revokes the floor sitting
+// token so the candidate's next request is a 401 and they continue only by
+// identifying again. The Attempt keeps running on the server's clock. Existence
+// (404), then write reach on the Attempt's own Org Unit (403), then whether a
+// sitting exists at all (404).
+router.post('/assessment-attempts/:id/end-sitting', authenticate, requireActive, mayChangeAssessments, async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    const attempt = id === null ? null : await sittings.findAttemptScope(id);
+    if (!attempt) throw notFound('Assessment attempt');
+    if (!await mayWriteAt(req.account, attempt.orgUnitId)) {
+      return res.status(403).json({ message: OUTSIDE_GRANTED_ORG_UNITS });
+    }
+    if (!await sittings.endSitting(req.account.id, attempt.id)) throw notFound('Sitting');
+    return res.json({ ended: true });
   } catch (error) {
     return refuse(error, res, next);
   }

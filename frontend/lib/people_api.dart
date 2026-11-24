@@ -2150,6 +2150,140 @@ class PeopleApi {
     return _trainingRecordFrom(response.body);
   }
 
+  // -------------------------------------------------------------------------
+  // The floor door onto an Assessment (issue #588, ADR-0068, slice 5). Two
+  // credentials, and which one goes where is the point: the 120-second
+  // identification lists and starts; the sitting token minted by the start
+  // carries every later request, because a paper runs longer than that window.
+  // -------------------------------------------------------------------------
+
+  static const String _floorAssessments = '/api/maintenance/floor/assessments';
+
+  /// The identified Employee's open Attempts the device reaches
+  /// (`GET /api/maintenance/floor/assessments/mine`).
+  Future<List<AssessmentAttempt>> fetchFloorAssessments(
+    String deviceCredential,
+    String identification,
+  ) async {
+    const path = '$_floorAssessments/mine';
+    final response = await _send(
+      () => _client.get(
+        Uri.parse(path),
+        headers: {'x-floor-device': deviceCredential, 'x-technician-identification': identification},
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final attempt in (body['attempts'] as List<dynamic>? ?? const []))
+          AssessmentAttempt.fromJson(attempt as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Starts, or resumes, the Attempt (`POST .../:attemptId/start`) behind a live
+  /// identification. Idempotent: a repeat returns the same paper and deadline
+  /// with a new sitting token, and the old one stops working.
+  Future<FloorAssessmentStart> startFloorAssessment(
+    String deviceCredential,
+    String identification,
+    String attemptId,
+  ) async {
+    final path = '$_floorAssessments/$attemptId/start';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'x-floor-device': deviceCredential, 'x-technician-identification': identification},
+      ),
+      path,
+    );
+    try {
+      return FloorAssessmentStart.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  Map<String, String> _sittingHeaders(String deviceCredential, String sittingToken) => {
+        'x-floor-device': deviceCredential,
+        'x-assessment-sitting': sittingToken,
+      };
+
+  /// The same paper on a refresh (`GET .../:attemptId`), under the sitting token.
+  Future<AssessmentPaper> fetchFloorAssessmentPaper(
+    String deviceCredential,
+    String sittingToken,
+    String attemptId,
+  ) async {
+    final path = '$_floorAssessments/$attemptId';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: _sittingHeaders(deviceCredential, sittingToken)),
+      path,
+    );
+    return _assessmentPaperFrom(response);
+  }
+
+  /// Saves one Answer (`PATCH .../:attemptId/answers/:position`): an Option, an
+  /// Other answer, or neither for a blank. An emptied Other field is a blank body,
+  /// never `otherText: ''`.
+  Future<AssessmentPaper> saveFloorAssessmentAnswer(
+    String deviceCredential,
+    String sittingToken,
+    String attemptId,
+    int position, {
+    String? chosenOption,
+    String? otherText,
+  }) async {
+    final path = '$_floorAssessments/$attemptId/answers/$position';
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {..._sittingHeaders(deviceCredential, sittingToken), 'content-type': 'application/json'},
+        body: jsonEncode({
+          'chosenOption': ?chosenOption,
+          'otherText': ?otherText,
+        }),
+      ),
+      path,
+    );
+    return _assessmentPaperFrom(response);
+  }
+
+  /// Submits the Attempt (`POST .../:attemptId/submit`).
+  Future<AssessmentPaper> submitFloorAssessment(
+    String deviceCredential,
+    String sittingToken,
+    String attemptId,
+  ) async {
+    final path = '$_floorAssessments/$attemptId/submit';
+    final response = await _send(
+      () => _client.post(Uri.parse(path), headers: _sittingHeaders(deviceCredential, sittingToken)),
+      path,
+    );
+    return _assessmentPaperFrom(response);
+  }
+
+  /// The result (`GET .../:attemptId/result`): 409 until the Attempt is marked.
+  Future<AssessmentResult> fetchFloorAssessmentResult(
+    String deviceCredential,
+    String sittingToken,
+    String attemptId,
+  ) async {
+    final path = '$_floorAssessments/$attemptId/result';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: _sittingHeaders(deviceCredential, sittingToken)),
+      path,
+    );
+    try {
+      return AssessmentResult.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   static TrainingRecord _trainingRecordFrom(String responseBody) {
     try {
       final decoded = jsonDecode(responseBody) as Map<String, dynamic>;

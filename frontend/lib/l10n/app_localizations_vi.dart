@@ -8837,4 +8837,60 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get assessmentVerdictFailed => 'chưa đạt';
+
+  @override
+  String get noticeAssessmentSittingEnded =>
+      'Phiên làm bài đã kết thúc. Vui lòng định danh lại để tiếp tục cùng bài kiểm tra.';
+
+  @override
+  String get floorMyAssessment => 'Bài kiểm tra của tôi';
+
+  @override
+  String get floorAssessmentYourAssessment => 'Bài kiểm tra của bạn';
+
+  @override
+  String floorAssessmentFor(String employeeName) {
+    return 'Bài kiểm tra của $employeeName';
+  }
+
+  @override
+  String get floorAssessmentWhoAreYou =>
+      'Bạn là ai? Số nhân viên và mã PIN sẽ hiện các bài kiểm tra đang chờ bạn tại thiết bị này.';
+
+  @override
+  String get floorAssessmentShowMine => 'Hiện bài kiểm tra của tôi';
+
+  @override
+  String get floorAssessmentNothingWaiting =>
+      'Không có bài kiểm tra nào đang chờ bạn tại thiết bị này.';
+
+  @override
+  String get floorAssessmentDone => 'Xong';
+
+  @override
+  String floorAssessmentSubmitMessageBlanks(String numbers) {
+    return 'Câu $numbers còn để trống và sẽ được 0 điểm. Sau khi nộp không thể mở lại bài.';
+  }
+
+  @override
+  String get floorAssessmentCheckResult => 'Xem kết quả';
+
+  @override
+  String floorAssessmentSittingLabel(String name) {
+    return 'Đang làm bài: $name';
+  }
+
+  @override
+  String get assessmentNavigatorAnswered => 'Đã trả lời';
+
+  @override
+  String get assessmentNavigatorOther => 'Khác';
+
+  @override
+  String get assessmentNavigatorBlank => 'Để trống';
+
+  @override
+  String assessmentNavigatorChip(int position, String state) {
+    return 'Câu $position: $state';
+  }
 }

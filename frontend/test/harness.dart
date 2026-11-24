@@ -5248,6 +5248,22 @@ class FakeWire {
   String floorTrainingAnswerMessage = 'That answer could not be saved.';
   final List<Map<String, dynamic>> floorTrainingRequests = [];
 
+  /// The floor door onto an Assessment (issue #588, slice 5). `GET
+  /// /api/maintenance/floor/assessments/mine` lists [floorAssessmentsMine]; `POST
+  /// .../:id/start` answers [floorAssessmentPaper] with a sitting token
+  /// ([floorSittingToken]); the sitting routes answer under `x-assessment-sitting`
+  /// only, refusing any other token with 401, and [floorSittingStatus] forces a
+  /// status on them (401 is the sitting being ended). A `PATCH` is applied to the
+  /// stored paper, so what the dialog reads back is what it saved. Every request
+  /// is recorded with its device credential, identification and sitting header.
+  List<Map<String, dynamic>> floorAssessmentsMine = [];
+  Map<String, dynamic>? floorAssessmentPaper;
+  Map<String, dynamic>? floorAssessmentResult;
+  String floorSittingToken = 'sitting-1';
+  int floorSittingStatus = 200;
+  int floorAssessmentStartStatus = 200;
+  final List<Map<String, dynamic>> floorAssessmentRequests = [];
+
   /// The identified Employee's kept Signature at the device (issue #319):
   /// `GET /api/maintenance/floor/signature` answers it as `image/png`, or a
   /// 404 when null. Recorded in [floorTrainingRequests] like the rest.
@@ -6161,6 +6177,58 @@ class FakeWire {
             jsonEncode({'floor': floor, 'workOrders': floorWorkOrders}),
             200,
           );
+        }
+        final floorAssessmentPath =
+            RegExp(r'^/api/maintenance/floor/assessments/(mine|[0-9]+)(/start|/submit|/result|/answers/([0-9]+))?$')
+                .firstMatch(path);
+        if (floorAssessmentPath != null) {
+          final target = floorAssessmentPath.group(1)!;
+          final action = floorAssessmentPath.group(2);
+          final sitting = request.headers['x-assessment-sitting'];
+          final recorded = <String, dynamic>{
+            'request': '${request.method} $path',
+            'device': request.headers['x-floor-device'],
+            'identification': request.headers['x-technician-identification'],
+            'sitting': sitting,
+            if (request.method == 'PATCH' || request.method == 'POST') 'body': request.body.isEmpty ? null : jsonDecode(request.body),
+          };
+          floorAssessmentRequests.add(recorded);
+          http.Response refuse(int status, String message) => _utf8Json({'message': message}, status);
+          if (target == 'mine') {
+            return _utf8Json({'attempts': floorAssessmentsMine}, 200);
+          }
+          if (action == '/start') {
+            if (floorAssessmentStartStatus != 200) {
+              return refuse(floorAssessmentStartStatus, 'That assessment could not be started.');
+            }
+            return _utf8Json({...?floorAssessmentPaper, 'sittingToken': floorSittingToken}, 200);
+          }
+          // Every other floor route is a sitting route.
+          if (sitting != floorSittingToken || floorSittingStatus == 401) {
+            return refuse(401, 'This sitting is invalid or has ended; identify again to continue');
+          }
+          if (floorSittingStatus != 200) return refuse(floorSittingStatus, 'That sitting could not be read.');
+          final paper = floorAssessmentPaper!;
+          if (action == '/result') {
+            if (floorAssessmentResult == null) return refuse(409, 'this Assessment has not been marked yet');
+            return _utf8Json(floorAssessmentResult!, 200);
+          }
+          if (action != null && action.startsWith('/answers/')) {
+            final position = int.parse(floorAssessmentPath.group(3)!);
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            for (final question in (paper['paper'] as List<dynamic>).cast<Map<String, dynamic>>()) {
+              if (question['position'] == position) {
+                question['chosenOption'] = sent['chosenOption'];
+                question['otherText'] = sent['otherText'];
+              }
+            }
+          }
+          if (action == '/submit') {
+            (paper['attempt'] as Map<String, dynamic>)['status'] = 'submitted';
+          }
+          // Each answer is a fresh payload whose `serverNow` has moved on.
+          paper['serverNow'] = '2026-11-24T10:00:30.000Z';
+          return _utf8Json(paper, 200);
         }
         if (path == '/api/maintenance/floor/training/to-confirm' && request.method == 'GET') {
           floorTrainingRequests.add({
