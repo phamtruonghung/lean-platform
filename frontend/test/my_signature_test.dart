@@ -160,11 +160,17 @@ void main() {
     expect(_writes(wire), isEmpty);
 
     // Rendering the strokes to a PNG goes through the engine, which a
-    // fake-async test clock does not drive.
-    await tester.runAsync(() async {
-      await tester.tap(save);
-      await Future<void>.delayed(const Duration(milliseconds: 500));
-    });
+    // fake-async test clock does not drive. How long the engine takes depends
+    // on how busy the host is, so wait for the write itself, not a fixed time.
+    // The engine finishes in real time (runAsync), but the Screen's code after
+    // it is queued in the test zone and only runs on a pump - so alternate the
+    // two until the PUT has been sent.
+    await tester.runAsync(() => tester.tap(save));
+    final deadline = DateTime.now().add(const Duration(seconds: 10));
+    while (wire.signatureWrites.isEmpty && DateTime.now().isBefore(deadline)) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+      await tester.pump();
+    }
     await tester.pumpAndSettle();
 
     expect(_writes(wire), ['PUT $_signaturePath']);
