@@ -61,12 +61,73 @@ class AppTableColumn {
     this.flex = 1,
     this.width,
     this.align = AppColumnAlign.start,
+    this.minWidth,
   });
 
   final String label;
   final int flex;
   final double? width;
   final AppColumnAlign align;
+
+  /// A flex column's floor, measured by the caller from a translated label (the
+  /// header's own, or the longest word a cell prints), **including** the slot's
+  /// `Spacing.sm` right gutter. While the column's flex share is at or above it
+  /// nothing changes; when the share would fall below it the column is pinned to
+  /// this width and the rest is shared among the remaining flex columns. Null
+  /// (the default) is a plain flex column. Ignored when [width] is set.
+  final double? minWidth;
+}
+
+/// The widths of the slots of [columns] in a row [maxWidth] wide, as the
+/// columns to lay out: [columns] itself, untouched, unless some flex column's
+/// [AppTableColumn.minWidth] would not fit its share (`Flex`'s own arithmetic:
+/// room left after the fixed widths, times flex over the flex total). Then each
+/// column whose floor binds becomes a fixed one, and the share is recomputed
+/// among the rest until nothing more binds. The band and every row call this
+/// with the same width, so their slots agree.
+List<AppTableColumn> _resolve(List<AppTableColumn> columns, double maxWidth) {
+  if (!maxWidth.isFinite || columns.every((c) => c.minWidth == null || c.width != null)) {
+    return columns;
+  }
+  var fixed = 0.0;
+  for (final c in columns) {
+    fixed += c.width ?? 0;
+  }
+  final pinned = <int>{};
+  var changed = true;
+  while (changed) {
+    changed = false;
+    var room = maxWidth - fixed;
+    var totalFlex = 0;
+    for (var i = 0; i < columns.length; i++) {
+      if (columns[i].width != null) continue;
+      if (pinned.contains(i)) {
+        room -= columns[i].minWidth!;
+      } else {
+        totalFlex += columns[i].flex;
+      }
+    }
+    if (totalFlex == 0) break;
+    for (var i = 0; i < columns.length; i++) {
+      final c = columns[i];
+      if (c.width != null || pinned.contains(i) || c.minWidth == null) continue;
+      if (room * c.flex / totalFlex < c.minWidth!) {
+        pinned.add(i);
+        changed = true;
+      }
+    }
+  }
+  if (pinned.isEmpty) return columns;
+  return [
+    for (var i = 0; i < columns.length; i++)
+      pinned.contains(i)
+          ? AppTableColumn(
+              columns[i].label,
+              width: columns[i].minWidth,
+              align: columns[i].align,
+            )
+          : columns[i],
+  ];
 }
 
 /// The one place a column becomes a layout slot, so the band and the rows agree.
@@ -94,14 +155,18 @@ class AppTableHeader extends StatelessWidget {
 
   static ValueKey<String> labelKey(String label) => ValueKey<String>('app-table-header-$label');
 
+  /// The band's label style, less its colour — what a caller measures a floor
+  /// ([AppTableColumn.minWidth]) in.
+  static TextStyle? labelStyle(BuildContext context) =>
+      Theme.of(context).textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.2,
+          );
+
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
-    final style = Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: palette.textMuted,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.2,
-        );
+    final style = labelStyle(context)?.copyWith(color: palette.textMuted);
     return Container(
       constraints: const BoxConstraints(minHeight: height),
       padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.xs),
@@ -109,24 +174,29 @@ class AppTableHeader extends StatelessWidget {
         color: palette.tableHeaderFill,
         border: Border(bottom: BorderSide(color: palette.edge)),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          for (final column in columns)
-            _slot(
-              column,
-              Semantics(
-                header: true,
-                child: Text(
-                  column.label,
-                  key: labelKey(column.label),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: style,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final resolved = _resolve(columns, constraints.maxWidth);
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              for (final column in resolved)
+                _slot(
+                  column,
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      column.label,
+                      key: labelKey(column.label),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: style,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -167,12 +237,17 @@ class AppTableRow extends StatelessWidget {
     // the tap target and the 44px is a target the pointer can actually hit.
     Widget content = Padding(
       padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.xs),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          for (var i = 0; i < columns.length; i++)
-            _slot(columns[i], KeyedSubtree(key: cellKey(i), child: cells[i])),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final resolved = _resolve(columns, constraints.maxWidth);
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              for (var i = 0; i < resolved.length; i++)
+                _slot(resolved[i], KeyedSubtree(key: cellKey(i), child: cells[i])),
+            ],
+          );
+        },
       ),
     );
     if (onTap != null) {

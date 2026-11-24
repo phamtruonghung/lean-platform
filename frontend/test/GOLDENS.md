@@ -158,6 +158,39 @@ because the claim here is not text scale but diacritics: "Cài đặt" and "Tran
 chủ" have to be drawn by the bundled Roboto, and `flutter_test`'s placeholder
 boxes cannot say so.
 
+**Work orders and Home, in Vietnamese (t_0ac0eb9e).** Seven more PNGs, added
+because batch 1 of that card translated these two Screens without a Vietnamese
+golden. `test/work_orders_golden_test.dart` now records the three populated-list
+goldens a second time in Vietnamese: `work_orders_wide_vi.png` (1200px, the table),
+`work_orders_narrow_vi.png` (600px, cards) and `work_orders_collision_700_vi.png`
+(700px, the window where the Shell's rail breakpoint and the Screen's own used to
+coincide). The English PNGs keep their unsuffixed names and were not re-recorded;
+the five state goldens stay English-only. `test/home_golden_test.dart` is new and
+records Home — whole app, an admin, one Site, one open Work order — in both
+languages at two widths: `home_narrow_en.png`, `home_narrow_vi.png` (600px) and
+`home_wide_en.png`, `home_wide_vi.png` (1200px). The `_vi` files are Vietnamese
+and the `_en` files are English; each Vietnamese test asserts a Vietnamese string
+renders (and its English counterpart does not) before it compares pixels.
+Vietnamese labels are wider; the column is measured from the label, and this
+golden holds that measurement in place. A clip or ellipsis raises no exception,
+so `find.text` cannot see one — only the pixels can.
+
+`work_orders_wide_vi.png` is where that paid off. Its first recording showed the
+Org Unit header as "Đơn vị…", the Asset cell squeezed and the Assignee's
+"Chưa phân công" as "Chưa phân c…": the Asset, Org Unit and Assignee columns were
+plain flex shares (`lib/maintenance/work_orders_screen.dart`, `_columns`, ~l.872-900)
+and "Đơn vị tổ chức" is wider than a 2-of-14 share. Those three columns now carry
+an `AppTableColumn.minWidth` (`lib/widgets/app_table.dart`) measured from the
+translated header label — and, for Assignee, the wider of that and the
+"Unassigned" word a cell prints — in the header's own style at the reader's text
+scale, plus the slot's 8px gutter. Floors, English / Vietnamese: Asset 39.96 /
+47.77, Org Unit 53.84 / 87.89, Assignee 83.64 (Unassigned) / 113.33 (Chưa phân
+công). A floor only acts when its flex share falls below it; at 1200px in English
+none does, so the English goldens did not move (the table keeps its plain
+`Expanded` layout), and the Vietnamese golden pins those three columns. The
+Vietnamese wide test also asserts, from the render tree, that those headers and
+that cell are not ellipsised.
+
 **Ten sweep PNGs and eight Work orders PNGs re-recorded for the sidebar's new
 row (t_c68dfd6e).** The language switch adds one Destination (*Settings*) to the
 Shell, and every golden that draws the Shell differs in the sidebar beneath it.

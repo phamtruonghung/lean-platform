@@ -864,17 +864,57 @@ double _workOrderNoColumnWidth(BuildContext context) {
   return painter.width + Spacing.sm + 8;
 }
 
+/// A flex column's floor: the widest of [texts], each laid out in [style] at the
+/// reader's text scale, plus the table slot's `Spacing.sm` right gutter. A flex
+/// share smaller than this clips a translated label that English never clipped
+/// (Vietnamese "Đơn vị tổ chức" against "Org Unit"), so the column is pinned to it
+/// ([AppTableColumn.minWidth]). The header's style is [AppTableHeader.labelStyle].
+double _floorWidth(BuildContext context, List<String> texts, List<TextStyle?> styles) {
+  var widest = 0.0;
+  for (var i = 0; i < texts.length; i++) {
+    final painter = TextPainter(
+      text: TextSpan(text: texts[i], style: styles[i]),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    if (painter.width > widest) widest = painter.width;
+  }
+  return widest + Spacing.sm;
+}
+
 /// The register's one column spec. [AppTableHeader] and every [AppTableRow] are
 /// built from this list, so a header label and its cells start at the same x.
 List<AppTableColumn> _columns(BuildContext context) {
   final l10n = AppLocalizations.of(context);
+  final header = AppTableHeader.labelStyle(context);
+  final dense = AppTypography.dense(context);
   return [
     AppTableColumn(l10n.workOrdersNumberColumn, width: _workOrderNoColumnWidth(context)),
     AppTableColumn(l10n.commonSummary, flex: 6),
-    AppTableColumn(l10n.commonAsset, flex: 2),
-    AppTableColumn(l10n.commonOrgUnit, flex: 2),
+    AppTableColumn(
+      l10n.commonAsset,
+      flex: 2,
+      minWidth: _floorWidth(context, [l10n.commonAsset], [header]),
+    ),
+    // The floors are measured from the translated label, not guessed: the
+    // header's own word for Org Unit, and the wider of the Assignee header and
+    // the "Unassigned" placeholder a cell prints.
+    AppTableColumn(
+      l10n.commonOrgUnit,
+      flex: 2,
+      minWidth: _floorWidth(context, [l10n.commonOrgUnit], [header]),
+    ),
     AppTableColumn(l10n.commonStatus, width: _statusColumnWidth(context)),
-    AppTableColumn(l10n.commonAssignee, flex: 4),
+    AppTableColumn(
+      l10n.commonAssignee,
+      flex: 4,
+      minWidth: _floorWidth(
+        context,
+        [l10n.commonAssignee, l10n.commonUnassigned],
+        [header, dense],
+      ),
+    ),
     AppTableColumn(l10n.commonActions, width: _actionsColumnWidth(context), align: AppColumnAlign.end),
   ];
 }
@@ -938,7 +978,10 @@ class _WorkOrderTableRow extends StatelessWidget {
             // Asset gives way to the Summary, the row's name column, and Org Unit
             // is the narrowest; both disclose. The Assignee keeps the share issue
             // #168 raised (2→3, now 4 of 14) because "Unassigned" and an ordinary
-            // name were ellipsizing at the smaller one: at 1280 in Roboto both fit.
+            // name were ellipsizing at the smaller one. The floor under Org Unit and
+            // Assignee is now measured from the translated header label and the
+            // "Unassigned" word (`_columns`), so a wider translation is pinned to
+            // its own width instead of being clipped by its flex share.
             cell('${workOrder.assetName} (${workOrder.assetCode}) · ${workOrder.workTypeLabel(l10n)}',
                 style: muted, disclose: true),
             cell(workOrder.orgUnitName, style: muted, disclose: true),

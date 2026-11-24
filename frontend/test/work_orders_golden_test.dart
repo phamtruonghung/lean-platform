@@ -16,15 +16,27 @@
 /// deliberate, re-opened extension of #105's stated golden list, recorded
 /// here and in `GOLDENS.md` rather than added quietly. No other Screen is
 /// goldened here.
+///
+/// The three populated-list goldens are also recorded in Vietnamese
+/// (`work_orders_wide_vi.png`, `work_orders_narrow_vi.png`,
+/// `work_orders_collision_700_vi.png`; t_0ac0eb9e batch 1 translated this
+/// Screen without one). Vietnamese labels are wider, and a clipped or
+/// ellipsised column raises no exception, so only pixels can catch it. The
+/// English goldens keep their unsuffixed names and are never re-recorded by
+/// this; the five state goldens stay English-only.
 library;
 
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lean_platform/maintenance/org_unit_chooser.dart';
 import 'package:lean_platform/maintenance/work_orders_screen.dart';
+import 'package:lean_platform/platform/locale_cubit.dart';
+import 'package:lean_platform/widgets/app_table.dart';
 
 import 'harness.dart';
 
@@ -64,90 +76,111 @@ void main() {
   // `harness.dart` for why a golden needs this.
   setUpAll(loadAppFonts);
 
-  testWidgets('the populated list, at or above the 800px-content breakpoint (a table)',
-      (tester) async {
-    _useWindow(tester, 1200);
-    final wire = wireWith(
-      workOrders: {
-        '1': [
-          workOrderJson('101', 'WO-101', 'Belt is slipping', assigneeName: 'Jane Doe'),
-          workOrderJson('102', 'WO-102', 'Guard is loose',
-              assetCode: 'CONV-2', assetName: 'Infeed conveyor'),
-        ],
-      },
-    );
-    await pumpApp(
-      tester,
-      gateway: FakeAuthGateway(accessToken: 'a-token'),
-      client: wire.client,
-      initialLocation: '/work-orders',
-    );
+  // Every test starts from an empty store, so the Vietnamese tests below
+  // cannot leave `vi` behind for the English-only state goldens after them.
+  setUp(() => SharedPreferences.setMockInitialValues(<String, Object>{}));
 
-    await expectLater(
-      find.byType(MaterialApp),
-      matchesGoldenFile('goldens/work_orders_wide.png'),
-    );
-  });
+  // The three populated-list goldens, each in both languages. English keeps
+  // its original PNG names (no suffix); Vietnamese adds `_vi`. English sets
+  // empty preferences explicitly so a `vi` left in the mock store by an
+  // earlier test cannot leak into it.
+  for (final (code, suffix) in [('en', ''), ('vi', '_vi')]) {
+    final lang = code == 'vi' ? ', in Vietnamese' : '';
 
-  testWidgets('the populated list, below the 800px-content breakpoint (cards)', (tester) async {
-    _useWindow(tester, 600);
-    final wire = wireWith(
-      workOrders: {
-        '1': [
-          workOrderJson('101', 'WO-101', 'Belt is slipping', assigneeName: 'Jane Doe'),
-          workOrderJson('102', 'WO-102', 'Guard is loose',
-              assetCode: 'CONV-2', assetName: 'Infeed conveyor'),
-        ],
-      },
-    );
-    await pumpApp(
-      tester,
-      gateway: FakeAuthGateway(accessToken: 'a-token'),
-      client: wire.client,
-      initialLocation: '/work-orders',
-    );
+    Future<void> pumpPopulated(WidgetTester tester, double width) async {
+      SharedPreferences.setMockInitialValues(
+        code == 'vi' ? {LocaleCubit.storageKey: 'vi'} : <String, Object>{},
+      );
+      _useWindow(tester, width);
+      final wire = wireWith(
+        workOrders: {
+          '1': [
+            workOrderJson('101', 'WO-101', 'Belt is slipping', assigneeName: 'Jane Doe'),
+            workOrderJson('102', 'WO-102', 'Guard is loose',
+                assetCode: 'CONV-2', assetName: 'Infeed conveyor'),
+          ],
+        },
+      );
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/work-orders',
+      );
+    }
 
-    await expectLater(
-      find.byType(MaterialApp),
-      matchesGoldenFile('goldens/work_orders_narrow.png'),
-    );
-  });
+    // A Vietnamese golden that silently rendered English would be a second
+    // English golden: prove the words before the pixels.
+    void expectLanguage(WidgetTester tester, {required bool table}) {
+      if (code != 'vi') return;
+      expect(find.text('Lệnh công việc'), findsWidgets);
+      expect(find.text('2 lệnh công việc'), findsOneWidget);
+      expect(find.text('Work orders'), findsNothing);
+      expect(find.text('2 Work orders'), findsNothing);
+      if (table) {
+        expect(find.text('Số WO'), findsWidgets);
+        expect(find.text('Người phụ trách'), findsWidgets);
+        expect(find.text('Summary'), findsNothing);
+        // The translated words that were once ellipsised ("Đơn vị…", "Chưa phân
+        // c…") are drawn whole: their columns are floored at the label's width.
+        for (final finder in [
+          find.byKey(AppTableHeader.labelKey('Đơn vị tổ chức')),
+          find.byKey(AppTableHeader.labelKey('Tài sản')),
+          find.byKey(AppTableHeader.labelKey('Người phụ trách')),
+          find.text('Chưa phân công'),
+        ]) {
+          final paragraph = tester.renderObject<RenderParagraph>(
+            find.descendant(of: finder, matching: find.byType(RichText)).first,
+          );
+          expect(paragraph.didExceedMaxLines, isFalse, reason: 'clipped: $finder');
+        }
+      }
+    }
 
-  // The 700px-window collision golden — a deliberate, re-opened extension
-  // of #105's own golden list (see this file's own header, and `GOLDENS.md`
-  // for the same note in the regenerate-and-scope document). At exactly
-  // 700px of *window*, `PlatformShell`'s own rail breakpoint switches to its
-  // 260px expanded sidebar, leaving 440px of actual content — below this
-  // Screen's 800px-of-content breakpoint, so cards are correct here. Before
-  // issue #105's fix, this Screen measured the window instead and concluded
-  // it had 700px to work with, rendering a table that had nowhere near
-  // enough room and corrupted its own header. This golden exists so that
-  // regression is visible on sight, not only provable by reading a widget
-  // test's assertions.
-  testWidgets('at the 700px window where the two breakpoints used to collide, cards render '
-      'cleanly, not a corrupted table', (tester) async {
-    _useWindow(tester, 700);
-    final wire = wireWith(
-      workOrders: {
-        '1': [
-          workOrderJson('101', 'WO-101', 'Belt is slipping', assigneeName: 'Jane Doe'),
-          workOrderJson('102', 'WO-102', 'Guard is loose',
-              assetCode: 'CONV-2', assetName: 'Infeed conveyor'),
-        ],
-      },
-    );
-    await pumpApp(
-      tester,
-      gateway: FakeAuthGateway(accessToken: 'a-token'),
-      client: wire.client,
-      initialLocation: '/work-orders',
-    );
+    testWidgets('the populated list, at or above the 800px-content breakpoint (a table)$lang',
+        (tester) async {
+      await pumpPopulated(tester, 1200);
+      expectLanguage(tester, table: true);
 
-    await expectLater(
-      find.byType(MaterialApp),
-      matchesGoldenFile('goldens/work_orders_collision_700.png'),
-    );
-  });
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('goldens/work_orders_wide$suffix.png'),
+      );
+    });
+
+    testWidgets('the populated list, below the 800px-content breakpoint (cards)$lang',
+        (tester) async {
+      await pumpPopulated(tester, 600);
+      expectLanguage(tester, table: false);
+
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('goldens/work_orders_narrow$suffix.png'),
+      );
+    });
+
+    // The 700px-window collision golden — a deliberate, re-opened extension
+    // of #105's own golden list (see this file's own header, and `GOLDENS.md`
+    // for the same note in the regenerate-and-scope document). At exactly
+    // 700px of *window*, `PlatformShell`'s own rail breakpoint switches to its
+    // 260px expanded sidebar, leaving 440px of actual content — below this
+    // Screen's 800px-of-content breakpoint, so cards are correct here. Before
+    // issue #105's fix, this Screen measured the window instead and concluded
+    // it had 700px to work with, rendering a table that had nowhere near
+    // enough room and corrupted its own header. This golden exists so that
+    // regression is visible on sight, not only provable by reading a widget
+    // test's assertions.
+    testWidgets('at the 700px window where the two breakpoints used to collide, cards render '
+        'cleanly, not a corrupted table$lang', (tester) async {
+      await pumpPopulated(tester, 700);
+      expectLanguage(tester, table: false);
+
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('goldens/work_orders_collision_700$suffix.png'),
+      );
+    });
+  }
 
   // Shared states (issue #103), each reached through this pumped Screen —
   // the fifth, narrower mount `theme_skeleton_test.dart`'s own header
