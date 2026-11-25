@@ -158,6 +158,37 @@ because the claim here is not text scale but diacritics: "Cài đặt" and "Tran
 chủ" have to be drawn by the bundled Roboto, and `flutter_test`'s placeholder
 boxes cannot say so.
 
+**Work orders and Home, in Vietnamese (t_e5226530, added in this card).** Seven
+new PNGs, each a Vietnamese or English reading of a Screen that was translated
+after its goldens were recorded. `test/work_orders_golden_test.dart` now also
+generates `work_orders_wide_vi.png` (1200px, the table), `work_orders_narrow_vi.png`
+(600px, cards) and `work_orders_collision_700_vi.png` (700px, where the Shell's
+rail breakpoint and the Screen's own used to coincide), all in Vietnamese: the
+same three windows as the English renders, rerun with the language seeded. The
+English `work_orders_wide.png`, `work_orders_narrow.png` and
+`work_orders_collision_700.png` were **not re-recorded** and are byte-for-byte
+what they were; the empty, loading, failed and scope-refused goldens stay
+English only. `test/home_golden_test.dart` is new and generates
+`home_wide_en.png`, `home_wide_vi.png`, `home_narrow_en.png` and
+`home_narrow_vi.png`: an administrator's Home with one Work order and one pending
+approval, at 1200px (the expanded 260px sidebar) and 600px (below the Shell's
+700px rail breakpoint, the least room Home gets), in English and in Vietnamese.
+Vietnamese labels are wider; the column is measured from the label, and this
+golden holds that measurement in place. Each Vietnamese test also asserts that
+the render really is Vietnamese (and the English text absent) before it compares
+pixels, so a golden recorded in the wrong language cannot pass. Home's pending
+approval carries a fixed date, `DateTime(2026, 1, 5, 9)`, so no PNG depends on
+the clock. `work_orders_wide_vi.png` records two known Vietnamese clips that the
+English render does not have: the Org Unit header (`commonOrgUnit`, "Đơn vị tổ
+chức") ellipsises to "Đơn vị…", and the Assignee cell "Chưa phân công"
+(`commonUnassigned`) to "Chưa phân c…", where English "Unassigned" fits. Both
+are flex columns in `_columns()` (`lib/maintenance/work_orders_screen.dart`),
+and fixing them needs a min-width in `app_table.dart`, which an earlier attempt
+broke the English layout with, so it is deliberately not fixed here: this golden
+holds the known clip in place on purpose, so the follow-up fix shows up as a
+measured diff. The narrow (600px) and collision (700px) Vietnamese cards and all
+four Home renders show no clip.
+
 **Ten sweep PNGs and eight Work orders PNGs re-recorded for the sidebar's new
 row (t_c68dfd6e).** The language switch adds one Destination (*Settings*) to the
 Shell, and every golden that draws the Shell differs in the sidebar beneath it.
