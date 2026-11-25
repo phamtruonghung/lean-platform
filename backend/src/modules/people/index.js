@@ -18,8 +18,11 @@
  * a register, issue #287), signature-routes.js (an Employee's own Signature,
  * issue #317), assessment-question-routes.js (the assessment Question bank,
  * issue #588 - five routes, the paste all-or-nothing), assessment-routes.js
- * (the Assessment itself and the candidate's own Attempt - create, assign,
- * start, answer, submit, issue #588 slice 3), and — issue #252 —
+ * (issue #588: the Assessment itself - create, correct, assign, close; the
+ * candidate's own Attempt - start, answer, submit, cancel, retake, end the
+ * floor sitting; and the Marker's queue, paper, mark and result, over
+ * assessments.js, assessment-marking.js and the lazy time sweep in
+ * assessment-sweep.js), and — issue #252 —
  * cost-rate-routes.js and product-cost-routes.js, the two catalogues that maintain the prices the
  * baseline's cost views already resolve through `resolve_cost_rate` and
  * `product_standard_cost`. Those two live in this Module rather than one of
@@ -28,7 +31,9 @@
  * see cost-rates.js's own header.
  *
  * `floorRouter` (floor-routes.js, plus floor-training-routes.js, issue #293 - a
- * Trainee's answer at the device) is a second router rather than a sixth file
+ * Trainee's answer at the device, and floor-assessment-routes.js, issue #588 -
+ * an Employee sitting an Assessment at the device, credentialed per running
+ * Attempt by assessment-sittings.js) is a second router rather than a sixth file
  * inside `router`, and that is issue #201's one deliberate oddity: floor-routes.js owns the
  * shared floor device's HTTP surface (ADR-0016), which this Module took over
  * from Maintenance, but its ADDRESS stayed under `/api/maintenance` because
