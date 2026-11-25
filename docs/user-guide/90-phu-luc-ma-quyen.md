@@ -1,12 +1,12 @@
-# Phụ lục: 84 mã quyền và vai trò mang chúng
+# Phụ lục: 88 mã quyền và vai trò mang chúng
 
-Sinh ra từ cơ sở dữ liệu sau khi chạy đủ migration tới `1804100000000_kpi-catalogue-write-roles` — không chép tay, nên không lệch được với mã nguồn.
+Sinh ra từ cơ sở dữ liệu sau khi chạy đủ migration tới `1804400000000_assessment-permission-codes` — không chép tay, nên không lệch được với mã nguồn.
 
 **Đây là bảng tra, không phải một phiếu.** Một phiếu dạy một việc và có các bước chính; một phụ lục trả lời một câu hỏi — "ai mang mã quyền này" — nên ở đây không có bước nào để làm theo. Muốn biết một màn hình dạy thế nào, mở chương của nhóm đó.
 
 `Mọi` = `ROLE_STANDARD`, nhóm mặc định mà **mọi Tài khoản đều mang**. Một vai trò mang quyền của chính nó **cộng** nhóm mặc định; bảng dưới đã tính sẵn phần cộng đó.
 
-`Quản trị viên` không đọc bảng này để biết mình làm được gì: máy chủ cho vai trò `ROLE_ADMIN` đi qua mọi mã quyền, nên admin làm được tất cả 84.
+`Quản trị viên` không đọc bảng này để biết mình làm được gì: máy chủ cho vai trò `ROLE_ADMIN` đi qua mọi mã quyền, nên admin làm được tất cả 88.
 
 ## Nhân sự
 
@@ -31,6 +31,10 @@ Sinh ra từ cơ sở dữ liệu sau khi chạy đủ migration tới `18041000
 | `PPL_PRODUCT_COSTS_MAINTAIN` | Product standard costs | · | · | · | · | · | ✓ |
 | `PPL_TRAINING_ANSWER_OWN` | Answer my Training | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `PPL_LEAVE_REQUESTS_RAISE` | Raise my Leave | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `PPL_ASSESSMENT_DISPLAY` | Assessments | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `PPL_ASSESSMENT_CHANGE` | Maintain Assessments | · | · | ✓ | ✓ | ✓ | ✓ |
+| `PPL_ASSESSMENT_SIT` | Sit my Assessment | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `PPL_ASSESSMENT_MARK` | Mark an Assessment | · | · | ✓ | ✓ | ✓ | ✓ |
 
 ## Bảo trì
 
@@ -136,10 +140,10 @@ Sinh ra từ cơ sở dữ liệu sau khi chạy đủ migration tới `18041000
 
 | Vai trò | Mã (`app_roles.code`) | Số quyền |
 | --- | --- | ---: |
-| Nhóm mặc định | `ROLE_STANDARD` | 42 |
-| Operator | `ROLE_OPERATOR` | 42 |
-| Supervisor | `ROLE_SUPERVISOR` | 63 |
-| Engineer | `ROLE_ENGINEER` | 64 |
-| Manager | `ROLE_MANAGER` | 64 |
-| Quản trị viên | `ROLE_ADMIN` | 84 |
+| Nhóm mặc định | `ROLE_STANDARD` | 44 |
+| Operator | `ROLE_OPERATOR` | 44 |
+| Supervisor | `ROLE_SUPERVISOR` | 67 |
+| Engineer | `ROLE_ENGINEER` | 68 |
+| Manager | `ROLE_MANAGER` | 68 |
+| Quản trị viên | `ROLE_ADMIN` | 88 |
 
