@@ -225,4 +225,28 @@ void main() {
     expect(find.byKey(AssessmentSittingScreen.failedKey), findsNothing);
     expect(find.byKey(AssessmentSittingScreen.questionKey), findsNothing);
   });
+
+  testWidgets('an answer the server refuses as late wins over a countdown that still shows time left',
+      (tester) async {
+    final wire = _wire();
+    await _open(tester, wire);
+    await tester.pumpAndSettle();
+    // The client's own clock says about twenty minutes remain.
+    expect(_clockOf(tester), matches(RegExp(r'^(19|20):\d{2}$')));
+
+    // The server's clock disagrees: it has finalised the paper, so the answer is
+    // a 409 and the re-read is the closed Attempt, deadline still in the future
+    // by the client's reckoning.
+    wire.saveAssessmentAnswerStatus = 409;
+    wire.assessmentPaper = assessmentPaperJson(
+      attemptId: 41,
+      assessmentId: 5,
+      status: 'submitted',
+    );
+    await tester.tap(find.byKey(AssessmentSittingScreen.optionKey('A')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(AssessmentSittingScreen.submittedKey), findsOneWidget);
+    expect(find.byKey(AssessmentSittingScreen.questionKey), findsNothing);
+  });
 }
