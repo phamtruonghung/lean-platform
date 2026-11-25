@@ -8924,4 +8924,167 @@ class AppLocalizationsEn extends AppLocalizations {
   String assessmentNavigatorChip(int position, String state) {
     return 'Question $position: $state';
   }
+
+  @override
+  String get assessmentDetailFailedTitle => 'The assessment could not be read';
+
+  @override
+  String get assessmentDetailFactsTitle => 'Details';
+
+  @override
+  String get assessmentFactProcess => 'Process';
+
+  @override
+  String get assessmentFactPaperSize => 'Paper size';
+
+  @override
+  String get assessmentFactAttemptsAllowed => 'Attempts allowed';
+
+  @override
+  String get assessmentFactNone => '—';
+
+  @override
+  String get assessmentAttemptsTitle => 'Attempts';
+
+  @override
+  String get assessmentAttemptsEmpty =>
+      'Nobody has been assigned this assessment yet.';
+
+  @override
+  String get assessmentAttemptCounting => 'Counts';
+
+  @override
+  String get assessmentScoreHidden => '—';
+
+  @override
+  String assessmentRetakeIs(String reason) {
+    return 'Retake reason: $reason';
+  }
+
+  @override
+  String get assessmentActionsTitle => 'Actions';
+
+  @override
+  String get assessmentAssignButton => 'Assign people';
+
+  @override
+  String get assessmentAssignTitle => 'Assign more people';
+
+  @override
+  String get assessmentAssignConfirm => 'Assign';
+
+  @override
+  String get assessmentCloseButton => 'Close assessment';
+
+  @override
+  String get assessmentCloseTitle => 'Close this assessment?';
+
+  @override
+  String get assessmentCloseMessage =>
+      'No one can start an Attempt, no one can be added and no retake can be allowed once it is closed.';
+
+  @override
+  String get assessmentCancelAttemptButton => 'Cancel Attempt';
+
+  @override
+  String get assessmentCancelAttemptTitle => 'Cancel this Attempt?';
+
+  @override
+  String assessmentCancelAttemptMessage(String name, int number) {
+    return '$name\'s Attempt $number will be cancelled. The reason is kept with it.';
+  }
+
+  @override
+  String get assessmentCancelReasonLabel => 'Reason for cancelling';
+
+  @override
+  String get assessmentRetakeButton => 'Allow a retake';
+
+  @override
+  String get assessmentRetakeTitle => 'Allow a retake?';
+
+  @override
+  String assessmentRetakeMessage(String name) {
+    return '$name gets one more Attempt. The reason is kept with it.';
+  }
+
+  @override
+  String get assessmentRetakeReasonLabel => 'Reason for the retake';
+
+  @override
+  String get assessmentReasonHelper => 'At least 3 characters.';
+
+  @override
+  String get assessmentReasonTooShort =>
+      'Give a reason of at least 3 characters.';
+
+  @override
+  String get assessmentEndSittingButton => 'End sitting';
+
+  @override
+  String get assessmentEndSittingTitle => 'End this sitting?';
+
+  @override
+  String get assessmentEndSittingMessage =>
+      'The device is signed out of the paper. The paper and its answers are kept, and the person can identify themselves again to continue it.';
+
+  @override
+  String get assessmentReasonDraft =>
+      'This assessment is still a draft. People are assigned when it is created.';
+
+  @override
+  String get assessmentReasonClosed => 'This assessment is closed.';
+
+  @override
+  String get assessmentReasonNoChange =>
+      'You do not have permission to change assessments.';
+
+  @override
+  String get assessmentReasonOutsideReach =>
+      'This is outside the Org Units you may change.';
+
+  @override
+  String get assessmentReasonNotFinal =>
+      'Only a finished Attempt (submitted, marked or expired) can be retaken.';
+
+  @override
+  String get assessmentReasonNotLatest =>
+      'A later Attempt already exists for this person.';
+
+  @override
+  String assessmentReasonExhausted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'All $count Attempts allowed have been used.',
+      one: 'The 1 Attempt allowed has been used.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get assessmentReasonNoMark =>
+      'You do not have permission to mark this assessment\'s papers.';
+
+  @override
+  String get assessmentFilterProcess => 'Process';
+
+  @override
+  String get assessmentFilterAllProcesses => 'All processes';
+
+  @override
+  String get assessmentFilterStatus => 'Status';
+
+  @override
+  String get assessmentFilterAnyStatus => 'Any status';
+
+  @override
+  String get assessmentFilterBelowPassMark => 'Below pass mark';
+
+  @override
+  String get assessmentFilterNoMatchTitle => 'No assessment matches';
+
+  @override
+  String get assessmentFilterNoMatchMessage =>
+      'Try a different process, status or dates.';
 }

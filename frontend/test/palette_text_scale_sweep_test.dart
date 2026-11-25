@@ -361,6 +361,10 @@ final List<_Screen> _screens = [
       route: '/assessments/5/attempts/41/marking'),
   const _Screen('AssessmentResultScreen', 'lib/people/assessment_result_screen.dart',
       route: '/assessments/5/attempts/41/result'),
+  // Slice 6: one Assessment's detail — facts, counts and every Attempt, with
+  // the actions the server would refuse printed beside their disabled buttons.
+  const _Screen('AssessmentDetailScreen', 'lib/people/assessment_detail_screen.dart',
+      route: '/assessments/5'),
   const _Screen('ProductCostsScreen', 'lib/people/product_costs_screen.dart',
       route: '/product-costs'),
   const _Screen('OrgUnitsScreen', 'lib/people/org_units_screen.dart', route: '/org-units'),
@@ -509,6 +513,58 @@ FakeWire _stateWire(_Screen screen) {
       permissions: _sweepPermissions(),
       roles: _sweepRoles(),
     );
+  }
+  // One Assessment's detail (issue #588, slice 6): an assigned Assessment with
+  // three Attempts, so the sweep judges a populated page rather than the failed
+  // read the shared wire (which carries no Assessments) would draw. One person's
+  // counting marked Attempt 2 over their earlier Attempt 1 (whose retake is
+  // refused, with its reason printed), and a second person's assigned Attempt.
+  if (screen.name == 'AssessmentDetailScreen') {
+    final wire = _wire();
+    wire.assessmentRegister = [
+      assessmentJson(
+        5,
+        title: 'Kiểm tra quy trình Braiding',
+        number: 'AS-HCM-2026-00005',
+        questionCount: 15,
+        minutes: 30,
+        passMark: 12,
+        attemptsAllowed: 2,
+        dueOn: '2026-12-01',
+        assignedCount: 1,
+        markedCount: 2,
+        attempts: [
+          assessmentAttemptJson(43,
+              assessmentId: '5',
+              employeeId: '7',
+              employeeName: 'Alice Nguyen',
+              attemptNo: 2,
+              status: 'marked',
+              isCounting: true,
+              isLatest: true,
+              finalScore: 13,
+              passed: true,
+              retakeReason: 'The paper was interrupted'),
+          assessmentAttemptJson(41,
+              assessmentId: '5',
+              employeeId: '7',
+              employeeName: 'Alice Nguyen',
+              attemptNo: 1,
+              status: 'marked',
+              isLatest: false,
+              finalScore: 6,
+              passed: false),
+          assessmentAttemptJson(42,
+              assessmentId: '5',
+              employeeId: '8',
+              employeeName: 'Bao Tran Thi Minh Nguyet',
+              attemptNo: 1,
+              status: 'assigned'),
+        ],
+      ),
+    ];
+    wire.assignPreviewCount = 3;
+    return wire;
   }
   return _wire();
 }

@@ -11,6 +11,7 @@ import 'dart:ui' show Size;
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:lean_platform/people/assessment_detail_screen.dart';
 import 'package:lean_platform/people/assessment_sitting_screen.dart';
 import 'package:lean_platform/people/assessments_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
@@ -159,5 +160,78 @@ void main() {
     await tester.pumpAndSettle();
     // The create form, at its own address.
     expect(find.text('Who sits it'), findsOneWidget);
+  });
+
+  group('the All tab\'s filters', () {
+    FakeWire wire() => _wire(
+          register: [
+            assessmentJson(5, orgUnitId: '11', orgUnitName: 'Braiding', title: 'Kiểm tra Braiding'),
+            assessmentJson(6, orgUnitId: '12', orgUnitName: 'Cutting', title: 'Kiểm tra Cutting'),
+          ],
+        );
+
+    Future<void> openAll(WidgetTester tester, FakeWire wire) async {
+      await _open(tester, wire);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(AssessmentsScreen.tabKey(2)));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the process, status, dates and below pass mark are sent as query parameters',
+        (tester) async {
+      final w = wire();
+      await openAll(tester, w);
+      // The opening reads carry no filter at all.
+      expect(w.assessmentRegisterReads.every((read) => !read.containsKey('orgUnitId')), isTrue);
+      expect(w.assessmentRegisterReads.every((read) => !read.containsKey('failed')), isTrue);
+
+      await tester.tap(find.byKey(AssessmentsScreen.filterProcessKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cutting').last);
+      await tester.pumpAndSettle();
+      expect(w.assessmentRegisterReads.last['orgUnitId'], '12');
+
+      await tester.tap(find.byKey(AssessmentsScreen.filterStatusKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Closed').last);
+      await tester.pumpAndSettle();
+      expect(w.assessmentRegisterReads.last['status'], 'closed');
+      expect(w.assessmentRegisterReads.last['orgUnitId'], '12');
+
+      await pickDate(tester, AssessmentsScreen.filterFromKey, DateTime(2026, 11, 1));
+      await tester.pumpAndSettle();
+      expect(w.assessmentRegisterReads.last['from'], '2026-11-01');
+      await pickDate(tester, AssessmentsScreen.filterToKey, DateTime(2026, 11, 30));
+      await tester.pumpAndSettle();
+      expect(w.assessmentRegisterReads.last['to'], '2026-11-30');
+
+      await tester.tap(find.byKey(AssessmentsScreen.filterFailedKey));
+      await tester.pumpAndSettle();
+      expect(w.assessmentRegisterReads.last, {
+        'orgUnitId': '12',
+        'status': 'closed',
+        'from': '2026-11-01',
+        'to': '2026-11-30',
+        'failed': 'true',
+      });
+    });
+
+    testWidgets('tapping a row opens that Assessment\'s detail', (tester) async {
+      final w = wire();
+      w.assessmentRegister = [
+        assessmentJson(
+          5,
+          title: 'Kiểm tra Braiding',
+          attempts: [assessmentAttemptJson(41, assessmentId: '5', employeeName: 'Tran Van An')],
+        ),
+      ];
+      await openAll(tester, w);
+
+      await tester.tap(find.byKey(AssessmentsScreen.assessmentRowKey('5')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(AssessmentDetailScreen.factsKey), findsOneWidget);
+      expect(find.text('Tran Van An'), findsOneWidget);
+    });
   });
 }

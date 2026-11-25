@@ -14895,6 +14895,282 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Question {position}: {state}'**
   String assessmentNavigatorChip(int position, String state);
+
+  /// Failure title of the Assessment detail Screen.
+  ///
+  /// In en, this message translates to:
+  /// **'The assessment could not be read'**
+  String get assessmentDetailFailedTitle;
+
+  /// Title of the facts card on the detail Screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get assessmentDetailFactsTitle;
+
+  /// Label: the process whose bank the paper is drawn from.
+  ///
+  /// In en, this message translates to:
+  /// **'Process'**
+  String get assessmentFactProcess;
+
+  /// Label: how many Questions a paper holds.
+  ///
+  /// In en, this message translates to:
+  /// **'Paper size'**
+  String get assessmentFactPaperSize;
+
+  /// Label: how many Attempts one Employee may have.
+  ///
+  /// In en, this message translates to:
+  /// **'Attempts allowed'**
+  String get assessmentFactAttemptsAllowed;
+
+  /// Shown where a fact has no value, such as a missing due date.
+  ///
+  /// In en, this message translates to:
+  /// **'—'**
+  String get assessmentFactNone;
+
+  /// Title of the Attempts section.
+  ///
+  /// In en, this message translates to:
+  /// **'Attempts'**
+  String get assessmentAttemptsTitle;
+
+  /// Empty Attempts section.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody has been assigned this assessment yet.'**
+  String get assessmentAttemptsEmpty;
+
+  /// Chip on the Attempt whose score is the one that counts.
+  ///
+  /// In en, this message translates to:
+  /// **'Counts'**
+  String get assessmentAttemptCounting;
+
+  /// Shown in place of a score the caller may not read.
+  ///
+  /// In en, this message translates to:
+  /// **'—'**
+  String get assessmentScoreHidden;
+
+  /// Why a retake was allowed, on that Attempt.
+  ///
+  /// In en, this message translates to:
+  /// **'Retake reason: {reason}'**
+  String assessmentRetakeIs(String reason);
+
+  /// Title of the Assessment-level actions group.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions'**
+  String get assessmentActionsTitle;
+
+  /// Opens the assign dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign people'**
+  String get assessmentAssignButton;
+
+  /// Title of the assign dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign more people'**
+  String get assessmentAssignTitle;
+
+  /// Confirm button of the assign dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign'**
+  String get assessmentAssignConfirm;
+
+  /// Closes the Assessment.
+  ///
+  /// In en, this message translates to:
+  /// **'Close assessment'**
+  String get assessmentCloseButton;
+
+  /// Title of the close confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Close this assessment?'**
+  String get assessmentCloseTitle;
+
+  /// Body of the close confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'No one can start an Attempt, no one can be added and no retake can be allowed once it is closed.'**
+  String get assessmentCloseMessage;
+
+  /// Cancels one Attempt.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel Attempt'**
+  String get assessmentCancelAttemptButton;
+
+  /// Title of the cancel dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this Attempt?'**
+  String get assessmentCancelAttemptTitle;
+
+  /// Body of the cancel dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s Attempt {number} will be cancelled. The reason is kept with it.'**
+  String assessmentCancelAttemptMessage(String name, int number);
+
+  /// Label of the cancel reason field.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason for cancelling'**
+  String get assessmentCancelReasonLabel;
+
+  /// Allows one more Attempt.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow a retake'**
+  String get assessmentRetakeButton;
+
+  /// Title of the retake dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow a retake?'**
+  String get assessmentRetakeTitle;
+
+  /// Body of the retake dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} gets one more Attempt. The reason is kept with it.'**
+  String assessmentRetakeMessage(String name);
+
+  /// Label of the retake reason field.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason for the retake'**
+  String get assessmentRetakeReasonLabel;
+
+  /// Helper under a reason field.
+  ///
+  /// In en, this message translates to:
+  /// **'At least 3 characters.'**
+  String get assessmentReasonHelper;
+
+  /// Error when a reason is too short.
+  ///
+  /// In en, this message translates to:
+  /// **'Give a reason of at least 3 characters.'**
+  String get assessmentReasonTooShort;
+
+  /// Ends a running Attempt's sitting at its device.
+  ///
+  /// In en, this message translates to:
+  /// **'End sitting'**
+  String get assessmentEndSittingButton;
+
+  /// Title of the end-sitting confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'End this sitting?'**
+  String get assessmentEndSittingTitle;
+
+  /// Body of the end-sitting confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'The device is signed out of the paper. The paper and its answers are kept, and the person can identify themselves again to continue it.'**
+  String get assessmentEndSittingMessage;
+
+  /// Why an action is disabled on a draft.
+  ///
+  /// In en, this message translates to:
+  /// **'This assessment is still a draft. People are assigned when it is created.'**
+  String get assessmentReasonDraft;
+
+  /// Why an action is disabled on a closed Assessment.
+  ///
+  /// In en, this message translates to:
+  /// **'This assessment is closed.'**
+  String get assessmentReasonClosed;
+
+  /// Why an action is disabled without the change permission.
+  ///
+  /// In en, this message translates to:
+  /// **'You do not have permission to change assessments.'**
+  String get assessmentReasonNoChange;
+
+  /// Why an action is disabled outside the caller's write reach.
+  ///
+  /// In en, this message translates to:
+  /// **'This is outside the Org Units you may change.'**
+  String get assessmentReasonOutsideReach;
+
+  /// Why Allow a retake is disabled on an unfinished Attempt.
+  ///
+  /// In en, this message translates to:
+  /// **'Only a finished Attempt (submitted, marked or expired) can be retaken.'**
+  String get assessmentReasonNotFinal;
+
+  /// Why Allow a retake is disabled on an earlier Attempt.
+  ///
+  /// In en, this message translates to:
+  /// **'A later Attempt already exists for this person.'**
+  String get assessmentReasonNotLatest;
+
+  /// Why Allow a retake is disabled when no Attempts are left.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{The 1 Attempt allowed has been used.} other{All {count} Attempts allowed have been used.}}'**
+  String assessmentReasonExhausted(int count);
+
+  /// Why Mark is disabled.
+  ///
+  /// In en, this message translates to:
+  /// **'You do not have permission to mark this assessment\'s papers.'**
+  String get assessmentReasonNoMark;
+
+  /// Label of the register's process filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Process'**
+  String get assessmentFilterProcess;
+
+  /// Option of the process filter that narrows nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'All processes'**
+  String get assessmentFilterAllProcesses;
+
+  /// Label of the register's status filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get assessmentFilterStatus;
+
+  /// Option of the status filter that narrows nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Any status'**
+  String get assessmentFilterAnyStatus;
+
+  /// Chip that narrows the register to Assessments with a failed Attempt.
+  ///
+  /// In en, this message translates to:
+  /// **'Below pass mark'**
+  String get assessmentFilterBelowPassMark;
+
+  /// Empty title when filters match nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'No assessment matches'**
+  String get assessmentFilterNoMatchTitle;
+
+  /// Empty message when filters match nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a different process, status or dates.'**
+  String get assessmentFilterNoMatchMessage;
 }
 
 class _AppLocalizationsDelegate

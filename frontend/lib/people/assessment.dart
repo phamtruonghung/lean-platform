@@ -56,6 +56,9 @@ class Assessment {
     required this.awaitingMarkingCount,
     required this.markedCount,
     this.attempts = const [],
+    this.siteCode,
+    this.viewerMayChange = false,
+    this.viewerMayMark = false,
   });
 
   final String id;
@@ -86,6 +89,19 @@ class Assessment {
   /// Every Attempt, on the detail read; empty on a register row.
   final List<AssessmentAttempt> attempts;
 
+  /// The Site's code, on the detail read.
+  final String? siteCode;
+
+  /// What the server says the caller may do with this Assessment (slice 6):
+  /// change it (`CHANGE` with write reach on the process) and mark its Attempts
+  /// (`MARK` with reach on the process). Both are false on a read that does not
+  /// carry them, so a Screen never offers an action the server did not vouch
+  /// for.
+  final bool viewerMayChange;
+  final bool viewerMayMark;
+
+  bool get isAssigned => status == assessmentAssigned;
+
   bool get isDraft => status == assessmentDraft;
   bool get isClosed => status == assessmentClosed;
 
@@ -114,6 +130,9 @@ class Assessment {
         for (final attempt in (json['attempts'] as List<dynamic>? ?? const []))
           AssessmentAttempt.fromJson(attempt as Map<String, dynamic>),
       ],
+      siteCode: json['siteCode'] as String?,
+      viewerMayChange: json['viewerMayChange'] == true,
+      viewerMayMark: json['viewerMayMark'] == true,
     );
   }
 }
@@ -148,6 +167,10 @@ class AssessmentAttempt {
     this.questionCount,
     this.passMark,
     this.dueOn,
+    this.isCounting = false,
+    this.isLatest = false,
+    this.retakeReason,
+    this.viewerMayChange = false,
   });
 
   final String id;
@@ -197,6 +220,19 @@ class AssessmentAttempt {
   final int? passMark;
   final String? dueOn;
 
+  /// On the detail read (slice 6): whether this is the person's latest marked
+  /// Attempt — the score that counts — and whether no later sitting exists for
+  /// them. Both are the server's answer, never worked out here.
+  final bool isCounting;
+  final bool isLatest;
+
+  /// Why a retake was allowed, on an Attempt that is one.
+  final String? retakeReason;
+
+  /// Whether the caller may change this Attempt (`CHANGE` with write reach on
+  /// the Attempt's own Org Unit).
+  final bool viewerMayChange;
+
   bool get isRunning => status == attemptInProgress;
   bool get isFinal =>
       status == attemptSubmitted ||
@@ -233,6 +269,10 @@ class AssessmentAttempt {
       questionCount: json['questionCount'] == null ? null : _int(json['questionCount']),
       passMark: json['passMark'] == null ? null : _int(json['passMark']),
       dueOn: json['dueOn'] as String?,
+      isCounting: json['isCounting'] == true,
+      isLatest: json['isLatest'] == true,
+      retakeReason: json['retakeReason'] as String?,
+      viewerMayChange: json['viewerMayChange'] == true,
     );
   }
 }

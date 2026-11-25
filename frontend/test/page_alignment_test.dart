@@ -220,6 +220,12 @@ const _pages = <_Page>[
   // left edge like any other page's. The first card's own text sits at the
   // card's `Spacing.lg` padding, inside the default 20px row bound.
   _Page('/actions/501', 'lib/actions/action_detail_screen.dart', 'Action', ''),
+  // One Assessment's detail (issue #588, slice 6): its title is the
+  // Assessment's own title, its description starts with the number, and its
+  // first card is the facts section at the card's own padding. The Assessment
+  // is set on the wire in `main` below.
+  _Page('/assessments/5', 'lib/people/assessment_detail_screen.dart',
+      'Kiểm tra quy trình Braiding', 'AS-HCM-2026-00005'),
   _Page('/actions/capas/801', 'lib/actions/capa_detail_screen.dart', 'CAPA', ''),
   // The attendance-to-confirm worklist (issue #250). Its rows are plain
   // `ListTile`s, not `Card`s — the same shape `attendance_picker_screen.dart`'s
@@ -499,6 +505,8 @@ void main() {
       addTearDown(tester.view.reset);
 
       final wire = _wire();
+      // One Assessment's detail (issue #588, slice 6) reads this one.
+      wire.assessmentRegister = [assessmentJson(5, number: 'AS-HCM-2026-00005')];
       await pumpApp(
         tester,
         gateway: FakeAuthGateway(accessToken: 'a-token'),

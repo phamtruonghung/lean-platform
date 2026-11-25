@@ -65,7 +65,10 @@ async function scoreViewer(account) {
     accountId: account.id,
     employeeId: account.employeeId === undefined ? null : account.employeeId,
     isAdmin: authorization.isAdmin(account),
-    holdsMarkCodes: MARK_CODES.some((code) => held.has(code))
+    holdsMarkCodes: MARK_CODES.some((code) => held.has(code)),
+    // The two codes apart, for the detail's `viewerMayChange` / `viewerMayMark`.
+    holdsChange: held.has('PPL_ASSESSMENT_CHANGE'),
+    holdsMark: held.has('PPL_ASSESSMENT_MARK')
   };
 }
 

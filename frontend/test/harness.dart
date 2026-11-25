@@ -2197,10 +2197,15 @@ Map<String, dynamic> assessmentJson(
   int awaitingMarkingCount = 0,
   int markedCount = 0,
   List<Map<String, dynamic>> attempts = const [],
+  bool viewerMayChange = true,
+  bool viewerMayMark = true,
 }) =>
     {
       'id': '$id',
       'siteId': '1',
+      'siteCode': 'HCM',
+      'viewerMayChange': viewerMayChange,
+      'viewerMayMark': viewerMayMark,
       'orgUnitId': orgUnitId,
       'orgUnitName': orgUnitName,
       'number': number ?? 'AS-HCM-2026-0000$id',
@@ -2239,6 +2244,14 @@ Map<String, dynamic> assessmentAttemptJson(
   int? questionCount,
   int? passMark,
   String? dueOn,
+  bool isCounting = false,
+  bool isLatest = true,
+  String? retakeReason,
+  bool viewerMayChange = true,
+  int? finalScore,
+  bool? passed,
+  bool? scoreHidden,
+  String? markedByName,
 }) =>
     {
       'id': '$id',
@@ -2246,6 +2259,15 @@ Map<String, dynamic> assessmentAttemptJson(
       'employeeId': employeeId,
       'attemptNo': attemptNo,
       'orgUnitId': '11',
+      'isCounting': isCounting,
+      'isLatest': isLatest,
+      'retakeReason': retakeReason,
+      'viewerMayChange': viewerMayChange,
+      'finalScore': ?finalScore,
+      'score': ?finalScore,
+      'passed': ?passed,
+      'scoreHidden': ?scoreHidden,
+      'markedByName': ?markedByName,
       'orgUnitResolvedOn': '2026-11-24',
       'status': status,
       'startedAt': startedAt,
@@ -4806,10 +4828,25 @@ class FakeWire {
   int? assignAssessmentRequired;
   final List<(String, Map<String, dynamic>)> assessmentAssigns = [];
 
+  /// The ids `POST /api/people/assessments/:id/close` reached.
+  final List<String> assessmentCloses = [];
+
   /// `GET /api/people/assessments/assign-preview`.
   int assignPreviewCount = 0;
   List<String> assignPreviewUnresolvedNames = [];
   final List<String> assignPreviewReads = [];
+
+  /// Every `GET /api/people/assessments` as its query parameters, in order, so a
+  /// test can assert which filters were sent (and that unset ones were not).
+  final List<Map<String, String>> assessmentRegisterReads = [];
+
+  /// `POST /assessment-attempts/:id/cancel|retake|end-sitting` (slice 6): what
+  /// reached the wire as (attempt id, body), and the refusal a test wants.
+  final List<(String, Map<String, dynamic>)> assessmentAttemptCancels = [];
+  final List<(String, Map<String, dynamic>)> assessmentAttemptRetakes = [];
+  final List<String> assessmentSittingEnds = [];
+  int assessmentAttemptWriteStatus = 200;
+  String assessmentAttemptWriteMessage = 'That Attempt could not be changed.';
 
   /// `GET /api/people/assessment-attempts/mine`. A 403 is the Account with no
   /// Employee, which the register treats as an empty list.
@@ -9249,6 +9286,7 @@ class FakeWire {
           }, 200);
         }
         if (path == '/api/people/assessments' && request.method == 'GET') {
+          assessmentRegisterReads.add(Map<String, String>.of(request.url.queryParameters));
           final mine = request.url.queryParameters['mine'] == 'true';
           final rows = mine ? assessmentRegister.take(1).toList() : assessmentRegister;
           return _utf8Json({
@@ -9295,6 +9333,7 @@ class FakeWire {
             return _utf8Json({'assigned': 1, 'assessment': row}, 201);
           }
           if (action == '/close' && request.method == 'POST') {
+            assessmentCloses.add(id);
             final row = assessmentRegister.firstWhere((entry) => entry['id'] == id);
             return _utf8Json({'assessment': {...row, 'status': 'closed'}}, 200);
           }
@@ -9318,6 +9357,22 @@ class FakeWire {
             final row = assessmentRegister.firstWhere((entry) => entry['id'] == id);
             return _utf8Json({'assessment': {...row, ...sent}}, 200);
           }
+        }
+        final attemptWrite = RegExp(r'^/api/people/assessment-attempts/([0-9]+)/(cancel|retake|end-sitting)$')
+            .firstMatch(path);
+        if (attemptWrite != null && request.method == 'POST') {
+          final attemptId = attemptWrite.group(1)!;
+          final action = attemptWrite.group(2)!;
+          final sent = request.body.isEmpty
+              ? <String, dynamic>{}
+              : jsonDecode(request.body) as Map<String, dynamic>;
+          if (action == 'cancel') assessmentAttemptCancels.add((attemptId, sent));
+          if (action == 'retake') assessmentAttemptRetakes.add((attemptId, sent));
+          if (action == 'end-sitting') assessmentSittingEnds.add(attemptId);
+          if (assessmentAttemptWriteStatus >= 300) {
+            return _utf8Json({'message': assessmentAttemptWriteMessage}, assessmentAttemptWriteStatus);
+          }
+          return _utf8Json({'attempt': assessmentAttemptJson(int.parse(attemptId))}, action == 'retake' ? 201 : 200);
         }
         if (path == '/api/people/assessment-marking' && request.method == 'GET') {
           if (assessmentMarkingQueueStatus != 200) {
