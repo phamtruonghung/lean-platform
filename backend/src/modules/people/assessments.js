@@ -15,11 +15,12 @@
  * timestamp from a client.
  *
  * **No cron (spec section 5.2).** Time-caused transitions happen lazily, in an
- * `UPDATE ... WHERE` at the top of every Attempt read and every Answer write,
- * in the same transaction as the read or the write: idempotent, correct after a
- * restart, and the paper closes when somebody looks at it, which is when it
- * matters. `finalisePastDeadline` is that sweep, scoped to the Attempt being
- * looked at; `finaliseMine` is the same rule for a list of the caller's own.
+ * `UPDATE ... WHERE` before every Attempt read and every Answer write:
+ * idempotent, correct after a restart, and the paper closes when somebody
+ * looks at it, which is when it matters. `assessment-sweep.js` owns both
+ * transitions (`in_progress` -> `submitted` late, `assigned` -> `expired`),
+ * scoped to one Attempt, one Employee or one Assessment, and commits them in
+ * their own transaction first so a refusal that follows cannot roll them back.
  *
  * **The draw happens at Attempt start, not at creation (spec section 11).**
  * `ORDER BY random() LIMIT $n` inside the transaction that sets `started_at`,
@@ -32,9 +33,11 @@
  * drawn rows and simply does not select `correct_option`, `explanation` or
  * `points`; a route cannot leak what it is never handed.
  *
- * **One paper per Attempt, and `start` is idempotent on a refresh.** The
- * Attempt row is locked `FOR UPDATE` first, so two concurrent starts cannot
- * draw two papers: the second reads `in_progress` and returns the first one.
+ * **One paper per Attempt, and `start` is idempotent on a refresh.** Inside
+ * `start`'s own transaction, after the committed sweep, the Attempt row is
+ * locked `FOR UPDATE` before anything is read or drawn, so two concurrent
+ * starts serialise there and cannot draw two papers: the second reads
+ * `in_progress` and returns the first one.
  *
  * **A thin bank is a hard refusal, never a short paper.** A 7-question paper
  * marked out of 10 is a silent lie about a person's score, so both `/assign`
@@ -54,6 +57,7 @@ const { httpError, notFound } = require('./errors');
 // register and the detail read ask the same question the Marker's doors do
 // rather than spelling the predicate a second time.
 const marking = require('./assessment-marking');
+const timing = require('./assessment-sweep');
 
 const QUESTION_COUNTS = [10, 15];
 const MIN_MINUTES = 5;
@@ -294,6 +298,7 @@ async function getAssessment(id, viewer = null) {
 // score the Marker can move would read as a promise (spec section 3.12), so
 // outside both rules the fields are `null` with `scoreHidden: true`.
 async function listAttempts(assessmentId, viewer = null) {
+  await timing.sweepAssessments([assessmentId]);
   // Section 3.14, in SQL: the score columns are `CASE`d to NULL by the
   // database for a caller the predicate refuses, so a hidden score is never
   // fetched. A score exists only once the Attempt is marked (section 3.12).
@@ -406,7 +411,7 @@ async function listAssessments({
   }
   const where = conditions.length === 0 ? 'TRUE' : conditions.join(' AND ');
 
-  const { rows } = await getPool().query(
+  const readPage = async () => (await getPool().query(
     `SELECT ${ASSESSMENT_COLUMNS}, ou.name AS org_unit_name,
             counts.assigned_count, counts.running_count,
             counts.awaiting_marking_count, counts.marked_count
@@ -424,7 +429,13 @@ async function listAssessments({
       ORDER BY a.created_at DESC, a.id DESC
       LIMIT ${LIST_LIMIT}`,
     params
-  );
+  )).rows;
+
+  // The counts show Attempts' statuses, so the page's own Assessments are swept
+  // first (one id list, never the table); the page is re-read only when the
+  // sweep changed something under it.
+  let rows = await readPage();
+  if (await timing.sweepAssessments(rows.map((row) => row.id)) > 0) rows = await readPage();
 
   const assessments = rows.map((row) => ({
     ...toAssessment(row),
@@ -442,26 +453,17 @@ async function listAssessments({
   return { assessments, total: total.n, truncated: total.n > assessments.length };
 }
 
-// The sweep of section 5.2, committed before the operation that triggered it.
-// A read that finds the Attempt already past its deadline must leave the
-// finalise in place even though it then refuses — a refusal that rolled the
-// finalise back would leave the Attempt running forever. The transition itself
-// is idempotent (`WHERE status = 'in_progress'`), so committing it first is
-// safe for concurrent callers; what happens next is a fresh transaction.
-async function sweep(attemptId) {
-  await withActor(null, async (client) => {
-    await finalisePastDeadline(client, attemptId);
-  });
-}
+// The sweep of section 5.2, committed before the operation that triggered it
+// (`assessment-sweep.js`). A read that finds the Attempt already past its
+// deadline must leave the finalise in place even though it then refuses.
+const sweep = timing.sweepAttempt;
 
 // The caller's own Attempts, every `attempt_no`, open and done. The score is
 // the caller's own, so it is never hidden from them — but it exists only once
 // the Attempt is `marked`: the machine's number at submit is provisional and
 // spec section 3.12 refuses to show it (the Marker may still move it).
 async function listMyAttempts(employeeId) {
-  await withActor(null, async (client) => {
-    await scoreAndFinaliseMine(client, employeeId);
-  });
+  await timing.sweepEmployee(employeeId);
   const { rows } = await getPool().query(
     `SELECT ${ATTEMPT_COLUMNS}, at.score, at.final_score,
             a.number, a.title, a.question_count, a.pass_mark,
@@ -907,60 +909,6 @@ async function assignAssessment(accountId, assessment, group) {
 // The Attempt: start, answer, submit — all of it server-timed
 // ---------------------------------------------------------------------------
 
-// The lazy sweep (spec section 5.2): at the top of every Attempt read and every
-// Answer write, in the same transaction. Scoped to one Attempt, so it is an
-// indexed row update and cannot turn a read into a table-wide write.
-async function finalisePastDeadline(client, attemptId) {
-  const { rows: [row] } = await client.query(
-    `SELECT id, status, deadline_at, now() >= deadline_at AS past
-       FROM assessment_attempts WHERE id = $1 FOR UPDATE`,
-    [attemptId]
-  );
-  if (!row) return false;
-  if (row.status !== 'in_progress' || row.past !== true) return false;
-  await scoreAnswers(client, attemptId);
-  await client.query(
-    `UPDATE assessment_attempts
-        SET status = 'submitted',
-            submitted_at = deadline_at,
-            submitted_late = TRUE,
-            score = (SELECT COALESCE(sum(points), 0)::int
-                       FROM assessment_attempt_questions WHERE attempt_id = $1)
-      WHERE id = $1`,
-    [attemptId]
-  );
-  return true;
-}
-
-// The same rule for a caller's own list, in two statements rather than one per
-// Attempt.
-async function scoreAndFinaliseMine(client, employeeId) {
-  await client.query(
-    `UPDATE assessment_attempt_questions q
-        SET points = CASE WHEN q.chosen_option IS NOT NULL
-                           AND q.other_text IS NULL
-                           AND q.chosen_option = q.correct_option THEN 1 ELSE 0 END
-       FROM assessment_attempts at
-      WHERE q.attempt_id = at.id
-        AND at.employee_id = $1
-        AND at.status = 'in_progress'
-        AND now() >= at.deadline_at`,
-    [employeeId]
-  );
-  await client.query(
-    `UPDATE assessment_attempts at
-        SET status = 'submitted',
-            submitted_at = at.deadline_at,
-            submitted_late = TRUE,
-            score = (SELECT COALESCE(sum(points), 0)::int
-                       FROM assessment_attempt_questions q WHERE q.attempt_id = at.id)
-      WHERE at.employee_id = $1
-        AND at.status = 'in_progress'
-        AND now() >= at.deadline_at`,
-    [employeeId]
-  );
-}
-
 // A chosen Option scores 1 when it is the key; a blank and an Other answer both
 // score 0 (spec section 10). No percentage is stored and correctness is never a
 // column: `points` is the record.
@@ -1064,15 +1012,16 @@ async function startAttempt(accountId, attemptId, mine) {
       throw httpError(409, 'this Assessment is closed');
     }
 
+    // The committed sweep above has already expired an Attempt whose due date
+    // passed; this is only the read check for a due date that rolls between
+    // the sweep and this transaction, and it writes nothing (a write here
+    // would be rolled back by the 409).
     if (row.due_on !== null) {
       const { rows: [due] } = await client.query(
         'SELECT plant_date($1, now()) > $2::date AS late',
         [row.process_org_unit_id, row.due_on]
       );
-      if (due.late) {
-        await client.query("UPDATE assessment_attempts SET status = 'expired' WHERE id = $1", [attemptId]);
-        throw httpError(409, 'the due date passed before this Assessment was started');
-      }
+      if (due.late) throw httpError(409, 'the due date passed before this Assessment was started');
     }
 
     const state = await bankState(client, row.process_org_unit_id);

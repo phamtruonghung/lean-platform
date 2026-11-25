@@ -42,6 +42,7 @@ const { withActor } = require('../../platform/db');
 const { httpError, notFound, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 const authorization = require('./authorization');
 const roles = require('./roles');
+const timing = require('./assessment-sweep');
 
 // The register's bound, as every register in this repo is bounded (ADR-0026).
 const LIST_LIMIT = 200;
@@ -221,6 +222,19 @@ async function markingQueue(account, { orgUnitId = null } = {}) {
   }
   const where = conditions.join(' AND ');
 
+  // Papers past their deadline are finalised before the queue is read, or an
+  // abandoned paper would never reach it: the Assessments in scope that hold
+  // one, swept by id (never the table).
+  const { rows: overdue } = await withActor(null, (client) => client.query(
+    `SELECT DISTINCT at.assessment_id
+       FROM assessment_attempts at
+       JOIN assessments a ON a.id = at.assessment_id
+      WHERE at.status = 'in_progress' AND now() >= at.deadline_at
+        AND ${conditions.slice(1).join(' AND ') || 'TRUE'}`,
+    params
+  ));
+  await timing.sweepAssessments(overdue.map((row) => row.assessment_id));
+
   const { rows } = await withActor(null, (client) => client.query(
     `SELECT ${CONTEXT_COLUMNS}, a.number, a.title, a.question_count, a.pass_mark,
             a.org_unit_id AS process_org_unit_id,
@@ -278,6 +292,7 @@ async function markingQueue(account, { orgUnitId = null } = {}) {
 // the write reach, and nothing about the body until both hold.
 
 async function readMarkingPaper(account, attemptId) {
+  await timing.sweepAttempt(attemptId);
   // The reach is asked outside the transaction: it is a question about the
   // caller's Grants, and a second pool connection inside an open transaction
   // buys nothing.
@@ -372,6 +387,7 @@ function validateMarking(body) {
 // move the points that differ, then write the final score, the Marker, the
 // moment and the note.
 async function markAttempt(account, attemptId, body) {
+  await timing.sweepAttempt(attemptId);
   const reach = await authorization.writeReachOrgUnitIds({ account });
   const result = await withActor(account.id, async (client) => {
     const row = await attemptContext(client, attemptId, { lock: true });
@@ -449,6 +465,7 @@ async function readResult(account, attemptId) {
 // so its viewer is the Employee alone (the first line of the section 3.14
 // predicate) and nobody else's Attempt is ever visible through it.
 async function readResultFor(viewer, attemptId) {
+  await timing.sweepAttempt(attemptId);
   return withActor(null, async (client) => {
     const row = await attemptContext(client, attemptId, { viewer });
     if (!row) throw notFound('Assessment attempt');

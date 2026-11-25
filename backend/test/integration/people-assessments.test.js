@@ -26,6 +26,7 @@ let pool;
 let closePool;
 
 const insertedAccountIds = [];
+const insertedEmployeeIds = [];
 const insertedSiteIds = [];
 const insertedOrgUnitIds = [];
 
@@ -174,9 +175,11 @@ test.before(async () => {
 });
 
 test.after(async () => {
+  await pool.query('DELETE FROM assessments WHERE site_id = ANY($1)', [insertedSiteIds]);
   await pool.query('DELETE FROM assessment_questions WHERE org_unit_id = ANY($1)', [insertedOrgUnitIds]);
   await pool.query('DELETE FROM app_user_org_units WHERE app_user_id = ANY($1)', [insertedAccountIds]);
   await pool.query('DELETE FROM app_users WHERE id = ANY($1)', [insertedAccountIds]);
+  await pool.query('DELETE FROM employees WHERE id = ANY($1)', [insertedEmployeeIds]);
   await pool.query('DELETE FROM org_units WHERE id = ANY($1)', [insertedOrgUnitIds]);
   await pool.query('DELETE FROM sites WHERE id = ANY($1)', [insertedSiteIds]);
   await new Promise((resolve) => server.close(resolve));
@@ -671,4 +674,279 @@ test('a body is validated with a 400 naming the field, and an unknown Org Unit i
   assert.strictEqual(unknownRead.status, 404);
   const noRead = await call(supervisor, '/api/people/assessment-questions');
   assert.strictEqual(noRead.status, 400);
+});
+
+// ---------------------------------------------------------------------------
+// 7. Timing (slice 7): the lazy sweep, at the boundaries
+//
+// Time is moved only by UPDATE-ing `started_at`, `deadline_at` and `due_on`;
+// "today at the Site" is computed in SQL with `plant_date`, never from the
+// runner's own timezone. Each read below is the ONLY thing that could have
+// applied the transition, because every case checks the row before it reads.
+// ---------------------------------------------------------------------------
+
+const ATTEMPTS = '/api/people/assessment-attempts';
+
+// A process with a bank of ten, a supervisor's write Grant on it, and one
+// candidate (an operator linked to an Employee) holding an assigned Attempt.
+async function timingStage({ dueOnOffsetDays = null } = {}) {
+  const processUnitId = await freshUnit();
+  for (let i = 1; i <= 10; i += 1) {
+    await pool.query(
+      `INSERT INTO assessment_questions
+         (org_unit_id, question_text, option_a, option_b, option_c, correct_option, explanation)
+       VALUES ($1, $2, 'A', 'B', 'C', 'C', 'because')`,
+      [processUnitId, `Timing ${uniqueCode('Q')} ${i}`]
+    );
+  }
+  const { rows: [employee] } = await pool.query(
+    `INSERT INTO employees (employee_no, first_name, last_name, default_org_unit_id)
+     VALUES ($1, 'Timing', 'Sitter', $2) RETURNING id`,
+    [uniqueCode('E'), processUnitId]
+  );
+  insertedEmployeeIds.push(employee.id);
+  const subject = uniqueCode('acct');
+  const { rows: [account] } = await pool.query(
+    `INSERT INTO app_users (email, display_name, role, external_subject, employee_id, is_active, approval_status)
+     VALUES ($1, 'Assessment Timing Candidate', 'operator', $2, $3, true, 'approved') RETURNING id`,
+    [`${subject}@example.com`, subject, employee.id]
+  );
+  insertedAccountIds.push(account.id);
+  const candidate = { id: account.id, token: { authorization: `Bearer ${await tokenFor(subject)}` } };
+
+  const created = await call(supervisor, '/api/people/assessments', {
+    method: 'POST',
+    body: { orgUnitId: String(processUnitId), title: 'Timing paper', questionCount: 10 }
+  });
+  assert.strictEqual(created.status, 201, JSON.stringify(created.payload));
+  const assessmentId = created.payload.assessment.id;
+  const assigned = await call(supervisor, `/api/people/assessments/${assessmentId}/assign`, {
+    method: 'POST',
+    body: { employeeIds: [String(employee.id)] }
+  });
+  assert.strictEqual(assigned.status, 201, JSON.stringify(assigned.payload));
+  const { rows: [attempt] } = await pool.query(
+    'SELECT id FROM assessment_attempts WHERE assessment_id = $1', [assessmentId]
+  );
+  if (dueOnOffsetDays !== null) await setDueOffset(assessmentId, dueOnOffsetDays);
+  return { processUnitId, assessmentId, attemptId: attempt.id, candidate };
+}
+
+// `due_on` as a number of Site-local days from today at the Site, in SQL.
+async function setDueOffset(assessmentId, days) {
+  await pool.query(
+    'UPDATE assessments SET due_on = plant_date(org_unit_id, now()) + $2::int WHERE id = $1',
+    [assessmentId, days]
+  );
+}
+
+async function attemptRow(attemptId) {
+  const { rows: [row] } = await pool.query(
+    `SELECT status, submitted_late, score, submitted_at, deadline_at,
+            submitted_at = deadline_at AS closed_at_deadline
+       FROM assessment_attempts WHERE id = $1`,
+    [attemptId]
+  );
+  return row;
+}
+
+async function startPaper(staged) {
+  const started = await call(staged.candidate, `${ATTEMPTS}/${staged.attemptId}/start`, { method: 'POST' });
+  assert.strictEqual(started.status, 200, JSON.stringify(started.payload));
+  return started;
+}
+
+async function answer(staged, position, body, headers = {}) {
+  const response = await fetch(`${base}${ATTEMPTS}/${staged.attemptId}/answers/${position}`, {
+    method: 'PATCH',
+    headers: { ...staged.candidate.token, 'content-type': 'application/json', ...headers },
+    body: JSON.stringify(body)
+  });
+  return { status: response.status, payload: await response.json().catch(() => null) };
+}
+
+// The paper ran out `minutes` ago: stored times only, never a wait.
+async function runOut(attemptId) {
+  await pool.query(
+    `UPDATE assessment_attempts
+        SET started_at = now() - interval '21 minutes',
+            deadline_at = now() - interval '1 minute'
+      WHERE id = $1`,
+    [attemptId]
+  );
+}
+
+test('a paper started at 23:50 on the due date runs to its own deadline', async () => {
+  const staged = await timingStage({ dueOnOffsetDays: 0 });
+  await startPaper(staged);
+  await answer(staged, 1, { chosenOption: 'C' });
+
+  // It was started on the due date at 23:50 Site time; the Site's date has
+  // since rolled, so `due_on` is now yesterday, and the deadline is ten minutes
+  // away, past midnight.
+  await pool.query(
+    `UPDATE assessment_attempts
+        SET started_at = now() - interval '10 minutes',
+            deadline_at = now() + interval '10 minutes'
+      WHERE id = $1`,
+    [staged.attemptId]
+  );
+  await setDueOffset(staged.assessmentId, -1);
+
+  const saved = await answer(staged, 2, { chosenOption: 'C' });
+  assert.strictEqual(saved.status, 200, JSON.stringify(saved.payload));
+  const read = await call(staged.candidate, `${ATTEMPTS}/${staged.attemptId}`);
+  assert.strictEqual(read.status, 200);
+  assert.strictEqual(read.payload.attempt.status, 'in_progress', 'the due date bounds starting, not running');
+
+  const submitted = await call(staged.candidate, `${ATTEMPTS}/${staged.attemptId}/submit`, { method: 'POST' });
+  assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.payload));
+  const row = await attemptRow(staged.attemptId);
+  assert.strictEqual(row.status, 'submitted');
+  assert.strictEqual(row.submitted_late, false);
+  assert.strictEqual(row.score, 2);
+});
+
+test("a start one tick after the Site's date rolls is 409 and the Attempt is expired", async () => {
+  const staged = await timingStage({ dueOnOffsetDays: -1 });
+
+  const refused = await call(staged.candidate, `${ATTEMPTS}/${staged.attemptId}/start`, { method: 'POST' });
+  assert.strictEqual(refused.status, 409, JSON.stringify(refused.payload));
+  // A fresh read, not the response: the 409 must not have rolled the expiry back.
+  assert.strictEqual((await attemptRow(staged.attemptId)).status, 'expired');
+  const { rows: [paper] } = await pool.query(
+    'SELECT count(*)::int AS n FROM assessment_attempt_questions WHERE attempt_id = $1', [staged.attemptId]
+  );
+  assert.strictEqual(paper.n, 0, 'no paper is drawn for an expired Attempt');
+
+  const again = await call(staged.candidate, `${ATTEMPTS}/${staged.attemptId}/start`, { method: 'POST' });
+  assert.strictEqual(again.status, 409);
+});
+
+test('an unstarted Attempt reads expired on the register, the detail and mine once the Site date rolls', async () => {
+  // Each read is the only thing that could expire its own Attempt.
+  const viaRegister = await timingStage({ dueOnOffsetDays: -1 });
+  const list = await call(supervisor, `/api/people/assessments?orgUnitId=${viaRegister.processUnitId}`);
+  assert.strictEqual(list.status, 200, JSON.stringify(list.payload));
+  const entry = list.payload.assessments.find((row) => String(row.id) === String(viaRegister.assessmentId));
+  assert.strictEqual(entry.assignedCount, 0, 'an expired Attempt is not "assigned" any more');
+  assert.strictEqual((await attemptRow(viaRegister.attemptId)).status, 'expired');
+
+  const viaDetail = await timingStage({ dueOnOffsetDays: -1 });
+  const detail = await call(supervisor, `/api/people/assessments/${viaDetail.assessmentId}`);
+  assert.strictEqual(detail.status, 200, JSON.stringify(detail.payload));
+  assert.deepStrictEqual(detail.payload.assessment.attempts.map((a) => a.status), ['expired']);
+
+  const viaMine = await timingStage({ dueOnOffsetDays: -1 });
+  const mine = await call(viaMine.candidate, `${ATTEMPTS}/mine`);
+  assert.strictEqual(mine.status, 200, JSON.stringify(mine.payload));
+  assert.deepStrictEqual(mine.payload.attempts.map((a) => a.status), ['expired']);
+
+  // A due date that has not passed, and no due date at all, never expire.
+  const today = await timingStage({ dueOnOffsetDays: 0 });
+  const open = await timingStage();
+  for (const staged of [today, open]) {
+    const read = await call(supervisor, `/api/people/assessments/${staged.assessmentId}`);
+    assert.deepStrictEqual(read.payload.assessment.attempts.map((a) => a.status), ['assigned']);
+  }
+});
+
+test('an Attempt abandoned mid-paper finalises with submitted_late and the register and marking paper show it', async () => {
+  const staged = await timingStage();
+  await startPaper(staged);
+  for (let position = 1; position <= 7; position += 1) {
+    await answer(staged, position, { chosenOption: position <= 6 ? 'C' : 'A' });
+  }
+  await runOut(staged.attemptId);
+  assert.strictEqual((await attemptRow(staged.attemptId)).status, 'in_progress', 'nobody has looked yet');
+
+  // The Marker's queue is the first look: an abandoned paper must reach it.
+  const queue = await call(supervisor, '/api/people/assessment-marking');
+  assert.strictEqual(queue.status, 200, JSON.stringify(queue.payload));
+  const queued = queue.payload.attempts.find((row) => String(row.id) === String(staged.attemptId));
+  assert.ok(queued, 'the abandoned paper is in the queue');
+  assert.strictEqual(queued.submittedLate, true);
+
+  const row = await attemptRow(staged.attemptId);
+  assert.strictEqual(row.status, 'submitted');
+  assert.strictEqual(row.submitted_late, true);
+  assert.strictEqual(row.closed_at_deadline, true, 'submitted_at is the deadline, not the moment somebody looked');
+  assert.strictEqual(row.score, 6, 'six right, one wrong, three blank');
+
+  const detail = await call(supervisor, `/api/people/assessments/${staged.assessmentId}`);
+  const [shown] = detail.payload.assessment.attempts;
+  assert.strictEqual(shown.status, 'submitted');
+  assert.strictEqual(shown.submittedLate, true);
+
+  const paper = await call(supervisor, `${ATTEMPTS}/${staged.attemptId}/marking`);
+  assert.strictEqual(paper.status, 200, JSON.stringify(paper.payload));
+  assert.strictEqual(paper.payload.attempt.submittedLate, true);
+  assert.strictEqual(paper.payload.attempt.status, 'submitted');
+});
+
+test('two reads racing past the deadline finalise once', async () => {
+  const staged = await timingStage();
+  await startPaper(staged);
+  for (let position = 1; position <= 5; position += 1) {
+    await answer(staged, position, { chosenOption: position <= 4 ? 'C' : 'B' });
+  }
+  await runOut(staged.attemptId);
+
+  const reads = await Promise.all([
+    call(staged.candidate, `${ATTEMPTS}/${staged.attemptId}`),
+    call(staged.candidate, `${ATTEMPTS}/${staged.attemptId}`),
+    call(supervisor, `/api/people/assessments/${staged.assessmentId}`),
+    call(staged.candidate, `${ATTEMPTS}/mine`)
+  ]);
+  for (const read of reads) assert.strictEqual(read.status, 200, JSON.stringify(read.payload));
+
+  const row = await attemptRow(staged.attemptId);
+  assert.strictEqual(row.status, 'submitted');
+  assert.strictEqual(row.submitted_late, true);
+  assert.strictEqual(row.closed_at_deadline, true);
+  assert.strictEqual(row.score, 4, 'the score is the sum of the points once, never doubled');
+
+  const { rows: [audit] } = await pool.query(
+    `SELECT count(*)::int AS n FROM audit_log
+      WHERE table_name = 'assessment_attempts' AND record_id = $1
+        AND new_values->>'status' = 'submitted'`,
+    [staged.attemptId]
+  );
+  assert.strictEqual(audit.n, 1, 'one finalise, one audit row');
+});
+
+test("a client claiming a late time still gets the server's answer", async () => {
+  // Time the client claims is never read: a body field and headers carrying
+  // timestamps change nothing in either direction.
+  const inTime = await timingStage();
+  await startPaper(inTime);
+  const claimedLate = await answer(
+    inTime, 1, { chosenOption: 'C', answeredAt: '2099-01-01T00:00:00Z', submittedAt: '2099-01-01T00:00:00Z', clientNow: '2099-01-01T00:00:00Z' },
+    { 'x-client-time': '2099-01-01T00:00:00Z', date: 'Fri, 01 Jan 2100 00:00:00 GMT' }
+  );
+  assert.strictEqual(claimedLate.status, 200, 'the server sees it in time, whatever the client says');
+  assert.strictEqual((await attemptRow(inTime.attemptId)).status, 'in_progress');
+  const { rows: [kept] } = await pool.query(
+    'SELECT chosen_option, answered_at < now() + interval \'1 minute\' AS server_time FROM assessment_attempt_questions WHERE attempt_id = $1 AND position = 1',
+    [inTime.attemptId]
+  );
+  assert.strictEqual(kept.chosen_option, 'C');
+  assert.strictEqual(kept.server_time, true, 'answered_at is the database clock, not the claimed one');
+
+  const tooLate = await timingStage();
+  await startPaper(tooLate);
+  await runOut(tooLate.attemptId);
+  const claimedInTime = await answer(
+    tooLate, 1, { chosenOption: 'C', answeredAt: '2000-01-01T00:00:00Z', clientNow: '2000-01-01T00:00:00Z' },
+    { 'x-client-time': '2000-01-01T00:00:00Z', date: 'Sat, 01 Jan 2000 00:00:00 GMT' }
+  );
+  assert.strictEqual(claimedInTime.status, 409, JSON.stringify(claimedInTime.payload));
+  const row = await attemptRow(tooLate.attemptId);
+  assert.strictEqual(row.status, 'submitted');
+  assert.strictEqual(row.submitted_late, true);
+  const { rows: [unsaved] } = await pool.query(
+    'SELECT chosen_option FROM assessment_attempt_questions WHERE attempt_id = $1 AND position = 1',
+    [tooLate.attemptId]
+  );
+  assert.strictEqual(unsaved.chosen_option, null, 'the refused Answer was never written');
 });
