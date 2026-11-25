@@ -900,16 +900,20 @@ double _tableContentWidth(double boxWidth) {
 /// built from this list, so a header label and its cells start at the same x.
 ///
 /// [contentWidth] is the width the slots share (see [_tableContentWidth]).
-/// Org Unit and Assignee are flex columns, and in English their shares are wide
-/// enough, so they stay exactly `flex: 2` and `flex: 4`. A translation can be
-/// wider than the share: Vietnamese "Đơn vị tổ chức" (the Org Unit header) and
-/// "Chưa phân công" (the Assignee cell of an unassigned Work order) ellipsised at
-/// 1200px. So each of the two is given a measured minimum — its header label in
-/// the band's style and, for the Assignee, the unassigned words in the cell's own
-/// style — and only when its share of what the fixed columns leave is smaller
-/// than that minimum does it become a fixed `width:` of the minimum, the rest
-/// sharing what remains. `app_table.dart` is unchanged: a min-width there once
-/// broke the English layout.
+/// Summary, Asset, Org Unit and Assignee are flex columns, and in English their
+/// shares are wide enough, so they stay exactly `flex: 6, 2, 2, 4`. A translation
+/// can be wider than the share: Vietnamese "Đơn vị tổ chức" (the Org Unit header)
+/// and "Chưa phân công" (the Assignee cell of an unassigned Work order) ellipsised
+/// at 1200px. So every flex column is given a measured minimum — its header label
+/// in the band's style and, for the Assignee, also the unassigned words in the
+/// cell's own style — and only when its share of what the fixed columns leave is
+/// smaller than that minimum does it become a fixed `width:` of the minimum, the
+/// rest sharing what remains. Fixing one column shrinks the others' shares (Org
+/// Unit going fixed once squeezed the Asset header to "Tài …"), so every column
+/// still in the pool is re-checked after each fix, until nothing changes. A
+/// minimum is honoured only while every column left in the pool keeps
+/// [_flexColumnFloor] and at least one flex column remains to fill the row.
+/// `app_table.dart` is unchanged: a min-width there once broke the English layout.
 List<AppTableColumn> _columns(BuildContext context, double contentWidth) {
   final l10n = AppLocalizations.of(context);
   final theme = Theme.of(context);
@@ -926,6 +930,8 @@ List<AppTableColumn> _columns(BuildContext context, double contentWidth) {
   // Flex columns, in order: Summary, Asset, Org Unit, Assignee.
   const flexes = [6, 2, 2, 4];
   final minimums = <int, double>{
+    0: _minimumColumnWidth(context, [(l10n.commonSummary, headerStyle)]),
+    1: _minimumColumnWidth(context, [(l10n.commonAsset, headerStyle)]),
     2: _minimumColumnWidth(context, [(l10n.commonOrgUnit, headerStyle)]),
     3: _minimumColumnWidth(context, [
       (l10n.commonAssignee, headerStyle),
@@ -933,8 +939,9 @@ List<AppTableColumn> _columns(BuildContext context, double contentWidth) {
     ]),
   };
 
-  // A column with a minimum leaves the flex pool once its share falls below it;
-  // taking one out grows the others' shares, so go round until nothing changes.
+  // A column leaves the flex pool once its share falls below its minimum; taking
+  // one out shrinks the others' shares, so go round again, re-checking every
+  // column still in the pool, until nothing changes.
   final fixed = <int, double>{};
   var changed = true;
   while (changed) {
@@ -953,10 +960,13 @@ List<AppTableColumn> _columns(BuildContext context, double contentWidth) {
       if (fixed.containsKey(entry.key)) continue;
       final share = left * flexes[entry.key] / totalFlex;
       // A minimum is honoured only while every column left in the pool keeps
-      // room to show something: below that the table would trade one clip for
-      // a squeezed Summary, or an overflow.
+      // room to show something, and the pool is never emptied: below that the
+      // table would trade one clip for a squeezed column, or an overflow, or a
+      // row that no longer fills its width.
       final remainingColumns = flexes.length - fixed.length - 1;
-      if (share < entry.value && left - entry.value >= _flexColumnFloor * remainingColumns) {
+      if (share < entry.value &&
+          remainingColumns >= 1 &&
+          left - entry.value >= _flexColumnFloor * remainingColumns) {
         fixed[entry.key] = entry.value;
         changed = true;
         break;

@@ -63,7 +63,11 @@ void main() {
       expect(find.byKey(AppTableHeader.labelKey(orgUnit)), findsOneWidget);
       expect(find.text(unassigned), findsOneWidget);
 
-      for (final label in [orgUnit, assignee]) {
+      // All seven headers of the table, not only the two this fix began with.
+      final headers = code == 'vi'
+          ? ['Số WO', 'Nội dung', 'Tài sản', orgUnit, 'Trạng thái', assignee, 'Thao tác']
+          : ['WO#', 'Summary', 'Asset', orgUnit, 'Status', assignee, 'Actions'];
+      for (final label in headers) {
         final header = _paragraph(tester, find.byKey(AppTableHeader.labelKey(label)));
         expect(header.didExceedMaxLines, isFalse, reason: 'the "$label" header is ellipsised');
       }
