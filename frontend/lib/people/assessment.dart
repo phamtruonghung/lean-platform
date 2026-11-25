@@ -356,13 +356,20 @@ class AssessmentPaper {
   }
 
   factory AssessmentPaper.fromJson(Map<String, dynamic> json) {
+    final attempt = AssessmentAttempt.fromJson(json['attempt'] as Map<String, dynamic>);
     return AssessmentPaper(
-      attempt: AssessmentAttempt.fromJson(json['attempt'] as Map<String, dynamic>),
+      attempt: attempt,
       questions: [
         for (final question in (json['paper'] as List<dynamic>? ?? const []))
           AssessmentPaperQuestion.fromJson(question as Map<String, dynamic>),
       ],
-      serverNow: _time(json['serverNow']) ?? DateTime.now().toUtc(),
+      // A payload without the server's instant must never be measured against
+      // this device's wall clock: a wrong tablet clock would move the deadline.
+      // The deadline itself stands in, so nothing is left on the clock and the
+      // next write or refetch is answered by the server's own state.
+      serverNow: _time(json['serverNow']) ??
+          attempt.deadlineAt ??
+          DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
     );
   }
 }
