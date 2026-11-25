@@ -30,6 +30,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/locale_cubit.dart';
 
 import 'harness.dart';
