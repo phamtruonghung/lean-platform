@@ -8868,4 +8868,60 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get assessmentVerdictFailed => 'not passed';
+
+  @override
+  String get noticeAssessmentSittingEnded =>
+      'This sitting has ended. Identify yourself again to continue the same paper.';
+
+  @override
+  String get floorMyAssessment => 'My assessment';
+
+  @override
+  String get floorAssessmentYourAssessment => 'Your assessment';
+
+  @override
+  String floorAssessmentFor(String employeeName) {
+    return 'Assessments for $employeeName';
+  }
+
+  @override
+  String get floorAssessmentWhoAreYou =>
+      'Who are you? Your Employee number and PIN show the assessments waiting on you at this device.';
+
+  @override
+  String get floorAssessmentShowMine => 'Show my assessments';
+
+  @override
+  String get floorAssessmentNothingWaiting =>
+      'No assessment is waiting on you at this device.';
+
+  @override
+  String get floorAssessmentDone => 'Done';
+
+  @override
+  String floorAssessmentSubmitMessageBlanks(String numbers) {
+    return 'Questions $numbers are blank and will score 0. Once submitted the paper cannot be reopened.';
+  }
+
+  @override
+  String get floorAssessmentCheckResult => 'Check result';
+
+  @override
+  String floorAssessmentSittingLabel(String name) {
+    return 'Sitting: $name';
+  }
+
+  @override
+  String get assessmentNavigatorAnswered => 'Answered';
+
+  @override
+  String get assessmentNavigatorOther => 'Khác';
+
+  @override
+  String get assessmentNavigatorBlank => 'Blank';
+
+  @override
+  String assessmentNavigatorChip(int position, String state) {
+    return 'Question $position: $state';
+  }
 }

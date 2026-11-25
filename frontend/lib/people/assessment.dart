@@ -327,6 +327,25 @@ class AssessmentPaper {
   }
 }
 
+/// What `POST /api/maintenance/floor/assessments/:attemptId/start` answers: the
+/// paper exactly as the Account door's start does, plus the sitting token the
+/// floor device presents on every later request (spec section 4.6). The token is
+/// shown once, here, and is held by the tab's session storage, never by a state.
+@immutable
+class FloorAssessmentStart {
+  const FloorAssessmentStart({required this.paper, required this.sittingToken});
+
+  final AssessmentPaper paper;
+  final String sittingToken;
+
+  factory FloorAssessmentStart.fromJson(Map<String, dynamic> json) {
+    return FloorAssessmentStart(
+      paper: AssessmentPaper.fromJson(json),
+      sittingToken: json['sittingToken'] as String? ?? '',
+    );
+  }
+}
+
 /// One page of the register (`GET /assessments`): the rows, how many the filter
 /// matches, and whether the server's own bound cut the list short.
 @immutable

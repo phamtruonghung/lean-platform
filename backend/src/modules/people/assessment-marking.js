@@ -439,7 +439,13 @@ const NOT_MARKED_YET = 'this Assessment has not been marked yet';
 // administrator, or a MARK/CHANGE holder whose write Grant covers the Attempt's
 // node. The database answers (`score_visible`); anyone else is a 403.
 async function readResult(account, attemptId) {
-  const viewer = await scoreViewer(account);
+  return readResultFor(await scoreViewer(account), attemptId);
+}
+
+// The same read for a viewer already described: the floor door has no Account,
+// so its viewer is the Employee alone (the first line of the section 3.14
+// predicate) and nobody else's Attempt is ever visible through it.
+async function readResultFor(viewer, attemptId) {
   return withActor(null, async (client) => {
     const row = await attemptContext(client, attemptId, { viewer });
     if (!row) throw notFound('Assessment attempt');
@@ -471,6 +477,7 @@ module.exports = {
   readMarkingPaper,
   markAttempt,
   readResult,
+  readResultFor,
   validateMarking,
   NOT_MARKED_YET,
   ALREADY_MARKED

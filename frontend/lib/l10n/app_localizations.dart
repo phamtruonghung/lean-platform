@@ -14805,6 +14805,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'not passed'**
   String get assessmentVerdictFailed;
+
+  /// The sentence the floor Assessment Bloc reports when its sitting token is refused.
+  ///
+  /// In en, this message translates to:
+  /// **'This sitting has ended. Identify yourself again to continue the same paper.'**
+  String get noticeAssessmentSittingEnded;
+
+  /// Label of the floor action that opens the Assessment dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'My assessment'**
+  String get floorMyAssessment;
+
+  /// Title of the floor Assessment dialog before the Employee identifies.
+  ///
+  /// In en, this message translates to:
+  /// **'Your assessment'**
+  String get floorAssessmentYourAssessment;
+
+  /// Title of the floor Assessment dialog once identified.
+  ///
+  /// In en, this message translates to:
+  /// **'Assessments for {employeeName}'**
+  String floorAssessmentFor(String employeeName);
+
+  /// Prompt on the floor Assessment identify step.
+  ///
+  /// In en, this message translates to:
+  /// **'Who are you? Your Employee number and PIN show the assessments waiting on you at this device.'**
+  String get floorAssessmentWhoAreYou;
+
+  /// Button that identifies and lists the Employee's open Attempts.
+  ///
+  /// In en, this message translates to:
+  /// **'Show my assessments'**
+  String get floorAssessmentShowMine;
+
+  /// Empty list on the floor Assessment dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'No assessment is waiting on you at this device.'**
+  String get floorAssessmentNothingWaiting;
+
+  /// Button closing the floor Assessment dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get floorAssessmentDone;
+
+  /// Submit confirmation naming the blank Questions by number.
+  ///
+  /// In en, this message translates to:
+  /// **'Questions {numbers} are blank and will score 0. Once submitted the paper cannot be reopened.'**
+  String floorAssessmentSubmitMessageBlanks(String numbers);
+
+  /// Button asking whether the paper has been marked yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Check result'**
+  String get floorAssessmentCheckResult;
+
+  /// The candidate's name in the sticky header.
+  ///
+  /// In en, this message translates to:
+  /// **'Sitting: {name}'**
+  String floorAssessmentSittingLabel(String name);
+
+  /// Navigator legend: a Question with an Option chosen.
+  ///
+  /// In en, this message translates to:
+  /// **'Answered'**
+  String get assessmentNavigatorAnswered;
+
+  /// Navigator legend: a Question with an Other answer.
+  ///
+  /// In en, this message translates to:
+  /// **'Khác'**
+  String get assessmentNavigatorOther;
+
+  /// Navigator legend: a Question with no Answer.
+  ///
+  /// In en, this message translates to:
+  /// **'Blank'**
+  String get assessmentNavigatorBlank;
+
+  /// Tooltip of one navigator chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Question {position}: {state}'**
+  String assessmentNavigatorChip(int position, String state);
 }
 
 class _AppLocalizationsDelegate

@@ -1155,6 +1155,17 @@ extension AssessmentWords on Assessment {
   String statusLabel(AppLocalizations l10n) => assessmentStateLabel(l10n, status);
 }
 
+/// One Employee's **Attempt** status (issue #588): the word the register's chip,
+/// the candidate's own list and the floor dialog all print, once (ADR-0062).
+String attemptStatusLabel(AppLocalizations l10n, String status) => switch (status) {
+      attemptAssigned => l10n.assessmentStatusAssigned,
+      attemptInProgress => l10n.assessmentStatusInProgress,
+      attemptSubmitted => l10n.assessmentStatusSubmitted,
+      attemptMarked => l10n.assessmentStatusMarked,
+      attemptExpired => l10n.assessmentStatusExpired,
+      _ => l10n.assessmentStatusCancelled,
+    };
+
 /// What a marked Attempt's verdict reads as (issue #588, slice 4).
 ///
 /// The **answer** comes from the server — `passed` is derived at read from
@@ -1165,6 +1176,9 @@ String assessmentVerdictLabel(AppLocalizations l10n, {required bool passed}) =>
     passed ? l10n.assessmentVerdictPassed : l10n.assessmentVerdictFailed;
 
 extension MarkedAttemptWords on AssessmentAttempt {
+  /// What this Attempt's stored status reads as, in [l10n]'s language.
+  String statusLabel(AppLocalizations l10n) => attemptStatusLabel(l10n, status);
+
   /// The score line a marked Attempt carries — `7/10 — chưa đạt` — or null when
   /// the caller may not read a score, which the register renders as `—`.
   String? scoreLabel(AppLocalizations l10n) {
