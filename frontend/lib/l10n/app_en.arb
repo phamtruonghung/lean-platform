@@ -1096,6 +1096,10 @@
   "@titleSupplierNcr": {
     "description": "The browser tab's name for one supplier NCR."
   },
+  "titleCapa": "CAPA",
+  "@titleCapa": {
+    "description": "One CAPA, as the browser tab names it."
+  },
   "titleNonConformance": "Non-conformance",
   "@titleNonConformance": {
     "description": "The browser tab's name for one non-conformance."

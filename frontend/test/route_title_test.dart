@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:lean_platform/l10n/app_localizations_en.dart';
 import 'package:lean_platform/maintenance/work_orders_screen.dart';
 import 'package:lean_platform/platform/router.dart';
 import 'package:lean_platform/theme.dart';
@@ -153,6 +154,17 @@ void main() {
         'CAPA · Platform',
       );
       expect(documentTitle('/non-conformances/:id/quantity'), 'Non-conformance · Platform');
+    });
+
+    test('one CAPA is named in the singular by the real English catalogue', () {
+      final en = AppLocalizationsEn();
+
+      expect(documentTitle('/actions/capas/:id', l10n: en), 'CAPA · Platform');
+      expect(
+        documentTitle('/actions/capas/:id/causes/:category/:causeId/verdict', l10n: en),
+        'CAPA · Platform',
+      );
+      expect(documentTitle('/actions/capas', l10n: en), 'CAPAs · Platform');
     });
 
     test('a path nothing matches, or nothing encloses, is the bare app name', () {

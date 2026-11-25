@@ -945,6 +945,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get titleSupplierNcr => 'NCR nhà cung cấp';
 
   @override
+  String get titleCapa => 'CAPA';
+
+  @override
   String get titleNonConformance => 'Sản phẩm không phù hợp';
 
   @override
