@@ -950,3 +950,134 @@ test("a client claiming a late time still gets the server's answer", async () =>
   );
   assert.strictEqual(unsaved.chosen_option, null, 'the refused Answer was never written');
 });
+
+// ---------------------------------------------------------------------------
+// Doors per role (issue #612)
+//
+// The slice-1 seed (1804400000000) already puts the four assessment codes on
+// the Roles, so no grant migration exists to measure; these cases measure the
+// doors themselves, through the Role an Account's `role` column names, over
+// real HTTP. The Grant answers where, the code answers which door.
+// ---------------------------------------------------------------------------
+
+// A write Grant, a Question added, an Assessment created and assigned, one
+// Attempt sat and submitted by a candidate, and that Attempt marked: the three
+// doors CHANGE, CHANGE and MARK, walked by one Account.
+async function walkTheThreeDoors(account) {
+  const unitId = await freshUnit();
+  await insertGrant({ accountId: account.id, orgUnitId: unitId, canWrite: true });
+
+  const added = await call(account, '/api/people/assessment-questions', {
+    method: 'POST',
+    body: { orgUnitId: unitId, ...question({ questionText: `Câu hỏi của ${account.role} ${uniqueCode('Q')}?` }) }
+  });
+  assert.strictEqual(added.status, 201, JSON.stringify(added.payload));
+
+  for (let i = 1; i <= 10; i += 1) {
+    await pool.query(
+      `INSERT INTO assessment_questions
+         (org_unit_id, question_text, option_a, option_b, option_c, correct_option, explanation)
+       VALUES ($1, $2, 'A', 'B', 'C', 'C', 'because')`,
+      [unitId, `Doors ${uniqueCode('Q')} ${i}`]
+    );
+  }
+  const { rows: [employee] } = await pool.query(
+    `INSERT INTO employees (employee_no, first_name, last_name, default_org_unit_id)
+     VALUES ($1, 'Doors', 'Sitter', $2) RETURNING id`,
+    [uniqueCode('E'), unitId]
+  );
+  insertedEmployeeIds.push(employee.id);
+  const sitter = await insertAccount({ role: 'operator' });
+  await pool.query('UPDATE app_users SET employee_id = $1 WHERE id = $2', [employee.id, sitter.id]);
+
+  const created = await call(account, '/api/people/assessments', {
+    method: 'POST',
+    body: { orgUnitId: String(unitId), title: `Doors paper ${account.role}`, questionCount: 10 }
+  });
+  assert.strictEqual(created.status, 201, JSON.stringify(created.payload));
+  const assigned = await call(account, `/api/people/assessments/${created.payload.assessment.id}/assign`, {
+    method: 'POST',
+    body: { employeeIds: [String(employee.id)] }
+  });
+  assert.strictEqual(assigned.status, 201, JSON.stringify(assigned.payload));
+
+  const { rows: [attempt] } = await pool.query(
+    'SELECT id FROM assessment_attempts WHERE assessment_id = $1', [created.payload.assessment.id]
+  );
+  const started = await call(sitter, `/api/people/assessment-attempts/${attempt.id}/start`, { method: 'POST' });
+  assert.strictEqual(started.status, 200, JSON.stringify(started.payload));
+  const submitted = await call(sitter, `/api/people/assessment-attempts/${attempt.id}/submit`, { method: 'POST' });
+  assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.payload));
+
+  const marked = await call(account, `/api/people/assessment-attempts/${attempt.id}/mark`, {
+    method: 'POST',
+    body: { answers: [], note: 'Đã xem bài' }
+  });
+  assert.strictEqual(marked.status, 200, JSON.stringify(marked.payload));
+  assert.strictEqual(marked.payload.attempt.status, 'marked');
+}
+
+test('an operator reads the Question bank and is refused a new Question with PPL_ASSESSMENT_CHANGE, even holding a write Grant', async () => {
+  const unitId = await freshUnit();
+  const read = await call(operatorWriter, `/api/people/assessment-questions?orgUnitId=${unitId}`);
+  assert.strictEqual(read.status, 200, JSON.stringify(read.payload));
+
+  const refused = await call(operatorWriter, '/api/people/assessment-questions', {
+    method: 'POST',
+    body: { orgUnitId: unitId, ...question() }
+  });
+  assertPermissionRefused(refused, 'PPL_ASSESSMENT_CHANGE', 'an operator adding a Question');
+  assert.strictEqual(await countRows(unitId), 0);
+});
+
+test('a supervisor with a write Grant adds a Question, creates an Assessment and marks a submitted Attempt', async () => {
+  const account = await insertAccount({ role: 'supervisor' });
+  await walkTheThreeDoors(account);
+});
+
+test('an engineer with a write Grant adds a Question, creates an Assessment and marks a submitted Attempt', async () => {
+  const account = await insertAccount({ role: 'engineer' });
+  await walkTheThreeDoors(account);
+});
+
+test('the default group alone, ROLE_STANDARD, opens the Question bank for an operator whose own Role holds no assessment code', async () => {
+  const removed = await pool.query(
+    `DELETE FROM app_role_permissions rp
+      USING app_roles r
+      WHERE r.id = rp.app_role_id AND r.code = 'ROLE_OPERATOR'
+        AND rp.permission_code IN ('PPL_ASSESSMENT_DISPLAY', 'PPL_ASSESSMENT_SIT')
+      RETURNING rp.permission_code`
+  );
+  try {
+    assert.strictEqual(removed.rowCount, 2, 'ROLE_OPERATOR held the two seeded assessment codes');
+
+    const { rows: operatorCodes } = await pool.query(
+      `SELECT rp.permission_code FROM app_role_permissions rp
+         JOIN app_roles r ON r.id = rp.app_role_id
+        WHERE r.code = 'ROLE_OPERATOR' AND rp.permission_code LIKE 'PPL\\_ASSESSMENT\\_%'`
+    );
+    assert.deepStrictEqual(operatorCodes, [], 'ROLE_OPERATOR holds no assessment code now');
+    const { rows: [standard] } = await pool.query(
+      `SELECT r.is_default,
+              EXISTS (SELECT 1 FROM app_role_permissions rp
+                       WHERE rp.app_role_id = r.id AND rp.permission_code = 'PPL_ASSESSMENT_DISPLAY') AS holds_display
+         FROM app_roles r WHERE r.code = 'ROLE_STANDARD'`
+    );
+    assert.strictEqual(standard.is_default, true, 'ROLE_STANDARD is the default group');
+    assert.strictEqual(standard.holds_display, true, 'ROLE_STANDARD holds PPL_ASSESSMENT_DISPLAY');
+
+    const unitId = await freshUnit();
+    const read = await call(operatorWriter, `/api/people/assessment-questions?orgUnitId=${unitId}`);
+    assert.strictEqual(read.status, 200, JSON.stringify(read.payload));
+    const me = await call(operatorWriter, '/api/people/me');
+    assert.ok(me.payload.permissions.includes('PPL_ASSESSMENT_DISPLAY'));
+  } finally {
+    await pool.query(
+      `INSERT INTO app_role_permissions (app_role_id, permission_code)
+       SELECT r.id, c.code FROM app_roles r
+         CROSS JOIN (VALUES ('PPL_ASSESSMENT_DISPLAY'), ('PPL_ASSESSMENT_SIT')) AS c (code)
+        WHERE r.code = 'ROLE_OPERATOR'
+       ON CONFLICT DO NOTHING`
+    );
+  }
+});
