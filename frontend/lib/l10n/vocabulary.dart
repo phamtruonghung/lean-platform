@@ -1163,7 +1163,8 @@ String attemptStatusLabel(AppLocalizations l10n, String status) => switch (statu
       attemptSubmitted => l10n.assessmentStatusSubmitted,
       attemptMarked => l10n.assessmentStatusMarked,
       attemptExpired => l10n.assessmentStatusExpired,
-      _ => l10n.assessmentStatusCancelled,
+      attemptCancelled => l10n.assessmentStatusCancelled,
+      _ => status,
     };
 
 /// What a marked Attempt's verdict reads as (issue #588, slice 4).

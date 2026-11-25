@@ -7,14 +7,18 @@
 /// text, a `Key`, or a request the fake wire recorded; nothing reads a Bloc.
 library;
 
-import 'dart:ui' show Size;
+import 'dart:ui' show Locale, Size;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:lean_platform/l10n/app_localizations.dart';
+import 'package:lean_platform/l10n/vocabulary.dart';
 import 'package:lean_platform/people/assessment_detail_screen.dart';
 import 'package:lean_platform/people/assessment_sitting_screen.dart';
 import 'package:lean_platform/people/assessments_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/platform/locale_cubit.dart';
 import 'package:lean_platform/platform/router.dart';
 
 import 'harness.dart';
@@ -84,6 +88,35 @@ void main() {
     expect(find.byKey(AssessmentsScreen.tabKey(0)), findsOneWidget);
     expect(find.byKey(AssessmentsScreen.tabKey(1)), findsOneWidget);
     expect(find.byKey(AssessmentsScreen.tabKey(2)), findsOneWidget);
+  });
+
+  testWidgets('an Attempt\'s status is the Vietnamese word, not the code', (tester) async {
+    SharedPreferences.setMockInitialValues({LocaleCubit.storageKey: 'vi'});
+    addTearDown(() => SharedPreferences.setMockInitialValues(<String, Object>{}));
+    final wire = _wire(
+      mine: [
+        assessmentAttemptJson(
+          41,
+          assessmentId: '5',
+          assessmentTitle: 'Kiểm tra quy trình Braiding',
+          status: 'in_progress',
+        ),
+      ],
+      register: [assessmentJson(5)],
+    );
+    await _open(tester, wire);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Đang làm'), findsOneWidget);
+    expect(find.text('in_progress'), findsNothing);
+    expect(find.text('Running'), findsNothing);
+  });
+
+  test('an Attempt status the app does not know prints as the code itself', () {
+    final l10n = lookupAppLocalizations(const Locale('vi'));
+
+    expect(attemptStatusLabel(l10n, 'weird'), 'weird');
+    expect(attemptStatusLabel(l10n, 'cancelled'), l10n.assessmentStatusCancelled);
   });
 
   testWidgets('an Account linked to no Employee is an empty tab, not a failure', (tester) async {
