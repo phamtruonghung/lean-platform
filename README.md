@@ -352,12 +352,36 @@ append to it; with the variable unset, `/api/kpi/*` answers 503 and the rest of
 the API is unaffected
 ([ADR-0055](./docs/adr/0055-a-second-database-for-the-mtu-kpi-catalogue.md)).
 
-The assessment Question bank belongs to People (`src/modules/people`,
-`assessment-questions.js` and `assessment-question-routes.js`), which already
-owns the Org Unit tree a Question is filed on. Five routes under
-`/api/people/assessment-questions` list a process's bank, raise a Question,
-paste a block of them at once (all-or-nothing), correct one and retire one
-([ADR-0068](./docs/adr/0068-a-timed-assessment-is-drawn-at-attempt-start.md)).
+The timed assessment belongs to People (`src/modules/people`), which already
+owns the Org Unit tree it is filed on
+([ADR-0068](./docs/adr/0068-a-timed-assessment-is-drawn-at-attempt-start.md),
+issue #588):
+
+- **The Question bank** (`assessment-questions.js`,
+  `assessment-question-routes.js`): five routes under
+  `/api/people/assessment-questions` list a process's bank, raise a Question,
+  paste a block of them at once (all-or-nothing), correct one and retire one.
+- **Assessments and Attempts** (`assessments.js`, `assessment-routes.js`): an
+  Assessment is created as a draft, assigned all-or-nothing to a group (one
+  Attempt per Employee), and closed; an Attempt can be cancelled before it
+  starts, and a retake follows a final one. The paper is drawn from the bank
+  and frozen when the Attempt starts, never at creation, and a thin bank is a
+  refusal, not a short paper.
+- **Marking** (`assessment-marking.js`): the Marker's queue, the marked paper,
+  the mark and the result. A score is shown only once the paper is marked.
+- **The floor sitting** (`floor-assessment-routes.js`,
+  `assessment-sittings.js`): an Employee with no Account identifies at the
+  shared floor device and sits their own Attempt under `/api/maintenance/floor`,
+  holding a per-Attempt sitting token.
+- **Timing, with no cron.** `started_at` and `deadline_at` come from the
+  database's `now()`; no route reads a client's time. The two time-caused
+  transitions, `in_progress → submitted` (`submitted_late`) at the deadline and
+  `assigned → expired` once the Site's local date passes `due_on`, are applied
+  lazily by `assessment-sweep.js`. Each is a status-guarded `UPDATE … WHERE`,
+  scoped to one Attempt, Employee or Assessment and committed before every
+  Attempt read and Answer write, so a refusal cannot undo it and two racing
+  reads finalise once. There is no cron, background worker or timer. The
+  client's countdown is display only.
 
 ## Authentication
 
