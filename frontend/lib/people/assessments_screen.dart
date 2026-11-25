@@ -260,7 +260,7 @@ class _AttemptRow extends StatelessWidget {
                       attempt.assessmentTitle ?? '',
                       style: theme.textTheme.titleSmall,
                     ),
-                    StatusChip(label: _statusLabel(l10n), tone: _attemptTone(attempt)),
+                    StatusChip(label: attempt.statusLabel(l10n), tone: _attemptTone(attempt)),
                   ],
                 ),
                 const SizedBox(height: Spacing.xs),
@@ -308,8 +308,6 @@ class _AttemptRow extends StatelessWidget {
       ),
     );
   }
-
-  String _statusLabel(AppLocalizations l10n) => attempt.statusLabel(l10n);
 
   StatusTone _attemptTone(AssessmentAttempt attempt) {
     return switch (attempt.status) {

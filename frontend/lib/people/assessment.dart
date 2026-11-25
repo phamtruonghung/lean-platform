@@ -620,7 +620,6 @@ class AssessmentMarkingPaper {
   final List<AssessmentMarkedQuestion> questions;
 
   int get totalPoints => questions.fold(0, (sum, question) => sum + question.points);
-  int get otherCount => questions.where((question) => question.isOther).length;
 
   AssessmentMarkingPaper withPoints(Map<int, int> points) => AssessmentMarkingPaper(
         attempt: attempt,
