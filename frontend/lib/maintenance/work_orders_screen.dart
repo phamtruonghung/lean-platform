@@ -722,7 +722,7 @@ class _WorkOrdersListState extends State<_WorkOrdersList> {
         // (design-language §10, the #379/#381 bug).
         final narrow = constraints.maxWidth <
             AppBreakpoints.effective(context, WorkOrdersScreen.narrowBreakpoint);
-        final columns = _columns(context);
+        final columns = _columns(context, _tableContentWidth(constraints.maxWidth));
         return Center(
           child: AppPageFrame(
             maxWidth: WorkOrdersScreen.maxWidth,
@@ -864,18 +864,118 @@ double _workOrderNoColumnWidth(BuildContext context) {
   return painter.width + Spacing.sm + 8;
 }
 
+/// The width of the widest of [labels], each laid out in its own [style] at the
+/// reader's text scale, plus the slot's `Spacing.sm` gutter and a small allowance.
+/// It is the least a flex column can be given without ellipsising its label or
+/// its widest fixed cell text, in whatever language the reader chose.
+double _minimumColumnWidth(BuildContext context, List<(String, TextStyle?)> labels) {
+  final painter = TextPainter(
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  );
+  var widest = 0.0;
+  for (final (text, style) in labels) {
+    painter.text = TextSpan(text: text, style: style);
+    painter.layout();
+    if (painter.width > widest) widest = painter.width;
+  }
+  return widest + Spacing.sm + 1;
+}
+
+/// The least width a flex column keeps when another one is given its measured
+/// minimum (see [_columns]).
+const double _flexColumnFloor = 48;
+
+/// The width the table's slots share: the box this Screen got, capped at
+/// [WorkOrdersScreen.maxWidth] by its [AppPageFrame], less the `Spacing.lg` the
+/// list is padded by on each side and the `Spacing.md` each [AppTableRow] and
+/// [AppTableHeader] pads itself by on each side.
+double _tableContentWidth(double boxWidth) {
+  final frame = boxWidth < WorkOrdersScreen.maxWidth ? boxWidth : WorkOrdersScreen.maxWidth;
+  return frame - 2 * Spacing.lg - 2 * Spacing.md;
+}
+
 /// The register's one column spec. [AppTableHeader] and every [AppTableRow] are
 /// built from this list, so a header label and its cells start at the same x.
-List<AppTableColumn> _columns(BuildContext context) {
+///
+/// [contentWidth] is the width the slots share (see [_tableContentWidth]).
+/// Org Unit and Assignee are flex columns, and in English their shares are wide
+/// enough, so they stay exactly `flex: 2` and `flex: 4`. A translation can be
+/// wider than the share: Vietnamese "Đơn vị tổ chức" (the Org Unit header) and
+/// "Chưa phân công" (the Assignee cell of an unassigned Work order) ellipsised at
+/// 1200px. So each of the two is given a measured minimum — its header label in
+/// the band's style and, for the Assignee, the unassigned words in the cell's own
+/// style — and only when its share of what the fixed columns leave is smaller
+/// than that minimum does it become a fixed `width:` of the minimum, the rest
+/// sharing what remains. `app_table.dart` is unchanged: a min-width there once
+/// broke the English layout.
+List<AppTableColumn> _columns(BuildContext context, double contentWidth) {
   final l10n = AppLocalizations.of(context);
+  final theme = Theme.of(context);
+  final headerStyle = theme.textTheme.labelMedium?.copyWith(
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.2,
+  );
+  final cellStyle = AppTypography.dense(context);
+
+  final numberWidth = _workOrderNoColumnWidth(context);
+  final statusWidth = _statusColumnWidth(context);
+  final actionsWidth = _actionsColumnWidth(context);
+
+  // Flex columns, in order: Summary, Asset, Org Unit, Assignee.
+  const flexes = [6, 2, 2, 4];
+  final minimums = <int, double>{
+    2: _minimumColumnWidth(context, [(l10n.commonOrgUnit, headerStyle)]),
+    3: _minimumColumnWidth(context, [
+      (l10n.commonAssignee, headerStyle),
+      (l10n.commonUnassigned, cellStyle),
+    ]),
+  };
+
+  // A column with a minimum leaves the flex pool once its share falls below it;
+  // taking one out grows the others' shares, so go round until nothing changes.
+  final fixed = <int, double>{};
+  var changed = true;
+  while (changed) {
+    changed = false;
+    var left = contentWidth - numberWidth - statusWidth - actionsWidth;
+    var totalFlex = 0;
+    for (var i = 0; i < flexes.length; i++) {
+      final width = fixed[i];
+      if (width != null) {
+        left -= width;
+      } else {
+        totalFlex += flexes[i];
+      }
+    }
+    for (final entry in minimums.entries) {
+      if (fixed.containsKey(entry.key)) continue;
+      final share = left * flexes[entry.key] / totalFlex;
+      // A minimum is honoured only while every column left in the pool keeps
+      // room to show something: below that the table would trade one clip for
+      // a squeezed Summary, or an overflow.
+      final remainingColumns = flexes.length - fixed.length - 1;
+      if (share < entry.value && left - entry.value >= _flexColumnFloor * remainingColumns) {
+        fixed[entry.key] = entry.value;
+        changed = true;
+        break;
+      }
+    }
+  }
+
+  AppTableColumn flexColumn(int i, String label) => fixed.containsKey(i)
+      ? AppTableColumn(label, width: fixed[i])
+      : AppTableColumn(label, flex: flexes[i]);
+
   return [
-    AppTableColumn(l10n.workOrdersNumberColumn, width: _workOrderNoColumnWidth(context)),
-    AppTableColumn(l10n.commonSummary, flex: 6),
-    AppTableColumn(l10n.commonAsset, flex: 2),
-    AppTableColumn(l10n.commonOrgUnit, flex: 2),
-    AppTableColumn(l10n.commonStatus, width: _statusColumnWidth(context)),
-    AppTableColumn(l10n.commonAssignee, flex: 4),
-    AppTableColumn(l10n.commonActions, width: _actionsColumnWidth(context), align: AppColumnAlign.end),
+    AppTableColumn(l10n.workOrdersNumberColumn, width: numberWidth),
+    flexColumn(0, l10n.commonSummary),
+    flexColumn(1, l10n.commonAsset),
+    flexColumn(2, l10n.commonOrgUnit),
+    AppTableColumn(l10n.commonStatus, width: statusWidth),
+    flexColumn(3, l10n.commonAssignee),
+    AppTableColumn(l10n.commonActions, width: actionsWidth, align: AppColumnAlign.end),
   ];
 }
 
