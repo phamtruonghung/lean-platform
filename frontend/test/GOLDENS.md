@@ -178,15 +178,19 @@ golden holds that measurement in place. Each Vietnamese test also asserts that
 the render really is Vietnamese (and the English text absent) before it compares
 pixels, so a golden recorded in the wrong language cannot pass. Home's pending
 approval carries a fixed date, `DateTime(2026, 1, 5, 9)`, so no PNG depends on
-the clock. `work_orders_wide_vi.png` records two known Vietnamese clips that the
+the clock. `work_orders_wide_vi.png` recorded two Vietnamese clips that the
 English render does not have: the Org Unit header (`commonOrgUnit`, "Đơn vị tổ
-chức") ellipsises to "Đơn vị…", and the Assignee cell "Chưa phân công"
+chức") ellipsised to "Đơn vị…", and the Assignee cell "Chưa phân công"
 (`commonUnassigned`) to "Chưa phân c…", where English "Unassigned" fits. Both
-are flex columns in `_columns()` (`lib/maintenance/work_orders_screen.dart`),
-and fixing them needs a min-width in `app_table.dart`, which an earlier attempt
-broke the English layout with, so it is deliberately not fixed here: this golden
-holds the known clip in place on purpose, so the follow-up fix shows up as a
-measured diff. The narrow (600px) and collision (700px) Vietnamese cards and all
+were flex columns in `_columns()` (`lib/maintenance/work_orders_screen.dart`).
+`_columns()` now measures each one's minimum width from the translated label
+(and, for the Assignee, the unassigned words in the cell's style) and gives the
+column a fixed width of that minimum only when its flex share of the table's
+real content width is smaller; English keeps `flex: 2` and `flex: 4`, so the
+English goldens are unchanged. `app_table.dart` is untouched, since a min-width
+there broke the English layout. `work_orders_wide_vi.png` therefore differs
+from what is committed until it is re-recorded on the pinned image, and
+`work_orders_clip_test.dart` asserts the two are no longer ellipsised. The narrow (600px) and collision (700px) Vietnamese cards and all
 four Home renders show no clip.
 
 **Ten sweep PNGs and eight Work orders PNGs re-recorded for the sidebar's new
