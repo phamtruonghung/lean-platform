@@ -74,6 +74,8 @@ import '../people/roles_screen.dart';
 import '../people/approval_queue_bloc.dart';
 import '../people/assessment_create_bloc.dart';
 import '../people/assessment_create_screen.dart';
+import '../people/assessment_detail_bloc.dart';
+import '../people/assessment_detail_screen.dart';
 import '../people/assessment_marking_bloc.dart';
 import '../people/assessment_marking_queue_bloc.dart';
 import '../people/assessment_marking_queue_screen.dart';
@@ -274,6 +276,11 @@ abstract final class Routes {
   static const String assessments = '/assessments';
   static const String assessmentQuestions = '/assessments/questions';
   static const String assessmentNew = '/assessments/new';
+
+  /// One Assessment's detail (slice 6): the facts, the counts and every Attempt.
+  /// Declared after the literal paths beneath `/assessments`, as
+  /// `/training/to-confirm` precedes `/training/:id`.
+  static String assessment(String id) => '$assessments/$id';
 
   /// One Attempt's sitting (spec section 8). The Assessment is in the address
   /// even though the Attempt id alone would find it: a person reads the URL back
@@ -1508,6 +1515,35 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                       authGateway: context.read<AuthGateway>(),
                     )..add(const AssessmentMarkingQueueStarted()),
                     child: const AssessmentMarkingQueueScreen(),
+                  );
+                },
+              ),
+              // One Assessment's detail (slice 6). A literal-free, one-segment
+              // path, declared after every literal sibling above it as
+              // `/training/:id` follows `/training/to-confirm`. The Bloc is
+              // keyed on the id so moving between Assessments re-reads.
+              GoRoute(
+                path: ':id',
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const AccessDeniedScreen();
+                  final held = account.account.permissions;
+                  final mayOpen = held.isEmpty ||
+                      held.contains(destinationPermissions[Routes.assessments]);
+                  if (!mayOpen) return const AccessDeniedScreen();
+                  final mayChange = held.isEmpty
+                      ? ModuleRoles.maintenance.contains(account.account.role)
+                      : held.contains(assessmentChangePermission);
+                  final id = state.pathParameters['id']!;
+                  return BlocProvider<AssessmentDetailBloc>(
+                    key: ValueKey<String>('assessment-detail-$id'),
+                    create: (context) => AssessmentDetailBloc(
+                      peopleApi: context.read<PeopleApi>(),
+                      authGateway: context.read<AuthGateway>(),
+                      assessmentId: id,
+                      mayChange: mayChange,
+                    )..add(const AssessmentDetailStarted()),
+                    child: const AssessmentDetailScreen(),
                   );
                 },
               ),

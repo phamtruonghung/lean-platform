@@ -30,6 +30,8 @@ import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_banner.dart';
+import '../widgets/app_date_field.dart';
+import '../widgets/app_filter_row.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
@@ -53,6 +55,12 @@ class AssessmentsScreen extends StatelessWidget {
   static const ValueKey<String> failedKey = ValueKey<String>('assessments-failed');
   static const ValueKey<String> retryKey = ValueKey<String>('assessments-retry');
   static const ValueKey<String> noticeKey = ValueKey<String>('assessments-notice');
+
+  static const ValueKey<String> filterProcessKey = ValueKey<String>('assessments-filter-process');
+  static const ValueKey<String> filterStatusKey = ValueKey<String>('assessments-filter-status');
+  static const ValueKey<String> filterFromKey = ValueKey<String>('assessments-filter-from');
+  static const ValueKey<String> filterToKey = ValueKey<String>('assessments-filter-to');
+  static const ValueKey<String> filterFailedKey = ValueKey<String>('assessments-filter-failed');
 
   static ValueKey<String> tabKey(int tab) => ValueKey<String>('assessments-tab-$tab');
   static ValueKey<String> attemptRowKey(String id) => ValueKey<String>('assessment-attempt-row-$id');
@@ -159,6 +167,10 @@ class _Loaded extends StatelessWidget {
               ),
             ),
             const SizedBox(height: Spacing.lg),
+            if (state.tab == allAssessmentsTab) ...[
+              _Filters(state: state),
+              const SizedBox(height: Spacing.lg),
+            ],
             if (state.notice case final notice?) ...[
               AppBanner(key: AssessmentsScreen.noticeKey, tone: StatusTone.info, message: notice),
               const SizedBox(height: Spacing.md),
@@ -166,15 +178,21 @@ class _Loaded extends StatelessWidget {
             if (rows.isEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: Spacing.xxl),
-                child: PlatformEmptyState.noneExist(
-                  key: AssessmentsScreen.emptyKey,
-                  title: l10n.assessmentRegisterEmptyTitle,
-                  message: switch (state.tab) {
-                    assignedToMeTab => l10n.assessmentRegisterEmptyMine,
-                    iCreatedTab => l10n.assessmentRegisterEmptyCreated,
-                    _ => l10n.assessmentRegisterEmptyAll,
-                  },
-                ),
+                child: state.tab == allAssessmentsTab && !state.filter.isEmpty
+                    ? PlatformEmptyState.noneMatched(
+                        key: AssessmentsScreen.emptyKey,
+                        title: l10n.assessmentFilterNoMatchTitle,
+                        message: l10n.assessmentFilterNoMatchMessage,
+                      )
+                    : PlatformEmptyState.noneExist(
+                        key: AssessmentsScreen.emptyKey,
+                        title: l10n.assessmentRegisterEmptyTitle,
+                        message: switch (state.tab) {
+                          assignedToMeTab => l10n.assessmentRegisterEmptyMine,
+                          iCreatedTab => l10n.assessmentRegisterEmptyCreated,
+                          _ => l10n.assessmentRegisterEmptyAll,
+                        },
+                      ),
               )
             else
               AppListCard(rows: rows),
@@ -314,57 +332,182 @@ class _AssessmentRow extends StatelessWidget {
     final palette = AppColors.of(context);
     final theme = Theme.of(context);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: Spacing.lg, vertical: Spacing.md),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  spacing: Spacing.sm,
-                  runSpacing: Spacing.xs,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text(assessment.title, style: theme.textTheme.titleSmall),
-                    StatusChip(
-                      label: assessment.statusLabel(l10n),
-                      tone: assessment.isDraft
-                          ? StatusTone.neutral
-                          : assessment.isClosed
-                              ? StatusTone.neutral
-                              : StatusTone.info,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: Spacing.xs),
-                Text(
-                  [
-                    assessment.number,
-                    if (assessment.orgUnitName != null) assessment.orgUnitName!,
-                    l10n.assessmentPaperSizeShort(assessment.questionCount),
-                    l10n.assessmentMinutesShort(assessment.minutes),
-                    if (assessment.dueOn != null) l10n.assessmentDueOn(assessment.dueOn!),
-                  ].join(' · '),
-                  style: theme.textTheme.bodySmall?.copyWith(color: palette.textMuted),
-                ),
-                const SizedBox(height: Spacing.xs),
-                DisclosingText(
-                  l10n.assessmentSittingCounts(
-                    assessment.assignedCount,
-                    assessment.runningCount,
-                    assessment.awaitingMarkingCount,
-                    assessment.markedCount,
+    // The whole row opens the Assessment's detail (slice 6).
+    return InkWell(
+      onTap: () => context.go(Routes.assessment(assessment.id)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Spacing.lg, vertical: Spacing.md),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: Spacing.sm,
+                    runSpacing: Spacing.xs,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(assessment.title, style: theme.textTheme.titleSmall),
+                      StatusChip(
+                        label: assessment.statusLabel(l10n),
+                        tone: assessment.isDraft
+                            ? StatusTone.neutral
+                            : assessment.isClosed
+                                ? StatusTone.neutral
+                                : StatusTone.info,
+                      ),
+                    ],
                   ),
-                  style: theme.textTheme.bodySmall?.copyWith(color: palette.textMuted),
-                ),
-              ],
+                  const SizedBox(height: Spacing.xs),
+                  Text(
+                    [
+                      assessment.number,
+                      if (assessment.orgUnitName != null) assessment.orgUnitName!,
+                      l10n.assessmentPaperSizeShort(assessment.questionCount),
+                      l10n.assessmentMinutesShort(assessment.minutes),
+                      if (assessment.dueOn != null) l10n.assessmentDueOn(assessment.dueOn!),
+                    ].join(' · '),
+                    style: theme.textTheme.bodySmall?.copyWith(color: palette.textMuted),
+                  ),
+                  const SizedBox(height: Spacing.xs),
+                  DisclosingText(
+                    l10n.assessmentSittingCounts(
+                      assessment.assignedCount,
+                      assessment.runningCount,
+                      assessment.awaitingMarkingCount,
+                      assessment.markedCount,
+                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(color: palette.textMuted),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
+    );
+  }
+}
+
+/// The "All" tab's narrowing controls (slice 6): the process, the status, a date
+/// range on the due date and "below pass mark". Each change is one event; the
+/// Bloc reads the register again with the query parameters it implies.
+class _Filters extends StatelessWidget {
+  const _Filters({required this.state});
+
+  final AssessmentsLoaded state;
+
+  static const List<String> _statuses = [assessmentDraft, assessmentAssigned, assessmentClosed];
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final bloc = context.read<AssessmentsBloc>();
+    final filter = state.filter;
+    // A chosen process that the register no longer lists would make the
+    // dropdown assert; fall back to "all" in the control and keep the filter.
+    // The controls keep their own chosen value between reads: only the control
+    // itself ever clears one, so they are never re-seeded.
+    final processId = state.processes.any((process) => process.id == filter.orgUnitId)
+        ? filter.orgUnitId
+        : null;
+
+    return AppFilterRow(
+      children: [
+        SizedBox(
+          width: 240,
+          child: DropdownButtonFormField<String?>(
+            key: AssessmentsScreen.filterProcessKey,
+            initialValue: processId,
+            isDense: true,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: l10n.assessmentFilterProcess,
+              border: const OutlineInputBorder(),
+            ),
+            items: [
+              DropdownMenuItem<String?>(
+                value: null,
+                child: Text(l10n.assessmentFilterAllProcesses),
+              ),
+              for (final process in state.processes)
+                DropdownMenuItem<String?>(
+                  value: process.id,
+                  child: Text(process.name, overflow: TextOverflow.ellipsis),
+                ),
+            ],
+            onChanged: (value) => bloc.add(AssessmentsFiltered(
+              value == null
+                  ? filter.copyWith(clearOrgUnit: true)
+                  : filter.copyWith(orgUnitId: value),
+            )),
+          ),
+        ),
+        SizedBox(
+          width: 200,
+          child: DropdownButtonFormField<String?>(
+            key: AssessmentsScreen.filterStatusKey,
+            initialValue: filter.status,
+            isDense: true,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: l10n.assessmentFilterStatus,
+              border: const OutlineInputBorder(),
+            ),
+            items: [
+              DropdownMenuItem<String?>(
+                value: null,
+                child: Text(l10n.assessmentFilterAnyStatus),
+              ),
+              for (final status in _statuses)
+                DropdownMenuItem<String?>(
+                  value: status,
+                  child: Text(assessmentStateLabel(l10n, status)),
+                ),
+            ],
+            onChanged: (value) => bloc.add(AssessmentsFiltered(
+              value == null ? filter.copyWith(clearStatus: true) : filter.copyWith(status: value),
+            )),
+          ),
+        ),
+        SizedBox(
+          width: 200,
+          child: AppDateField(
+            key: AssessmentsScreen.filterFromKey,
+            name: 'assessments-filter-from',
+            label: l10n.commonFrom,
+            value: filter.from,
+            optional: true,
+            onChanged: (value) => bloc.add(AssessmentsFiltered(
+              value == null ? filter.copyWith(clearFrom: true) : filter.copyWith(from: value),
+            )),
+          ),
+        ),
+        SizedBox(
+          width: 200,
+          child: AppDateField(
+            key: AssessmentsScreen.filterToKey,
+            name: 'assessments-filter-to',
+            label: l10n.commonTo,
+            value: filter.to,
+            optional: true,
+            onChanged: (value) => bloc.add(AssessmentsFiltered(
+              value == null ? filter.copyWith(clearTo: true) : filter.copyWith(to: value),
+            )),
+          ),
+        ),
+        Align(
+          alignment: Alignment.center,
+          child: FilterChip(
+            key: AssessmentsScreen.filterFailedKey,
+            label: Text(l10n.assessmentFilterBelowPassMark),
+            selected: filter.failed,
+            onSelected: (value) => bloc.add(AssessmentsFiltered(filter.copyWith(failed: value))),
+          ),
+        ),
+      ],
     );
   }
 }

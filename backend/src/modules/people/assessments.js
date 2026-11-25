@@ -72,6 +72,41 @@ const OPTIONS = ['A', 'B', 'C'];
 // past this many rows the answer says `truncated` and the caller narrows.
 const LIST_LIMIT = 200;
 
+// The COUNTING Attempt (spec sections 3.6 and 5.2): for one person on one
+// Assessment, the row with the highest `attempt_no` among those `marked`. This
+// is the ONE place the definition is written; the register's `failed` filter
+// and the detail's `isCounting` both splice it in. `alias` names an
+// assessment_attempts row in the surrounding query. Whether the caller may READ
+// the score is a separate question (`scoreVisibleSql`): which sitting counts is
+// a fact about the record, not a score.
+function countingSql(alias) {
+  return `(${alias}.status = 'marked'
+      AND ${alias}.attempt_no = (SELECT max(m.attempt_no)
+                                   FROM assessment_attempts m
+                                  WHERE m.assessment_id = ${alias}.assessment_id
+                                    AND m.employee_id = ${alias}.employee_id
+                                    AND m.status = 'marked'))`;
+}
+
+// "May this caller change / mark here" as SQL over an Org Unit expression: an
+// administrator, or the permission code AND a write Grant reaching the node
+// (the same downward `path <@` test `canAct({ write: true })` runs). Pushes its
+// parameters onto `params`.
+function mayWriteSql(viewer, params, holdsKey, orgUnitSql) {
+  const who = viewer ?? {};
+  const first = params.length;
+  params.push(who.isAdmin === true, who[holdsKey] === true, who.accountId ?? null);
+  return `($${first + 1}::boolean
+      OR ($${first + 2}::boolean AND EXISTS (
+            SELECT 1
+              FROM app_user_org_units auo
+              JOIN org_units granted ON granted.id = auo.org_unit_id
+              JOIN org_units target ON target.id = ${orgUnitSql}
+             WHERE auo.app_user_id = $${first + 3}::bigint
+               AND auo.can_write
+               AND target.path <@ granted.path)))`;
+}
+
 const ASSESSMENT_COLUMNS = `a.id, a.site_id, a.org_unit_id, a.number, a.title,
   a.question_count, a.minutes, a.pass_mark, a.attempts_allowed, a.due_on,
   a.status, a.created_at, a.updated_at`;
@@ -236,7 +271,20 @@ async function getAssessment(id, viewer = null) {
   const assessment = await findAssessment(id);
   if (!assessment) throw notFound('Assessment');
   const attempts = await listAttempts(id, viewer);
-  return { ...assessment, attempts };
+  // The buttons' reasons: CHANGE and MARK, each with write reach on the process.
+  const params = [id];
+  const change = mayWriteSql(viewer, params, 'holdsChange', 'a.org_unit_id');
+  const mark = mayWriteSql(viewer, params, 'holdsMark', 'a.org_unit_id');
+  const { rows: [may] } = await getPool().query(
+    `SELECT ${change} AS may_change, ${mark} AS may_mark FROM assessments a WHERE a.id = $1`,
+    params
+  );
+  return {
+    ...assessment,
+    viewerMayChange: may.may_change === true,
+    viewerMayMark: may.may_mark === true,
+    attempts
+  };
 }
 
 // The Attempts of one Assessment, with the person and the node each answers
@@ -251,12 +299,20 @@ async function listAttempts(assessmentId, viewer = null) {
   // fetched. A score exists only once the Attempt is marked (section 3.12).
   const params = [assessmentId];
   const visible = `(at.status = 'marked' AND ${marking.scoreVisibleSql(viewer, params)})`;
+  const mayChange = mayWriteSql(viewer, params, 'holdsChange', 'at.org_unit_id');
   const { rows } = await getPool().query(
     `SELECT ${ATTEMPT_COLUMNS},
             CASE WHEN ${visible} THEN at.score END AS score,
             CASE WHEN ${visible} THEN at.final_score END AS final_score,
             CASE WHEN ${visible} THEN at.final_score >= a.pass_mark END AS passed,
             NOT ${visible} AS score_hidden,
+            ${countingSql('at')} AS is_counting,
+            NOT EXISTS (SELECT 1 FROM assessment_attempts later
+                         WHERE later.assessment_id = at.assessment_id
+                           AND later.employee_id = at.employee_id
+                           AND later.attempt_no > at.attempt_no) AS is_latest,
+            at.retake_reason,
+            ${mayChange} AS viewer_may_change,
             e.display_name AS employee_name,
             ou.name AS org_unit_name,
             marker.display_name AS marked_by_name,
@@ -285,7 +341,11 @@ async function listAttempts(assessmentId, viewer = null) {
     score: row.score ?? null,
     finalScore: row.final_score ?? null,
     passed: row.passed ?? null,
-    scoreHidden: row.score_hidden === true
+    scoreHidden: row.score_hidden === true,
+    isCounting: row.is_counting === true,
+    isLatest: row.is_latest === true,
+    retakeReason: row.retake_reason ?? null,
+    viewerMayChange: row.viewer_may_change === true
   }));
 }
 
@@ -293,7 +353,25 @@ async function listAttempts(assessmentId, viewer = null) {
 // counts as separate fields — `assigned` (nobody has started), `running`,
 // `awaitingMarking` (submitted, not yet marked), `marked`. Counts are never
 // hidden, whatever the caller's reach.
-async function listAssessments({ orgUnitId = null, status = null, mine = null, accountId = null }) {
+//
+// The counts are per Attempt ROW, in one LATERAL query: a cancelled or expired
+// Attempt is in none of the four, and a person who retook contributes one row
+// per Attempt (their marked Attempt 1 and their assigned Attempt 2 are one
+// `marked` and one `assigned`).
+//
+// `from`/`to` (inclusive, `YYYY-MM-DD`) filter over the Assessment's own day:
+// `due_on`, else the day it was created as the process's Site calendar date
+// (`plant_date`, the baseline's own timestamp-to-day function, as ADR-0048's
+// Site-local days everywhere else) — so an Assessment with no due date still
+// sits on a day and is not silently excluded by a range.
+//
+// `failed` keeps Assessments with at least one COUNTING Attempt below the pass
+// mark, over the Attempts whose score the viewer may read (spec section 3.14):
+// a caller who may not read a score never learns, by the filter, who failed.
+async function listAssessments({
+  orgUnitId = null, status = null, mine = null, accountId = null,
+  from = null, to = null, failed = false, viewer = null
+}) {
   const params = [];
   const conditions = [];
   if (orgUnitId !== null) {
@@ -307,6 +385,24 @@ async function listAssessments({ orgUnitId = null, status = null, mine = null, a
   if (mine === true && accountId !== null) {
     params.push(accountId);
     conditions.push(`a.created_by = $${params.length}`);
+  }
+  const day = 'COALESCE(a.due_on, plant_date(a.org_unit_id, a.created_at))';
+  if (from !== null) {
+    params.push(from);
+    conditions.push(`${day} >= $${params.length}::date`);
+  }
+  if (to !== null) {
+    params.push(to);
+    conditions.push(`${day} <= $${params.length}::date`);
+  }
+  if (failed === true) {
+    const visible = marking.scoreVisibleSql(viewer, params);
+    conditions.push(`EXISTS (
+        SELECT 1 FROM assessment_attempts at
+         WHERE at.assessment_id = a.id
+           AND ${countingSql('at')}
+           AND at.final_score < a.pass_mark
+           AND ${visible})`);
   }
   const where = conditions.length === 0 ? 'TRUE' : conditions.join(' AND ');
 
@@ -488,6 +584,111 @@ async function closeAssessment(accountId, id) {
     await client.query("UPDATE assessments SET status = 'closed' WHERE id = $1", [id]);
   });
   return findAssessment(id);
+}
+
+// A reason is a record of a decision, so it is stored trimmed, 3-2000
+// characters (the table's own CHECK on a retake).
+function validateReason(body) {
+  return requireText(body ?? {}, 'reason', { min: 3, max: OTHER_MAX });
+}
+
+// `assigned` -> `cancelled` (spec section 5.2): only an Attempt nobody has
+// started; a started paper is submitted and marked, never voided. The reason is
+// kept in `marking_note`. The row is locked first, so a second cancel waits and
+// then reads `cancelled`, a 409.
+async function cancelAttempt(accountId, attemptId, reason) {
+  return withActor(accountId, async (client) => {
+    const { rows: [locked] } = await client.query(
+      'SELECT id, status FROM assessment_attempts WHERE id = $1 FOR UPDATE',
+      [attemptId]
+    );
+    if (!locked) throw notFound('Assessment attempt');
+    if (locked.status !== 'assigned') {
+      throw httpError(409, `only an Attempt that has not started can be cancelled; this one is ${locked.status}`);
+    }
+    const { rows: [row] } = await client.query(
+      `UPDATE assessment_attempts at
+          SET status = 'cancelled', marking_note = $2
+        WHERE at.id = $1
+      RETURNING ${ATTEMPT_COLUMNS}`,
+      [attemptId, reason]
+    );
+    return toAttempt(row);
+  });
+}
+
+const FINAL_STATUSES = ['submitted', 'marked', 'expired'];
+
+// `attempt_no + 1` for the same person (spec section 5.2). The Assessment row
+// is locked, then every Attempt the person holds on it, so two concurrent
+// retakes serialise and the second sees the first's row as "not the latest";
+// the UNIQUE constraint stays as the backstop and its 23505 is a 409.
+//
+// The new row's Org Unit and resolved-on date are COPIED from the Attempt being
+// retaken, not resolved afresh (spec section 4.3): all of one person's Attempts
+// on one Assessment answer to the same reach, even if they have moved since.
+async function retakeAttempt(accountId, attemptId, reason) {
+  try {
+    return await withActor(accountId, async (client) => {
+      const { rows: [scope] } = await client.query(
+        'SELECT assessment_id, employee_id FROM assessment_attempts WHERE id = $1',
+        [attemptId]
+      );
+      if (!scope) throw notFound('Assessment attempt');
+
+      const { rows: [assessment] } = await client.query(
+        'SELECT id, status, attempts_allowed FROM assessments WHERE id = $1 FOR UPDATE',
+        [scope.assessment_id]
+      );
+      await client.query(
+        `SELECT id FROM assessment_attempts
+          WHERE assessment_id = $1 AND employee_id = $2 FOR UPDATE`,
+        [scope.assessment_id, scope.employee_id]
+      );
+      const { rows: [attempt] } = await client.query(
+        `SELECT id, status, attempt_no, org_unit_id, org_unit_resolved_on
+           FROM assessment_attempts WHERE id = $1`,
+        [attemptId]
+      );
+      if (!attempt) throw notFound('Assessment attempt');
+
+      if (assessment.status !== 'assigned') {
+        throw httpError(409, `this Assessment is ${assessment.status}; only an assigned Assessment can allow a retake`);
+      }
+      if (!FINAL_STATUSES.includes(attempt.status)) {
+        throw httpError(409, `this Attempt is ${attempt.status}, not final; a retake follows a submitted, marked or expired Attempt`);
+      }
+      const { rows: [later] } = await client.query(
+        `SELECT 1 FROM assessment_attempts
+          WHERE assessment_id = $1 AND employee_id = $2 AND attempt_no > $3`,
+        [scope.assessment_id, scope.employee_id, attempt.attempt_no]
+      );
+      if (later) {
+        throw httpError(409, 'this is not the latest Attempt; a later one already exists for this person');
+      }
+      if (attempt.attempt_no >= assessment.attempts_allowed) {
+        throw httpError(
+          409,
+          `this Assessment allows ${assessment.attempts_allowed} Attempt(s) and this person has used them`
+        );
+      }
+
+      const { rows: [row] } = await client.query(
+        `INSERT INTO assessment_attempts
+           (assessment_id, employee_id, attempt_no, org_unit_id, org_unit_resolved_on, retake_reason)
+         SELECT assessment_id, employee_id, attempt_no + 1, org_unit_id, org_unit_resolved_on, $2
+           FROM assessment_attempts WHERE id = $1
+         RETURNING ${ATTEMPT_COLUMNS.replace(/\bat\./g, '')}`,
+        [attemptId, reason]
+      );
+      return toAttempt(row);
+    });
+  } catch (error) {
+    if (error.code === '23505') {
+      throw httpError(409, 'this is not the latest Attempt; a later one already exists for this person');
+    }
+    throw error;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1049,6 +1250,10 @@ async function storedScore(attemptId) {
 }
 
 module.exports = {
+  validateReason,
+  cancelAttempt,
+  retakeAttempt,
+  optionalDate,
   validateAssessmentFacts,
   validateGroup,
   validateAnswer,

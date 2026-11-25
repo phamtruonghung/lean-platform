@@ -3,7 +3,7 @@
  * creating an Assessment, assigning it, and the candidate's own door for
  * starting, answering and submitting one Attempt.
  *
- * Twelve doors under `/api/people`, in two groups.
+ * Fourteen doors under `/api/people`, in two groups.
  *
  * **The Account door** — the register and an Assessment's own record, read by
  * `PPL_ASSESSMENT_DISPLAY` and written by `PPL_ASSESSMENT_CHANGE`:
@@ -16,6 +16,8 @@
  *   DELETE /assessments/:id              discard a draft
  *   POST   /assessments/:id/assign       expand a group, one Attempt each
  *   POST   /assessments/:id/close        stop new starts
+ *   POST   /assessment-attempts/:id/cancel   cancel an Attempt nobody has started
+ *   POST   /assessment-attempts/:id/retake   allow the next Attempt, with a reason
  *
  * **The candidate's own door** — `PPL_ASSESSMENT_SIT`, and always the caller's
  * own Attempt, never somebody else's:
@@ -148,11 +150,26 @@ router.get('/assessments', authenticate, requireActive, mayReadAssessments, asyn
       throw httpError(400, "mine must be 'true' or 'false'");
     }
 
+    // `from`/`to` are inclusive calendar days; the same round-trip check as a
+    // due date, so `2026-13-40` is a 400 naming the field, not a 500.
+    const from = assessments.optionalDate(req.query, 'from');
+    const to = assessments.optionalDate(req.query, 'to');
+    if (from !== null && to !== null && from > to) throw httpError(400, 'from must not be after to');
+    if (req.query.failed !== undefined && req.query.failed !== 'true' && req.query.failed !== 'false') {
+      throw httpError(400, "failed must be 'true' or 'false'");
+    }
+    // `failed` is decided over the scores the caller may read (spec 3.14).
+    const viewer = await marking.scoreViewer(req.account);
+
     const result = await assessments.listAssessments({
       orgUnitId,
       status,
       mine: req.query.mine === 'true',
-      accountId: req.account.id
+      accountId: req.account.id,
+      from,
+      to,
+      failed: req.query.failed === 'true',
+      viewer
     });
     return res.json(result);
   } catch (error) {
@@ -279,6 +296,42 @@ router.post('/assessment-attempts/:id/end-sitting', authenticate, requireActive,
     }
     if (!await sittings.endSitting(req.account.id, attempt.id)) throw notFound('Sitting');
     return res.json({ ended: true });
+  } catch (error) {
+    return refuse(error, res, next);
+  }
+});
+
+// Cancel and retake share one order: the Attempt (404), the write reach on its
+// own Org Unit (403), the reason (400), then the state it is in (409, inside
+// the service, under the row lock).
+async function requireWritableAttempt(req, res) {
+  const id = parseId(req.params.id);
+  const attempt = id === null ? null : await sittings.findAttemptScope(id);
+  if (!attempt) throw notFound('Assessment attempt');
+  if (!await mayWriteAt(req.account, attempt.orgUnitId)) {
+    res.status(403).json({ message: OUTSIDE_GRANTED_ORG_UNITS });
+    return null;
+  }
+  return attempt;
+}
+
+router.post('/assessment-attempts/:id/cancel', authenticate, requireActive, mayChangeAssessments, async (req, res, next) => {
+  try {
+    const attempt = await requireWritableAttempt(req, res);
+    if (!attempt) return undefined;
+    const reason = assessments.validateReason(req.body);
+    return res.json({ attempt: await assessments.cancelAttempt(req.account.id, attempt.id, reason) });
+  } catch (error) {
+    return refuse(error, res, next);
+  }
+});
+
+router.post('/assessment-attempts/:id/retake', authenticate, requireActive, mayChangeAssessments, async (req, res, next) => {
+  try {
+    const attempt = await requireWritableAttempt(req, res);
+    if (!attempt) return undefined;
+    const reason = assessments.validateReason(req.body);
+    return res.status(201).json({ attempt: await assessments.retakeAttempt(req.account.id, attempt.id, reason) });
   } catch (error) {
     return refuse(error, res, next);
   }

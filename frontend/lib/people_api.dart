@@ -2876,12 +2876,18 @@ class PeopleApi {
     String? orgUnitId,
     String? status,
     bool mine = false,
+    String? from,
+    String? to,
+    bool failed = false,
   }) async {
     const path = '/api/people/assessments';
     final uri = Uri.parse(path).replace(queryParameters: {
       'orgUnitId': ?orgUnitId,
       'status': ?status,
       if (mine) 'mine': 'true',
+      'from': ?from,
+      'to': ?to,
+      if (failed) 'failed': 'true',
     });
     final response = await _send(
       () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
@@ -2982,6 +2988,46 @@ class PeopleApi {
       path,
     );
     return _assessmentFrom(response);
+  }
+
+  /// Cancels one Attempt that has not been started
+  /// (`POST /api/people/assessment-attempts/:id/cancel`). [reason] is 3 to 2000
+  /// characters, trimmed; the server refuses anything else.
+  Future<void> cancelAssessmentAttempt(String accessToken, String id, String reason) async {
+    final path = '/api/people/assessment-attempts/$id/cancel';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'reason': reason}),
+      ),
+      path,
+    );
+  }
+
+  /// Allows one more sitting after a finished Attempt
+  /// (`POST /api/people/assessment-attempts/:id/retake`, 201). Same [reason]
+  /// rule as a cancellation.
+  Future<void> retakeAssessmentAttempt(String accessToken, String id, String reason) async {
+    final path = '/api/people/assessment-attempts/$id/retake';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'reason': reason}),
+      ),
+      path,
+    );
+  }
+
+  /// Ends a running Attempt's sitting at its device
+  /// (`POST /api/people/assessment-attempts/:id/end-sitting`).
+  Future<void> endAssessmentSitting(String accessToken, String id) async {
+    final path = '/api/people/assessment-attempts/$id/end-sitting';
+    await _send(
+      () => _client.post(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
   }
 
   /// How many Employees a group would reach, and how many of them have no Org

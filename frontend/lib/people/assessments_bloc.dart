@@ -46,11 +46,71 @@ class AssessmentsRefreshed extends AssessmentsEvent {
   const AssessmentsRefreshed();
 }
 
+/// The "All" tab's filter changed (slice 6): the register is read again with it.
+class AssessmentsFiltered extends AssessmentsEvent {
+  const AssessmentsFiltered(this.filter);
+
+  final AssessmentsFilter filter;
+}
+
 /// A tab was chosen. The data is already loaded, so this only moves the view.
 class AssessmentsTabSelected extends AssessmentsEvent {
   const AssessmentsTabSelected(this.tab);
 
   final int tab;
+}
+
+/// What narrows the "All" tab (slice 6): the process, the status, a date range
+/// on the due date (the creation day when there is none) and "below pass mark".
+/// Every field is optional; an unset one is not sent.
+class AssessmentsFilter {
+  const AssessmentsFilter({
+    this.orgUnitId,
+    this.status,
+    this.from,
+    this.to,
+    this.failed = false,
+  });
+
+  final String? orgUnitId;
+  final String? status;
+
+  /// `YYYY-MM-DD`, the dates `AppDateField` reports.
+  final String? from;
+  final String? to;
+  final bool failed;
+
+  bool get isEmpty =>
+      orgUnitId == null && status == null && from == null && to == null && !failed;
+
+  AssessmentsFilter copyWith({
+    String? orgUnitId,
+    bool clearOrgUnit = false,
+    String? status,
+    bool clearStatus = false,
+    String? from,
+    bool clearFrom = false,
+    String? to,
+    bool clearTo = false,
+    bool? failed,
+  }) {
+    return AssessmentsFilter(
+      orgUnitId: clearOrgUnit ? null : (orgUnitId ?? this.orgUnitId),
+      status: clearStatus ? null : (status ?? this.status),
+      from: clearFrom ? null : (from ?? this.from),
+      to: clearTo ? null : (to ?? this.to),
+      failed: failed ?? this.failed,
+    );
+  }
+}
+
+/// A process the register can be narrowed to: an Org Unit some Assessment draws
+/// its bank from.
+class AssessmentProcess {
+  const AssessmentProcess({required this.id, required this.name});
+
+  final String id;
+  final String name;
 }
 
 sealed class AssessmentsState {
@@ -77,6 +137,8 @@ class AssessmentsLoaded extends AssessmentsState {
     this.tab = assignedToMeTab,
     this.isRefreshing = false,
     this.notice,
+    this.filter = const AssessmentsFilter(),
+    this.processes = const [],
   });
 
   final bool mayChange;
@@ -93,6 +155,12 @@ class AssessmentsLoaded extends AssessmentsState {
   /// refresh failed while the rows on screen stayed.
   final String? notice;
 
+  /// What the "All" tab is narrowed by, and the processes it can be narrowed to
+  /// (read from the register before any filter was applied, so choosing one
+  /// never removes the others from the list).
+  final AssessmentsFilter filter;
+  final List<AssessmentProcess> processes;
+
   AssessmentsLoaded copyWith({
     List<AssessmentAttempt>? mine,
     List<Assessment>? created,
@@ -101,6 +169,7 @@ class AssessmentsLoaded extends AssessmentsState {
     bool? isRefreshing,
     String? notice,
     bool clearNotice = false,
+    AssessmentsFilter? filter,
   }) {
     return AssessmentsLoaded(
       mayChange: mayChange,
@@ -111,6 +180,8 @@ class AssessmentsLoaded extends AssessmentsState {
       tab: tab ?? this.tab,
       isRefreshing: isRefreshing ?? this.isRefreshing,
       notice: clearNotice ? null : (notice ?? this.notice),
+      filter: filter ?? this.filter,
+      processes: processes,
     );
   }
 }
@@ -127,6 +198,7 @@ class AssessmentsBloc extends Bloc<AssessmentsEvent, AssessmentsState> {
     on<AssessmentsStarted>(_onStarted);
     on<AssessmentsRefreshed>(_onRefreshed);
     on<AssessmentsTabSelected>(_onTabSelected);
+    on<AssessmentsFiltered>(_onFiltered);
   }
 
   final PeopleApi _api;
@@ -158,7 +230,51 @@ class AssessmentsBloc extends Bloc<AssessmentsEvent, AssessmentsState> {
     if (current is AssessmentsLoaded) {
       emit(current.copyWith(isRefreshing: true, clearNotice: true));
     }
-    await _read(emit, tab: current is AssessmentsLoaded ? current.tab : assignedToMeTab);
+    await _read(
+      emit,
+      tab: current is AssessmentsLoaded ? current.tab : assignedToMeTab,
+      filter: current is AssessmentsLoaded ? current.filter : const AssessmentsFilter(),
+    );
+  }
+
+  Future<void> _onFiltered(
+    AssessmentsFiltered event,
+    Emitter<AssessmentsState> emit,
+  ) async {
+    final current = state;
+    if (current is! AssessmentsLoaded) return;
+    emit(current.copyWith(isRefreshing: true, clearNotice: true, filter: event.filter));
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(const AssessmentsUnavailable(message: signedOutMessage));
+      return;
+    }
+    try {
+      final all = await _api.fetchAssessments(
+        token,
+        orgUnitId: event.filter.orgUnitId,
+        status: event.filter.status,
+        from: event.filter.from,
+        to: event.filter.to,
+        failed: event.filter.failed,
+      );
+      final now = state;
+      if (now is! AssessmentsLoaded || now.filter != event.filter) return;
+      emit(AssessmentsLoaded(
+        mayChange: now.mayChange,
+        mayMark: now.mayMark,
+        mine: now.mine,
+        created: now.created,
+        all: all.assessments,
+        tab: now.tab,
+        filter: event.filter,
+        processes: now.processes,
+      ));
+    } on PeopleApiException catch (error) {
+      final now = state;
+      if (now is! AssessmentsLoaded) return;
+      emit(now.copyWith(isRefreshing: false, notice: error.message));
+    }
   }
 
   void _onTabSelected(
@@ -174,6 +290,7 @@ class AssessmentsBloc extends Bloc<AssessmentsEvent, AssessmentsState> {
   Future<void> _read(
     Emitter<AssessmentsState> emit, {
     int tab = assignedToMeTab,
+    AssessmentsFilter filter = const AssessmentsFilter(),
   }) async {
     final token = _auth.currentAccessToken;
     if (token == null) {
@@ -183,7 +300,20 @@ class AssessmentsBloc extends Bloc<AssessmentsEvent, AssessmentsState> {
     try {
       final mine = await _readMine(token);
       final created = await _api.fetchAssessments(token, mine: true);
-      final all = await _api.fetchAssessments(token);
+      // The unfiltered register is read as well as the narrowed one whenever a
+      // filter is on, because the process list is the processes the whole
+      // register holds, not the ones the filter happens to leave.
+      final everything = await _api.fetchAssessments(token);
+      final all = filter.isEmpty
+          ? everything
+          : await _api.fetchAssessments(
+              token,
+              orgUnitId: filter.orgUnitId,
+              status: filter.status,
+              from: filter.from,
+              to: filter.to,
+              failed: filter.failed,
+            );
       emit(AssessmentsLoaded(
         mayChange: mayChange,
         mayMark: mayMark,
@@ -191,6 +321,8 @@ class AssessmentsBloc extends Bloc<AssessmentsEvent, AssessmentsState> {
         created: created.assessments,
         all: all.assessments,
         tab: tab,
+        filter: filter,
+        processes: _processesOf(everything.assessments),
       ));
     } on PeopleApiException catch (error) {
       emit(AssessmentsUnavailable(message: error.message));
@@ -206,5 +338,20 @@ class AssessmentsBloc extends Bloc<AssessmentsEvent, AssessmentsState> {
       if (error.statusCode == 403) return const [];
       rethrow;
     }
+  }
+
+  /// The distinct processes the register's Assessments draw from, by name.
+  static List<AssessmentProcess> _processesOf(List<Assessment> assessments) {
+    final seen = <String, AssessmentProcess>{};
+    for (final assessment in assessments) {
+      seen.putIfAbsent(
+        assessment.orgUnitId,
+        () => AssessmentProcess(
+          id: assessment.orgUnitId,
+          name: assessment.orgUnitName ?? assessment.orgUnitId,
+        ),
+      );
+    }
+    return seen.values.toList()..sort((a, b) => a.name.compareTo(b.name));
   }
 }

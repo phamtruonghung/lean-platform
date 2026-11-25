@@ -8896,4 +8896,159 @@ class AppLocalizationsVi extends AppLocalizations {
   String assessmentNavigatorChip(int position, String state) {
     return 'Câu $position: $state';
   }
+
+  @override
+  String get assessmentDetailFailedTitle => 'Không đọc được bài kiểm tra';
+
+  @override
+  String get assessmentDetailFactsTitle => 'Chi tiết';
+
+  @override
+  String get assessmentFactProcess => 'Công đoạn';
+
+  @override
+  String get assessmentFactPaperSize => 'Số câu hỏi';
+
+  @override
+  String get assessmentFactAttemptsAllowed => 'Số lần được làm';
+
+  @override
+  String get assessmentFactNone => '—';
+
+  @override
+  String get assessmentAttemptsTitle => 'Các lần làm bài';
+
+  @override
+  String get assessmentAttemptsEmpty => 'Chưa giao bài kiểm tra này cho ai.';
+
+  @override
+  String get assessmentAttemptCounting => 'Điểm được tính';
+
+  @override
+  String get assessmentScoreHidden => '—';
+
+  @override
+  String assessmentRetakeIs(String reason) {
+    return 'Lý do làm lại: $reason';
+  }
+
+  @override
+  String get assessmentActionsTitle => 'Thao tác';
+
+  @override
+  String get assessmentAssignButton => 'Giao thêm người';
+
+  @override
+  String get assessmentAssignTitle => 'Giao thêm người làm bài';
+
+  @override
+  String get assessmentAssignConfirm => 'Giao bài';
+
+  @override
+  String get assessmentCloseButton => 'Đóng bài kiểm tra';
+
+  @override
+  String get assessmentCloseTitle => 'Đóng bài kiểm tra này?';
+
+  @override
+  String get assessmentCloseMessage =>
+      'Sau khi đóng, không ai bắt đầu làm bài được, không thêm được người và không cho làm lại được.';
+
+  @override
+  String get assessmentCancelAttemptButton => 'Hủy lần làm bài';
+
+  @override
+  String get assessmentCancelAttemptTitle => 'Hủy lần làm bài này?';
+
+  @override
+  String assessmentCancelAttemptMessage(String name, int number) {
+    return 'Lần $number của $name sẽ bị hủy. Lý do được lưu cùng bản ghi.';
+  }
+
+  @override
+  String get assessmentCancelReasonLabel => 'Lý do hủy';
+
+  @override
+  String get assessmentRetakeButton => 'Cho làm lại';
+
+  @override
+  String get assessmentRetakeTitle => 'Cho làm lại?';
+
+  @override
+  String assessmentRetakeMessage(String name) {
+    return '$name được làm thêm một lần. Lý do được lưu cùng bản ghi.';
+  }
+
+  @override
+  String get assessmentRetakeReasonLabel => 'Lý do cho làm lại';
+
+  @override
+  String get assessmentReasonHelper => 'Tối thiểu 3 ký tự.';
+
+  @override
+  String get assessmentReasonTooShort => 'Hãy nhập lý do tối thiểu 3 ký tự.';
+
+  @override
+  String get assessmentEndSittingButton => 'Kết thúc phiên làm bài';
+
+  @override
+  String get assessmentEndSittingTitle => 'Kết thúc phiên làm bài này?';
+
+  @override
+  String get assessmentEndSittingMessage =>
+      'Thiết bị bị đăng xuất khỏi bài. Bài và các câu đã trả lời vẫn được giữ, người làm bài có thể định danh lại để làm tiếp.';
+
+  @override
+  String get assessmentReasonDraft =>
+      'Bài kiểm tra này còn là bản nháp. Người làm bài được giao khi tạo bài.';
+
+  @override
+  String get assessmentReasonClosed => 'Bài kiểm tra này đã đóng.';
+
+  @override
+  String get assessmentReasonNoChange =>
+      'Bạn không có quyền thay đổi bài kiểm tra.';
+
+  @override
+  String get assessmentReasonOutsideReach =>
+      'Nằm ngoài các đơn vị bạn được phép thay đổi.';
+
+  @override
+  String get assessmentReasonNotFinal =>
+      'Chỉ cho làm lại khi lần làm bài đã kết thúc (đã nộp, đã chấm hoặc hết giờ).';
+
+  @override
+  String get assessmentReasonNotLatest =>
+      'Người này đã có một lần làm bài mới hơn.';
+
+  @override
+  String assessmentReasonExhausted(int count) {
+    return 'Đã dùng hết $count lần làm bài được phép.';
+  }
+
+  @override
+  String get assessmentReasonNoMark =>
+      'Bạn không có quyền chấm bài của bài kiểm tra này.';
+
+  @override
+  String get assessmentFilterProcess => 'Công đoạn';
+
+  @override
+  String get assessmentFilterAllProcesses => 'Tất cả công đoạn';
+
+  @override
+  String get assessmentFilterStatus => 'Trạng thái';
+
+  @override
+  String get assessmentFilterAnyStatus => 'Mọi trạng thái';
+
+  @override
+  String get assessmentFilterBelowPassMark => 'Dưới điểm đạt';
+
+  @override
+  String get assessmentFilterNoMatchTitle => 'Không có bài kiểm tra phù hợp';
+
+  @override
+  String get assessmentFilterNoMatchMessage =>
+      'Hãy thử công đoạn, trạng thái hoặc khoảng ngày khác.';
 }
