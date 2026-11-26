@@ -45,7 +45,7 @@ class AppStatTile extends StatefulWidget {
   const AppStatTile({
     super.key,
     required this.label,
-    required this.figure,
+    this.figure,
     this.caption,
     this.icon,
     this.onTap,
@@ -55,8 +55,9 @@ class AppStatTile extends StatefulWidget {
   /// The eyebrow, e.g. "Open work".
   final String label;
 
-  /// The number, already formatted by the caller.
-  final String figure;
+  /// The number, already formatted by the caller. Null draws the tile with no
+  /// figure at all (a task-like tile that is a label and a caption).
+  final String? figure;
 
   /// A line of context, e.g. "3 need assigning".
   final String? caption;
@@ -130,8 +131,10 @@ class _AppStatTileState extends State<AppStatTile> {
             const SizedBox(height: Spacing.md),
           ],
           Text(widget.label, key: AppStatTile.labelKey, style: muted),
-          const SizedBox(height: Spacing.xs),
-          Text(widget.figure, key: AppStatTile.figureKey, style: figureStyle),
+          if (widget.figure != null) ...[
+            const SizedBox(height: Spacing.xs),
+            Text(widget.figure!, key: AppStatTile.figureKey, style: figureStyle),
+          ],
           if (widget.caption != null) ...[
             const SizedBox(height: Spacing.xs),
             Text(widget.caption!, key: AppStatTile.captionKey, style: muted),

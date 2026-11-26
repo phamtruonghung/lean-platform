@@ -57,6 +57,7 @@ import 'package:go_router/go_router.dart';
 
 import 'home_bloc.dart';
 import 'l10n/app_localizations.dart';
+import 'people/assessment.dart';
 import 'people_api.dart';
 import 'platform/router.dart';
 import 'theme.dart';
@@ -92,6 +93,11 @@ class HomeScreen extends StatelessWidget {
   static const ValueKey<String> myActionsCardKey = ValueKey<String>('home-my-actions');
   static const ValueKey<String> trainingToConfirmCardKey = ValueKey<String>('home-training-to-confirm');
   static const ValueKey<String> trainingToConfirmRetryKey = ValueKey<String>('home-training-to-confirm-retry');
+  static const ValueKey<String> assessmentsRetryKey = ValueKey<String>('home-assessments-retry');
+
+  /// One open Attempt's card in the Assessments group.
+  static ValueKey<String> assessmentCardKey(String attemptId) =>
+      ValueKey<String>('home-assessment-$attemptId');
   static const ValueKey<String> workRetryKey = ValueKey<String>('home-work-retry');
   static const ValueKey<String> approvalsRetryKey = ValueKey<String>('home-approvals-retry');
   static const ValueKey<String> myActionsRetryKey = ValueKey<String>('home-my-actions-retry');
@@ -151,6 +157,12 @@ class _HomeBody extends StatelessWidget {
           label: l10n.groupActions,
           cells: _myActionsCells(context, state.myActions!),
         ),
+      if (state.assessments != null && _hasAssessmentsToShow)
+        _ModuleGroup(
+          name: 'Assessments',
+          label: l10n.groupAssessments,
+          cells: _assessmentsCells(context, state.assessments!),
+        ),
       if (state.workSummary != null)
         _ModuleGroup(
           name: 'Maintenance',
@@ -170,6 +182,13 @@ class _HomeBody extends StatelessWidget {
     ];
   }
 
+  /// An Assessments section with nothing open draws nothing at all; loading and
+  /// failure still draw their own placeholder.
+  bool get _hasAssessmentsToShow => switch (state.assessments) {
+        HomeSectionLoaded<List<AssessmentAttempt>>(:final data) => data.isNotEmpty,
+        _ => true,
+      };
+
   /// Whether every number the page shows is zero *and* every section has
   /// loaded. A section still in flight, or one that failed, answers false: the
   /// page cannot claim nothing is waiting while it does not know.
@@ -181,6 +200,7 @@ class _HomeBody extends StatelessWidget {
         _countOf(state.workSummary, (d) => d.openCount + d.unassignedCount),
       if (state.approvals != null) _countOf(state.approvals, (d) => d),
       if (state.trainingToConfirm != null) _countOf(state.trainingToConfirm, (d) => d),
+      if (state.assessments != null) _countOf(state.assessments, (d) => d.length),
     ]) {
       if (count == null || count != 0) return false;
       sawOne = true;
@@ -316,6 +336,63 @@ List<Widget> _myActionsCells(BuildContext context, HomeSectionState<HomeMyAction
         ),
       ],
   };
+}
+
+/// The Assessments assigned to the caller: one tappable card per open Attempt,
+/// carrying straight to the sitting. No count — each card is one task.
+List<Widget> _assessmentsCells(
+  BuildContext context,
+  HomeSectionState<List<AssessmentAttempt>> section,
+) {
+  final l10n = AppLocalizations.of(context);
+  return switch (section) {
+    HomeSectionLoading<List<AssessmentAttempt>>() => [
+        const _SpanningCell(
+          child: SkeletonGrid(
+            tiles: 1,
+            crossAxisCount: _CardGrid.wideColumns,
+            maxWidth: HomeScreen.maxWidth,
+            padding: EdgeInsets.zero,
+          ),
+        ),
+      ],
+    HomeSectionFailed<List<AssessmentAttempt>>(:final message) => [
+        _SpanningCell(
+          child: PlatformFailureState(
+            title: l10n.homeAssessmentsUnavailable,
+            message: message,
+            retryKey: HomeScreen.assessmentsRetryKey,
+            onRetry: () => context.read<HomeBloc>().add(const HomeAssessmentsRetried()),
+          ),
+        ),
+      ],
+    HomeSectionLoaded<List<AssessmentAttempt>>(:final data) => [
+        for (final attempt in data)
+          _HomeCard(
+            cardKey: HomeScreen.assessmentCardKey(attempt.id),
+            icon: Icons.quiz_outlined,
+            label: attempt.assessmentTitle ?? attempt.assessmentNumber ?? '',
+            caption: _assessmentCaption(l10n, attempt),
+            destination: Routes.assessmentSitting(attempt.assessmentId, attempt.id),
+          ),
+      ],
+  };
+}
+
+String _assessmentCaption(AppLocalizations l10n, AssessmentAttempt attempt) {
+  final deadline = attempt.deadlineAt;
+  if (attempt.isRunning && deadline != null) {
+    final local = deadline.toLocal();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return l10n.homeAssessmentInProgress(
+      '${two(local.day)}/${two(local.month)}/${local.year} ${two(local.hour)}:${two(local.minute)}',
+    );
+  }
+  return [
+    if (attempt.assessmentNumber != null) attempt.assessmentNumber!,
+    if (attempt.processName != null) attempt.processName!,
+    if (attempt.dueOn != null) l10n.assessmentDueOn(attempt.dueOn!),
+  ].join(' · ');
 }
 
 /// The Training records sent to the caller and not yet answered (issue #289):
@@ -590,7 +667,7 @@ class _HomeCard extends StatelessWidget {
     required this.cardKey,
     required this.icon,
     required this.label,
-    required this.count,
+    this.count,
     required this.caption,
     required this.destination,
   });
@@ -598,7 +675,8 @@ class _HomeCard extends StatelessWidget {
   final Key cardKey;
   final IconData icon;
   final String label;
-  final int count;
+  /// Null draws a card with no figure (an Assessment is a task, not a tally).
+  final int? count;
 
   /// The line of context under the count — `AppStatTile`'s own `caption`.
   final String caption;
@@ -611,7 +689,7 @@ class _HomeCard extends StatelessWidget {
       key: cardKey,
       icon: icon,
       label: label,
-      figure: '$count',
+      figure: count == null ? null : '$count',
       caption: caption,
       quiet: count == 0,
       onTap: () => context.go(destination),

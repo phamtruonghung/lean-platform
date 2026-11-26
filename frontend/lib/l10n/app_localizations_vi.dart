@@ -257,6 +257,18 @@ class AppLocalizationsVi extends AppLocalizations {
       'Không đọc được Đào tạo cần xác nhận của bạn';
 
   @override
+  String get groupAssessments => 'Bài kiểm tra';
+
+  @override
+  String get homeAssessmentsUnavailable =>
+      'Không đọc được các bài kiểm tra được giao cho bạn';
+
+  @override
+  String homeAssessmentInProgress(String deadline) {
+    return 'Đang làm — hoàn thành trước $deadline';
+  }
+
+  @override
   String get trainingToConfirm => 'Đào tạo cần xác nhận';
 
   @override

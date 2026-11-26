@@ -196,6 +196,12 @@
   "@homeTrainingUnavailable": {
     "description": "Home's People group when the Training-to-confirm count could not be read."
   },
+  "groupAssessments": "Bài kiểm tra",
+  "@groupAssessments": {"description": "Home's heading over the Assessments assigned to the signed-in person."},
+  "homeAssessmentsUnavailable": "Không đọc được các bài kiểm tra được giao cho bạn",
+  "@homeAssessmentsUnavailable": {"description": "Home's Assessments group when the person's Attempts could not be read."},
+  "homeAssessmentInProgress": "Đang làm — hoàn thành trước {deadline}",
+  "@homeAssessmentInProgress": {"placeholders": {"deadline": {"type": "String"}}},
   "trainingToConfirm": "Đào tạo cần xác nhận",
   "@trainingToConfirm": {
     "description": "The count of Training records sent to a person that they have not answered yet; a Home card, and a Screen title in the browser tab."

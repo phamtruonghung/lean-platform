@@ -966,6 +966,7 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   authGateway: context.read<AuthGateway>(),
                   accountRole: account.account.role,
                   accountOrgUnitScope: account.account.orgUnitScope,
+                  accountPermissions: account.account.permissions,
                 )..add(const HomeStarted()),
                 child: HomeScreen(account: account.account),
               );

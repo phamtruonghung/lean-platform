@@ -572,6 +572,24 @@ abstract class AppLocalizations {
   /// **'Your Training to confirm is unavailable'**
   String get homeTrainingUnavailable;
 
+  /// Home's heading over the Assessments assigned to the signed-in person.
+  ///
+  /// In en, this message translates to:
+  /// **'Assessments'**
+  String get groupAssessments;
+
+  /// Home's Assessments group when the person's Attempts could not be read.
+  ///
+  /// In en, this message translates to:
+  /// **'Your assigned Assessments are unavailable'**
+  String get homeAssessmentsUnavailable;
+
+  /// The caption of a running Attempt's card on Home.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress — finish by {deadline}'**
+  String homeAssessmentInProgress(String deadline);
+
   /// The count of Training records sent to a person that they have not answered yet; a Home card, and a Screen title in the browser tab.
   ///
   /// In en, this message translates to:
