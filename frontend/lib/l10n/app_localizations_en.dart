@@ -268,6 +268,23 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get groupToMark => 'To mark';
+
+  @override
+  String get homeToMarkUnavailable => 'Papers to mark are unavailable';
+
+  @override
+  String get homeToMarkAll => 'Papers to mark';
+
+  @override
+  String get homeToMarkSeeAll => 'See all';
+
+  @override
+  String homeToMarkWrittenAnswers(int n) {
+    return '$n written answers';
+  }
+
+  @override
   String get trainingToConfirm => 'Training to confirm';
 
   @override

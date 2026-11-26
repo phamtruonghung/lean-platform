@@ -23,6 +23,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/home_screen.dart';
 import 'package:lean_platform/maintenance/work_orders_screen.dart';
 import 'package:lean_platform/people/approval_queue_screen.dart';
+import 'package:lean_platform/people/assessment_marking_queue_screen.dart';
+import 'package:lean_platform/people/assessment_marking_screen.dart';
 import 'package:lean_platform/people/assessment_sitting_screen.dart';
 import 'package:lean_platform/actions/actions_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
@@ -49,6 +51,8 @@ FakeWire wireWith({
   List<String> mePermissions = const <String>[],
   List<Map<String, dynamic>>? myAssessmentAttempts,
   int myAssessmentAttemptsStatus = 200,
+  List<Map<String, dynamic>>? assessmentMarkingQueue,
+  int assessmentMarkingQueueStatus = 200,
 }) =>
     FakeWire(
       role: role,
@@ -65,7 +69,9 @@ FakeWire wireWith({
       mePermissions: mePermissions,
     )
       ..myAssessmentAttempts = myAssessmentAttempts ?? []
-      ..myAssessmentAttemptsStatus = myAssessmentAttemptsStatus;
+      ..myAssessmentAttemptsStatus = myAssessmentAttemptsStatus
+      ..assessmentMarkingQueue = assessmentMarkingQueue ?? []
+      ..assessmentMarkingQueueStatus = assessmentMarkingQueueStatus;
 
 void main() {
   testWidgets('an operator sees what is assigned to them and nothing else, and their Account '
@@ -869,6 +875,115 @@ void main() {
         before + 1,
       );
       expect(find.byKey(HomeScreen.assessmentCardKey('31')), findsOneWidget);
+    });
+  });
+
+  group('Papers to mark', () {
+    const queueRead = 'GET /api/people/assessment-marking';
+
+    Map<String, dynamic> paper(int id, {int other = 0}) => {
+          ...assessmentAttemptJson(
+            id,
+            assessmentId: '5',
+            status: 'submitted',
+            submittedAt: '2026-11-24T10:15:00.000Z',
+            assessmentNumber: 'AS-5',
+            assessmentTitle: 'Cutting basics $id',
+            otherAnswerCount: other,
+          ),
+          'employeeName': 'Sitter Person',
+        };
+
+    testWidgets('two queued papers show as two cards, and a tap opens the marking', (tester) async {
+      final wire = wireWith(
+        role: Roles.operator,
+        mePermissions: [assessmentMarkPermission],
+        assessmentMarkingQueue: [paper(41, other: 2), paper(42)],
+      );
+      await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+
+      expect(find.byKey(HomeScreen.groupKey('ToMark')), findsOneWidget);
+      expect(find.byKey(HomeScreen.toMarkCardKey('41')), findsOneWidget);
+      expect(find.byKey(HomeScreen.toMarkCardKey('42')), findsOneWidget);
+      expect(find.byKey(HomeScreen.toMarkAllKey), findsNothing);
+      expect(find.textContaining('2 written answers'), findsOneWidget);
+
+      await tapIn(tester, find.byKey(HomeScreen.toMarkCardKey('41')));
+
+      expect(find.byType(AssessmentMarkingScreen), findsOneWidget);
+    });
+
+    testWidgets('a long queue shows six papers and a card to the whole queue', (tester) async {
+      final wire = wireWith(
+        role: Roles.operator,
+        mePermissions: [assessmentMarkPermission],
+        assessmentMarkingQueue: [for (var i = 41; i < 49; i++) paper(i)],
+      );
+      await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+
+      for (var i = 41; i < 47; i++) {
+        expect(find.byKey(HomeScreen.toMarkCardKey('$i')), findsOneWidget);
+      }
+      expect(find.byKey(HomeScreen.toMarkCardKey('47')), findsNothing);
+      expect(find.byKey(HomeScreen.toMarkAllKey), findsOneWidget);
+
+      await tapIn(tester, find.byKey(HomeScreen.toMarkAllKey));
+
+      expect(find.byType(AssessmentMarkingQueueScreen), findsOneWidget);
+    });
+
+    testWidgets('an empty queue draws no group', (tester) async {
+      final wire = wireWith(role: Roles.operator, mePermissions: [assessmentMarkPermission]);
+      await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+
+      expect(find.byKey(HomeScreen.groupKey('ToMark')), findsNothing);
+      expect(find.byKey(HomeScreen.toMarkRetryKey), findsNothing);
+      expect(wire.requests, contains(queueRead));
+    });
+
+    testWidgets('an Account whose permissions lack the mark code never asks', (tester) async {
+      final wire = wireWith(
+        role: Roles.operator,
+        mePermissions: ['PPL_DIRECTORY_VIEW'],
+        assessmentMarkingQueue: [paper(41)],
+      );
+      await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+
+      expect(find.byKey(HomeScreen.groupKey('ToMark')), findsNothing);
+      expect(wire.requests, isNot(contains(queueRead)));
+    });
+
+    testWidgets('a 403 is an empty queue, not a failure', (tester) async {
+      final wire = wireWith(
+        role: Roles.operator,
+        mePermissions: [assessmentMarkPermission],
+        assessmentMarkingQueueStatus: 403,
+      );
+      await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+
+      expect(find.byKey(HomeScreen.groupKey('ToMark')), findsNothing);
+      expect(find.byKey(HomeScreen.toMarkRetryKey), findsNothing);
+      expect(wire.requests, contains(queueRead));
+    });
+
+    testWidgets('a failed read is its own failure, and its retry re-reads', (tester) async {
+      final wire = wireWith(
+        role: Roles.operator,
+        mePermissions: [assessmentMarkPermission],
+        assessmentMarkingQueueStatus: 500,
+      );
+      await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+
+      expect(find.byKey(HomeScreen.toMarkRetryKey), findsOneWidget);
+      expect(find.byKey(HomeScreen.myActionsCardKey), findsOneWidget);
+      final before = wire.requests.where((r) => r == queueRead).length;
+
+      wire.assessmentMarkingQueueStatus = 200;
+      wire.assessmentMarkingQueue = [paper(41)];
+      await tapIn(tester, find.byKey(HomeScreen.toMarkRetryKey));
+
+      expect(wire.requests.where((r) => r == queueRead).length, before + 1);
+      expect(find.byKey(HomeScreen.toMarkCardKey('41')), findsOneWidget);
     });
   });
 }

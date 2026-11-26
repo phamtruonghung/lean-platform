@@ -269,6 +269,23 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String get groupToMark => 'Bài cần chấm';
+
+  @override
+  String get homeToMarkUnavailable => 'Không tải được bài cần chấm';
+
+  @override
+  String get homeToMarkAll => 'Bài cần chấm';
+
+  @override
+  String get homeToMarkSeeAll => 'Xem tất cả';
+
+  @override
+  String homeToMarkWrittenAnswers(int n) {
+    return '$n câu trả lời viết';
+  }
+
+  @override
   String get trainingToConfirm => 'Đào tạo cần xác nhận';
 
   @override

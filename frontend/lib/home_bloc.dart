@@ -73,6 +73,11 @@ class HomeAssessmentsRetried extends HomeEvent {
   const HomeAssessmentsRetried();
 }
 
+/// The To mark section's own retry. Leaves the other sections untouched.
+class HomeToMarkRetried extends HomeEvent {
+  const HomeToMarkRetried();
+}
+
 /// One section's own reading of the server — loading, loaded, or failed.
 /// Kept apart from [HomeReady] itself so one section's failure carries no
 /// opinion about the other's.
@@ -169,6 +174,7 @@ class HomeReady extends HomeState {
     this.approvals,
     this.trainingToConfirm,
     this.assessments,
+    this.toMark,
   });
 
   final String role;
@@ -197,12 +203,17 @@ class HomeReady extends HomeState {
   /// Assessments — never read in that case.
   final HomeSectionState<List<AssessmentAttempt>>? assessments;
 
+  /// The submitted Attempts waiting for the caller to mark, oldest first, with
+  /// the server's own total. Null when the Account may not mark — never read
+  /// in that case.
+  final HomeSectionState<AssessmentMarkingQueue>? toMark;
+
   /// Whether no section applies to this role — #99 user story 6's case, and
   /// false for every role now: [myActions] is read for everyone, so there is
   /// always at least one card. Kept because it is the honest statement of the
   /// rule the Screen no longer needs to branch on.
   bool get earnsNoCards =>
-      workSummary == null && myActions == null && approvals == null && trainingToConfirm == null && assessments == null;
+      workSummary == null && myActions == null && approvals == null && trainingToConfirm == null && assessments == null && toMark == null;
 
   HomeReady copyWith({
     HomeSectionState<HomeWorkSummary>? workSummary,
@@ -210,6 +221,7 @@ class HomeReady extends HomeState {
     HomeSectionState<int>? approvals,
     HomeSectionState<int>? trainingToConfirm,
     HomeSectionState<List<AssessmentAttempt>>? assessments,
+    HomeSectionState<AssessmentMarkingQueue>? toMark,
   }) =>
       HomeReady(
         role: role,
@@ -218,6 +230,7 @@ class HomeReady extends HomeState {
         approvals: approvals ?? this.approvals,
         trainingToConfirm: trainingToConfirm ?? this.trainingToConfirm,
         assessments: assessments ?? this.assessments,
+        toMark: toMark ?? this.toMark,
       );
 }
 
@@ -247,6 +260,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     on<HomeApprovalsRetried>(_onApprovalsRetried);
     on<HomeTrainingToConfirmRetried>(_onTrainingToConfirmRetried);
     on<HomeAssessmentsRetried>(_onAssessmentsRetried);
+    on<HomeToMarkRetried>(_onToMarkRetried);
   }
 
   final PeopleApi _people;
@@ -283,6 +297,12 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   bool get _earnsAssessments =>
       accountPermissions.isEmpty || accountPermissions.contains(assessmentSitPermission);
 
+  /// The same rule the marking route's guard applies (router.dart): the MARK
+  /// permission, or — with no permissions recorded — a maintenance role.
+  bool get _earnsToMark => accountPermissions.isEmpty
+      ? ModuleRoles.maintenance.contains(_role)
+      : accountPermissions.contains(assessmentMarkPermission);
+
   Future<void> _onStarted(HomeStarted event, Emitter<HomeState> emit) async {
     emit(
       HomeReady(
@@ -292,6 +312,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         approvals: _earnsApprovals ? const HomeSectionLoading() : null,
         trainingToConfirm: const HomeSectionLoading(),
         assessments: _earnsAssessments ? const HomeSectionLoading() : null,
+        toMark: _earnsToMark ? const HomeSectionLoading() : null,
       ),
     );
     // Both sections, when earned, are read concurrently — `Future.wait`
@@ -304,6 +325,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       if (_earnsApprovals) _loadApprovals(emit),
       _loadTrainingToConfirm(emit),
       if (_earnsAssessments) _loadAssessments(emit),
+      if (_earnsToMark) _loadToMark(emit),
     ]);
   }
 
@@ -474,6 +496,42 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     final current = state;
     if (current is! HomeReady) return;
     emit(current.copyWith(assessments: section));
+  }
+
+  Future<void> _onToMarkRetried(HomeToMarkRetried event, Emitter<HomeState> emit) async {
+    final current = state;
+    if (current is! HomeReady || current.toMark == null) return;
+    emit(current.copyWith(toMark: const HomeSectionLoading()));
+    await _loadToMark(emit);
+  }
+
+  /// The marking queue, read exactly the way its own Screen reads it
+  /// (`PeopleApi.fetchAssessmentMarkingQueue`). A 403 means the Account may not
+  /// mark in any reach: an empty queue, not a failure.
+  Future<void> _loadToMark(Emitter<HomeState> emit) async {
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      _emitToMark(emit, const HomeSectionFailed(message: signedOutMessage));
+      return;
+    }
+    try {
+      AssessmentMarkingQueue queue;
+      try {
+        queue = await _people.fetchAssessmentMarkingQueue(token);
+      } on PeopleApiException catch (error) {
+        if (error.statusCode != 403) rethrow;
+        queue = const AssessmentMarkingQueue(entries: [], total: 0, truncated: false);
+      }
+      _emitToMark(emit, HomeSectionLoaded(queue));
+    } on PeopleApiException catch (error) {
+      _emitToMark(emit, HomeSectionFailed(message: error.message));
+    }
+  }
+
+  void _emitToMark(Emitter<HomeState> emit, HomeSectionState<AssessmentMarkingQueue> section) {
+    final current = state;
+    if (current is! HomeReady) return;
+    emit(current.copyWith(toMark: section));
   }
 
   Future<void> _onApprovalsRetried(HomeApprovalsRetried event, Emitter<HomeState> emit) async {

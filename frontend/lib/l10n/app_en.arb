@@ -202,6 +202,16 @@
   "@homeAssessmentsUnavailable": {"description": "Home's Assessments group when the person's Attempts could not be read."},
   "homeAssessmentInProgress": "In progress — finish by {deadline}",
   "@homeAssessmentInProgress": {"description": "The caption of a running Attempt's card on Home.", "placeholders": {"deadline": {"type": "String"}}},
+  "groupToMark": "To mark",
+  "@groupToMark": {"description": "Home's heading over the submitted Attempts waiting for the signed-in Marker."},
+  "homeToMarkUnavailable": "Papers to mark are unavailable",
+  "@homeToMarkUnavailable": {"description": "Home's To mark group when the marking queue could not be read."},
+  "homeToMarkAll": "Papers to mark",
+  "@homeToMarkAll": {"description": "The label of Home's card that opens the whole marking queue."},
+  "homeToMarkSeeAll": "See all",
+  "@homeToMarkSeeAll": {"description": "The caption of Home's card that opens the whole marking queue."},
+  "homeToMarkWrittenAnswers": "{n} written answers",
+  "@homeToMarkWrittenAnswers": {"description": "Part of a queued paper's caption on Home: how many written (Other) answers it holds.", "placeholders": {"n": {"type": "int"}}},
   "trainingToConfirm": "Training to confirm",
   "@trainingToConfirm": {
     "description": "The count of Training records sent to a person that they have not answered yet; a Home card, and a Screen title in the browser tab."
