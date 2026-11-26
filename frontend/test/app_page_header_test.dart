@@ -243,6 +243,54 @@ void main() {
     );
   });
 
+  testWidgets('wide box, actions too wide for one row: they wrap under the title; fitting ones stay',
+      (tester) async {
+    List<Widget> buttons(int n) => [
+          for (var i = 0; i < n; i++)
+            FilledButton(
+              key: i == 0 ? _actionKey : null,
+              onPressed: () {},
+              child: const Text('A fairly long action label'),
+            ),
+        ];
+    // 640px is above the breakpoint, but five of these buttons are far wider.
+    await _pump(tester, boxWidth: 640, actionWidgets: buttons(5));
+    expect(tester.takeException(), isNull);
+    expect(
+      tester.getRect(find.byKey(_actionKey)).top,
+      greaterThanOrEqualTo(tester.getRect(find.byKey(AppPageHeader.titleKey)).bottom),
+      reason: 'the actions wrap under the title',
+    );
+    expect(tester.getRect(find.byKey(AppPageHeader.actionsKey)).right, lessThanOrEqualTo(640));
+
+    // A rebuild of the same header keeps the action's Element: no re-inflation
+    // (a focused button would otherwise lose focus on every Bloc emit).
+    final element = tester.element(find.byKey(_actionKey));
+    await _pump(tester, boxWidth: 640, actionWidgets: buttons(5));
+    expect(tester.element(find.byKey(_actionKey)), same(element));
+
+    // Widening to a box the five buttons fit in returns them to the title row.
+    await _pump(tester, boxWidth: 2600, windowWidth: 2700, actionWidgets: buttons(5));
+    expect(tester.takeException(), isNull);
+    expect(
+      tester.getRect(find.byKey(_actionKey)).top,
+      lessThan(tester.getRect(find.byKey(AppPageHeader.titleKey)).bottom),
+    );
+    await _pump(tester, boxWidth: 640, actionWidgets: buttons(5));
+    expect(
+      tester.getRect(find.byKey(_actionKey)).top,
+      greaterThanOrEqualTo(tester.getRect(find.byKey(AppPageHeader.titleKey)).bottom),
+    );
+
+    // The same box with actions that fit keeps the one-row layout.
+    await _pump(tester, boxWidth: 640, actionWidgets: buttons(1));
+    expect(tester.takeException(), isNull);
+    final title = tester.getRect(find.byKey(AppPageHeader.titleKey));
+    final action = tester.getRect(find.byKey(_actionKey));
+    expect(action.top, lessThan(title.bottom));
+    expect(action.left, greaterThan(title.right));
+  });
+
   testWidgets('a hairline in the card border colour sits under the whole block', (tester) async {
     await _pump(tester);
     final divider = tester.widget<Divider>(find.byKey(AppPageHeader.ruleKey));
