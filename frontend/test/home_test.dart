@@ -23,6 +23,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/home_screen.dart';
 import 'package:lean_platform/maintenance/work_orders_screen.dart';
 import 'package:lean_platform/people/approval_queue_screen.dart';
+import 'package:lean_platform/people/assessment_sitting_screen.dart';
 import 'package:lean_platform/actions/actions_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/theme.dart';
@@ -45,6 +46,9 @@ FakeWire wireWith({
   Map<String, Map<String, dynamic>>? employeeDetails,
   int employeeDetailStatus = 200,
   String employeeDetailMessage = 'This Account has no linked Employee record',
+  List<String> mePermissions = const <String>[],
+  List<Map<String, dynamic>>? myAssessmentAttempts,
+  int myAssessmentAttemptsStatus = 200,
 }) =>
     FakeWire(
       role: role,
@@ -58,7 +62,10 @@ FakeWire wireWith({
       employeeDetails: employeeDetails ?? const {},
       employeeDetailStatus: employeeDetailStatus,
       employeeDetailMessage: employeeDetailMessage,
-    );
+      mePermissions: mePermissions,
+    )
+      ..myAssessmentAttempts = myAssessmentAttempts ?? []
+      ..myAssessmentAttemptsStatus = myAssessmentAttemptsStatus;
 
 void main() {
   testWidgets('an operator sees what is assigned to them and nothing else, and their Account '
@@ -95,6 +102,8 @@ void main() {
       'GET /api/people/employees/me',
       // The Training-to-confirm card (issue #289) is read for every role.
       'GET /api/people/training/to-confirm',
+      // The Assessments section (permissions empty = may sit) reads `/mine`.
+      'GET /api/people/assessment-attempts/mine',
     ]);
   });
 
@@ -748,5 +757,118 @@ void main() {
     // This Account has no Employee record to own an Action, and nothing else is
     // pending: the line appears once the last read answers, because it is true.
     expect(find.byKey(HomeScreen.nothingWaitingKey), findsOneWidget);
+  });
+
+  group('Assessments assigned to me', () {
+    final attempts = [
+      assessmentAttemptJson(31,
+          assessmentId: '5',
+          assessmentNumber: 'AS-2',
+          assessmentTitle: 'Cutting basics',
+          processName: 'Cutting',
+          dueOn: '2026-12-05'),
+      assessmentAttemptJson(32,
+          assessmentId: '6',
+          assessmentNumber: 'AS-1',
+          assessmentTitle: 'Press safety',
+          status: 'in_progress',
+          startedAt: '2026-11-26T08:00:00Z',
+          deadlineAt: '2026-11-26T09:00:00Z'),
+      assessmentAttemptJson(33,
+          assessmentId: '7', assessmentNumber: 'AS-3', assessmentTitle: 'Old one', status: 'submitted'),
+    ];
+
+    testWidgets('two open Attempts show as two cards, the running one first, and a tap sits it',
+        (tester) async {
+      final wire = wireWith(
+        role: Roles.operator,
+        mePermissions: [assessmentSitPermission],
+        myAssessmentAttempts: attempts,
+      );
+      await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+
+      expect(find.byKey(HomeScreen.groupKey('Assessments')), findsOneWidget);
+      expect(find.byKey(HomeScreen.assessmentCardKey('31')), findsOneWidget);
+      expect(find.byKey(HomeScreen.assessmentCardKey('32')), findsOneWidget);
+      expect(find.byKey(HomeScreen.assessmentCardKey('33')), findsNothing);
+      // The default window is one column, so "first" is "higher up".
+      expect(
+        tester.getTopLeft(find.byKey(HomeScreen.assessmentCardKey('32'))).dy,
+        lessThan(tester.getTopLeft(find.byKey(HomeScreen.assessmentCardKey('31'))).dy),
+      );
+      expect(find.textContaining('In progress — finish by'), findsOneWidget);
+      expect(find.text('AS-2 · Cutting · due 2026-12-05'), findsOneWidget);
+      // Placed right after the Actions group.
+      expect(
+        tester.getTopLeft(find.byKey(HomeScreen.groupKey('Assessments'))).dy,
+        greaterThan(tester.getTopLeft(find.byKey(HomeScreen.groupKey('Actions'))).dy),
+      );
+
+      await tapIn(tester, find.byKey(HomeScreen.assessmentCardKey('31')));
+
+      expect(find.byType(AssessmentSittingScreen), findsOneWidget);
+    });
+
+    testWidgets('no open Attempt draws no group and no card', (tester) async {
+      final wire = wireWith(
+        role: Roles.operator,
+        mePermissions: [assessmentSitPermission],
+        myAssessmentAttempts: [attempts[2]],
+      );
+      await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+
+      expect(find.byKey(HomeScreen.groupKey('Assessments')), findsNothing);
+      expect(find.byKey(HomeScreen.assessmentCardKey('33')), findsNothing);
+      expect(find.byKey(HomeScreen.assessmentsRetryKey), findsNothing);
+    });
+
+    testWidgets('a 403 (no Employee) is an empty list, not a failure', (tester) async {
+      final wire = wireWith(
+        role: Roles.operator,
+        mePermissions: [assessmentSitPermission],
+        myAssessmentAttemptsStatus: 403,
+      );
+      await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+
+      expect(find.byKey(HomeScreen.groupKey('Assessments')), findsNothing);
+      expect(find.byKey(HomeScreen.assessmentsRetryKey), findsNothing);
+      expect(wire.requests, contains('GET /api/people/assessment-attempts/mine'));
+    });
+
+    testWidgets('an Account whose permissions lack the sit code never asks', (tester) async {
+      final wire = wireWith(
+        role: Roles.operator,
+        mePermissions: ['PPL_DIRECTORY_VIEW'],
+        myAssessmentAttempts: attempts,
+      );
+      await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+
+      expect(find.byKey(HomeScreen.groupKey('Assessments')), findsNothing);
+      expect(wire.requests, isNot(contains('GET /api/people/assessment-attempts/mine')));
+    });
+
+    testWidgets('a failed read is its own failure, and its retry re-reads', (tester) async {
+      final wire = wireWith(
+        role: Roles.operator,
+        mePermissions: [assessmentSitPermission],
+        myAssessmentAttemptsStatus: 500,
+      );
+      await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+
+      expect(find.byKey(HomeScreen.assessmentsRetryKey), findsOneWidget);
+      expect(find.byKey(HomeScreen.myActionsCardKey), findsOneWidget);
+      final before =
+          wire.requests.where((r) => r == 'GET /api/people/assessment-attempts/mine').length;
+
+      wire.myAssessmentAttemptsStatus = 200;
+      wire.myAssessmentAttempts = attempts;
+      await tapIn(tester, find.byKey(HomeScreen.assessmentsRetryKey));
+
+      expect(
+        wire.requests.where((r) => r == 'GET /api/people/assessment-attempts/mine').length,
+        before + 1,
+      );
+      expect(find.byKey(HomeScreen.assessmentCardKey('31')), findsOneWidget);
+    });
   });
 }

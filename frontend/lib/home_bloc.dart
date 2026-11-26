@@ -24,6 +24,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'actions/actions_api.dart';
 import 'maintenance/maintenance_api.dart';
+import 'people/assessment.dart';
 import 'people/employee.dart';
 import 'people/org_unit_scope.dart';
 import 'people_api.dart';
@@ -65,6 +66,11 @@ class HomeMyActionsRetried extends HomeEvent {
 /// sections untouched.
 class HomeTrainingToConfirmRetried extends HomeEvent {
   const HomeTrainingToConfirmRetried();
+}
+
+/// The Assessments section's own retry. Leaves the other sections untouched.
+class HomeAssessmentsRetried extends HomeEvent {
+  const HomeAssessmentsRetried();
 }
 
 /// One section's own reading of the server — loading, loaded, or failed.
@@ -162,6 +168,7 @@ class HomeReady extends HomeState {
     this.myActions,
     this.approvals,
     this.trainingToConfirm,
+    this.assessments,
   });
 
   final String role;
@@ -185,18 +192,24 @@ class HomeReady extends HomeState {
   /// list, so the count is a plain zero there.
   final HomeSectionState<int>? trainingToConfirm;
 
+  /// The Attempts assigned to the caller that are still open (assigned or in
+  /// progress), most urgent first. Null when the Account may not sit
+  /// Assessments — never read in that case.
+  final HomeSectionState<List<AssessmentAttempt>>? assessments;
+
   /// Whether no section applies to this role — #99 user story 6's case, and
   /// false for every role now: [myActions] is read for everyone, so there is
   /// always at least one card. Kept because it is the honest statement of the
   /// rule the Screen no longer needs to branch on.
   bool get earnsNoCards =>
-      workSummary == null && myActions == null && approvals == null && trainingToConfirm == null;
+      workSummary == null && myActions == null && approvals == null && trainingToConfirm == null && assessments == null;
 
   HomeReady copyWith({
     HomeSectionState<HomeWorkSummary>? workSummary,
     HomeSectionState<HomeMyActions>? myActions,
     HomeSectionState<int>? approvals,
     HomeSectionState<int>? trainingToConfirm,
+    HomeSectionState<List<AssessmentAttempt>>? assessments,
   }) =>
       HomeReady(
         role: role,
@@ -204,6 +217,7 @@ class HomeReady extends HomeState {
         myActions: myActions ?? this.myActions,
         approvals: approvals ?? this.approvals,
         trainingToConfirm: trainingToConfirm ?? this.trainingToConfirm,
+        assessments: assessments ?? this.assessments,
       );
 }
 
@@ -219,6 +233,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     required AuthGateway authGateway,
     required String accountRole,
     required OrgUnitScope accountOrgUnitScope,
+    this.accountPermissions = const [],
   })  : _people = peopleApi,
         _maintenance = maintenanceApi,
         _actions = actionsApi,
@@ -231,6 +246,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     on<HomeMyActionsRetried>(_onMyActionsRetried);
     on<HomeApprovalsRetried>(_onApprovalsRetried);
     on<HomeTrainingToConfirmRetried>(_onTrainingToConfirmRetried);
+    on<HomeAssessmentsRetried>(_onAssessmentsRetried);
   }
 
   final PeopleApi _people;
@@ -239,6 +255,10 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   final AuthGateway _auth;
   final String _role;
   final OrgUnitScope _orgUnitScope;
+
+  /// The Account's permission codes. Empty means the Account carries none
+  /// recorded, which the router treats as "may open everything its role does".
+  final List<String> accountPermissions;
 
   static const String signedOutMessage = BlocNotice.sessionEnded;
 
@@ -258,6 +278,11 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   /// reason the section is unlike its two siblings.
   bool get _earnsMyActions => true;
 
+  /// The same rule the sitting route's guard applies (router.dart): the SIT
+  /// permission, or no permissions recorded at all.
+  bool get _earnsAssessments =>
+      accountPermissions.isEmpty || accountPermissions.contains(assessmentSitPermission);
+
   Future<void> _onStarted(HomeStarted event, Emitter<HomeState> emit) async {
     emit(
       HomeReady(
@@ -266,6 +291,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         myActions: _earnsMyActions ? const HomeSectionLoading() : null,
         approvals: _earnsApprovals ? const HomeSectionLoading() : null,
         trainingToConfirm: const HomeSectionLoading(),
+        assessments: _earnsAssessments ? const HomeSectionLoading() : null,
       ),
     );
     // Both sections, when earned, are read concurrently — `Future.wait`
@@ -277,6 +303,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       if (_earnsMyActions) _loadMyActions(emit),
       if (_earnsApprovals) _loadApprovals(emit),
       _loadTrainingToConfirm(emit),
+      if (_earnsAssessments) _loadAssessments(emit),
     ]);
   }
 
@@ -390,6 +417,63 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     final current = state;
     if (current is! HomeReady) return;
     emit(current.copyWith(trainingToConfirm: section));
+  }
+
+  Future<void> _onAssessmentsRetried(HomeAssessmentsRetried event, Emitter<HomeState> emit) async {
+    final current = state;
+    if (current is! HomeReady || current.assessments == null) return;
+    emit(current.copyWith(assessments: const HomeSectionLoading()));
+    await _loadAssessments(emit);
+  }
+
+  /// The caller's open Attempts, read exactly the way the register's "Assigned
+  /// to me" tab reads them (`PeopleApi.fetchMyAssessmentAttempts`). A 403 means
+  /// the Account has no Employee and so nothing can be assigned: an empty
+  /// list, as `AssessmentsBloc` treats it, not a failure.
+  Future<void> _loadAssessments(Emitter<HomeState> emit) async {
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      _emitAssessments(emit, const HomeSectionFailed(message: signedOutMessage));
+      return;
+    }
+    try {
+      List<AssessmentAttempt> mine;
+      try {
+        mine = await _people.fetchMyAssessmentAttempts(token);
+      } on PeopleApiException catch (error) {
+        if (error.statusCode != 403) rethrow;
+        mine = const [];
+      }
+      final open = mine
+          .where((a) => a.status == attemptAssigned || a.status == attemptInProgress)
+          .toList()
+        ..sort(_byUrgency);
+      _emitAssessments(emit, HomeSectionLoaded(open));
+    } on PeopleApiException catch (error) {
+      _emitAssessments(emit, HomeSectionFailed(message: error.message));
+    }
+  }
+
+  /// In progress first, then the soonest deadline (or due date), then number.
+  static int _byUrgency(AssessmentAttempt a, AssessmentAttempt b) {
+    if (a.isRunning != b.isRunning) return a.isRunning ? -1 : 1;
+    final byTime = _dueMoment(a).compareTo(_dueMoment(b));
+    if (byTime != 0) return byTime;
+    return (a.assessmentNumber ?? '').compareTo(b.assessmentNumber ?? '');
+  }
+
+  static DateTime _dueMoment(AssessmentAttempt attempt) =>
+      attempt.deadlineAt ??
+      DateTime.tryParse(attempt.dueOn ?? '') ??
+      DateTime.fromMillisecondsSinceEpoch(8640000000000000, isUtc: true);
+
+  void _emitAssessments(
+    Emitter<HomeState> emit,
+    HomeSectionState<List<AssessmentAttempt>> section,
+  ) {
+    final current = state;
+    if (current is! HomeReady) return;
+    emit(current.copyWith(assessments: section));
   }
 
   Future<void> _onApprovalsRetried(HomeApprovalsRetried event, Emitter<HomeState> emit) async {

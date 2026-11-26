@@ -256,6 +256,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your Training to confirm is unavailable';
 
   @override
+  String get groupAssessments => 'Assessments';
+
+  @override
+  String get homeAssessmentsUnavailable =>
+      'Your assigned Assessments are unavailable';
+
+  @override
+  String homeAssessmentInProgress(String deadline) {
+    return 'In progress — finish by $deadline';
+  }
+
+  @override
   String get trainingToConfirm => 'Training to confirm';
 
   @override
