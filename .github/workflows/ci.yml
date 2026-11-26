@@ -33,12 +33,16 @@ on:
   workflow_call:
 
 concurrency:
-  # One run per branch, whatever event started it: a push and the pull_request it
-  # opens test the same commit, and a second push supersedes the first. Grouping by
-  # `github.ref` does NOT collapse the pair — a pull_request event's ref is
-  # `refs/pull/<n>/merge`, a push's is `refs/heads/<branch>` — so the key is the
-  # source branch (`head_ref`), falling back to `ref_name` for a push, which has none.
-  group: ci-${{ github.head_ref || github.ref_name }}
+  # One group per event and per source branch. A push and a pull_request must NOT
+  # share a group: the PR run would cancel the push run on the same head SHA, and
+  # a cancelled run on a PR's head counts against the required checks (BLOCKED
+  # until that run is deleted by hand). Within one event a cancel always means a
+  # newer SHA on the same ref, so a cancelled run is never the head's only result.
+  # `github.ref` alone cannot be the key — a pull_request's ref is
+  # `refs/pull/<n>/merge` — so the key is the source branch (`head_ref`), falling
+  # back to `ref_name` for a push. Cost: a branch pushed before its PR opens gets
+  # two complete runs on that head (push + pull_request).
+  group: ci-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   # A run on main is the one Release calls before it publishes and deploys: never
   # cancel it halfway. Every other ref is cancellable.
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
