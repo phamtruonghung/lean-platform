@@ -590,6 +590,36 @@ abstract class AppLocalizations {
   /// **'In progress — finish by {deadline}'**
   String homeAssessmentInProgress(String deadline);
 
+  /// Home's heading over the submitted Attempts waiting for the signed-in Marker.
+  ///
+  /// In en, this message translates to:
+  /// **'To mark'**
+  String get groupToMark;
+
+  /// Home's To mark group when the marking queue could not be read.
+  ///
+  /// In en, this message translates to:
+  /// **'Papers to mark are unavailable'**
+  String get homeToMarkUnavailable;
+
+  /// The label of Home's card that opens the whole marking queue.
+  ///
+  /// In en, this message translates to:
+  /// **'Papers to mark'**
+  String get homeToMarkAll;
+
+  /// The caption of Home's card that opens the whole marking queue.
+  ///
+  /// In en, this message translates to:
+  /// **'See all'**
+  String get homeToMarkSeeAll;
+
+  /// Part of a queued paper's caption on Home: how many written (Other) answers it holds.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} written answers'**
+  String homeToMarkWrittenAnswers(int n);
+
   /// The count of Training records sent to a person that they have not answered yet; a Home card, and a Screen title in the browser tab.
   ///
   /// In en, this message translates to:

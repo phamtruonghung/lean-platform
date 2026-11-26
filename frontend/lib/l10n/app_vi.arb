@@ -202,6 +202,12 @@
   "@homeAssessmentsUnavailable": {"description": "Home's Assessments group when the person's Attempts could not be read."},
   "homeAssessmentInProgress": "Đang làm — hoàn thành trước {deadline}",
   "@homeAssessmentInProgress": {"placeholders": {"deadline": {"type": "String"}}},
+  "groupToMark": "Bài cần chấm",
+  "homeToMarkUnavailable": "Không tải được bài cần chấm",
+  "homeToMarkAll": "Bài cần chấm",
+  "homeToMarkSeeAll": "Xem tất cả",
+  "homeToMarkWrittenAnswers": "{n} câu trả lời viết",
+  "@homeToMarkWrittenAnswers": {"placeholders": {"n": {"type": "int"}}},
   "trainingToConfirm": "Đào tạo cần xác nhận",
   "@trainingToConfirm": {
     "description": "The count of Training records sent to a person that they have not answered yet; a Home card, and a Screen title in the browser tab."

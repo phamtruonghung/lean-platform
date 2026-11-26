@@ -98,6 +98,15 @@ class HomeScreen extends StatelessWidget {
   /// One open Attempt's card in the Assessments group.
   static ValueKey<String> assessmentCardKey(String attemptId) =>
       ValueKey<String>('home-assessment-$attemptId');
+  static const ValueKey<String> toMarkRetryKey = ValueKey<String>('home-to-mark-retry');
+  static const ValueKey<String> toMarkAllKey = ValueKey<String>('home-to-mark-all');
+
+  /// One queued paper's card in the To mark group.
+  static ValueKey<String> toMarkCardKey(String attemptId) =>
+      ValueKey<String>('home-to-mark-$attemptId');
+
+  /// The most papers Home lists before it sends the Marker to the whole queue.
+  static const int toMarkLimit = 6;
   static const ValueKey<String> workRetryKey = ValueKey<String>('home-work-retry');
   static const ValueKey<String> approvalsRetryKey = ValueKey<String>('home-approvals-retry');
   static const ValueKey<String> myActionsRetryKey = ValueKey<String>('home-my-actions-retry');
@@ -163,6 +172,12 @@ class _HomeBody extends StatelessWidget {
           label: l10n.groupAssessments,
           cells: _assessmentsCells(context, state.assessments!),
         ),
+      if (state.toMark != null && _hasToMarkToShow)
+        _ModuleGroup(
+          name: 'ToMark',
+          label: l10n.groupToMark,
+          cells: _toMarkCells(context, state.toMark!),
+        ),
       if (state.workSummary != null)
         _ModuleGroup(
           name: 'Maintenance',
@@ -189,6 +204,13 @@ class _HomeBody extends StatelessWidget {
         _ => true,
       };
 
+  /// A To mark section with nothing queued draws nothing at all; loading and
+  /// failure still draw their own placeholder.
+  bool get _hasToMarkToShow => switch (state.toMark) {
+        HomeSectionLoaded<AssessmentMarkingQueue>(:final data) => data.total > 0 || data.entries.isNotEmpty,
+        _ => true,
+      };
+
   /// Whether every number the page shows is zero *and* every section has
   /// loaded. A section still in flight, or one that failed, answers false: the
   /// page cannot claim nothing is waiting while it does not know.
@@ -201,6 +223,7 @@ class _HomeBody extends StatelessWidget {
       if (state.approvals != null) _countOf(state.approvals, (d) => d),
       if (state.trainingToConfirm != null) _countOf(state.trainingToConfirm, (d) => d),
       if (state.assessments != null) _countOf(state.assessments, (d) => d.length),
+      if (state.toMark != null) _countOf(state.toMark, (d) => d.total),
     ]) {
       if (count == null || count != 0) return false;
       sawOne = true;
@@ -392,6 +415,68 @@ String _assessmentCaption(AppLocalizations l10n, AssessmentAttempt attempt) {
     if (attempt.assessmentNumber != null) attempt.assessmentNumber!,
     if (attempt.processName != null) attempt.processName!,
     if (attempt.dueOn != null) l10n.assessmentDueOn(attempt.dueOn!),
+  ].join(' · ');
+}
+
+/// The papers waiting for the caller to mark: one tappable card per queued
+/// Attempt (oldest first, as the server sends them), then one card to the whole
+/// queue when there are more than [HomeScreen.toMarkLimit].
+List<Widget> _toMarkCells(
+  BuildContext context,
+  HomeSectionState<AssessmentMarkingQueue> section,
+) {
+  final l10n = AppLocalizations.of(context);
+  return switch (section) {
+    HomeSectionLoading<AssessmentMarkingQueue>() => [
+        const _SpanningCell(
+          child: SkeletonGrid(
+            tiles: 1,
+            crossAxisCount: _CardGrid.wideColumns,
+            maxWidth: HomeScreen.maxWidth,
+            padding: EdgeInsets.zero,
+          ),
+        ),
+      ],
+    HomeSectionFailed<AssessmentMarkingQueue>(:final message) => [
+        _SpanningCell(
+          child: PlatformFailureState(
+            title: l10n.homeToMarkUnavailable,
+            message: message,
+            retryKey: HomeScreen.toMarkRetryKey,
+            onRetry: () => context.read<HomeBloc>().add(const HomeToMarkRetried()),
+          ),
+        ),
+      ],
+    HomeSectionLoaded<AssessmentMarkingQueue>(:final data) => [
+        for (final entry in data.entries.take(HomeScreen.toMarkLimit))
+          _HomeCard(
+            cardKey: HomeScreen.toMarkCardKey(entry.id),
+            icon: Icons.rate_review_outlined,
+            label: entry.assessmentTitle ?? entry.assessmentNumber ?? '',
+            caption: _toMarkCaption(l10n, entry),
+            destination: Routes.assessmentMarking(entry.assessmentId, entry.id),
+          ),
+        if (data.total > HomeScreen.toMarkLimit)
+          _HomeCard(
+            cardKey: HomeScreen.toMarkAllKey,
+            icon: Icons.rate_review_outlined,
+            label: l10n.homeToMarkAll,
+            count: data.total,
+            caption: l10n.homeToMarkSeeAll,
+            destination: Routes.assessmentMarkingQueue,
+          ),
+      ],
+  };
+}
+
+String _toMarkCaption(AppLocalizations l10n, AssessmentMarkingEntry entry) {
+  final submitted = entry.submittedAt?.toLocal();
+  String two(int n) => n.toString().padLeft(2, '0');
+  return [
+    if (entry.employeeName != null) entry.employeeName!,
+    if (entry.assessmentNumber != null) entry.assessmentNumber!,
+    if (submitted != null) '${two(submitted.day)}/${two(submitted.month)}/${submitted.year}',
+    if (entry.otherAnswerCount > 0) l10n.homeToMarkWrittenAnswers(entry.otherAnswerCount),
   ].join(' · ');
 }
 
