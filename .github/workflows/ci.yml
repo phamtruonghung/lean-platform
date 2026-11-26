@@ -7,12 +7,41 @@ on:
   # main is excluded here only because Release calls this same workflow before
   # it builds anything, so a push to main still runs the whole suite — once,
   # rather than twice in parallel with itself.
+  #
+  # Docs, markdown and CSV files are ignored on push and pull_request because no
+  # image and no test reads them. backend/Dockerfile COPYs only the package
+  # manifests, `src` and `migrations`; the frontend image builds from ./frontend.
+  # The only `.csv` a test touches is `docs/Employee_Master_Consolidated.csv`,
+  # which is real personnel data, gitignored, and skipped by the seed test when
+  # absent, so a commit can never change it. A change touching only these paths
+  # therefore starts no run at all; a change touching anything else still runs
+  # the whole suite. There are no per-job filters on purpose: a job skipped on
+  # the wrong file is a green check that proved nothing.
   push:
     branches-ignore: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - '**/*.csv'
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - '**/*.csv'
   # Called by Release, so that publishing and deploying are gated on the same
   # checks a pull request had to pass.
   workflow_call:
+
+concurrency:
+  # One run per branch, whatever event started it: a push and the pull_request it
+  # opens test the same commit, and a second push supersedes the first. Grouping by
+  # `github.ref` does NOT collapse the pair — a pull_request event's ref is
+  # `refs/pull/<n>/merge`, a push's is `refs/heads/<branch>` — so the key is the
+  # source branch (`head_ref`), falling back to `ref_name` for a push, which has none.
+  group: ci-${{ github.head_ref || github.ref_name }}
+  # A run on main is the one Release calls before it publishes and deploys: never
+  # cancel it halfway. Every other ref is cancellable.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   backend:
