@@ -50,6 +50,7 @@ class AssessmentsScreen extends StatelessWidget {
 
   static const ValueKey<String> newAssessmentKey = ValueKey<String>('assessments-new');
   static const ValueKey<String> markingQueueKey = ValueKey<String>('assessments-marking-queue');
+  static const ValueKey<String> questionBankKey = ValueKey<String>('assessments-question-bank');
   static const ValueKey<String> refreshKey = ValueKey<String>('assessments-refresh');
   static const ValueKey<String> emptyKey = ValueKey<String>('assessments-empty');
   static const ValueKey<String> failedKey = ValueKey<String>('assessments-failed');
@@ -125,6 +126,12 @@ class _Loaded extends StatelessWidget {
                       : () => bloc.add(const AssessmentsRefreshed()),
                   icon: const Icon(Icons.refresh),
                   label: Text(l10n.commonRefresh),
+                ),
+                OutlinedButton.icon(
+                  key: AssessmentsScreen.questionBankKey,
+                  onPressed: () => context.go(Routes.assessmentQuestions),
+                  icon: const Icon(Icons.library_books_outlined),
+                  label: Text(l10n.assessmentQuestionsTitle),
                 ),
                 if (state.mayMark)
                   OutlinedButton.icon(

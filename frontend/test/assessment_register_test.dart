@@ -10,11 +10,13 @@ library;
 import 'dart:ui' show Locale, Size;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lean_platform/l10n/app_localizations.dart';
 import 'package:lean_platform/l10n/vocabulary.dart';
 import 'package:lean_platform/people/assessment_detail_screen.dart';
+import 'package:lean_platform/people/assessment_questions_screen.dart';
 import 'package:lean_platform/people/assessment_sitting_screen.dart';
 import 'package:lean_platform/people/assessments_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
@@ -193,6 +195,22 @@ void main() {
     await tester.pumpAndSettle();
     // The create form, at its own address.
     expect(find.text('Who sits it'), findsOneWidget);
+  });
+
+  testWidgets('Question bank opens the bank for a caller who may only read assessments', (tester) async {
+    final reader = _wire(permissions: const [_display]);
+    await _open(tester, reader);
+    await tester.pumpAndSettle();
+    expect(find.byKey(AssessmentsScreen.newAssessmentKey), findsNothing);
+    expect(find.byKey(AssessmentsScreen.questionBankKey), findsOneWidget);
+
+    await tester.tap(find.byKey(AssessmentsScreen.questionBankKey));
+    await tester.pumpAndSettle();
+    // The Question bank, at its own address.
+    expect(find.byType(AssessmentQuestionsScreen), findsOneWidget);
+    expect(find.byType(AssessmentsScreen), findsNothing);
+    final router = GoRouter.of(tester.element(find.byType(AssessmentQuestionsScreen)));
+    expect(router.state.uri.path, Routes.assessmentQuestions);
   });
 
   group('the All tab\'s filters', () {
