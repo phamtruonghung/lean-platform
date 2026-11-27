@@ -193,7 +193,7 @@ class AssessmentDetailBloc extends Bloc<AssessmentDetailEvent, AssessmentDetailS
     final current = state;
     if (current is! AssessmentDetailLoaded) return;
     final group = event.group;
-    final empty = group.orgUnits.isEmpty && group.employees.isEmpty;
+    final empty = group.isEmpty;
     final generation = ++_previewGeneration;
     emit(current.copyWith(
       clearPreview: true,
@@ -211,6 +211,7 @@ class AssessmentDetailBloc extends Bloc<AssessmentDetailEvent, AssessmentDetailS
       final preview = await _api.previewAssessmentAssignment(
         token,
         orgUnitIds: [for (final unit in group.orgUnits) unit.id],
+        crewIds: [for (final crew in group.crews) crew.id],
         employeeIds: [for (final employee in group.employees) employee.id],
       );
       if (generation != _previewGeneration) return;
@@ -234,6 +235,7 @@ class AssessmentDetailBloc extends Bloc<AssessmentDetailEvent, AssessmentDetailS
         token,
         assessmentId,
         orgUnitIds: [for (final unit in event.group.orgUnits) unit.id],
+        crewIds: [for (final crew in event.group.crews) crew.id],
         employeeIds: [for (final employee in event.group.employees) employee.id],
       );
     });

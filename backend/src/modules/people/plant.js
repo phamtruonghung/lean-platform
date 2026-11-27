@@ -30,7 +30,7 @@
 
 const { getPool, withActor } = require('../../platform/db');
 const { httpError, notFound, parseId } = require('./errors');
-const { escapeLikePattern } = require('./sql');
+const { escapeLikePattern, RESOLVED_EMPLOYEES_SQL } = require('./sql');
 
 // Mirrors the CHECK constraint on org_units.unit_type, as last recreated by
 // migrations/1801400000000_org-units-section-unit-type.js (issue #271).
@@ -436,6 +436,50 @@ async function searchOrgUnits(siteId, { search, withinOrgUnitIds } = {}) {
   };
 }
 
+// The crew picker's list: a Site's crews, each with the headcount `assign`
+// would create for that crew on its own (active Employees whose resolved crew
+// is this one — RESOLVED_EMPLOYEES_SQL, the same definition assessments.js
+// expands a group with). Same paging shape as searchOrgUnits: a cap plus a
+// `truncated` probe.
+const CREW_LIST_LIMIT = 200;
+
+async function listCrews(siteId, { search, includeInactive = false } = {}) {
+  await getSite(siteId); // 404s if the Site itself does not exist.
+
+  const params = [siteId];
+  let where = 'c.site_id = $1';
+  if (!includeInactive) where += ' AND c.is_active';
+  const term = typeof search === 'string' ? search.trim() : '';
+  if (term !== '') {
+    params.push(`%${escapeLikePattern(term)}%`);
+    where += ` AND (c.code ILIKE $${params.length} OR c.name ILIKE $${params.length})`;
+  }
+  params.push(CREW_LIST_LIMIT + 1);
+
+  const { rows } = await getPool().query(
+    `WITH resolved AS (${RESOLVED_EMPLOYEES_SQL})
+     SELECT c.id, c.site_id, c.code, c.name, c.is_active,
+            (SELECT count(*) FROM resolved r
+              WHERE r.is_active AND r.crew_id = c.id)::int AS employee_count
+       FROM crews c
+      WHERE ${where}
+      ORDER BY c.name, c.id
+      LIMIT $${params.length}`,
+    params
+  );
+  return {
+    crews: rows.slice(0, CREW_LIST_LIMIT).map((row) => ({
+      id: String(row.id),
+      siteId: String(row.site_id),
+      code: row.code,
+      name: row.name,
+      isActive: row.is_active,
+      employeeCount: row.employee_count
+    })),
+    truncated: rows.length > CREW_LIST_LIMIT
+  };
+}
+
 async function createOrgUnit(siteId, { parentId, code, name, unitType, sortOrder }, accountId) {
   await getSite(siteId); // 404s if the Site itself does not exist.
 
@@ -503,6 +547,7 @@ module.exports = {
   findOrgUnit,
   getOrgUnitSubtree,
   searchOrgUnits,
+  listCrews,
   setOrgUnitActive,
   // Exported for org-unit-import.js (issue #12) only, which inserts rows
   // directly inside its own single transaction rather than calling

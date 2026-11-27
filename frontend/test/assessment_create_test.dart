@@ -20,6 +20,7 @@ const _display = 'PPL_ASSESSMENT_DISPLAY';
 const _change = 'PPL_ASSESSMENT_CHANGE';
 
 const _process = '11';
+const _crew = '21';
 
 FakeWire _wire() {
   final wire = FakeWire(
@@ -28,6 +29,7 @@ FakeWire _wire() {
     sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
     orgUnitSearchResults: [orgUnitJson(_process, 'Braiding')],
   );
+  wire.crewSearchResults = [crewJson(_crew, 'Crew A', employeeCount: 12)];
   wire.assignPreviewCount = 4;
   return wire;
 }
@@ -52,6 +54,12 @@ Future<void> _addOrgUnit(WidgetTester tester) async {
   await typeInSearchField(tester, AssessmentCreateScreen.orgUnitSearchKey, 'Br');
   await tester.pump();
   await tapIn(tester, find.byKey(AssessmentCreateScreen.orgUnitSuggestionKey(_process)));
+}
+
+Future<void> _addCrew(WidgetTester tester) async {
+  await typeInSearchField(tester, AssessmentCreateScreen.crewSearchKey, 'Cr');
+  await tester.pump();
+  await tapIn(tester, find.byKey(AssessmentCreateScreen.crewSuggestionKey(_crew)));
 }
 
 void main() {
@@ -99,5 +107,49 @@ void main() {
     expect(wire.assignPreviewReads, isNotEmpty);
     expect(find.text('This will reach 4 Employees.'), findsOneWidget);
     expect(find.textContaining('Homeless Sitter'), findsOneWidget);
+  });
+
+  testWidgets('picking a Crew shows its member count on the chip and the preview asks for its id',
+      (tester) async {
+    final wire = _wire();
+    await _open(tester, wire);
+    await tester.pumpAndSettle();
+
+    await _addCrew(tester);
+    await tester.pumpAndSettle();
+
+    expect(wire.crewSearchRequests.last, ('1', 'Cr'));
+    expect(
+      find.descendant(
+        of: find.byKey(AssessmentCreateScreen.crewChipKey(_crew)),
+        matching: find.text('Crew A · 12 Employees'),
+      ),
+      findsOneWidget,
+    );
+    expect(wire.assignPreviewReads.last, contains('crewIds=$_crew'));
+    expect(find.text('This will reach 4 Employees.'), findsOneWidget);
+  });
+
+  testWidgets('a group of only a Crew is enough to create and assign: the assign body carries the Crew id',
+      (tester) async {
+    final wire = _wire();
+    await _open(tester, wire);
+    await tester.pumpAndSettle();
+
+    await typeInSearchField(tester, AssessmentCreateScreen.processSearchKey, 'Br');
+    await tester.pump();
+    await tapIn(tester, find.byKey(AssessmentCreateScreen.processSuggestionKey(_process)));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(AssessmentCreateScreen.titleKey), 'Braiding basics');
+    await _addCrew(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(AssessmentCreateScreen.submitKey));
+    await tester.pumpAndSettle();
+
+    expect(wire.assessmentPosts, hasLength(1));
+    expect(wire.assessmentAssigns, hasLength(1));
+    expect(wire.assessmentAssigns.single.$2['crewIds'], [_crew]);
+    expect(wire.assessmentAssigns.single.$2['orgUnitIds'], isEmpty);
   });
 }

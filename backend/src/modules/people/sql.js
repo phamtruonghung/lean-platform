@@ -37,4 +37,26 @@ function escapeLikePattern(value) {
 const QUALIFICATION_IS_CURRENT_SQL = (alias) =>
   `(${alias}.expires_on IS NULL OR ${alias}.expires_on > employee_today(${alias}.employee_id))`;
 
-module.exports = { escapeLikePattern, QUALIFICATION_IS_CURRENT_SQL };
+// One definition of an Employee's resolved Org Unit and crew, shared by the
+// Assessment assignment (assessments.js) and the crew picker's headcount
+// (plant.js), so a count shown never disagrees with who `assign` creates.
+// "Current" is provably single (`employee_assignments_no_overlap` is an
+// `EXCLUDE USING gist`), so the lateral's `LIMIT 1` never picks between two
+// rows. The resolver is the repo's own (`directory.js`, `leave-requests.js`):
+// the current assignment's Org Unit, else the Employee's default.
+const RESOLVED_EMPLOYEES_SQL = `
+  SELECT e.id AS employee_id, e.display_name, e.is_active,
+         COALESCE(ca.org_unit_id, e.default_org_unit_id) AS org_unit_id,
+         CASE WHEN ca.employee_id IS NOT NULL THEN ca.crew_id ELSE e.default_crew_id END AS crew_id
+    FROM employees e
+    LEFT JOIN LATERAL (
+      SELECT ea.employee_id, ea.org_unit_id, ea.crew_id
+        FROM employee_assignments ea
+       WHERE ea.employee_id = e.id
+         AND ea.effective_from <= employee_today(ea.employee_id)
+         AND (ea.effective_to IS NULL OR ea.effective_to > employee_today(ea.employee_id))
+       LIMIT 1
+    ) ca ON TRUE
+`;
+
+module.exports = { escapeLikePattern, QUALIFICATION_IS_CURRENT_SQL, RESOLVED_EMPLOYEES_SQL };
