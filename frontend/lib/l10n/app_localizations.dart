@@ -14473,7 +14473,7 @@ abstract class AppLocalizations {
   /// Helper under the assign group heading.
   ///
   /// In en, this message translates to:
-  /// **'Add Org Units and Employees. An Org Unit reaches the Employees who work at it or beneath it.'**
+  /// **'Add Org Units, crews and Employees. An Org Unit reaches the Employees who work at it or beneath it.'**
   String get assessmentAssignGroupHelper;
 
   /// Label of the Org Unit search in the assign group.
@@ -14487,6 +14487,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add an Employee'**
   String get assessmentAssignEmployeeLabel;
+
+  /// Label of the Crew search in the assign group.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a crew'**
+  String get assessmentAssignCrewLabel;
+
+  /// A Crew's name and how many Employees it holds, in the Crew suggestion and its chip.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} · {count, plural, =1{1 Employee} other{{count} Employees}}'**
+  String assessmentCrewWithCount(String name, int count);
 
   /// How many Employees the chosen group reaches.
   ///

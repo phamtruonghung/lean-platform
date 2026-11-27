@@ -8621,13 +8621,21 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get assessmentAssignGroupHelper =>
-      'Thêm đơn vị và nhân viên. Một đơn vị bao gồm những người làm ở đó và ở các đơn vị bên dưới.';
+      'Thêm đơn vị, tổ ca và nhân viên. Một đơn vị bao gồm những người làm ở đó và ở các đơn vị bên dưới.';
 
   @override
   String get assessmentAssignOrgUnitLabel => 'Thêm một đơn vị';
 
   @override
   String get assessmentAssignEmployeeLabel => 'Thêm một nhân viên';
+
+  @override
+  String get assessmentAssignCrewLabel => 'Thêm một tổ ca';
+
+  @override
+  String assessmentCrewWithCount(String name, int count) {
+    return '$name · $count nhân viên';
+  }
 
   @override
   String assessmentReachCount(int count) {

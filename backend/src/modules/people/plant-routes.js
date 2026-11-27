@@ -327,6 +327,28 @@ router.get(
   }
 );
 
+// The crew picker's list for the Assessment assign form: a Site's crews with
+// the headcount each would reach. Gated like the Org Unit reads — Site scope,
+// then PPL_ORG_UNITS_DISPLAY.
+router.get(
+  '/sites/:siteId/crews',
+  authenticate,
+  requireActive,
+  authorization.requireSiteScope(),
+  authorization.requirePermission('PPL_ORG_UNITS_DISPLAY'),
+  async (req, res, next) => {
+    try {
+      const { crews, truncated } = await plant.listCrews(req.site.id, {
+        search: typeof req.query.search === 'string' ? req.query.search : undefined,
+        includeInactive: req.query.includeInactive === 'true'
+      });
+      res.json({ crews, truncated });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
 router.post('/sites/:siteId/org-units', authenticate, requireActive, mayChangeOrgUnits, requireOrgUnitCreateScope, async (req, res, next) => {
   try {
     const siteId = parseId(req.params.siteId);
