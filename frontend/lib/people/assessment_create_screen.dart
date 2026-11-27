@@ -3,7 +3,7 @@
 ///
 /// **Six facts and a group.** The process whose bank a paper is drawn from, a
 /// title, the paper size (10 or 15), how long a sitting runs, the pass mark and
-/// an optional due date — then the people it reaches: Org Units and named
+/// an optional due date — then the people it reaches: Org Units, Crews and named
 /// Employees as chips, with the count the server says that group reaches under
 /// them (`GET /assessments/assign-preview`).
 ///
@@ -21,9 +21,9 @@
 /// numbers live in controllers, as in `AssessmentQuestionFormDialog`; the Sites,
 /// the active count, the reach and the submit live in `AssessmentCreateBloc`.
 ///
-/// Crews are not offered here: they have no client surface yet
-/// (`PeopleApi.createAssignment`'s own note). The route takes `crewIds`, and the
-/// register's assign action is slice 6.
+/// A Crew is chosen like an Org Unit, within the Assessment's Site, and its chip
+/// shows how many Employees it holds. Putting an Employee *in* a Crew is not done
+/// here (`PeopleApi.createAssignment`'s own note).
 library;
 
 import 'package:flutter/material.dart';
@@ -46,6 +46,7 @@ import '../widgets/failure_state.dart';
 import '../widgets/notice_text.dart';
 import '../widgets/skeleton_list.dart';
 import 'assessment_create_bloc.dart';
+import 'crew.dart';
 
 class AssessmentCreateScreen extends StatefulWidget {
   const AssessmentCreateScreen({super.key});
@@ -54,6 +55,7 @@ class AssessmentCreateScreen extends StatefulWidget {
 
   static const String processFieldName = 'assessment-create-process';
   static const String orgUnitFieldName = 'assessment-create-org-unit';
+  static const String crewFieldName = 'assessment-create-crew';
   static const String employeeFieldName = 'assessment-create-employee';
 
   static const ValueKey<String> siteKey = ValueKey<String>('assessment-create-site');
@@ -74,11 +76,15 @@ class AssessmentCreateScreen extends StatefulWidget {
   static ValueKey<String> get orgUnitSearchKey => AppSearchField.fieldKey(orgUnitFieldName);
   static ValueKey<String> orgUnitSuggestionKey(String id) =>
       AppSearchField.suggestionKey(orgUnitFieldName, id);
+  static ValueKey<String> get crewSearchKey => AppSearchField.fieldKey(crewFieldName);
+  static ValueKey<String> crewSuggestionKey(String id) =>
+      AppSearchField.suggestionKey(crewFieldName, id);
   static ValueKey<String> get employeeSearchKey => AppSearchField.fieldKey(employeeFieldName);
   static ValueKey<String> employeeSuggestionKey(String id) =>
       AppSearchField.suggestionKey(employeeFieldName, id);
   static ValueKey<String> sizeKey(int count) => ValueKey<String>('assessment-create-size-$count');
   static ValueKey<String> orgUnitChipKey(String id) => ValueKey<String>('assessment-create-unit-$id');
+  static ValueKey<String> crewChipKey(String id) => ValueKey<String>('assessment-create-crew-$id');
   static ValueKey<String> employeeChipKey(String id) => ValueKey<String>('assessment-create-employee-$id');
 
   @override
@@ -129,12 +135,18 @@ class _AssessmentCreateScreenState extends State<AssessmentCreateScreen> {
 
   /// The reach is recomputed by the Bloc from the group the chips represent, so
   /// this Screen keeps no copy of it.
-  void _sendGroup(BuildContext context, {List<OrgUnitNode>? orgUnits, List<Employee>? employees}) {
+  void _sendGroup(
+    BuildContext context, {
+    List<OrgUnitNode>? orgUnits,
+    List<Crew>? crews,
+    List<Employee>? employees,
+  }) {
     final state = context.read<AssessmentCreateBloc>().state;
     if (state is! AssessmentCreateLoaded) return;
     final group = state.group;
     context.read<AssessmentCreateBloc>().add(AssessmentCreateGroupChanged(
           orgUnits: orgUnits ?? group.orgUnits,
+          crews: crews ?? group.crews,
           employees: employees ?? group.employees,
         ));
   }
@@ -165,6 +177,12 @@ class _AssessmentCreateScreenState extends State<AssessmentCreateScreen> {
     if (token == null) throw PeopleApiException(AssessmentCreateBloc.signedOutMessage);
     final result = await context.read<PeopleApi>().searchOrgUnits(token, siteId: siteId, search: term);
     return result.orgUnits;
+  }
+
+  Future<List<Crew>> _searchCrews(BuildContext context, String siteId, String term) async {
+    final token = context.read<AuthGateway>().currentAccessToken;
+    if (token == null) throw PeopleApiException(AssessmentCreateBloc.signedOutMessage);
+    return context.read<PeopleApi>().searchCrews(token, siteId: siteId, search: term);
   }
 
   Future<List<Employee>> _searchEmployees(BuildContext context, String term) async {
@@ -404,6 +422,29 @@ class _AssessmentCreateScreenState extends State<AssessmentCreateScreen> {
                 codeOf: (node) => node.code,
               ),
             const SizedBox(height: Spacing.sm),
+            if (siteId != null)
+              AppSearchField<Crew>(
+                key: const ValueKey<String>('assessment-create-crew-field'),
+                name: AssessmentCreateScreen.crewFieldName,
+                label: l10n.assessmentAssignCrewLabel,
+                value: null,
+                onChanged: (_) {},
+                onSelected: (picked) {
+                  final group = state.group.crews.any((crew) => crew.id == picked.id)
+                      ? state.group.crews
+                      : [...state.group.crews, picked];
+                  _sendGroup(context, crews: group);
+                },
+                fetchSuggestions: (term) => _searchCrews(context, siteId, term),
+                suggestionBuilder: (context, crew) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+                  child: Text(l10n.assessmentCrewWithCount(crew.name, crew.employeeCount)),
+                ),
+                idOf: (crew) => crew.id,
+                displayStringFor: (crew) => crew.name,
+                codeOf: (crew) => crew.code,
+              ),
+            const SizedBox(height: Spacing.sm),
             AppSearchField<Employee>(
               key: const ValueKey<String>('assessment-create-employee-field'),
               name: AssessmentCreateScreen.employeeFieldName,
@@ -439,6 +480,18 @@ class _AssessmentCreateScreenState extends State<AssessmentCreateScreen> {
                       orgUnits: [
                         for (final other in state.group.orgUnits)
                           if (other.id != unit.id) other,
+                      ],
+                    ),
+                  ),
+                for (final crew in state.group.crews)
+                  InputChip(
+                    key: AssessmentCreateScreen.crewChipKey(crew.id),
+                    label: Text(l10n.assessmentCrewWithCount(crew.name, crew.employeeCount)),
+                    onDeleted: () => _sendGroup(
+                      context,
+                      crews: [
+                        for (final other in state.group.crews)
+                          if (other.id != crew.id) other,
                       ],
                     ),
                   ),

@@ -52,6 +52,7 @@
 
 const { getPool, withActor } = require('../../platform/db');
 const { httpError, notFound } = require('./errors');
+const { RESOLVED_EMPLOYEES_SQL } = require('./sql');
 // One-way on purpose: the score-field rule (spec section 3.14) lives in
 // `assessment-marking.js`, which requires nothing from this file, so the
 // register and the detail read ask the same question the Marker's doors do
@@ -763,25 +764,6 @@ function validateGroup(body) {
   return { orgUnitIds, crewIds, employeeIds };
 }
 
-// "Current" is provably single (`employee_assignments_no_overlap` is an
-// `EXCLUDE USING gist`), so the lateral's `LIMIT 1` never picks between two
-// rows. The resolver is the repo's own (`directory.js`, `leave-requests.js`):
-// the current assignment's Org Unit, else the Employee's default.
-const RESOLVED_EMPLOYEES_SQL = `
-  SELECT e.id AS employee_id, e.display_name, e.is_active,
-         COALESCE(ca.org_unit_id, e.default_org_unit_id) AS org_unit_id,
-         CASE WHEN ca.employee_id IS NOT NULL THEN ca.crew_id ELSE e.default_crew_id END AS crew_id
-    FROM employees e
-    LEFT JOIN LATERAL (
-      SELECT ea.employee_id, ea.org_unit_id, ea.crew_id
-        FROM employee_assignments ea
-       WHERE ea.employee_id = e.id
-         AND ea.effective_from <= employee_today(ea.employee_id)
-         AND (ea.effective_to IS NULL OR ea.effective_to > employee_today(ea.employee_id))
-       LIMIT 1
-    ) ca ON TRUE
-`;
-
 async function expandGroup(client, group) {
   const { rows } = await client.query(
     `WITH resolved AS (${RESOLVED_EMPLOYEES_SQL})
@@ -849,6 +831,30 @@ async function assignAssessment(accountId, assessment, group) {
       const unknown = group.employeeIds.filter((id) => !knownIds.has(id));
       if (unknown.length > 0) {
         throw httpError(400, `no Employee with id ${unknown.join(', ')}`);
+      }
+    }
+
+    // Named crews must exist and each must reach someone on its own: a crew
+    // that reaches nobody is almost always a wrong pick, and the rest of the
+    // group reaching people must not hide it.
+    if (group.crewIds.length > 0) {
+      const { rows: crews } = await client.query(
+        `WITH resolved AS (${RESOLVED_EMPLOYEES_SQL})
+         SELECT c.id, c.code, c.name,
+                (SELECT count(*) FROM resolved r
+                  WHERE r.is_active AND r.crew_id = c.id)::int AS members
+           FROM crews c
+          WHERE c.id = ANY($1::bigint[])`,
+        [group.crewIds]
+      );
+      const known = new Set(crews.map((row) => String(row.id)));
+      const unknownCrews = group.crewIds.filter((id) => !known.has(id));
+      if (unknownCrews.length > 0) {
+        throw httpError(400, `no crew with id ${unknownCrews.join(', ')}`);
+      }
+      const empty = crews.find((row) => row.members === 0);
+      if (empty) {
+        throw httpError(400, `crew ${empty.code} (${empty.name}) reaches nobody — no active Employee is on it`);
       }
     }
 

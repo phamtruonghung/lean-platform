@@ -1,16 +1,14 @@
 /// Adding people to an Assessment that is already assigned (issue #588,
 /// ADR-0068, slice 6): the create form's assign group, as a dialog.
 ///
-/// Org Units and named Employees are chosen with the same search boxes the
-/// create form uses and kept as chips, and under them the server says how many
-/// Employees the group reaches (`GET /assessments/assign-preview`, asked through
+/// Org Units, crews and named Employees are chosen with the same search boxes
+/// the create form uses and kept as chips (a crew's chip shows how many
+/// Employees it holds), and under them the server says how many Employees the
+/// group reaches (`GET /assessments/assign-preview`, asked through
 /// `AssessmentDetailBloc`, so the number here and the number of Attempts the
 /// confirm creates are one expansion). The confirm is off while the group is
 /// empty. The dialog pops the group and sends nothing: the Screen dispatches the
 /// write and shows a refusal where the person is looking.
-///
-/// Crews have no client surface yet (the create form's own note), so they are not
-/// offered here either; the route takes `crewIds`.
 library;
 
 import 'package:flutter/material.dart';
@@ -25,6 +23,7 @@ import '../widgets/app_search_field.dart';
 import '../widgets/notice_text.dart';
 import 'assessment_create_bloc.dart' show AssessmentCreateGroupChanged;
 import 'assessment_detail_bloc.dart';
+import 'crew.dart';
 import 'employee.dart';
 import 'org_unit.dart';
 
@@ -43,15 +42,20 @@ class AssessmentAssignDialog extends StatefulWidget {
   final String siteId;
 
   static const String orgUnitFieldName = 'assessment-assign-org-unit';
+  static const String crewFieldName = 'assessment-assign-crew';
   static const String employeeFieldName = 'assessment-assign-employee';
 
   static ValueKey<String> get orgUnitSearchKey => AppSearchField.fieldKey(orgUnitFieldName);
   static ValueKey<String> orgUnitSuggestionKey(String id) =>
       AppSearchField.suggestionKey(orgUnitFieldName, id);
+  static ValueKey<String> get crewSearchKey => AppSearchField.fieldKey(crewFieldName);
+  static ValueKey<String> crewSuggestionKey(String id) =>
+      AppSearchField.suggestionKey(crewFieldName, id);
   static ValueKey<String> get employeeSearchKey => AppSearchField.fieldKey(employeeFieldName);
   static ValueKey<String> employeeSuggestionKey(String id) =>
       AppSearchField.suggestionKey(employeeFieldName, id);
   static ValueKey<String> orgUnitChipKey(String id) => ValueKey<String>('assessment-assign-unit-$id');
+  static ValueKey<String> crewChipKey(String id) => ValueKey<String>('assessment-assign-crew-$id');
   static ValueKey<String> employeeChipKey(String id) => ValueKey<String>('assessment-assign-employee-$id');
   static const ValueKey<String> reachKey = ValueKey<String>('assessment-assign-reach');
   static const ValueKey<String> reachFailureKey = ValueKey<String>('assessment-assign-reach-failure');
@@ -82,12 +86,13 @@ class AssessmentAssignDialog extends StatefulWidget {
 
 class _AssessmentAssignDialogState extends State<AssessmentAssignDialog> {
   List<OrgUnitNode> _orgUnits = const [];
+  List<Crew> _crews = const [];
   List<Employee> _employees = const [];
 
-  bool get _empty => _orgUnits.isEmpty && _employees.isEmpty;
+  bool get _empty => _group.isEmpty;
 
   AssessmentCreateGroupChanged get _group =>
-      AssessmentCreateGroupChanged(orgUnits: _orgUnits, employees: _employees);
+      AssessmentCreateGroupChanged(orgUnits: _orgUnits, crews: _crews, employees: _employees);
 
   void _changed() {
     setState(() {});
@@ -99,6 +104,12 @@ class _AssessmentAssignDialogState extends State<AssessmentAssignDialog> {
     if (token == null) throw PeopleApiException(AssessmentDetailBloc.signedOutMessage);
     final result = await widget.peopleApi.searchOrgUnits(token, siteId: widget.siteId, search: term);
     return result.orgUnits;
+  }
+
+  Future<List<Crew>> _searchCrews(String term) async {
+    final token = widget.authGateway.currentAccessToken;
+    if (token == null) throw PeopleApiException(AssessmentDetailBloc.signedOutMessage);
+    return widget.peopleApi.searchCrews(token, siteId: widget.siteId, search: term);
   }
 
   Future<List<Employee>> _searchEmployees(String term) async {
@@ -156,6 +167,26 @@ class _AssessmentAssignDialogState extends State<AssessmentAssignDialog> {
             codeOf: (node) => node.code,
           ),
           const SizedBox(height: Spacing.sm),
+          AppSearchField<Crew>(
+            name: AssessmentAssignDialog.crewFieldName,
+            label: l10n.assessmentAssignCrewLabel,
+            value: null,
+            onChanged: (_) {},
+            onSelected: (picked) {
+              if (_crews.any((crew) => crew.id == picked.id)) return;
+              _crews = [..._crews, picked];
+              _changed();
+            },
+            fetchSuggestions: _searchCrews,
+            suggestionBuilder: (context, crew) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+              child: Text(l10n.assessmentCrewWithCount(crew.name, crew.employeeCount)),
+            ),
+            idOf: (crew) => crew.id,
+            displayStringFor: (crew) => crew.name,
+            codeOf: (crew) => crew.code,
+          ),
+          const SizedBox(height: Spacing.sm),
           AppSearchField<Employee>(
             name: AssessmentAssignDialog.employeeFieldName,
             label: l10n.assessmentAssignEmployeeLabel,
@@ -188,6 +219,18 @@ class _AssessmentAssignDialogState extends State<AssessmentAssignDialog> {
                     _orgUnits = [
                       for (final other in _orgUnits)
                         if (other.id != unit.id) other,
+                    ];
+                    _changed();
+                  },
+                ),
+              for (final crew in _crews)
+                InputChip(
+                  key: AssessmentAssignDialog.crewChipKey(crew.id),
+                  label: Text(l10n.assessmentCrewWithCount(crew.name, crew.employeeCount)),
+                  onDeleted: () {
+                    _crews = [
+                      for (final other in _crews)
+                        if (other.id != crew.id) other,
                     ];
                     _changed();
                   },

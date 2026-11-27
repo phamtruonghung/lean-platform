@@ -19,6 +19,7 @@ import 'people/assessment_question.dart';
 import 'people/leave_request.dart';
 import 'people/worked_hours.dart';
 import 'people/cost_rate.dart';
+import 'people/crew.dart';
 import 'people/employee.dart';
 import 'people/employee_ref.dart';
 import 'people/employee_signature.dart';
@@ -581,6 +582,39 @@ class PeopleApi {
         ],
         truncated: body['truncated'] == true,
       );
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Searches a Site's active Crews by partial name or code
+  /// (`GET /api/people/sites/:siteId/crews?search=`) — what the assign pickers
+  /// suggest from. Each Crew carries its [Crew.employeeCount], so the picker can
+  /// show how many Employees choosing it reaches.
+  Future<List<Crew>> searchCrews(
+    String accessToken, {
+    required String siteId,
+    required String search,
+  }) async {
+    final path = '/api/people/sites/$siteId/crews';
+    final uri = Uri.parse(path).replace(queryParameters: {'search': search});
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final raw in body['crews'] as List<dynamic>)
+          Crew(
+            id: '${(raw as Map<String, dynamic>)['id']}',
+            siteId: '${raw['siteId']}',
+            code: raw['code'] as String,
+            name: raw['name'] as String,
+            isActive: raw['isActive'] != false,
+            employeeCount: (raw['employeeCount'] as num).toInt(),
+          ),
+      ];
     } catch (error) {
       throw PeopleApiException('The API answered with something this app could not read: $error');
     }

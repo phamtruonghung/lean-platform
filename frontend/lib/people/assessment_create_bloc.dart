@@ -27,6 +27,7 @@ library;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/notices.dart';
+import '../people/crew.dart';
 import '../people/employee.dart';
 import '../people/org_unit.dart';
 import '../people_api.dart';
@@ -55,10 +56,18 @@ class AssessmentCreateProcessChosen extends AssessmentCreateEvent {
 
 /// The group as it now stands. Sent after every add and every chip removed.
 class AssessmentCreateGroupChanged extends AssessmentCreateEvent {
-  const AssessmentCreateGroupChanged({this.orgUnits = const [], this.employees = const []});
+  const AssessmentCreateGroupChanged({
+    this.orgUnits = const [],
+    this.crews = const [],
+    this.employees = const [],
+  });
 
   final List<OrgUnitNode> orgUnits;
+  final List<Crew> crews;
   final List<Employee> employees;
+
+  /// True when the group names nobody: no Org Unit, no Crew, no Employee.
+  bool get isEmpty => orgUnits.isEmpty && crews.isEmpty && employees.isEmpty;
 }
 
 /// The six facts, ready for the wire, plus the group they are assigned to.
@@ -249,9 +258,9 @@ class AssessmentCreateBloc extends Bloc<AssessmentCreateEvent, AssessmentCreateS
       group: event,
       clearPreview: true,
       clearPreviewFailure: true,
-      previewing: event.orgUnits.isNotEmpty || event.employees.isNotEmpty,
+      previewing: !event.isEmpty,
     ));
-    if (event.orgUnits.isEmpty && event.employees.isEmpty) return;
+    if (event.isEmpty) return;
 
     final token = _auth.currentAccessToken;
     if (token == null) {
@@ -263,6 +272,7 @@ class AssessmentCreateBloc extends Bloc<AssessmentCreateEvent, AssessmentCreateS
       final preview = await _api.previewAssessmentAssignment(
         token,
         orgUnitIds: [for (final unit in event.orgUnits) unit.id],
+        crewIds: [for (final crew in event.crews) crew.id],
         employeeIds: [for (final employee in event.employees) employee.id],
       );
       if (generation != _previewGeneration) return;
@@ -292,11 +302,12 @@ class AssessmentCreateBloc extends Bloc<AssessmentCreateEvent, AssessmentCreateS
     try {
       final created = await _api.createAssessment(token, event.body);
       final group = event.group;
-      if (group.orgUnits.isNotEmpty || group.employees.isNotEmpty) {
+      if (!group.isEmpty) {
         await _api.assignAssessment(
           token,
           created.id,
           orgUnitIds: [for (final unit in group.orgUnits) unit.id],
+          crewIds: [for (final crew in group.crews) crew.id],
           employeeIds: [for (final employee in group.employees) employee.id],
         );
       }

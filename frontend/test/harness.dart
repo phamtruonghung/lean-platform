@@ -2547,6 +2547,25 @@ http.Response _utf8Json(Object body, int status) => http.Response(
 /// The wire, faked: `/me` answers the role under test, and the queue endpoints
 /// answer whatever the test scripted. Every request is recorded so a test can
 /// assert what was — and was not — sent.
+/// One Crew as `GET /api/people/sites/:siteId/crews` sends it.
+Map<String, dynamic> crewJson(
+  String id,
+  String name, {
+  String siteId = '1',
+  String? code,
+  bool isActive = true,
+  int employeeCount = 0,
+}) {
+  return {
+    'id': id,
+    'siteId': siteId,
+    'code': code ?? 'CREW$id',
+    'name': name,
+    'isActive': isActive,
+    'employeeCount': employeeCount,
+  };
+}
+
 class FakeWire {
   FakeWire({
     this.role = Roles.admin,
@@ -4677,6 +4696,11 @@ class FakeWire {
 
   /// Every search request as `(siteId, search)`.
   final List<(String, String?)> orgUnitSearchRequests = [];
+
+  /// `GET /api/people/sites/:siteId/crews` — one scripted list of Crews as the
+  /// server sends them (see [crewJson]), and every request as `(siteId, search)`.
+  List<Map<String, dynamic>> crewSearchResults = [];
+  final List<(String, String?)> crewSearchRequests = [];
 
   /// `POST /api/people/sites/:siteId/org-units/import` (issue #90, ADR-0011).
   /// `201` by default; set to `422` alongside [importOrgUnitsErrors] to prove
@@ -10464,6 +10488,12 @@ class FakeWire {
             return http.Response(jsonEncode({'message': timezonesMessage}), timezonesStatus);
           }
           return http.Response(jsonEncode({'timezones': timezones}), 200);
+        }
+        if (request.method == 'GET' &&
+            RegExp(r'^/api/people/sites/[^/]+/crews$').hasMatch(path)) {
+          // '', 'api', 'people', 'sites', ':siteId', 'crews'.
+          crewSearchRequests.add((path.split('/')[4], request.url.queryParameters['search']));
+          return _utf8Json({'crews': crewSearchResults}, 200);
         }
         if (path.startsWith('/api/people/sites/') && path.endsWith('/org-units/search')) {
           // '', 'api', 'people', 'sites', ':siteId', 'org-units', 'search'.

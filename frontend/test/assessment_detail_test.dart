@@ -35,6 +35,7 @@ FakeWire _wire({
     sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
     orgUnitSearchResults: [orgUnitJson('11', 'Braiding')],
   );
+  wire.crewSearchResults = [crewJson('21', 'Crew A', employeeCount: 12)];
   wire.assessmentRegister = [assessment];
   wire.assignPreviewCount = 3;
   return wire;
@@ -471,6 +472,36 @@ void main() {
       expect(wire.assessmentAssigns.length, 1);
       expect(wire.assessmentAssigns.single.$1, '5');
       expect(wire.assessmentAssigns.single.$2['orgUnitIds'], ['11']);
+    });
+
+    testWidgets('a Crew picked in the assign dialog shows its member count, is previewed, and is sent on confirm',
+        (tester) async {
+      final wire = _wire(assessment: assessmentJson(5));
+      await _open(tester, wire);
+
+      await tapIn(tester, find.byKey(AssessmentDetailScreen.assignKey));
+      await typeInSearchField(tester, AssessmentAssignDialog.crewSearchKey, 'Cr');
+      await tester.pump();
+      await tapIn(tester, find.byKey(AssessmentAssignDialog.crewSuggestionKey('21')));
+
+      expect(wire.crewSearchRequests.last, ('1', 'Cr'));
+      expect(
+        find.descendant(
+          of: find.byKey(AssessmentAssignDialog.crewChipKey('21')),
+          matching: find.text('Crew A · 12 Employees'),
+        ),
+        findsOneWidget,
+      );
+      expect(wire.assignPreviewReads.last, contains('crewIds=21'));
+      // A Crew alone is a group: the confirm is on.
+      expect(_enabled(tester, AssessmentAssignDialog.submitKey), isTrue);
+
+      await tester.tap(find.byKey(AssessmentAssignDialog.submitKey));
+      await tester.pumpAndSettle();
+
+      expect(wire.assessmentAssigns.length, 1);
+      expect(wire.assessmentAssigns.single.$1, '5');
+      expect(wire.assessmentAssigns.single.$2['crewIds'], ['21']);
     });
   });
 }

@@ -8647,13 +8647,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get assessmentAssignGroupHelper =>
-      'Add Org Units and Employees. An Org Unit reaches the Employees who work at it or beneath it.';
+      'Add Org Units, crews and Employees. An Org Unit reaches the Employees who work at it or beneath it.';
 
   @override
   String get assessmentAssignOrgUnitLabel => 'Add an Org Unit';
 
   @override
   String get assessmentAssignEmployeeLabel => 'Add an Employee';
+
+  @override
+  String get assessmentAssignCrewLabel => 'Add a crew';
+
+  @override
+  String assessmentCrewWithCount(String name, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Employees',
+      one: '1 Employee',
+    );
+    return '$name · $_temp0';
+  }
 
   @override
   String assessmentReachCount(int count) {
