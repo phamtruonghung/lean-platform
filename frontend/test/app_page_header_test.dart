@@ -291,6 +291,32 @@ void main() {
     expect(action.left, greaterThan(title.right));
   });
 
+  testWidgets('the title keeps minTitleWidth: actions stay on the row at exactly that box, wrap one pixel under',
+      (tester) async {
+    // The lib wraps when actionsWidth + Spacing.md > boxWidth - minTitleWidth,
+    // so the one-row layout holds down to boxWidth == actionsWidth + Spacing.md
+    // + minTitleWidth. 400 keeps that box above the 560 breakpoint.
+    const actionWidth = 400.0;
+    const threshold = actionWidth + Spacing.md + AppPageHeader.minTitleWidth;
+    expect(threshold, greaterThan(AppPageHeader.wrapBreakpoint));
+    List<Widget> action() => const [SizedBox(key: _actionKey, width: actionWidth, height: 40)];
+
+    await _pump(tester, boxWidth: threshold, windowWidth: 1200, actionWidgets: action());
+    expect(tester.takeException(), isNull);
+    var title = tester.getRect(find.byKey(AppPageHeader.titleKey));
+    var actionRect = tester.getRect(find.byKey(_actionKey));
+    expect(actionRect.top, lessThan(title.bottom), reason: 'on the title row at the threshold');
+    expect(actionRect.left, greaterThan(title.right));
+    expect(actionRect.right, threshold);
+
+    await _pump(tester, boxWidth: threshold - 1, windowWidth: 1200, actionWidgets: action());
+    expect(tester.takeException(), isNull);
+    title = tester.getRect(find.byKey(AppPageHeader.titleKey));
+    actionRect = tester.getRect(find.byKey(_actionKey));
+    expect(actionRect.top, greaterThanOrEqualTo(title.bottom), reason: 'wrapped one pixel under');
+    expect(actionRect.left, title.left);
+  });
+
   testWidgets('a hairline in the card border colour sits under the whole block', (tester) async {
     await _pump(tester);
     final divider = tester.widget<Divider>(find.byKey(AppPageHeader.ruleKey));

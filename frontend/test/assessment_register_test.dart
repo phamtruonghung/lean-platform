@@ -213,6 +213,25 @@ void main() {
     expect(router.state.uri.path, Routes.assessmentQuestions);
   });
 
+  testWidgets('the four-action header keeps Question bank on screen and tappable at 1200, 900 and 600',
+      (tester) async {
+    await _open(tester, _wire(permissions: const [_display, _change, _sit, 'PPL_ASSESSMENT_MARK']));
+    await tester.pumpAndSettle();
+    // A CHANGE + MARK caller: New assessment, Marking queue, Question bank and
+    // Refresh are all shown at every width.
+    for (final width in const [1200.0, 900.0, 600.0]) {
+      tester.view.physicalSize = Size(width, 2400);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: 'no overflow at $width');
+      expect(find.byKey(AssessmentsScreen.newAssessmentKey), findsOneWidget, reason: 'at $width');
+      expect(find.byKey(AssessmentsScreen.markingQueueKey), findsOneWidget, reason: 'at $width');
+      expect(find.byKey(AssessmentsScreen.questionBankKey), findsOneWidget, reason: 'at $width');
+      expect(find.byKey(AssessmentsScreen.refreshKey), findsOneWidget, reason: 'at $width');
+      expect(find.byKey(AssessmentsScreen.questionBankKey).hitTestable(), findsOneWidget,
+          reason: 'Question bank is hit-testable at $width');
+    }
+  });
+
   group('the All tab\'s filters', () {
     FakeWire wire() => _wire(
           register: [
