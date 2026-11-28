@@ -10,6 +10,7 @@ library;
 
 import 'dart:ui' show Size;
 
+import 'package:flutter/material.dart' show ButtonStyleButton;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/people/assessment_bank_paste_dialog.dart';
@@ -113,6 +114,31 @@ void main() {
     expect(find.byKey(AssessmentQuestionsScreen.pasteKey), findsNothing);
     expect(find.byKey(AssessmentQuestionsScreen.editKey(1)), findsNothing);
     expect(find.byKey(AssessmentQuestionsScreen.retireKey(1)), findsNothing);
+  });
+
+  testWidgets('a reader sees no Add or Paste button before a process is chosen', (tester) async {
+    await _open(tester, _wire(permissions: const [_display], revealKey: false));
+
+    expect(find.byType(AssessmentQuestionsScreen), findsOneWidget);
+    expect(find.byKey(AssessmentQuestionsScreen.addKey), findsNothing);
+    expect(find.byKey(AssessmentQuestionsScreen.pasteKey), findsNothing);
+  });
+
+  testWidgets('Add and Paste are shown but disabled until a process is chosen', (tester) async {
+    await _open(tester, _wire());
+
+    expect(find.byKey(AssessmentQuestionsScreen.addKey), findsOneWidget);
+    expect(find.byKey(AssessmentQuestionsScreen.pasteKey), findsOneWidget);
+    expect(tester.widget<ButtonStyleButton>(find.byKey(AssessmentQuestionsScreen.addKey)).enabled, isFalse);
+    expect(tester.widget<ButtonStyleButton>(find.byKey(AssessmentQuestionsScreen.pasteKey)).enabled, isFalse);
+  });
+
+  testWidgets('Add and Paste are enabled once a process is chosen', (tester) async {
+    await _open(tester, _wire());
+    await _chooseBraiding(tester);
+
+    expect(tester.widget<ButtonStyleButton>(find.byKey(AssessmentQuestionsScreen.addKey)).enabled, isTrue);
+    expect(tester.widget<ButtonStyleButton>(find.byKey(AssessmentQuestionsScreen.pasteKey)).enabled, isTrue);
   });
 
   testWidgets('a key the server withheld renders a dash, never the word null', (tester) async {
@@ -459,7 +485,9 @@ void main() {
     // Slice 3 made `/assessments` the register: the Destination's own address
     // no longer redirects to the bank, which keeps its own address.
     expect(find.byType(AssessmentsScreen), findsOneWidget);
-    expect(find.text('Question bank'), findsNothing);
+    expect(find.byType(AssessmentQuestionsScreen), findsNothing);
+    // The register links to the bank by a button of the same name.
+    expect(find.byKey(AssessmentsScreen.questionBankKey), findsOneWidget);
   });
 
   testWidgets('the Question bank keeps its own address', (tester) async {

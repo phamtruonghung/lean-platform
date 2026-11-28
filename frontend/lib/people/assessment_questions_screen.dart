@@ -163,6 +163,11 @@ class _Loaded extends StatelessWidget {
     return result.orgUnits;
   }
 
+  /// A button that cannot act until a process is chosen says why on hover;
+  /// once one is chosen the button renders bare.
+  Widget _withChooseProcessHint(AppLocalizations l10n, OrgUnitNode? orgUnit, Widget button) =>
+      orgUnit == null ? Tooltip(message: l10n.assessmentChooseProcessTitle, child: button) : button;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -181,18 +186,30 @@ class _Loaded extends StatelessWidget {
               title: l10n.assessmentQuestionsTitle,
               description: l10n.assessmentQuestionsDescription,
               actions: [
-                if (state.mayChange && orgUnit != null) ...[
-                  OutlinedButton.icon(
-                    key: AssessmentQuestionsScreen.pasteKey,
-                    onPressed: state.saving ? null : () => AssessmentBankPasteDialog.open(context),
-                    icon: const Icon(Icons.content_paste_outlined),
-                    label: Text(l10n.assessmentPasteQuestions),
+                if (state.mayChange) ...[
+                  _withChooseProcessHint(
+                    l10n,
+                    orgUnit,
+                    OutlinedButton.icon(
+                      key: AssessmentQuestionsScreen.pasteKey,
+                      onPressed: (state.saving || orgUnit == null)
+                          ? null
+                          : () => AssessmentBankPasteDialog.open(context),
+                      icon: const Icon(Icons.content_paste_outlined),
+                      label: Text(l10n.assessmentPasteQuestions),
+                    ),
                   ),
-                  FilledButton.icon(
-                    key: AssessmentQuestionsScreen.addKey,
-                    onPressed: state.saving ? null : () => AssessmentQuestionFormDialog.open(context),
-                    icon: const Icon(Icons.add),
-                    label: Text(l10n.assessmentAddQuestion),
+                  _withChooseProcessHint(
+                    l10n,
+                    orgUnit,
+                    FilledButton.icon(
+                      key: AssessmentQuestionsScreen.addKey,
+                      onPressed: (state.saving || orgUnit == null)
+                          ? null
+                          : () => AssessmentQuestionFormDialog.open(context),
+                      icon: const Icon(Icons.add),
+                      label: Text(l10n.assessmentAddQuestion),
+                    ),
                   ),
                 ],
               ],
